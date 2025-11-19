@@ -1,0 +1,35 @@
+{
+  "name": "visual-validation-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "bun run build:core && bun run build:react",
+    "build:core": "cd packages/core && bun run build",
+    "build:react": "cd packages/react && bun run build",
+    "test": "bun run test:core && bun run test:react",
+    "test:core": "cd packages/core && bun test",
+    "test:react": "cd packages/react && bun test",
+    "test:watch": "bun run test:core --watch",
+    "test:coverage": "bun run test:core --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "dev:core": "cd packages/core && bun run dev",
+    "dev:react": "cd packages/react && bun run dev"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "prettier": "^2.8.8",
+    "typescript": "^5.0.4"
+  }
+}

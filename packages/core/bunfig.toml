@@ -1,0 +1,4 @@
+[test]
+# Use bun's built-in test runner (compatible with Jest API)
+preload = ["./src/**/*.test.ts"]
+coverage = true
