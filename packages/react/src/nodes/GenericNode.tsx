@@ -25,7 +25,7 @@ export interface GenericNodeProps {
 export const GenericNode: React.FC<GenericNodeProps> = ({
   id,
   typeDefinition,
-  data,
+  data: _data,
   state,
   hasViolations,
 }) => {

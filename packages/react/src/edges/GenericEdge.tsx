@@ -22,7 +22,7 @@ export interface GenericEdgeProps {
 export const GenericEdge: React.FC<GenericEdgeProps> = ({
   id,
   typeDefinition,
-  data,
+  data: _data,
   hasViolations,
 }) => {
   const color = hasViolations ? 'red' : (typeDefinition.color || '#888');

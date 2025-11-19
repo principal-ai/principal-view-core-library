@@ -25,7 +25,7 @@ export interface EventLogProps {
 export const EventLog: React.FC<EventLogProps> = ({
   events,
   violations = [],
-  onEventClick,
+  onEventClick: _onEventClick,
   className,
   maxHeight = '400px',
 }) => {
