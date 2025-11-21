@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -7,10 +7,11 @@ import {
   Panel,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { GraphConfiguration, NodeState, EdgeState, Violation } from '@principal-ai/visual-validation-core';
+import type { GraphConfiguration, NodeState, EdgeState, Violation, GraphEvent } from '@principal-ai/visual-validation-core';
 import { CustomNode } from '../nodes/CustomNode';
 import type { CustomNodeData } from '../nodes/CustomNode';
 import { CustomEdge } from '../edges/CustomEdge';
+import type { CustomEdgeData } from '../edges/CustomEdge';
 import { convertToXYFlowNodes, convertToXYFlowEdges, autoLayoutNodes } from '../utils/graphConverter';
 
 export interface GraphRendererProps {
@@ -43,6 +44,12 @@ export interface GraphRendererProps {
 
   /** Whether to show background */
   showBackground?: boolean;
+
+  /** Optional event stream for triggering animations */
+  events?: GraphEvent[];
+
+  /** Optional callback when an event is processed */
+  onEventProcessed?: (event: GraphEvent) => void;
 }
 
 // Define custom node types
@@ -54,6 +61,12 @@ const nodeTypes = {
 const edgeTypes = {
   custom: CustomEdge,
 };
+
+// Animation state for nodes and edges
+interface AnimationState {
+  nodeAnimations: Record<string, { type: 'pulse' | 'flash' | 'shake' | 'entry'; duration: number; timestamp: number }>;
+  edgeAnimations: Record<string, { type: 'flow' | 'particle' | 'pulse' | 'glow'; duration: number; direction?: 'forward' | 'backward' | 'bidirectional'; timestamp: number }>;
+}
 
 /**
  * Core graph visualization component using xyflow
@@ -69,17 +82,175 @@ export const GraphRenderer: React.FC<GraphRendererProps> = ({
   showMinimap = true,
   showControls = true,
   showBackground = true,
+  events = [],
+  onEventProcessed,
 }) => {
-  // Convert our data format to xyflow format
+  // Track active animations
+  const [animationState, setAnimationState] = useState<AnimationState>({
+    nodeAnimations: {},
+    edgeAnimations: {},
+  });
+
+  // Process events and trigger animations
+  useEffect(() => {
+    if (events.length === 0) return;
+
+    const latestEvent = events[events.length - 1];
+
+    // Process animation events
+    if (latestEvent.operation === 'animate' && latestEvent.category === 'edge') {
+      const edgeEvent = latestEvent.payload as any;
+      const edgeId = edgeEvent.edgeId;
+      const animation = edgeEvent.animation;
+
+      if (animation && edgeId) {
+        setAnimationState(prev => ({
+          ...prev,
+          edgeAnimations: {
+            ...prev.edgeAnimations,
+            [edgeId]: {
+              type: 'flow', // Default to flow, can be customized
+              duration: animation.duration || 1000,
+              direction: animation.direction || 'forward',
+              timestamp: Date.now(),
+            },
+          },
+        }));
+
+        // Clear animation after duration
+        const duration = animation.duration || 1000;
+        setTimeout(() => {
+          setAnimationState(prev => {
+            const newEdgeAnimations = { ...prev.edgeAnimations };
+            delete newEdgeAnimations[edgeId];
+            return { ...prev, edgeAnimations: newEdgeAnimations };
+          });
+        }, duration);
+
+        onEventProcessed?.(latestEvent);
+      }
+    }
+
+    // Process state change events for node animations
+    if (latestEvent.category === 'state') {
+      const stateEvent = latestEvent.payload as any;
+      const nodeId = stateEvent.nodeId;
+      const newState = stateEvent.newState;
+
+      if (nodeId && newState) {
+        // Map states to animations
+        const stateToAnimation: Record<string, 'pulse' | 'flash' | 'shake'> = {
+          processing: 'pulse',
+          completed: 'flash',
+          error: 'shake',
+        };
+
+        const animationType = stateToAnimation[newState];
+        if (animationType) {
+          const duration = animationType === 'pulse' ? 1500 : animationType === 'flash' ? 1000 : 500;
+
+          setAnimationState(prev => ({
+            ...prev,
+            nodeAnimations: {
+              ...prev.nodeAnimations,
+              [nodeId]: {
+                type: animationType,
+                duration,
+                timestamp: Date.now(),
+              },
+            },
+          }));
+
+          // Clear non-continuous animations
+          if (animationType !== 'pulse') {
+            setTimeout(() => {
+              setAnimationState(prev => {
+                const newNodeAnimations = { ...prev.nodeAnimations };
+                delete newNodeAnimations[nodeId];
+                return { ...prev, nodeAnimations: newNodeAnimations };
+              });
+            }, duration);
+          }
+
+          onEventProcessed?.(latestEvent);
+        }
+      }
+    }
+
+    // Process node create events for entry animation
+    if (latestEvent.category === 'node' && latestEvent.operation === 'create') {
+      const nodeEvent = latestEvent.payload as any;
+      const nodeId = nodeEvent.nodeId;
+
+      if (nodeId) {
+        setAnimationState(prev => ({
+          ...prev,
+          nodeAnimations: {
+            ...prev.nodeAnimations,
+            [nodeId]: {
+              type: 'entry',
+              duration: 600,
+              timestamp: Date.now(),
+            },
+          },
+        }));
+
+        setTimeout(() => {
+          setAnimationState(prev => {
+            const newNodeAnimations = { ...prev.nodeAnimations };
+            delete newNodeAnimations[nodeId];
+            return { ...prev, nodeAnimations: newNodeAnimations };
+          });
+        }, 600);
+
+        onEventProcessed?.(latestEvent);
+      }
+    }
+  }, [events, onEventProcessed]);
+
+  // Convert our data format to xyflow format with animations
   const xyflowNodes = useMemo(() => {
     const converted = convertToXYFlowNodes(nodes, configuration, violations);
     const layoutType = configuration.display?.layout || 'hierarchical';
-    return autoLayoutNodes(converted, [], layoutType);
-  }, [nodes, configuration, violations]);
+    const positioned = autoLayoutNodes(converted, [], layoutType);
+
+    // Inject animation state into node data
+    return positioned.map(node => {
+      const animation = animationState.nodeAnimations[node.id];
+      if (animation) {
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            animationType: animation.type,
+            animationDuration: animation.duration,
+          } as CustomNodeData,
+        };
+      }
+      return node;
+    });
+  }, [nodes, configuration, violations, animationState.nodeAnimations]);
 
   const xyflowEdges = useMemo(() => {
-    return convertToXYFlowEdges(edges, configuration, violations);
-  }, [edges, configuration, violations]);
+    const converted = convertToXYFlowEdges(edges, configuration, violations);
+
+    // Inject animation state into edge data
+    return converted.map(edge => {
+      const animation = animationState.edgeAnimations[edge.id];
+      if (animation) {
+        return {
+          ...edge,
+          data: {
+            ...edge.data,
+            animationType: animation.type,
+            animationDuration: animation.duration,
+            animationDirection: animation.direction,
+          } as CustomEdgeData,
+        };
+      }
+      return edge;
+    });
+  }, [edges, configuration, violations, animationState.edgeAnimations]);
 
   return (
     <div className={className} style={{ width, height }}>

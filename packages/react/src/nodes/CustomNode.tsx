@@ -10,6 +10,9 @@ export interface CustomNodeData extends Record<string, unknown> {
   state?: string;
   hasViolations?: boolean;
   data: Record<string, unknown>;
+  // Animation control
+  animationType?: 'pulse' | 'flash' | 'shake' | 'entry' | null;
+  animationDuration?: number;
 }
 
 /**
@@ -18,7 +21,14 @@ export interface CustomNodeData extends Record<string, unknown> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
   const nodeProps = data as CustomNodeData;
-  const { typeDefinition, state, hasViolations, data: nodeData } = nodeProps;
+  const {
+    typeDefinition,
+    state,
+    hasViolations,
+    data: nodeData,
+    animationType,
+    animationDuration = 1000
+  } = nodeProps;
 
   // Guard against missing typeDefinition
   if (!typeDefinition) {
@@ -47,6 +57,24 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
     ? typeDefinition.states[state].icon
     : typeDefinition.icon;
 
+  // Get animation class based on type
+  const getAnimationClass = () => {
+    switch (animationType) {
+      case 'pulse':
+        return 'node-pulse';
+      case 'flash':
+        return 'node-flash';
+      case 'shake':
+        return 'node-shake';
+      case 'entry':
+        return 'node-entry';
+      default:
+        return '';
+    }
+  };
+
+  const animationClass = getAnimationClass();
+
   // Shape-specific styles
   const getShapeStyles = () => {
     const baseStyles = {
@@ -64,6 +92,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
       gap: '4px',
       boxShadow: selected ? `0 0 0 2px ${color}` : '0 2px 4px rgba(0,0,0,0.1)',
       transition: 'all 0.2s ease',
+      animationDuration: animationType ? `${animationDuration}ms` : undefined,
     };
 
     switch (typeDefinition.shape) {
@@ -104,7 +133,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
       {/* Input handle */}
       <Handle type="target" position={Position.Top} style={{ background: color }} />
 
-      <div style={getShapeStyles()}>
+      <div style={getShapeStyles()} className={animationClass}>
         {/* Inner content (rotated back if diamond) */}
         <div style={isDiamond ? { transform: 'rotate(-45deg)' } : {}}>
           {icon && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>{resolveIcon(icon, 20)}</div>}
@@ -136,6 +165,95 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
 
       {/* Output handle */}
       <Handle type="source" position={Position.Bottom} style={{ background: color }} />
+
+      {/* CSS animations for node animation types */}
+      <style>{`
+        /* Processing pulse - continuous breathing effect */
+        .node-pulse {
+          animation: node-pulse ease-in-out infinite;
+        }
+
+        @keyframes node-pulse {
+          0%, 100% {
+            transform: scale(1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+          50% {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2), 0 0 0 4px rgba(59, 130, 246, 0.3);
+          }
+        }
+
+        /* Success flash - brief green glow */
+        .node-flash {
+          animation: node-flash ease-out forwards;
+        }
+
+        @keyframes node-flash {
+          0% {
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.8);
+            background-color: rgba(34, 197, 94, 0.1);
+          }
+          50% {
+            box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+            background-color: rgba(34, 197, 94, 0.2);
+          }
+          100% {
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background-color: white;
+          }
+        }
+
+        /* Error shake - vibrate effect */
+        .node-shake {
+          animation: node-shake ease-in-out;
+        }
+
+        @keyframes node-shake {
+          0%, 100% {
+            transform: translateX(0);
+          }
+          10%, 30%, 50%, 70%, 90% {
+            transform: translateX(-4px);
+          }
+          20%, 40%, 60%, 80% {
+            transform: translateX(4px);
+          }
+        }
+
+        /* Entry animation - scale up and fade in */
+        .node-entry {
+          animation: node-entry ease-out forwards;
+        }
+
+        @keyframes node-entry {
+          0% {
+            opacity: 0;
+            transform: scale(0.8);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        /* Special handling for diamond shape with shake */
+        .node-shake[style*="rotate(45deg)"] {
+          animation: node-shake-diamond ease-in-out;
+        }
+
+        @keyframes node-shake-diamond {
+          0%, 100% {
+            transform: rotate(45deg) translateX(0);
+          }
+          10%, 30%, 50%, 70%, 90% {
+            transform: rotate(45deg) translateX(-4px);
+          }
+          20%, 40%, 60%, 80% {
+            transform: rotate(45deg) translateX(4px);
+          }
+        }
+      `}</style>
     </>
   );
 };
