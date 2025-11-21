@@ -2,6 +2,7 @@ import React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { NodeTypeDefinition } from '@principal-ai/visual-validation-core';
+import { resolveIcon } from '../utils/iconResolver';
 
 export interface CustomNodeData extends Record<string, unknown> {
   label: string;
@@ -106,7 +107,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
       <div style={getShapeStyles()}>
         {/* Inner content (rotated back if diamond) */}
         <div style={isDiamond ? { transform: 'rotate(-45deg)' } : {}}>
-          {icon && <div style={{ fontSize: '20px' }}>{icon}</div>}
+          {icon && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>{resolveIcon(icon, 20)}</div>}
           <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>
             {displayLabel}
           </div>

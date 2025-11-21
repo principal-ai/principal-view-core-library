@@ -26,7 +26,7 @@ const sampleConfiguration: GraphConfiguration = {
     process: {
       shape: 'rectangle',
       color: '#4A90E2',
-      icon: '⚙️',
+      icon: 'Settings',
       dataSchema: {
         name: { type: 'string', required: true, displayInLabel: true },
       },
@@ -34,7 +34,7 @@ const sampleConfiguration: GraphConfiguration = {
     data: {
       shape: 'circle',
       color: '#7B68EE',
-      icon: '💾',
+      icon: 'Database',
       dataSchema: {
         name: { type: 'string', required: true, displayInLabel: true },
       },

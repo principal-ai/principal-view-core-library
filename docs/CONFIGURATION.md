@@ -191,6 +191,101 @@ graph LR
     style W fill:#BD10E0,stroke:#333,stroke-width:2px,color:#fff
 ```
 
+### Icon Support
+
+The framework supports two ways to specify icons in your configuration:
+
+#### 1. Lucide Icons (Recommended)
+
+Use icon names from the [Lucide icon library](https://lucide.dev/icons):
+
+```json
+{
+  "nodeTypes": {
+    "database": {
+      "shape": "circle",
+      "icon": "Database",
+      "color": "#7B68EE"
+    },
+    "server": {
+      "shape": "rectangle",
+      "icon": "Server",
+      "color": "#4A90E2"
+    },
+    "api": {
+      "shape": "hexagon",
+      "icon": "Webhook",
+      "color": "#50E3C2"
+    }
+  }
+}
+```
+
+**Available icon names**: Any icon from Lucide React (e.g., `"Database"`, `"Server"`, `"Package"`, `"Settings"`, `"AlertCircle"`, etc.)
+
+**Benefits**:
+- Professional, consistent icon set
+- Over 1000+ icons available
+- Scales perfectly at any size
+- Works in JSON configurations
+
+#### 2. Emoji/Unicode (Simple)
+
+Use emoji or unicode characters directly:
+
+```json
+{
+  "nodeTypes": {
+    "user": {
+      "icon": "👤"
+    },
+    "data": {
+      "icon": "💾"
+    },
+    "process": {
+      "icon": "⚙️"
+    }
+  }
+}
+```
+
+**Benefits**:
+- No external dependencies
+- Simple and quick
+- Works everywhere
+
+#### State-Specific Icons
+
+You can override icons per state:
+
+```json
+{
+  "nodeTypes": {
+    "order": {
+      "icon": "Package",
+      "states": {
+        "pending": {
+          "icon": "Clock",
+          "color": "#FFA500"
+        },
+        "processing": {
+          "icon": "Loader",
+          "color": "#4A90E2"
+        },
+        "shipped": {
+          "icon": "Truck",
+          "color": "#50E3C2"
+        },
+        "delivered": {
+          "icon": "CheckCircle",
+          "color": "#00FF00"
+        }
+      }
+    }
+  }
+}
+```
+
 ## Edge Types
 
 Edge types define how connections between nodes appear and behave.

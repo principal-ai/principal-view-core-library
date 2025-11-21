@@ -47,3 +47,5 @@ export type { CustomEdgeData } from './edges/CustomEdge';
 
 // Export utilities
 export { convertToXYFlowNodes, convertToXYFlowEdges, autoLayoutNodes } from './utils/graphConverter';
+export { Icon, resolveIcon } from './utils/iconResolver';
+export type { IconProps } from './utils/iconResolver';
