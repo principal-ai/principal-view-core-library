@@ -1,0 +1,14 @@
+# Build outputs
+**/dist
+**/build
+**/.next
+**/.turbo
+
+# Dependencies
+**/node_modules
+
+# Test coverage
+**/coverage
+
+# Storybook
+**/storybook-static

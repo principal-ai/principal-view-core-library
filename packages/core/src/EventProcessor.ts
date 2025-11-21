@@ -7,6 +7,7 @@ import type {
   EdgeState,
 } from './types';
 import { ValidationEngine } from './ValidationEngine';
+import { ConfigurationValidator } from './ConfigurationValidator';
 
 export interface ProcessingResult {
   success: boolean;
@@ -23,7 +24,12 @@ export class EventProcessor {
   private validationEngine: ValidationEngine;
   private eventHistory: GraphEvent[] = [];
 
-  constructor(configuration: GraphConfiguration) {
+  constructor(configuration: GraphConfiguration, options?: { validateConfig?: boolean }) {
+    // Validate configuration by default (can be disabled for performance)
+    if (options?.validateConfig !== false) {
+      ConfigurationValidator.validateOrThrow(configuration);
+    }
+
     this.state = {
       nodes: new Map<string, NodeState>(),
       edges: new Map<string, EdgeState>(),
@@ -135,7 +141,7 @@ export class EventProcessor {
           updatedAt: timestamp,
         });
         break;
-      case 'update':
+      case 'update': {
         const existingNode = this.state.nodes.get(payload.nodeId);
         if (existingNode) {
           this.state.nodes.set(payload.nodeId, {
@@ -146,6 +152,7 @@ export class EventProcessor {
           });
         }
         break;
+      }
       case 'delete':
         this.state.nodes.delete(payload.nodeId);
         break;
@@ -167,7 +174,7 @@ export class EventProcessor {
           updatedAt: timestamp,
         });
         break;
-      case 'update':
+      case 'update': {
         const existingEdge = this.state.edges.get(payload.edgeId);
         if (existingEdge) {
           this.state.edges.set(payload.edgeId, {
@@ -177,6 +184,7 @@ export class EventProcessor {
           });
         }
         break;
+      }
       case 'delete':
         this.state.edges.delete(payload.edgeId);
         break;

@@ -170,26 +170,47 @@ function MyPanel() {
 
 **Note:** The above is an example of composing the components. In practice, you would build a complete "panel" application in a separate project that uses these components.
 
+## Documentation
+
+📚 **[Complete Documentation with Mermaid Diagrams](./docs/README.md)**
+
+- **[Configuration Guide](./docs/CONFIGURATION.md)** - Define graph structure, node/edge types, validation rules
+- **[Event System Guide](./docs/EVENT_SYSTEM.md)** - Stream events to update graphs in real-time
+- **[Usage Guide](./docs/USAGE.md)** - Build complete panels with React components
+
+Includes complete examples for e-commerce, data pipelines, and microservices with visual diagrams.
+
+## Storybook
+
+Interactive component examples:
+
+```bash
+bun run storybook
+```
+
 ## Design Document
 
 For full design details, see [GENERIC_GRAPH_PANEL_DESIGN.md](../control-tower-core/GENERIC_GRAPH_PANEL_DESIGN.md)
 
-## Key Features (Planned)
+## Key Features
 
 - ✅ Configuration-driven graph definition
 - ✅ Event-based state changes
 - ✅ Validation engine with rule checking
 - ✅ Test instrumentation helpers
-- ⏳ Real-time graph visualization (xyflow)
-- ⏳ Anomaly detection & highlighting
-- ⏳ Event log panel
-- ⏳ Metrics dashboard
+- ✅ Real-time graph visualization with xyflow
+- ✅ Interactive nodes with custom shapes and states
+- ✅ Styled and animated edges
+- ✅ Auto-layout algorithms (hierarchical, circular)
+- ✅ Anomaly detection & violation highlighting
+- ⏳ Event log panel with filtering
+- ⏳ Metrics dashboard with charts
 - ⏳ Timeline/replay controls
 - ⏳ Export/import event streams
 
 ## Status
 
-**Alpha** - Core logic implemented with test coverage, React UI components are placeholders.
+**Beta** - Core logic and graph visualization complete with test coverage.
 
 ### Completed
 - ✅ Monorepo structure
@@ -199,16 +220,18 @@ For full design details, see [GENERIC_GRAPH_PANEL_DESIGN.md](../control-tower-co
 - ✅ GraphInstrumentationHelper with tests
 - ✅ Package configuration
 - ✅ Test infrastructure (bun test)
-- ✅ Basic component tests
+- ✅ Interactive graph visualization with xyflow
+- ✅ Custom node shapes (circle, rectangle, hexagon, diamond)
+- ✅ Custom edge styles (solid, dashed, dotted, animated)
+- ✅ Auto-layout algorithms
+- ✅ Storybook examples
+- ✅ Comprehensive documentation with Mermaid diagrams
 
 ### TODO
-- 🔲 Implement xyflow integration
-- 🔲 Build node/edge renderers
-- 🔲 Complete event log panel
-- 🔲 Complete metrics dashboard
-- 🔲 Add Storybook examples
-- 🔲 Increase test coverage
-- 🔲 Add documentation site
+- 🔲 Complete event log panel with filtering and search
+- 🔲 Complete metrics dashboard with visual charts
+- 🔲 Add timeline/replay controls
+- 🔲 Increase test coverage for React components
 
 ## License
 

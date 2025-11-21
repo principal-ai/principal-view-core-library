@@ -9,7 +9,7 @@ export interface GenericNodeProps {
   typeDefinition: NodeTypeDefinition;
 
   /** Node data */
-  data: Record<string, any>;
+  data: Record<string, unknown>;
 
   /** Current state (if applicable) */
   state?: string;
@@ -25,7 +25,6 @@ export interface GenericNodeProps {
 export const GenericNode: React.FC<GenericNodeProps> = ({
   id,
   typeDefinition,
-  data: _data,
   state,
   hasViolations,
 }) => {

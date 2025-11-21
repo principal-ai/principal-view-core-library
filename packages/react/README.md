@@ -6,10 +6,16 @@ This library provides **building blocks** for creating graph visualization appli
 
 ## Features
 
-- 🎨 `GraphRenderer` - Graph visualization component (xyflow integration coming soon)
+- 🎨 `GraphRenderer` - Interactive graph visualization with @xyflow/react
+  - Custom node shapes (circle, rectangle, hexagon, diamond)
+  - State-based node styling
+  - Animated and styled edges
+  - Auto-layout algorithms (hierarchical, circular)
+  - Zoom, pan, drag interactions
+  - Minimap and controls
 - 📝 `EventLog` - Event log component (coming soon)
 - 📊 `MetricsDashboard` - Metrics dashboard component (coming soon)
-- 🎭 `GenericNode` / `GenericEdge` - Configurable renderers (coming soon)
+- 🎭 `CustomNode` / `CustomEdge` - Configurable xyflow renderers
 
 ## Installation
 
@@ -69,18 +75,36 @@ function MyPanel() {
 **Building a Complete Panel:**
 For a complete panel application with all features (playback controls, filters, etc.), you should create a separate project using a panel starter template and compose these components together.
 
+## Documentation
+
+Comprehensive guides with Mermaid diagrams:
+
+- **[Configuration Guide](../../docs/CONFIGURATION.md)** - Define your graph structure, node/edge types, and validation rules
+- **[Event System Guide](../../docs/EVENT_SYSTEM.md)** - Stream events to update your graph in real-time
+- **[Usage Guide](../../docs/USAGE.md)** - Build complete panels with React components
+
+Or browse the [full documentation index](../../docs/README.md).
+
+## Storybook
+
+Interactive component examples:
+
+```bash
+bun run storybook
+```
+
 ## Status
 
 **Alpha** - Core placeholder implemented. Full visualization features coming soon.
 
 ### TODO
-- 🔲 Integrate xyflow for graph visualization
-- 🔲 Implement node renderers
-- 🔲 Implement edge renderers
-- 🔲 Build event log panel
-- 🔲 Build metrics dashboard
-- 🔲 Add Storybook stories
-- 🔲 Add animation support
+- ✅ Integrate xyflow for graph visualization
+- ✅ Implement node renderers with shapes and states
+- ✅ Implement edge renderers with styles and animations
+- ✅ Add auto-layout algorithms
+- 🔲 Build event log panel with filtering
+- 🔲 Build metrics dashboard with charts
+- ✅ Add Storybook stories
 
 ## License
 

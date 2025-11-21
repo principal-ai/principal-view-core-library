@@ -19,7 +19,9 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "dev:core": "cd packages/core && bun run dev",
-    "dev:react": "cd packages/react && bun run dev"
+    "dev:react": "cd packages/react && bun run dev",
+    "storybook": "bun run build:core && cd packages/react && bun run storybook",
+    "build-storybook": "bun run build:core && cd packages/react && bun run build-storybook"
   },
   "devDependencies": {
     "@types/bun": "latest",

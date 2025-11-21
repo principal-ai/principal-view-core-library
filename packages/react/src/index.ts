@@ -36,5 +36,14 @@ export type { MetricsDashboardProps } from './components/MetricsDashboard';
 export { GenericNode } from './nodes/GenericNode';
 export type { GenericNodeProps } from './nodes/GenericNode';
 
+export { CustomNode } from './nodes/CustomNode';
+export type { CustomNodeData } from './nodes/CustomNode';
+
 export { GenericEdge } from './edges/GenericEdge';
 export type { GenericEdgeProps } from './edges/GenericEdge';
+
+export { CustomEdge } from './edges/CustomEdge';
+export type { CustomEdgeData } from './edges/CustomEdge';
+
+// Export utilities
+export { convertToXYFlowNodes, convertToXYFlowEdges, autoLayoutNodes } from './utils/graphConverter';

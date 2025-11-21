@@ -9,7 +9,7 @@ export interface GenericEdgeProps {
   typeDefinition: EdgeTypeDefinition;
 
   /** Edge data */
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
 
   /** Whether this edge has violations */
   hasViolations?: boolean;
@@ -22,7 +22,6 @@ export interface GenericEdgeProps {
 export const GenericEdge: React.FC<GenericEdgeProps> = ({
   id,
   typeDefinition,
-  data: _data,
   hasViolations,
 }) => {
   const color = hasViolations ? 'red' : (typeDefinition.color || '#888');

@@ -207,7 +207,7 @@ describe('ValidationEngine', () => {
       // Remove server node
       const stateWithoutServer: GraphState = {
         ...testState,
-        nodes: new Map([testState.nodes.entries()].filter(([id]) => id !== 'server-1')),
+        nodes: new Map(Array.from(testState.nodes.entries()).filter(([id]) => id !== 'server-1')),
       };
 
       const violations = engine.checkConstraints(stateWithoutServer);
