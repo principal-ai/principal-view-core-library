@@ -17,3 +17,10 @@ export type { ConfigurationValidationError, ConfigurationValidationResult } from
 
 // Export helpers
 export { GraphInstrumentationHelper } from './helpers/GraphInstrumentationHelper';
+
+// Export path-based processing (Milestone 1 & 2)
+export { PathBasedEventProcessor } from './PathBasedEventProcessor';
+export type { LogEntry } from './PathBasedEventProcessor';
+
+// Export path utilities
+export { PathMatcher } from './utils/PathMatcher';

@@ -356,3 +356,9 @@ export interface GraphMetrics {
     layoutTime: number;
   };
 }
+
+// ============================================================================
+// Path-Based Configuration Types (Milestone 1 & 2)
+// ============================================================================
+
+export * from './path-based-config';
