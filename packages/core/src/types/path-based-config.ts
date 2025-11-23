@@ -40,6 +40,9 @@ export interface PathBasedNodeTypeDefinition {
     cluster?: string;
   };
 
+  /** Manual position for 'manual' layout mode */
+  position?: { x: number; y: number };
+
   /** MILESTONE 1: Source path mapping */
   sources?: string[];  // e.g., ["lib/lock-manager.ts", "lib/**/*.ts"]
 

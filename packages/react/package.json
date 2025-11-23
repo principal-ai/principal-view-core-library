@@ -1,6 +1,6 @@
 {
   "name": "@principal-ai/visual-validation-react",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "React components for graph-based visual validation framework",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,7 +14,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@principal-ai/visual-validation-core": "^0.2.0",
+    "@principal-ai/visual-validation-core": "^0.2.1",
     "@xyflow/react": "^12.0.0",
     "elkjs": "^0.9.0",
     "framer-motion": "^11.0.0",

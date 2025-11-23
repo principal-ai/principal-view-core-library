@@ -24,3 +24,4 @@ export type { LogEntry } from './PathBasedEventProcessor';
 
 // Export path utilities
 export { PathMatcher } from './utils/PathMatcher';
+export { GraphConverter } from './utils/GraphConverter';
