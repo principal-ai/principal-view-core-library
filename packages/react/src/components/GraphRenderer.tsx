@@ -1,10 +1,11 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   ReactFlow,
   Background,
   Controls,
   MiniMap,
   Panel,
+  type Edge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import type { GraphConfiguration, NodeState, EdgeState, Violation, GraphEvent } from '@principal-ai/visual-validation-core';
@@ -13,6 +14,7 @@ import type { CustomNodeData } from '../nodes/CustomNode';
 import { CustomEdge } from '../edges/CustomEdge';
 import type { CustomEdgeData } from '../edges/CustomEdge';
 import { convertToXYFlowNodes, convertToXYFlowEdges, autoLayoutNodes } from '../utils/graphConverter';
+import { EdgeInfoPanel } from './EdgeInfoPanel';
 
 export interface GraphRendererProps {
   /** Configuration for the graph */
@@ -90,6 +92,30 @@ export const GraphRenderer: React.FC<GraphRendererProps> = ({
     nodeAnimations: {},
     edgeAnimations: {},
   });
+
+  // Track selected edge for info panel
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+
+  // Handle edge click
+  const onEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
+    setSelectedEdgeId(edge.id);
+  }, []);
+
+  // Handle close info panel
+  const onCloseInfoPanel = useCallback(() => {
+    setSelectedEdgeId(null);
+  }, []);
+
+  // Get selected edge data
+  const selectedEdge = useMemo(() => {
+    if (!selectedEdgeId) return null;
+    return edges.find(e => e.id === selectedEdgeId);
+  }, [selectedEdgeId, edges]);
+
+  const selectedEdgeTypeDefinition = useMemo(() => {
+    if (!selectedEdge) return null;
+    return configuration.edgeTypes[selectedEdge.type];
+  }, [selectedEdge, configuration.edgeTypes]);
 
   // Process events and trigger animations
   useEffect(() => {
@@ -253,7 +279,7 @@ export const GraphRenderer: React.FC<GraphRendererProps> = ({
   }, [edges, configuration, violations, animationState.edgeAnimations]);
 
   return (
-    <div className={className} style={{ width, height }}>
+    <div className={className} style={{ width, height, position: 'relative' }}>
       <ReactFlow
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         nodes={xyflowNodes as any}
@@ -269,6 +295,7 @@ export const GraphRenderer: React.FC<GraphRendererProps> = ({
         defaultEdgeOptions={{
           type: 'custom',
         }}
+        onEdgeClick={onEdgeClick}
         proOptions={{ hideAttribution: true }}
       >
         {showBackground && (
@@ -320,6 +347,17 @@ export const GraphRenderer: React.FC<GraphRendererProps> = ({
           </div>
         </Panel>
       </ReactFlow>
+
+      {/* Edge Info Panel */}
+      {selectedEdge && selectedEdgeTypeDefinition && (
+        <EdgeInfoPanel
+          edge={selectedEdge}
+          typeDefinition={selectedEdgeTypeDefinition}
+          sourceNodeId={selectedEdge.from}
+          targetNodeId={selectedEdge.to}
+          onClose={onCloseInfoPanel}
+        />
+      )}
     </div>
   );
 };

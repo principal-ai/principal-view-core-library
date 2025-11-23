@@ -32,6 +32,9 @@ export type { EventLogProps } from './components/EventLog';
 export { MetricsDashboard } from './components/MetricsDashboard';
 export type { MetricsDashboardProps } from './components/MetricsDashboard';
 
+export { EdgeInfoPanel } from './components/EdgeInfoPanel';
+export type { EdgeInfoPanelProps } from './components/EdgeInfoPanel';
+
 // Export node/edge renderers
 export { GenericNode } from './nodes/GenericNode';
 export type { GenericNodeProps } from './nodes/GenericNode';

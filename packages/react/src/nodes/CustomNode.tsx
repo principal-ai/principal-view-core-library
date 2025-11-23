@@ -130,8 +130,25 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
 
   return (
     <>
-      {/* Input handle */}
-      <Handle type="target" position={Position.Top} style={{ background: color }} />
+      {/* Input handles - multiple connection points */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top"
+        style={{ background: color }}
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left"
+        style={{ background: color }}
+      />
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="right"
+        style={{ background: color }}
+      />
 
       <div style={getShapeStyles()} className={animationClass}>
         {/* Inner content (rotated back if diamond) */}
@@ -163,8 +180,25 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
         </div>
       </div>
 
-      {/* Output handle */}
-      <Handle type="source" position={Position.Bottom} style={{ background: color }} />
+      {/* Output handles - multiple connection points */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        style={{ background: color }}
+      />
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left-out"
+        style={{ background: color }}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right-out"
+        style={{ background: color }}
+      />
 
       {/* CSS animations for node animation types */}
       <style>{`

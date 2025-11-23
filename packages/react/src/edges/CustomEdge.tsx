@@ -42,13 +42,6 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
   const [particlePosition, setParticlePosition] = useState(0);
   const pathRef = useRef<SVGPathElement>(null);
 
-  if (!typeDefinition) {
-    return null;
-  }
-
-  const color = hasViolations ? '#D0021B' : (typeDefinition.color || '#888');
-  const width = typeDefinition.width || 2;
-
   // Particle animation effect
   useEffect(() => {
     if (animationType !== 'particle') return;
@@ -63,6 +56,14 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
     const intervalId = setInterval(animate, 16);
     return () => clearInterval(intervalId);
   }, [animationType, animationDuration]);
+
+  // Early return after hooks
+  if (!typeDefinition) {
+    return null;
+  }
+
+  const color = hasViolations ? '#D0021B' : (typeDefinition.color || '#888');
+  const width = typeDefinition.width || 2;
 
   // Get Bezier path
   const [edgePath, labelX, labelY] = getBezierPath({
@@ -153,15 +154,25 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
         style={{ pointerEvents: 'none' }}
       />
 
+      {/* Invisible wide path for easier clicking */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={Math.max(width + 10, 20)}
+        style={{ cursor: 'pointer' }}
+      />
+
       <BaseEdge
         id={id}
         path={edgePath}
         markerEnd={markerEnd as string}
         style={{
           stroke: color,
-          strokeWidth: selected ? width + 1 : width,
+          strokeWidth: selected ? width + 2 : width,
           strokeDasharray: getStrokeStyle(),
           opacity: animationType ? 0.7 : 1,
+          cursor: 'pointer',
         }}
       />
 

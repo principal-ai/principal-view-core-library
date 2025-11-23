@@ -84,6 +84,15 @@ export interface EdgeTypeDefinition {
     duration?: number;
     color?: string;
   };
+
+  /** Data schema for edge metadata - fields to display when edge is clicked */
+  dataSchema?: {
+    [field: string]: {
+      type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+      label?: string;
+      displayInInfo?: boolean;
+    };
+  };
 }
 
 export interface ConnectionRule {
