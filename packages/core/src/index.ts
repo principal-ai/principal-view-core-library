@@ -25,3 +25,13 @@ export type { LogEntry } from './PathBasedEventProcessor';
 // Export path utilities
 export { PathMatcher } from './utils/PathMatcher';
 export { GraphConverter } from './utils/GraphConverter';
+
+// Export configuration loading (Phase 2: Multi-config support)
+export { ConfigurationLoader } from './ConfigurationLoader';
+export type { ConfigurationFile, ConfigurationLoadResult } from './ConfigurationLoader';
+export { parseYaml, isYamlFile, getConfigNameFromFilename } from './utils/YamlParser';
+export type { YamlParseResult } from './utils/YamlParser';
+
+// Re-export FileSystemAdapter from repository-abstraction
+export type { FileSystemAdapter } from '@principal-ai/repository-abstraction';
+export { InMemoryFileSystemAdapter } from '@principal-ai/repository-abstraction';

@@ -1,0 +1,143 @@
+# Simple Service Architecture
+# A basic 3-component example demonstrating core concepts
+
+metadata:
+  name: Simple Service
+  version: 1.0.0
+  description: Basic service architecture with API, business logic, and database
+
+nodeTypes:
+  api:
+    shape: rectangle
+    color: '#4A90E2'
+    icon: 'web'
+    size:
+      width: 120
+      height: 60
+    dataSchema:
+      name:
+        type: string
+        required: true
+        displayInLabel: true
+      port:
+        type: number
+        required: false
+    states:
+      idle:
+        color: '#4A90E2'
+        label: 'Ready'
+      processing:
+        color: '#F5A623'
+        label: 'Processing'
+      error:
+        color: '#D0021B'
+        label: 'Error'
+    sources:
+      - 'src/api/**/*.ts'
+      - 'src/routes/**/*.ts'
+
+  service:
+    shape: hexagon
+    color: '#7ED321'
+    icon: 'cog'
+    size:
+      width: 100
+      height: 100
+    dataSchema:
+      name:
+        type: string
+        required: true
+        displayInLabel: true
+    states:
+      active:
+        color: '#7ED321'
+        label: 'Active'
+      busy:
+        color: '#F5A623'
+        label: 'Busy'
+    sources:
+      - 'src/services/**/*.ts'
+      - 'src/business-logic/**/*.ts'
+
+  database:
+    shape: circle
+    color: '#BD10E0'
+    icon: 'database'
+    size:
+      width: 80
+      height: 80
+    dataSchema:
+      name:
+        type: string
+        required: true
+        displayInLabel: true
+      type:
+        type: string
+        required: false
+    states:
+      connected:
+        color: '#7ED321'
+        label: 'Connected'
+      disconnected:
+        color: '#D0021B'
+        label: 'Disconnected'
+    sources:
+      - 'src/database/**/*.ts'
+      - 'src/models/**/*.ts'
+
+edgeTypes:
+  api_call:
+    style: solid
+    color: '#4A90E2'
+    width: 2
+    directed: true
+    animated: false
+    label:
+      position: middle
+    animation:
+      type: flow
+      duration: 1000
+      color: '#4A90E2'
+
+  data_access:
+    style: dashed
+    color: '#BD10E0'
+    width: 2
+    directed: true
+    animated: false
+    label:
+      position: middle
+    animation:
+      type: particle
+      duration: 800
+      color: '#BD10E0'
+
+allowedConnections:
+  - from: api
+    to: service
+    via: api_call
+    constraints:
+      bidirectional: false
+      maxInstances: 10
+
+  - from: service
+    to: database
+    via: data_access
+    constraints:
+      bidirectional: false
+      maxInstances: 5
+
+  - from: service
+    to: service
+    via: api_call
+    constraints:
+      bidirectional: true
+      maxInstances: 20
+
+display:
+  layout:
+    type: hierarchical
+    direction: top-to-bottom
+  theme:
+    background: '#FFFFFF'
+    grid: true
