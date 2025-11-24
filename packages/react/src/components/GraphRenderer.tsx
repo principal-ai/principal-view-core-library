@@ -29,6 +29,9 @@ export interface GraphRendererProps {
   /** Optional violations to highlight */
   violations?: Violation[];
 
+  /** Optional configuration name for identification (used with multi-config setups) */
+  configName?: string;
+
   /** Optional class name */
   className?: string;
 
@@ -78,6 +81,7 @@ export const GraphRenderer: React.FC<GraphRendererProps> = ({
   nodes,
   edges,
   violations = [],
+  configName,
   className,
   width = '100%',
   height = '100%',

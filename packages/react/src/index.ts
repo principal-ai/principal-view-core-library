@@ -20,6 +20,8 @@ export type {
   ConnectionRule,
   NodeState,
   EdgeState,
+  ConfigurationFile,
+  ConfigurationLoadResult,
 } from '@principal-ai/visual-validation-core';
 
 // Export components
@@ -34,6 +36,9 @@ export type { MetricsDashboardProps } from './components/MetricsDashboard';
 
 export { EdgeInfoPanel } from './components/EdgeInfoPanel';
 export type { EdgeInfoPanelProps } from './components/EdgeInfoPanel';
+
+export { ConfigurationSelector } from './components/ConfigurationSelector';
+export type { ConfigurationSelectorProps } from './components/ConfigurationSelector';
 
 // Export node/edge renderers
 export { GenericNode } from './nodes/GenericNode';
