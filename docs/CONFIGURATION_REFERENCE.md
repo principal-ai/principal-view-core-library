@@ -1,6 +1,6 @@
-# Configuration Reference: vvf.config.yaml
+# Configuration Reference
 
-Complete reference for the Visual Validation Framework configuration file.
+Complete reference for the Visual Validation Framework configuration system.
 
 ## Table of Contents
 
@@ -18,21 +18,88 @@ Complete reference for the Visual Validation Framework configuration file.
 
 ## File Location
 
-Place your configuration at the project root:
+**Visual Validation Framework now supports multiple configurations** stored in the `.vgc/` folder.
+
+Place your configurations in the `.vgc/` directory at the project root:
 
 ```
 your-project/
-  vvf.config.yaml    ← Configuration file
+  .vgc/                      ← Configuration folder
+    ├── architecture.yaml    ← System architecture graph
+    ├── data-flow.yaml       ← Data flow visualization
+    ├── deployment.yaml      ← Deployment topology
+    └── test-suite.yaml      ← Test validation graph
   src/
   lib/
   package.json
 ```
 
-Alternative names supported: `.vvf.yaml`, `vvf.config.yml`, `.vvf.yml`
+**Naming Conventions:**
+- Use `.yaml` or `.yml` extensions
+- Use kebab-case: `my-config.yaml`
+- Descriptive names that indicate purpose
+- Group related configs with common prefixes (e.g., `arch-frontend.yaml`, `arch-backend.yaml`)
+
+**Loading Configurations:**
+
+```typescript
+import { ConfigurationLoader } from '@principal-ai/visual-validation-core';
+import { NodeFileSystemAdapter } from '@principal-ai/repository-abstraction';
+
+// Create a file system adapter
+const fsAdapter = new NodeFileSystemAdapter();
+const loader = new ConfigurationLoader(fsAdapter);
+
+// List all available configurations
+const configNames = loader.listConfigurations(process.cwd());
+console.log('Available configs:', configNames);
+
+// Load a specific configuration
+const config = loader.loadByName('architecture', process.cwd());
+
+// Load all configurations
+const result = loader.loadAll(process.cwd());
+console.log(`Loaded ${result.configs.length} configurations`);
+if (result.errors.length > 0) {
+  console.error('Errors:', result.errors);
+}
+```
+
+See [.vgc/README.md](../.vgc/README.md) for complete usage guide.
+
+---
+
+## Multi-Config Benefits
+
+Having multiple configurations allows you to:
+
+1. **Separate Concerns**: Different graphs for different aspects
+   - `architecture.yaml` - System components and their relationships
+   - `data-flow.yaml` - How data moves through your system
+   - `deployment.yaml` - Infrastructure and deployment topology
+   - `security.yaml` - Security boundaries and authentication flows
+
+2. **Different Granularity**: View your system at different levels
+   - `high-level.yaml` - Bird's eye view of major components
+   - `detailed.yaml` - Detailed view with all interactions
+   - `api-only.yaml` - Focus on API endpoints and contracts
+
+3. **Environment-Specific**: Different configs for different environments
+   - `dev-architecture.yaml` - Development environment setup
+   - `prod-architecture.yaml` - Production infrastructure
+
+4. **Team-Specific**: Different views for different teams
+   - `frontend-arch.yaml` - Frontend team's view
+   - `backend-arch.yaml` - Backend team's view
+   - `infra-arch.yaml` - Infrastructure team's view
+
+5. **Comparison**: Compare different architectural approaches side-by-side using the React `ConfigurationSelector` component
 
 ---
 
 ## Basic Structure
+
+**Note**: Each YAML file in the `.vgc/` folder follows this structure:
 
 ```yaml
 # Project metadata
@@ -482,7 +549,11 @@ display:
 
 ## Complete Examples
 
+All examples below should be saved as separate files in the `.vgc/` folder (e.g., `.vgc/simple-service.yaml`, `.vgc/repository-traffic.yaml`, etc.).
+
 ### Milestone 1: Basic Path-Based Association
+
+**File**: `.vgc/simple-service.yaml`
 
 Simple configuration with component activity tracking only.
 
@@ -542,6 +613,8 @@ pathBasedConfig:
 ```
 
 ### Milestone 2: Full Action Patterns & Edge Activation
+
+**File**: `.vgc/repository-traffic.yaml`
 
 Advanced configuration with state tracking and edge triggers.
 
@@ -700,6 +773,8 @@ display:
 ```
 
 ### Real-World Example: Microservice Architecture
+
+**File**: `.vgc/ecommerce-platform.yaml`
 
 ```yaml
 metadata:
@@ -876,12 +951,80 @@ issues.forEach(issue => {
 
 ---
 
-## Schema Validation (Coming Soon)
+## Using with React Components
 
-Future versions will support JSON Schema validation:
+The React package provides components for working with multiple configurations:
 
-```bash
-vvf validate vvf.config.yaml
+```typescript
+import {
+  ConfigurationSelector,
+  GraphRenderer
+} from '@principal-ai/visual-validation-react';
+import { ConfigurationLoader } from '@principal-ai/visual-validation-core';
+import { NodeFileSystemAdapter } from '@principal-ai/repository-abstraction';
+
+function App() {
+  const [configs, setConfigs] = useState([]);
+  const [selectedConfig, setSelectedConfig] = useState('');
+
+  useEffect(() => {
+    const fsAdapter = new NodeFileSystemAdapter();
+    const loader = new ConfigurationLoader(fsAdapter);
+    const result = loader.loadAll(process.cwd());
+
+    setConfigs(result.configs);
+    if (result.configs.length > 0) {
+      setSelectedConfig(result.configs[0].name);
+    }
+  }, []);
+
+  const config = configs.find(c => c.name === selectedConfig);
+
+  return (
+    <div>
+      <ConfigurationSelector
+        configurations={configs}
+        selectedConfig={selectedConfig}
+        onConfigChange={setSelectedConfig}
+        showDescription
+        showVersion
+      />
+
+      {config && (
+        <GraphRenderer
+          configuration={config.config}
+          configName={selectedConfig}
+          nodes={nodes}
+          edges={edges}
+        />
+      )}
+    </div>
+  );
+}
 ```
 
-Until then, TypeScript types provide compile-time validation when using the configuration in code.
+---
+
+## Schema Validation
+
+Configurations are automatically validated when loaded using `ConfigurationLoader`. The validation checks for:
+
+- Required fields (metadata, nodeTypes, edgeTypes, allowedConnections)
+- Valid YAML syntax
+- Valid color values
+- Node/edge type references in connections
+- Invalid glob patterns in source mappings
+
+```typescript
+const result = loader.loadAll(process.cwd());
+
+// Check for errors
+if (result.errors.length > 0) {
+  result.errors.forEach(error => {
+    console.error(`[${error.file}] ${error.error}`);
+  });
+}
+
+// All successfully loaded configs
+console.log(`Loaded ${result.configs.length} valid configurations`);
+```

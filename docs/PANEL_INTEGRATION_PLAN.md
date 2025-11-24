@@ -4,7 +4,7 @@ Plan for integrating the Visual Validation Framework into the industry-themed-pa
 
 ## Overview
 
-Create a **Visual Validation Graph Panel** that visualizes `vvf.config.yaml` configurations as interactive graph diagrams within the Panel Extension Framework.
+Create a **Visual Validation Graph Panel** that visualizes configurations from the `.vgc/` folder as interactive graph diagrams within the Panel Extension Framework. The framework now supports multiple configurations, allowing users to switch between different architectural views (e.g., architecture, data-flow, deployment) within the same panel.
 
 ## Phase 1: Setup & Dependencies
 
@@ -14,8 +14,9 @@ Create a **Visual Validation Graph Panel** that visualizes `vvf.config.yaml` con
 cd /Users/griever/Developer/industry-themed-panels/industry-themed-panel-starter
 
 # Add our published packages
-bun add @principal-ai/visual-validation-core@0.2.0
-bun add @principal-ai/visual-validation-react@0.2.0
+bun add @principal-ai/visual-validation-core@0.3.1
+bun add @principal-ai/visual-validation-react@0.3.1
+bun add @principal-ai/repository-abstraction@0.2.5
 
 # Add required peer dependencies (if not already present)
 bun add @xyflow/react framer-motion
@@ -39,8 +40,9 @@ src/panels/
 ├── VisualValidationGraphPanel.tsx          # Main panel component
 ├── VisualValidationGraphPanel.stories.tsx  # Storybook stories
 ├── visual-validation/
-│   ├── ConfigLoader.tsx                    # Loads vvf.config.yaml
+│   ├── ConfigManager.tsx                   # Loads configs from .vgc/ folder
 │   ├── GraphContainer.tsx                  # Wrapper for GraphRenderer
+│   ├── ConfigSelector.tsx                  # Switch between configs
 │   ├── ConfigEditor.tsx                    # Optional: Edit config
 │   └── NodeDetailPanel.tsx                 # Shows node details on click
 ```
@@ -53,12 +55,19 @@ src/panels/
 import React, { useState, useEffect } from 'react';
 import type { PanelComponentProps } from '@principal-ade/panel-framework-core';
 import { ThemeProvider, useTheme } from '@principal-ade/industry-theme';
-import { GraphRenderer } from '@principal-ai/visual-validation-react';
-import type { PathBasedGraphConfiguration } from '@principal-ai/visual-validation-core';
+import {
+  GraphRenderer,
+  ConfigurationSelector
+} from '@principal-ai/visual-validation-react';
+import {
+  ConfigurationLoader,
+  type ConfigurationFile
+} from '@principal-ai/visual-validation-core';
 import { FileText, AlertCircle, Loader } from 'lucide-react';
 
 interface GraphPanelState {
-  config: PathBasedGraphConfiguration | null;
+  configurations: ConfigurationFile[];
+  selectedConfig: string | null;
   nodes: any[];
   edges: any[];
   loading: boolean;
@@ -72,28 +81,29 @@ export const VisualValidationGraphPanel: React.FC<PanelComponentProps> = ({
 }) => {
   const { theme } = useTheme();
   const [state, setState] = useState<GraphPanelState>({
-    config: null,
+    configurations: [],
+    selectedConfig: null,
     nodes: [],
     edges: [],
     loading: true,
     error: null
   });
 
-  // Load vvf.config.yaml from file tree
+  // Load all configurations from .vgc/ folder
   useEffect(() => {
-    loadConfiguration();
+    loadConfigurations();
   }, []);
 
   // Subscribe to file system events
   useEffect(() => {
     const unsubscribe = events.on('data:refresh', () => {
-      loadConfiguration();
+      loadConfigurations();
     });
 
     return unsubscribe;
   }, [events]);
 
-  const loadConfiguration = async () => {
+  const loadConfigurations = async () => {
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
@@ -104,21 +114,30 @@ export const VisualValidationGraphPanel: React.FC<PanelComponentProps> = ({
 
       const fileTree = context.getSlice('fileTree');
 
-      // Look for vvf.config.yaml in project root
-      const configFile = findConfigFile(fileTree);
+      // Create a file system adapter from the file tree
+      const fsAdapter = createFileTreeAdapter(fileTree);
 
-      if (!configFile) {
-        throw new Error('No vvf.config.yaml found in project root');
+      // Use ConfigurationLoader to load all configs from .vgc/
+      const loader = new ConfigurationLoader(fsAdapter);
+      const result = loader.loadAll(context.getProjectRoot());
+
+      if (result.errors.length > 0) {
+        console.warn('Configuration loading errors:', result.errors);
       }
 
-      // Parse YAML config (would need a YAML parser)
-      const config = await parseYamlConfig(configFile.content);
+      if (result.configs.length === 0) {
+        throw new Error('No configurations found in .vgc/ folder');
+      }
 
-      // Convert config to nodes/edges
-      const { nodes, edges } = configToGraph(config);
+      // Select the first config by default
+      const selectedConfig = result.configs[0].name;
+
+      // Convert selected config to nodes/edges
+      const { nodes, edges } = configToGraph(result.configs[0].config);
 
       setState({
-        config,
+        configurations: result.configs,
+        selectedConfig,
         nodes,
         edges,
         loading: false,
@@ -126,12 +145,26 @@ export const VisualValidationGraphPanel: React.FC<PanelComponentProps> = ({
       });
     } catch (error) {
       setState({
-        config: null,
+        configurations: [],
+        selectedConfig: null,
         nodes: [],
         edges: [],
         loading: false,
         error: error.message
       });
+    }
+  };
+
+  const handleConfigChange = (configName: string) => {
+    const config = state.configurations.find(c => c.name === configName);
+    if (config) {
+      const { nodes, edges } = configToGraph(config.config);
+      setState(prev => ({
+        ...prev,
+        selectedConfig: configName,
+        nodes,
+        edges
+      }));
     }
   };
 

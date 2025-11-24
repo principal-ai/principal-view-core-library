@@ -2,6 +2,8 @@
 
 This guide explains how to use manual positioning in the Visual Validation Framework to create custom 2D graph layouts.
 
+> **Note**: All configuration examples should be saved in the `.vgc/` folder (e.g., `.vgc/manual-layout.yaml`). See [.vgc/README.md](../.vgc/README.md) for details.
+
 ## Overview
 
 The VVF supports four layout algorithms:
@@ -14,7 +16,7 @@ The VVF supports four layout algorithms:
 
 ### 1. Add Position Data to Node Types
 
-In your `vvf.config.yaml`, add a `position` property to each node type:
+In your configuration file (e.g., `.vgc/my-layout.yaml`), add a `position` property to each node type:
 
 ```yaml
 nodeTypes:

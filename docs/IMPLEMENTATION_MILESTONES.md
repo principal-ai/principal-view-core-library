@@ -2,6 +2,8 @@
 
 This document outlines a two-phase implementation plan for integrating the Visual Validation Framework into existing projects using path-based log association.
 
+> **Note**: All configuration examples should be saved in the `.vgc/` folder (e.g., `.vgc/my-config.yaml`). See [.vgc/README.md](../.vgc/README.md) for details.
+
 ## Overview
 
 The path-based association approach maps components to source file paths, allowing automatic visualization of component activity without requiring pattern matching or code changes. This provides a progressive enhancement path: start simple with basic activity tracking, then optionally refine with specific action patterns.

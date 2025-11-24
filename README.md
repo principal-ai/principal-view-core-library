@@ -33,6 +33,12 @@ Depends on `@principal-ai/visual-validation-core`.
 
 ```
 visual-validation-core-library/
+├── .vgc/                           # Configuration folder (v0.3.0+)
+│   ├── simple-service.yaml         # Example: Basic architecture
+│   ├── microservices.yaml          # Example: Distributed system
+│   ├── data-pipeline.yaml          # Example: ETL pipeline
+│   ├── test-validation.yaml        # Example: Test validation
+│   └── README.md                   # Configuration guide
 ├── package.json                    # Workspace root
 ├── tsconfig.base.json              # Shared TypeScript config
 ├── packages/
@@ -40,16 +46,23 @@ visual-validation-core-library/
 │   │   ├── src/
 │   │   │   ├── types/              # TypeScript type definitions
 │   │   │   ├── helpers/            # GraphInstrumentationHelper
+│   │   │   ├── utils/              # PathMatcher, GraphConverter, YamlParser
 │   │   │   ├── EventProcessor.ts   # Event processing engine
 │   │   │   ├── ValidationEngine.ts # Validation & anomaly detection
+│   │   │   ├── ConfigurationLoader.ts # Multi-config loader (v0.3.0+)
 │   │   │   └── index.ts            # Public API exports
 │   │   └── package.json
 │   └── react/                      # React UI library
 │       ├── src/
 │       │   ├── components/         # React components
-│       │   ├── nodes/              # Node renderers (TODO)
-│       │   ├── edges/              # Edge renderers (TODO)
-│       │   ├── hooks/              # React hooks (TODO)
+│       │   │   ├── GraphRenderer.tsx       # Main graph component
+│       │   │   ├── ConfigurationSelector.tsx # Config switcher (v0.3.0+)
+│       │   │   ├── EventLog.tsx            # Event log
+│       │   │   └── MetricsDashboard.tsx    # Metrics display
+│       │   ├── nodes/              # Node renderers
+│       │   ├── edges/              # Edge renderers
+│       │   ├── hooks/              # React hooks
+│       │   ├── stories/            # Storybook stories
 │       │   └── index.ts            # Public API exports
 │       └── package.json
 └── README.md
@@ -97,6 +110,57 @@ bun run format
 bun run format:check
 ```
 
+## Configuration
+
+The framework uses a `.vgc/` folder for storing multiple graph configurations. This allows you to have different visualizations for different aspects of your system.
+
+### Quick Start: Create a Configuration
+
+1. **Create the `.vgc/` folder**:
+   ```bash
+   mkdir .vgc
+   ```
+
+2. **Create a configuration file** (`.vgc/my-system.yaml`):
+   ```yaml
+   metadata:
+     name: "My System"
+     version: "1.0.0"
+     description: "System architecture visualization"
+
+   nodeTypes:
+     server:
+       shape: hexagon
+       color: "#9C27B0"
+       dataSchema:
+         name: { type: string, required: true }
+       sources:
+         - "src/server/**/*.ts"
+
+     user:
+       shape: circle
+       color: "#4CAF50"
+       dataSchema:
+         name: { type: string, required: true }
+       sources:
+         - "src/client/**/*.ts"
+
+   edgeTypes:
+     connection:
+       style: solid
+       directed: true
+       color: "#666"
+
+   allowedConnections:
+     - from: user
+       to: server
+       via: connection
+   ```
+
+3. **See [.vgc/README.md](./.vgc/README.md)** for complete guide and examples.
+
+---
+
 ## Usage
 
 ### Core Package (Logic Only)
@@ -139,28 +203,74 @@ helper.emitNodeCreated('user-alice', 'user', { status: 'online' });
 helper.emitEdgeCreated('conn-1', 'connection', 'user-alice', 'server-1');
 ```
 
-### React Package (UI Building Blocks)
+### React Package with Multi-Config Support (v0.3.0+)
 
 ```typescript
 import {
   GraphRenderer,
+  ConfigurationSelector,
   EventLog,
   MetricsDashboard,
 } from '@principal-ai/visual-validation-react';
-import { EventProcessor } from '@principal-ai/visual-validation-core';
+import {
+  ConfigurationLoader,
+  EventProcessor
+} from '@principal-ai/visual-validation-core';
+import { NodeFileSystemAdapter } from '@principal-ai/repository-abstraction';
+import { useState, useEffect } from 'react';
 
 function MyPanel() {
-  const processor = new EventProcessor(config);
-  const state = processor.getGraphState();
-  const events = processor.getEventHistory();
+  const [configs, setConfigs] = useState([]);
+  const [selectedConfig, setSelectedConfig] = useState('');
+  const [processor, setProcessor] = useState(null);
+
+  useEffect(() => {
+    // Load all configurations from .vgc/ folder
+    const fsAdapter = new NodeFileSystemAdapter();
+    const loader = new ConfigurationLoader(fsAdapter);
+    const result = loader.loadAll(process.cwd());
+
+    setConfigs(result.configs);
+    if (result.configs.length > 0) {
+      setSelectedConfig(result.configs[0].name);
+      setProcessor(new EventProcessor(result.configs[0].config));
+    }
+  }, []);
+
+  const handleConfigChange = (configName) => {
+    const config = configs.find(c => c.name === configName);
+    if (config) {
+      setSelectedConfig(configName);
+      setProcessor(new EventProcessor(config.config));
+    }
+  };
+
+  const config = configs.find(c => c.name === selectedConfig);
+  const state = processor?.getGraphState();
+  const events = processor?.getEventHistory();
 
   return (
     <div>
-      <GraphRenderer
-        configuration={config}
-        nodes={Array.from(state.nodes.values())}
-        edges={Array.from(state.edges.values())}
+      {/* Configuration Selector */}
+      <ConfigurationSelector
+        configurations={configs}
+        selectedConfig={selectedConfig}
+        onConfigChange={handleConfigChange}
+        showDescription
+        showVersion
       />
+
+      {/* Graph Visualization */}
+      {config && state && (
+        <GraphRenderer
+          configuration={config.config}
+          configName={selectedConfig}
+          nodes={Array.from(state.nodes.values())}
+          edges={Array.from(state.edges.values())}
+        />
+      )}
+
+      {/* Event Log & Metrics */}
       <EventLog events={events} />
       <MetricsDashboard metrics={currentMetrics} />
     </div>
@@ -194,6 +304,9 @@ For full design details, see [GENERIC_GRAPH_PANEL_DESIGN.md](../control-tower-co
 
 ## Key Features
 
+- ✅ **Multi-config support** - Store multiple configurations in `.vgc/` folder (v0.3.0+)
+- ✅ **Configuration switcher** - Switch between configs with `ConfigurationSelector` component
+- ✅ **Adapter pattern** - Environment-agnostic file operations via FileSystemAdapter
 - ✅ Configuration-driven graph definition
 - ✅ Event-based state changes
 - ✅ Validation engine with rule checking
@@ -201,8 +314,10 @@ For full design details, see [GENERIC_GRAPH_PANEL_DESIGN.md](../control-tower-co
 - ✅ Real-time graph visualization with xyflow
 - ✅ Interactive nodes with custom shapes and states
 - ✅ Styled and animated edges
-- ✅ Auto-layout algorithms (hierarchical, circular)
+- ✅ Auto-layout algorithms (hierarchical, circular, manual)
 - ✅ Anomaly detection & violation highlighting
+- ✅ Path-based log association (Milestone 1)
+- ✅ Action pattern matching (Milestone 2)
 - ⏳ Event log panel with filtering
 - ⏳ Metrics dashboard with charts
 - ⏳ Timeline/replay controls
@@ -223,9 +338,14 @@ For full design details, see [GENERIC_GRAPH_PANEL_DESIGN.md](../control-tower-co
 - ✅ Interactive graph visualization with xyflow
 - ✅ Custom node shapes (circle, rectangle, hexagon, diamond)
 - ✅ Custom edge styles (solid, dashed, dotted, animated)
-- ✅ Auto-layout algorithms
+- ✅ Auto-layout algorithms (hierarchical, circular, manual)
 - ✅ Storybook examples
 - ✅ Comprehensive documentation with Mermaid diagrams
+- ✅ **Multi-config support with .vgc/ folder (v0.3.0+)**
+- ✅ **ConfigurationLoader with FileSystemAdapter pattern**
+- ✅ **ConfigurationSelector React component**
+- ✅ **Path-based log association (Milestone 1)**
+- ✅ **Action pattern matching & edge activation (Milestone 2)**
 
 ### TODO
 - 🔲 Complete event log panel with filtering and search

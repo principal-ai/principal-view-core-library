@@ -3,8 +3,10 @@
 > **Key Insight**: Associate logs with components based on their SOURCE (file path), not their CONTENT (pattern matching).
 > **Benefit**: Simple, automatic, and matches how developers actually organize code.
 
-**Last Updated**: 2025-11-21
-**Status**: Design Proposal
+**Last Updated**: 2025-11-23
+**Status**: Implemented (v0.3.0+)
+
+> **Note**: All configuration examples in this document should be saved in the `.vgc/` folder at your project root. The framework now supports multiple configurations for different visualization needs. See [.vgc/README.md](../.vgc/README.md) and [CONFIGURATION_REFERENCE.md](./CONFIGURATION_REFERENCE.md) for details.
 
 ---
 
@@ -71,6 +73,8 @@ components:
 ## Configuration Design
 
 ### Minimal Configuration
+
+**File**: `.vgc/order-processing.yaml`
 
 ```yaml
 metadata:
