@@ -5,6 +5,8 @@ import {
   Controls,
   MiniMap,
   Panel,
+  ReactFlowProvider,
+  useReactFlow,
   type Edge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -74,23 +76,21 @@ interface AnimationState {
 }
 
 /**
- * Core graph visualization component using xyflow
+ * Inner component that uses ReactFlow hooks
  */
-export const GraphRenderer: React.FC<GraphRendererProps> = ({
+const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width' | 'height'>> = ({
   configuration,
   nodes,
   edges,
   violations = [],
   configName,
-  className,
-  width = '100%',
-  height = '100%',
   showMinimap = true,
   showControls = true,
   showBackground = true,
   events = [],
   onEventProcessed,
 }) => {
+  const { fitView } = useReactFlow();
   // Track active animations
   const [animationState, setAnimationState] = useState<AnimationState>({
     nodeAnimations: {},
@@ -282,8 +282,24 @@ export const GraphRenderer: React.FC<GraphRendererProps> = ({
     });
   }, [edges, configuration, violations, animationState.edgeAnimations]);
 
+  // Call fitView after mount and when nodes change
+  useEffect(() => {
+    // Use setTimeout to ensure the container has been sized
+    const timeoutId = setTimeout(() => {
+      fitView({
+        padding: 0.2,
+        includeHiddenNodes: false,
+        minZoom: 0.1,
+        maxZoom: 1.5,
+        duration: 200,
+      });
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [xyflowNodes, fitView]);
+
   return (
-    <div className={className} style={{ width, height, position: 'relative' }}>
+    <>
       <ReactFlow
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         nodes={xyflowNodes as any}
@@ -293,7 +309,6 @@ export const GraphRenderer: React.FC<GraphRendererProps> = ({
         nodeTypes={nodeTypes as any}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         edgeTypes={edgeTypes as any}
-        fitView
         minZoom={0.1}
         maxZoom={4}
         defaultEdgeOptions={{
@@ -362,6 +377,21 @@ export const GraphRenderer: React.FC<GraphRendererProps> = ({
           onClose={onCloseInfoPanel}
         />
       )}
+    </>
+  );
+};
+
+/**
+ * Core graph visualization component using xyflow
+ */
+export const GraphRenderer: React.FC<GraphRendererProps> = (props) => {
+  const { className, width = '100%', height = '100%', ...rest } = props;
+
+  return (
+    <div className={className} style={{ width, height, position: 'relative' }}>
+      <ReactFlowProvider>
+        <GraphRendererInner {...rest} />
+      </ReactFlowProvider>
     </div>
   );
 };
