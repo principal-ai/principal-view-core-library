@@ -36,11 +36,17 @@ export function convertToXYFlowNodes(
   });
 }
 
+/** Extended edge state with optional handle information for ReactFlow */
+export interface EdgeStateWithHandles extends EdgeState {
+  sourceHandle?: string;
+  targetHandle?: string;
+}
+
 /**
  * Convert our EdgeState to xyflow Edge format
  */
 export function convertToXYFlowEdges(
-  edges: EdgeState[],
+  edges: (EdgeState | EdgeStateWithHandles)[],
   configuration: GraphConfiguration,
   violations: Violation[] = []
 ): Edge<CustomEdgeData>[] {
@@ -53,11 +59,14 @@ export function convertToXYFlowEdges(
     }
 
     const hasViolations = violations.some(v => v.context?.edgeId === edge.id);
+    const edgeWithHandles = edge as EdgeStateWithHandles;
 
     return {
       id: edge.id,
       source: edge.from,
       target: edge.to,
+      sourceHandle: edgeWithHandles.sourceHandle,
+      targetHandle: edgeWithHandles.targetHandle,
       type: 'custom',
       animated: typeDefinition?.style === 'animated',
       data: {

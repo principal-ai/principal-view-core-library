@@ -7,6 +7,8 @@ export interface EdgeInfoPanelProps {
   sourceNodeId: string;
   targetNodeId: string;
   onClose: () => void;
+  /** Optional callback to delete the edge. If not provided, delete button is hidden. */
+  onDelete?: (edgeId: string) => void;
 }
 
 /**
@@ -18,6 +20,7 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
   sourceNodeId,
   targetNodeId,
   onClose,
+  onDelete,
 }) => {
   const color = typeDefinition.color || '#888';
 
@@ -166,6 +169,30 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
       <div style={{ fontSize: '10px', color: '#999', marginTop: '12px', paddingTop: '8px', borderTop: '1px solid #eee' }}>
         ID: {edge.id}
       </div>
+
+      {/* Delete Button */}
+      {onDelete && (
+        <button
+          onClick={() => {
+            onDelete(edge.id);
+            onClose();
+          }}
+          style={{
+            marginTop: '12px',
+            width: '100%',
+            padding: '8px 12px',
+            backgroundColor: '#dc3545',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: 'bold',
+          }}
+        >
+          Delete Edge
+        </button>
+      )}
     </div>
   );
 };

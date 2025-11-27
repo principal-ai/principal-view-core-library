@@ -37,6 +37,9 @@ export type { MetricsDashboardProps } from './components/MetricsDashboard';
 export { EdgeInfoPanel } from './components/EdgeInfoPanel';
 export type { EdgeInfoPanelProps } from './components/EdgeInfoPanel';
 
+export { NodeInfoPanel } from './components/NodeInfoPanel';
+export type { NodeInfoPanelProps } from './components/NodeInfoPanel';
+
 export { ConfigurationSelector } from './components/ConfigurationSelector';
 export type { ConfigurationSelectorProps } from './components/ConfigurationSelector';
 
@@ -55,5 +58,6 @@ export type { CustomEdgeData } from './edges/CustomEdge';
 
 // Export utilities
 export { convertToXYFlowNodes, convertToXYFlowEdges, autoLayoutNodes } from './utils/graphConverter';
+export type { EdgeStateWithHandles } from './utils/graphConverter';
 export { Icon, resolveIcon } from './utils/iconResolver';
 export type { IconProps } from './utils/iconResolver';

@@ -47,6 +47,11 @@ const sampleConfiguration: GraphConfiguration = {
       color: '#50E3C2',
       directed: true,
     },
+    dependency: {
+      style: 'dashed',
+      color: '#F5A623',
+      directed: true,
+    },
   },
   allowedConnections: [
     {
@@ -57,6 +62,16 @@ const sampleConfiguration: GraphConfiguration = {
     {
       from: 'data',
       to: 'process',
+      via: 'dataflow',
+    },
+    {
+      from: 'process',
+      to: 'process',
+      via: 'dependency',
+    },
+    {
+      from: 'data',
+      to: 'data',
       via: 'dataflow',
     },
   ],
@@ -243,6 +258,105 @@ export const Draggable: Story = {
     docs: {
       description: {
         story: 'Nodes can be dragged to new positions. Position changes are reported via the `onNodePositionsChange` callback.',
+      },
+    },
+  },
+};
+
+// Interactive story with full editing (drag, delete edges/nodes, create edges)
+const EditableTemplate = () => {
+  const [positions, setPositions] = React.useState<Record<string, { x: number; y: number }>>({});
+  const [currentNodes, setCurrentNodes] = React.useState(sampleNodes);
+  const [currentEdges, setCurrentEdges] = React.useState(sampleEdges);
+  const [edgeIdCounter, setEdgeIdCounter] = React.useState(3);
+
+  const nodesWithPositions = currentNodes.map(node => ({
+    ...node,
+    position: positions[node.id] || node.position,
+  }));
+
+  return (
+    <div>
+      <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 4 }}>
+        <strong>Interactive Graph Editor</strong>
+        <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
+          <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
+            <li>Drag nodes to reposition them</li>
+            <li>Drag from a node handle to another node to create an edge</li>
+            <li>Click an edge to view info and delete it</li>
+            <li>Click a node to view info, edit name/type, or delete it</li>
+          </ul>
+        </div>
+        <div style={{ marginTop: 8, fontSize: 11, color: '#888' }}>
+          Nodes: {currentNodes.length} • Edges: {currentEdges.length}
+        </div>
+      </div>
+      <GraphRenderer
+        configuration={sampleConfiguration}
+        nodes={nodesWithPositions}
+        edges={currentEdges}
+        width={800}
+        height={500}
+        draggable={true}
+        onNodePositionsChange={(changes) => {
+          setPositions(prev => {
+            const updated = { ...prev };
+            for (const change of changes) {
+              updated[change.nodeId] = change.position;
+            }
+            return updated;
+          });
+        }}
+        onEdgeDelete={(edgeId) => {
+          console.log('Deleting edge:', edgeId);
+          setCurrentEdges(prev => prev.filter(e => e.id !== edgeId));
+        }}
+        onNodeDelete={(nodeId) => {
+          console.log('Deleting node:', nodeId);
+          // Remove the node
+          setCurrentNodes(prev => prev.filter(n => n.id !== nodeId));
+          // Also remove any edges connected to this node
+          setCurrentEdges(prev => prev.filter(e => e.from !== nodeId && e.to !== nodeId));
+        }}
+        onNodeUpdate={(nodeId, updates) => {
+          console.log('Updating node:', nodeId, updates);
+          setCurrentNodes(prev => prev.map(n => {
+            if (n.id !== nodeId) return n;
+            return {
+              ...n,
+              type: updates.type ?? n.type,
+              data: updates.data ?? n.data,
+              updatedAt: Date.now(),
+            };
+          }));
+        }}
+        onEdgeCreate={(edge) => {
+          console.log('Creating edge:', edge);
+          const newEdge = {
+            id: `edge-${edgeIdCounter}`,
+            from: edge.from,
+            to: edge.to,
+            type: edge.type,
+            sourceHandle: edge.sourceHandle,
+            targetHandle: edge.targetHandle,
+            data: {},
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          setCurrentEdges(prev => [...prev, newEdge]);
+          setEdgeIdCounter(prev => prev + 1);
+        }}
+      />
+    </div>
+  );
+};
+
+export const Editable: Story = {
+  render: () => <EditableTemplate />,
+  parameters: {
+    docs: {
+      description: {
+        story: 'Full editing mode: drag nodes, create/delete edges, delete nodes, and edit node name/type via the info panel.',
       },
     },
   },

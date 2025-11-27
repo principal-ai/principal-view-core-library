@@ -13,6 +13,8 @@ export interface CustomNodeData extends Record<string, unknown> {
   // Animation control
   animationType?: 'pulse' | 'flash' | 'shake' | 'entry' | null;
   animationDuration?: number;
+  // Edit mode - shows larger connection handles
+  editable?: boolean;
 }
 
 /**
@@ -27,7 +29,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
     hasViolations,
     data: nodeData,
     animationType,
-    animationDuration = 1000
+    animationDuration = 1000,
+    editable = false,
   } = nodeProps;
 
   // Guard against missing typeDefinition
@@ -52,10 +55,10 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
   )?.[0];
   const displayLabel = labelField && nodeData[labelField] ? String(nodeData[labelField]) : nodeProps.label;
 
-  // Icon from state or default
-  const icon = state && typeDefinition.states?.[state]?.icon
-    ? typeDefinition.states[state].icon
-    : typeDefinition.icon;
+  // Icon priority: node data override > state icon > type definition icon
+  const icon = (nodeData.icon as string)
+    || (state && typeDefinition.states?.[state]?.icon)
+    || typeDefinition.icon;
 
   // Get animation class based on type
   const getAnimationClass = () => {
@@ -128,6 +131,19 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
 
   const isDiamond = typeDefinition.shape === 'diamond';
 
+  // Handle styles - larger and more visible in edit mode
+  const handleStyle = editable ? {
+    background: color,
+    width: 12,
+    height: 12,
+    border: '2px solid white',
+    boxShadow: '0 0 0 1px ' + color,
+  } : {
+    background: color,
+    width: 8,
+    height: 8,
+  };
+
   return (
     <>
       {/* Input handles - multiple connection points */}
@@ -135,19 +151,19 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
         type="target"
         position={Position.Top}
         id="top"
-        style={{ background: color }}
+        style={handleStyle}
       />
       <Handle
         type="target"
         position={Position.Left}
         id="left"
-        style={{ background: color }}
+        style={handleStyle}
       />
       <Handle
         type="target"
         position={Position.Right}
         id="right"
-        style={{ background: color }}
+        style={handleStyle}
       />
 
       <div style={getShapeStyles()} className={animationClass}>
@@ -185,19 +201,19 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
         type="source"
         position={Position.Bottom}
         id="bottom"
-        style={{ background: color }}
+        style={handleStyle}
       />
       <Handle
         type="source"
         position={Position.Left}
         id="left-out"
-        style={{ background: color }}
+        style={handleStyle}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right-out"
-        style={{ background: color }}
+        style={handleStyle}
       />
 
       {/* CSS animations for node animation types */}
