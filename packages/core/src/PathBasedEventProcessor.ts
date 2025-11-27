@@ -32,6 +32,12 @@ export interface LogEntry {
       line?: number;
       column?: number;
     };
+    /**
+     * Instance identifier for multi-instance components.
+     * Used to differentiate between multiple nodes of the same type
+     * (e.g., "client-1", "client-2" for components of type "client").
+     */
+    instanceId?: string;
   };
   args?: any[];
 }
@@ -117,6 +123,7 @@ export class PathBasedEventProcessor {
     const activityEvent: ComponentActivityEvent = {
       type: 'component-activity',
       componentId: component.componentId,
+      instanceId: log.metadata.instanceId,
       timestamp: log.metadata.timestamp,
       level: log.metadata.level,
       message: log.message,
@@ -170,6 +177,7 @@ export class PathBasedEventProcessor {
         return {
           type: 'component-action',
           componentId: component.componentId,
+          instanceId: log.metadata.instanceId,
           action: actionPattern.event,
           state: actionPattern.state,
           timestamp: log.metadata.timestamp,

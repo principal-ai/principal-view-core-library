@@ -96,16 +96,31 @@ export class EnhancedLogger {
       source
     };
 
-    // If last arg is an object with _vvfSource, use it as manual override
+    // If last arg is an object with VVF metadata fields, extract them
     const lastArg = args[args.length - 1];
-    if (lastArg && typeof lastArg === 'object' && lastArg._vvfSource) {
-      metadata.source = {
-        file: lastArg._vvfSource,
-        line: lastArg._vvfLine,
-        column: lastArg._vvfColumn
-      };
-      // Remove the metadata arg
-      args = args.slice(0, -1);
+    if (lastArg && typeof lastArg === 'object') {
+      let hasVvfMetadata = false;
+
+      // Extract source override
+      if (lastArg._vvfSource) {
+        metadata.source = {
+          file: lastArg._vvfSource,
+          line: lastArg._vvfLine,
+          column: lastArg._vvfColumn
+        };
+        hasVvfMetadata = true;
+      }
+
+      // Extract instance ID for multi-instance component tracking
+      if (lastArg._vvfInstanceId) {
+        metadata.instanceId = lastArg._vvfInstanceId;
+        hasVvfMetadata = true;
+      }
+
+      // Remove the metadata arg if it contained VVF fields
+      if (hasVvfMetadata) {
+        args = args.slice(0, -1);
+      }
     }
 
     const entry: LogEntry = {

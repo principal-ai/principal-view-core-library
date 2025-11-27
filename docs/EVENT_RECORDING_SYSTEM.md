@@ -148,6 +148,13 @@ interface LogEntry {
     function?: string;
   };
 
+  /**
+   * Instance identifier for multi-instance components.
+   * Used to differentiate between multiple nodes of the same type
+   * (e.g., "client-1", "client-2" for components of type "client").
+   */
+  instanceId?: string;
+
   /** Additional structured data */
   data?: Record<string, unknown>;
 
@@ -160,6 +167,103 @@ interface LogEntry {
 }
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+```
+
+### 4. Instance Resolution
+
+When you have multiple nodes of the same type (e.g., multiple clients connecting to a server), you need a way to differentiate which node instance a log belongs to.
+
+#### The Problem
+
+Path-based association maps logs to **node types** (e.g., `client`), but not to specific **node instances** (e.g., `client-1`, `client-2`).
+
+```
+log from "src/client/BaseClient.ts" → "client" (node type)
+                                   → but WHICH client?
+```
+
+#### Solution: Instance ID in Log Metadata
+
+The log entry includes an `instanceId` field that specifies which node instance the log belongs to:
+
+```typescript
+// In your application code
+logger.info('Connected to server', {
+  _vvfInstanceId: this.clientId  // "client-1"
+});
+
+// Or using the EnhancedLogger directly
+logger.info('Connected to server', {
+  _vvfInstanceId: 'client-1'
+});
+```
+
+#### How It Works
+
+1. **Logger captures instanceId**: The `EnhancedLogger` extracts `_vvfInstanceId` from log metadata
+2. **Processor passes it through**: `PathBasedEventProcessor` includes `instanceId` in events
+3. **Events target specific nodes**: `ComponentActivityEvent` and `ComponentActionEvent` include `instanceId`
+4. **Renderer animates correct node**: GraphRenderer uses `instanceId` to animate the specific node instance
+
+#### Event Flow Example
+
+```typescript
+// 1. Application logs with instance ID
+logger.info('Client connected', { _vvfInstanceId: 'client-1' });
+
+// 2. EnhancedLogger creates LogEntry with instanceId
+{
+  message: 'Client connected',
+  metadata: {
+    timestamp: 1701234567890,
+    level: 'info',
+    source: { file: 'src/client/BaseClient.ts', line: 42 },
+    instanceId: 'client-1'  // ← Extracted from _vvfInstanceId
+  }
+}
+
+// 3. PathBasedEventProcessor creates event with instanceId
+{
+  type: 'component-activity',
+  componentId: 'client',     // Node type
+  instanceId: 'client-1',    // Specific instance
+  timestamp: 1701234567890,
+  level: 'info',
+  message: 'Client connected',
+  source: { file: 'src/client/BaseClient.ts', line: 42 }
+}
+
+// 4. GraphRenderer animates node with id "client-1"
+```
+
+#### Best Practices
+
+1. **Use consistent instance IDs**: Use the same ID throughout the lifecycle of an instance
+2. **Make IDs meaningful**: Use descriptive IDs like `client-alice`, `worker-1`, `db-primary`
+3. **Instance ID is optional**: If not provided, events target the node type (for single-instance components)
+4. **Set instance ID early**: Configure the instance ID when the component is created
+
+```typescript
+class Client {
+  private clientId: string;
+  private logger: EnhancedLogger;
+
+  constructor(id: string) {
+    this.clientId = id;
+    this.logger = new EnhancedLogger();
+  }
+
+  // Helper method to include instance ID in all logs
+  private log(level: LogLevel, message: string, data?: object) {
+    this.logger[level](message, { ...data, _vvfInstanceId: this.clientId });
+  }
+
+  connect() {
+    this.log('info', 'Connecting to server');
+    // ... connection logic
+    this.log('info', 'Connected successfully');
+  }
+}
 ```
 
 ---

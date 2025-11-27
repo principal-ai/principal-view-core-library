@@ -27,6 +27,13 @@ export interface LogMetadata {
   level: LogLevel;
   /** Source location where log was called */
   source?: SourceLocation;
+  /**
+   * Instance identifier for multi-instance components.
+   * Used to differentiate between multiple nodes of the same type
+   * (e.g., "client-1", "client-2" for components of type "client").
+   * If not provided, events will target the node type rather than a specific instance.
+   */
+  instanceId?: string;
   /** Additional custom metadata */
   [key: string]: any;
 }

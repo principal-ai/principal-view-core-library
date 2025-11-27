@@ -179,6 +179,13 @@ export interface ComponentActivityEvent {
   /** Component ID (node type) */
   componentId: string;
 
+  /**
+   * Instance identifier for multi-instance components.
+   * If provided, targets a specific node instance (e.g., "client-1").
+   * If undefined, targets the node type as a whole.
+   */
+  instanceId?: string;
+
   /** Timestamp of the log */
   timestamp: number;
 
@@ -208,6 +215,13 @@ export interface ComponentActionEvent {
 
   /** Component ID (node type) */
   componentId: string;
+
+  /**
+   * Instance identifier for multi-instance components.
+   * If provided, targets a specific node instance (e.g., "client-1").
+   * If undefined, targets the node type as a whole.
+   */
+  instanceId?: string;
 
   /** Action type (from pattern) */
   action: string;

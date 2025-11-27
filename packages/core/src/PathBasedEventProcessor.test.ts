@@ -429,4 +429,139 @@ describe('PathBasedEventProcessor', () => {
       expect(stats.totalSourcePatterns).toBe(5); // Sum of all source patterns
     });
   });
+
+  describe('Instance ID support', () => {
+    it('should include instanceId in activity event when provided', () => {
+      const processor = new PathBasedEventProcessor(sampleConfig);
+
+      const log: LogEntry = {
+        message: 'Client connected',
+        metadata: {
+          timestamp: Date.now(),
+          level: 'info',
+          source: {
+            file: 'lib/lock-manager.ts',
+            line: 42
+          },
+          instanceId: 'client-1'
+        }
+      };
+
+      const events = processor.processLog(log);
+
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('component-activity');
+      const activityEvent = events[0] as any;
+      expect(activityEvent.componentId).toBe('lock-manager');
+      expect(activityEvent.instanceId).toBe('client-1');
+    });
+
+    it('should have undefined instanceId when not provided', () => {
+      const processor = new PathBasedEventProcessor(sampleConfig);
+
+      const log: LogEntry = {
+        message: 'Client connected',
+        metadata: {
+          timestamp: Date.now(),
+          level: 'info',
+          source: {
+            file: 'lib/lock-manager.ts',
+            line: 42
+          }
+          // No instanceId
+        }
+      };
+
+      const events = processor.processLog(log);
+
+      expect(events).toHaveLength(1);
+      const activityEvent = events[0] as any;
+      expect(activityEvent.instanceId).toBeUndefined();
+    });
+
+    it('should include instanceId in action event when provided', () => {
+      const configWithActions: PathBasedGraphConfiguration = {
+        ...sampleConfig,
+        pathBasedConfig: {
+          enableActionPatterns: true
+        },
+        nodeTypes: {
+          ...sampleConfig.nodeTypes,
+          'lock-manager': {
+            ...sampleConfig.nodeTypes['lock-manager'],
+            actions: [
+              {
+                pattern: 'Lock acquired',
+                event: 'lock_acquired',
+                state: 'acquired'
+              }
+            ]
+          }
+        }
+      };
+
+      const processor = new PathBasedEventProcessor(configWithActions);
+
+      const log: LogEntry = {
+        message: 'Lock acquired',
+        metadata: {
+          timestamp: Date.now(),
+          level: 'info',
+          source: {
+            file: 'lib/lock-manager.ts',
+            line: 42
+          },
+          instanceId: 'lock-manager-primary'
+        }
+      };
+
+      const events = processor.processLog(log);
+
+      expect(events).toHaveLength(1);
+      expect(events[0].type).toBe('component-action');
+      const actionEvent = events[0] as any;
+      expect(actionEvent.componentId).toBe('lock-manager');
+      expect(actionEvent.instanceId).toBe('lock-manager-primary');
+    });
+
+    it('should preserve instanceId across batch processing', () => {
+      const processor = new PathBasedEventProcessor(sampleConfig);
+
+      const logs: LogEntry[] = [
+        {
+          message: 'Log from client 1',
+          metadata: {
+            timestamp: Date.now(),
+            level: 'info',
+            source: { file: 'lib/lock-manager.ts' },
+            instanceId: 'client-1'
+          }
+        },
+        {
+          message: 'Log from client 2',
+          metadata: {
+            timestamp: Date.now(),
+            level: 'info',
+            source: { file: 'lib/lock-manager.ts' },
+            instanceId: 'client-2'
+          }
+        },
+        {
+          message: 'Log without instance',
+          metadata: {
+            timestamp: Date.now(),
+            level: 'info',
+            source: { file: 'lib/lock-manager.ts' }
+          }
+        }
+      ];
+
+      const events = processor.processLogs(logs);
+
+      expect(events).toHaveLength(3);
+      expect((events[0] as any).instanceId).toBe('client-1');
+      expect((events[1] as any).instanceId).toBe('client-2');
+      expect((events[2] as any).instanceId).toBeUndefined();
+    });
+  });
 });
