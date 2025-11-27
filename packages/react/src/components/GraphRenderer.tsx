@@ -7,7 +7,10 @@ import {
   Panel,
   ReactFlowProvider,
   useReactFlow,
+  applyNodeChanges,
   type Edge,
+  type NodeChange,
+  type Node,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import type { GraphConfiguration, NodeState, EdgeState, Violation, GraphEvent } from '@principal-ai/visual-validation-core';
@@ -17,6 +20,12 @@ import { CustomEdge } from '../edges/CustomEdge';
 import type { CustomEdgeData } from '../edges/CustomEdge';
 import { convertToXYFlowNodes, convertToXYFlowEdges, autoLayoutNodes } from '../utils/graphConverter';
 import { EdgeInfoPanel } from './EdgeInfoPanel';
+
+/** Position change event for tracking node movements */
+export interface NodePositionChange {
+  nodeId: string;
+  position: { x: number; y: number };
+}
 
 export interface GraphRendererProps {
   /** Configuration for the graph */
@@ -57,6 +66,12 @@ export interface GraphRendererProps {
 
   /** Optional callback when an event is processed */
   onEventProcessed?: (event: GraphEvent) => void;
+
+  /** Whether nodes can be dragged (enables position editing) */
+  draggable?: boolean;
+
+  /** Callback when node positions change (only called when draggable=true) */
+  onNodePositionsChange?: (changes: NodePositionChange[]) => void;
 }
 
 // Define custom node types
@@ -83,12 +98,14 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
   nodes,
   edges,
   violations = [],
-  configName,
+  configName: _configName,
   showMinimap = true,
   showControls = true,
   showBackground = true,
   events = [],
   onEventProcessed,
+  draggable = false,
+  onNodePositionsChange,
 }) => {
   const { fitView } = useReactFlow();
   // Track active animations
@@ -239,7 +256,7 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
   }, [events, onEventProcessed]);
 
   // Convert our data format to xyflow format with animations
-  const xyflowNodes = useMemo(() => {
+  const xyflowNodesBase = useMemo(() => {
     const converted = convertToXYFlowNodes(nodes, configuration, violations);
     const layoutType = configuration.display?.layout || 'hierarchical';
     const positioned = autoLayoutNodes(converted, [], layoutType);
@@ -260,6 +277,74 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
       return node;
     });
   }, [nodes, configuration, violations, animationState.nodeAnimations]);
+
+  // Stable key for base nodes - only changes when node IDs change
+  const baseNodesKey = useMemo(() => {
+    return nodes.map(n => n.id).sort().join(',');
+  }, [nodes]);
+
+  // Local state for node positions when dragging is enabled
+  const [localNodes, setLocalNodes] = useState(xyflowNodesBase);
+
+  // Track previous draggable state to detect when entering edit mode
+  const prevDraggableRef = React.useRef(draggable);
+
+  // Sync local nodes with base nodes when:
+  // 1. Base node IDs change (config reload)
+  // 2. Entering draggable mode (need fresh positions)
+  // When not in draggable mode, we use xyflowNodesBase directly (see line below)
+  const prevBaseNodesKeyRef = React.useRef(baseNodesKey);
+  useEffect(() => {
+    const baseNodesChanged = prevBaseNodesKeyRef.current !== baseNodesKey;
+    const enteringDraggable = draggable && !prevDraggableRef.current;
+
+    if (baseNodesChanged || enteringDraggable) {
+      prevBaseNodesKeyRef.current = baseNodesKey;
+      prevDraggableRef.current = draggable;
+      setLocalNodes(xyflowNodesBase);
+    } else {
+      // Just update the ref when draggable state changes
+      prevDraggableRef.current = draggable;
+    }
+  }, [baseNodesKey, xyflowNodesBase, draggable]);
+
+  // Use local nodes when draggable, base nodes otherwise
+  const xyflowNodes = draggable ? localNodes : xyflowNodesBase;
+
+  // Handle node changes (drag events, dimension updates, selection, etc.)
+  const handleNodesChange = useCallback((changes: NodeChange[]) => {
+    if (!draggable) return;
+
+    // Use ReactFlow's helper to apply all changes properly
+    setLocalNodes(nds => applyNodeChanges(changes, nds) as Node<CustomNodeData>[]);
+
+    // Notify parent only on drag end
+    if (onNodePositionsChange) {
+      const positionChanges = changes
+        .filter((change): change is NodeChange & {
+          type: 'position';
+          position: { x: number; y: number };
+          dragging: boolean
+        } =>
+          change.type === 'position' &&
+          'position' in change &&
+          change.position !== undefined &&
+          'dragging' in change &&
+          change.dragging === false
+        )
+        .map(change => ({
+          nodeId: change.id,
+          position: {
+            x: Math.round(change.position.x),
+            y: Math.round(change.position.y),
+          },
+        }));
+
+      if (positionChanges.length > 0) {
+        onNodePositionsChange(positionChanges);
+      }
+    }
+  }, [draggable, onNodePositionsChange]);
 
   const xyflowEdges = useMemo(() => {
     const converted = convertToXYFlowEdges(edges, configuration, violations);
@@ -282,9 +367,9 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
     });
   }, [edges, configuration, violations, animationState.edgeAnimations]);
 
-  // Call fitView after mount and when nodes change
+  // Call fitView after mount and when base node structure changes (not during dragging)
+  // Use setTimeout to ensure the container has been sized and avoid loops
   useEffect(() => {
-    // Use setTimeout to ensure the container has been sized
     const timeoutId = setTimeout(() => {
       fitView({
         padding: 0.2,
@@ -296,11 +381,13 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [xyflowNodes, fitView]);
+  }, [baseNodesKey, fitView]);
 
   return (
     <>
       <ReactFlow
+        // Key forces remount when node structure changes, avoiding internal store sync issues
+        key={baseNodesKey}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         nodes={xyflowNodes as any}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -316,6 +403,13 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
         }}
         onEdgeClick={onEdgeClick}
         proOptions={{ hideAttribution: true }}
+        nodesDraggable={draggable}
+        elementsSelectable={draggable}
+        nodesConnectable={false}
+        onNodesChange={handleNodesChange}
+        // Ensure panning doesn't interfere with node dragging
+        panOnDrag={!draggable}
+        selectionOnDrag={false}
       >
         {showBackground && (
           <Background

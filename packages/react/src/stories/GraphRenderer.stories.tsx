@@ -1,3 +1,4 @@
+import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
 import type { GraphConfiguration, NodeState, EdgeState } from '@principal-ai/visual-validation-core';
@@ -189,5 +190,60 @@ export const LargeGraph: Story = {
     ],
     width: 800,
     height: 600,
+  },
+};
+
+// Interactive story with draggable nodes
+const DraggableTemplate = () => {
+  const [positions, setPositions] = React.useState<Record<string, { x: number; y: number }>>({});
+
+  const nodesWithPositions = sampleNodes.map(node => ({
+    ...node,
+    position: positions[node.id] || node.position,
+  }));
+
+  return (
+    <div>
+      <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 4 }}>
+        <strong>Drag nodes to reposition them.</strong>
+        <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
+          Position changes are logged below when you release a node.
+        </div>
+        {Object.keys(positions).length > 0 && (
+          <pre style={{ marginTop: 8, fontSize: 11, backgroundColor: '#fff', padding: 8, borderRadius: 4 }}>
+            {JSON.stringify(positions, null, 2)}
+          </pre>
+        )}
+      </div>
+      <GraphRenderer
+        configuration={sampleConfiguration}
+        nodes={nodesWithPositions}
+        edges={sampleEdges}
+        width={800}
+        height={500}
+        draggable={true}
+        onNodePositionsChange={(changes) => {
+          console.log('Position changes:', changes);
+          setPositions(prev => {
+            const updated = { ...prev };
+            for (const change of changes) {
+              updated[change.nodeId] = change.position;
+            }
+            return updated;
+          });
+        }}
+      />
+    </div>
+  );
+};
+
+export const Draggable: Story = {
+  render: () => <DraggableTemplate />,
+  parameters: {
+    docs: {
+      description: {
+        story: 'Nodes can be dragged to new positions. Position changes are reported via the `onNodePositionsChange` callback.',
+      },
+    },
   },
 };
