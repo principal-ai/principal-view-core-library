@@ -208,72 +208,29 @@ export const LargeGraph: Story = {
   },
 };
 
-// Interactive story with draggable nodes
-const DraggableTemplate = () => {
-  const [positions, setPositions] = React.useState<Record<string, { x: number; y: number }>>({});
+// Interactive story with editable mode
+import type { GraphRendererHandle, PendingChanges } from '../components/GraphRenderer';
 
-  const nodesWithPositions = sampleNodes.map(node => ({
-    ...node,
-    position: positions[node.id] || node.position,
-  }));
-
-  return (
-    <div>
-      <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 4 }}>
-        <strong>Drag nodes to reposition them.</strong>
-        <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-          Position changes are logged below when you release a node.
-        </div>
-        {Object.keys(positions).length > 0 && (
-          <pre style={{ marginTop: 8, fontSize: 11, backgroundColor: '#fff', padding: 8, borderRadius: 4 }}>
-            {JSON.stringify(positions, null, 2)}
-          </pre>
-        )}
-      </div>
-      <GraphRenderer
-        configuration={sampleConfiguration}
-        nodes={nodesWithPositions}
-        edges={sampleEdges}
-        width={800}
-        height={500}
-        draggable={true}
-        onNodePositionsChange={(changes) => {
-          console.log('Position changes:', changes);
-          setPositions(prev => {
-            const updated = { ...prev };
-            for (const change of changes) {
-              updated[change.nodeId] = change.position;
-            }
-            return updated;
-          });
-        }}
-      />
-    </div>
-  );
-};
-
-export const Draggable: Story = {
-  render: () => <DraggableTemplate />,
-  parameters: {
-    docs: {
-      description: {
-        story: 'Nodes can be dragged to new positions. Position changes are reported via the `onNodePositionsChange` callback.',
-      },
-    },
-  },
-};
-
-// Interactive story with full editing (drag, delete edges/nodes, create edges)
 const EditableTemplate = () => {
-  const [positions, setPositions] = React.useState<Record<string, { x: number; y: number }>>({});
-  const [currentNodes, setCurrentNodes] = React.useState(sampleNodes);
-  const [currentEdges, setCurrentEdges] = React.useState(sampleEdges);
-  const [edgeIdCounter, setEdgeIdCounter] = React.useState(3);
+  const graphRef = React.useRef<GraphRendererHandle>(null);
+  const [hasChanges, setHasChanges] = React.useState(false);
+  const [lastSavedChanges, setLastSavedChanges] = React.useState<PendingChanges | null>(null);
 
-  const nodesWithPositions = currentNodes.map(node => ({
-    ...node,
-    position: positions[node.id] || node.position,
-  }));
+  const handleSave = () => {
+    const changes = graphRef.current?.getPendingChanges();
+    if (changes?.hasChanges) {
+      console.log('Saving changes:', changes);
+      setLastSavedChanges(changes);
+      // In a real app, you'd apply these changes to your config and persist
+      // For this demo, we just show what would be saved
+    }
+  };
+
+  const handleReset = () => {
+    graphRef.current?.resetEditState();
+    setHasChanges(false);
+    setLastSavedChanges(null);
+  };
 
   return (
     <div>
@@ -287,65 +244,58 @@ const EditableTemplate = () => {
             <li>Click a node to view info, edit name/type, or delete it</li>
           </ul>
         </div>
-        <div style={{ marginTop: 8, fontSize: 11, color: '#888' }}>
-          Nodes: {currentNodes.length} • Edges: {currentEdges.length}
+        <div style={{ marginTop: 12, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={handleSave}
+            disabled={!hasChanges}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: hasChanges ? '#4A90E2' : '#ccc',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: hasChanges ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Save Changes
+          </button>
+          <button
+            onClick={handleReset}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: '#f0f0f0',
+              color: '#333',
+              border: '1px solid #ccc',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            Reset
+          </button>
+          {hasChanges && (
+            <span style={{ fontSize: 12, color: '#f5a623', fontStyle: 'italic' }}>
+              Unsaved changes
+            </span>
+          )}
         </div>
+        {lastSavedChanges && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 'bold', color: '#666' }}>Last saved changes:</div>
+            <pre style={{ marginTop: 4, fontSize: 10, backgroundColor: '#fff', padding: 8, borderRadius: 4, maxHeight: 150, overflow: 'auto' }}>
+              {JSON.stringify(lastSavedChanges, null, 2)}
+            </pre>
+          </div>
+        )}
       </div>
       <GraphRenderer
+        ref={graphRef}
         configuration={sampleConfiguration}
-        nodes={nodesWithPositions}
-        edges={currentEdges}
+        nodes={sampleNodes}
+        edges={sampleEdges}
         width={800}
         height={500}
-        draggable={true}
-        onNodePositionsChange={(changes) => {
-          setPositions(prev => {
-            const updated = { ...prev };
-            for (const change of changes) {
-              updated[change.nodeId] = change.position;
-            }
-            return updated;
-          });
-        }}
-        onEdgeDelete={(edgeId) => {
-          console.log('Deleting edge:', edgeId);
-          setCurrentEdges(prev => prev.filter(e => e.id !== edgeId));
-        }}
-        onNodeDelete={(nodeId) => {
-          console.log('Deleting node:', nodeId);
-          // Remove the node
-          setCurrentNodes(prev => prev.filter(n => n.id !== nodeId));
-          // Also remove any edges connected to this node
-          setCurrentEdges(prev => prev.filter(e => e.from !== nodeId && e.to !== nodeId));
-        }}
-        onNodeUpdate={(nodeId, updates) => {
-          console.log('Updating node:', nodeId, updates);
-          setCurrentNodes(prev => prev.map(n => {
-            if (n.id !== nodeId) return n;
-            return {
-              ...n,
-              type: updates.type ?? n.type,
-              data: updates.data ?? n.data,
-              updatedAt: Date.now(),
-            };
-          }));
-        }}
-        onEdgeCreate={(edge) => {
-          console.log('Creating edge:', edge);
-          const newEdge = {
-            id: `edge-${edgeIdCounter}`,
-            from: edge.from,
-            to: edge.to,
-            type: edge.type,
-            sourceHandle: edge.sourceHandle,
-            targetHandle: edge.targetHandle,
-            data: {},
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          };
-          setCurrentEdges(prev => [...prev, newEdge]);
-          setEdgeIdCounter(prev => prev + 1);
-        }}
+        editable={true}
+        onPendingChangesChange={setHasChanges}
       />
     </div>
   );
@@ -356,7 +306,7 @@ export const Editable: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Full editing mode: drag nodes, create/delete edges, delete nodes, and edit node name/type via the info panel.',
+        story: 'Full editing mode with internal state management. Drag nodes, create/delete edges, delete nodes, and edit node properties. Changes are tracked internally and can be retrieved via the ref when saving.',
       },
     },
   },

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -27,6 +27,32 @@ import { NodeInfoPanel } from './NodeInfoPanel';
 export interface NodePositionChange {
   nodeId: string;
   position: { x: number; y: number };
+}
+
+/** All pending changes that can be saved */
+export interface PendingChanges {
+  /** Node position changes */
+  positionChanges: NodePositionChange[];
+  /** Node updates (type, data changes) */
+  nodeUpdates: Array<{ nodeId: string; updates: { type?: string; data?: Record<string, unknown> } }>;
+  /** Deleted node IDs */
+  deletedNodeIds: string[];
+  /** New edges created (with optional handle info for connection points) */
+  createdEdges: Array<{ from: string; to: string; type: string; sourceHandle?: string; targetHandle?: string }>;
+  /** Deleted edges (with full connection info for config removal) */
+  deletedEdges: Array<{ from: string; to: string; type: string }>;
+  /** Whether there are any changes */
+  hasChanges: boolean;
+}
+
+/** Ref handle for imperative actions */
+export interface GraphRendererHandle {
+  /** Get all pending changes */
+  getPendingChanges: () => PendingChanges;
+  /** Reset edit state to match current props */
+  resetEditState: () => void;
+  /** Check if there are unsaved changes */
+  hasUnsavedChanges: () => boolean;
 }
 
 export interface GraphRendererProps {
@@ -69,29 +95,19 @@ export interface GraphRendererProps {
   /** Optional callback when an event is processed */
   onEventProcessed?: (event: GraphEvent) => void;
 
-  /** Whether nodes can be dragged (enables position editing) */
-  draggable?: boolean;
+  /**
+   * Whether edit mode is enabled.
+   * When true, nodes can be dragged, edited, deleted, and edges can be created/deleted.
+   * All changes are tracked internally and can be retrieved via ref.getPendingChanges()
+   */
+  editable?: boolean;
 
-  /** Callback when node positions change (only called when draggable=true) */
-  onNodePositionsChange?: (changes: NodePositionChange[]) => void;
-
-  /** Callback when an edge is deleted */
-  onEdgeDelete?: (edgeId: string) => void;
-
-  /** Callback when a new edge is created via drag connection */
-  onEdgeCreate?: (edge: {
-    from: string;
-    to: string;
-    type: string;
-    sourceHandle?: string;
-    targetHandle?: string;
-  }) => void;
-
-  /** Callback when a node is deleted */
-  onNodeDelete?: (nodeId: string) => void;
-
-  /** Callback when a node is updated (type or data changed) */
-  onNodeUpdate?: (nodeId: string, updates: { type?: string; data?: Record<string, unknown> }) => void;
+  /**
+   * Callback when pending changes state changes.
+   * Called with true when there are unsaved changes, false when there are none.
+   * Use this to enable/disable save buttons in the parent component.
+   */
+  onPendingChangesChange?: (hasChanges: boolean) => void;
 }
 
 // Define custom node types
@@ -110,13 +126,35 @@ interface AnimationState {
   edgeAnimations: Record<string, { type: 'flow' | 'particle' | 'pulse' | 'glow'; duration: number; direction?: 'forward' | 'backward' | 'bidirectional'; timestamp: number }>;
 }
 
+// Internal edit state tracking
+interface EditState {
+  positionChanges: Map<string, { x: number; y: number }>;
+  nodeUpdates: Map<string, { type?: string; data?: Record<string, unknown> }>;
+  deletedNodeIds: Set<string>;
+  createdEdges: Array<{ id: string; from: string; to: string; type: string; sourceHandle?: string; targetHandle?: string }>;
+  deletedEdges: Array<{ id: string; from: string; to: string; type: string }>;
+}
+
+const createEmptyEditState = (): EditState => ({
+  positionChanges: new Map(),
+  nodeUpdates: new Map(),
+  deletedNodeIds: new Set(),
+  createdEdges: [],
+  deletedEdges: [],
+});
+
+interface GraphRendererInnerProps extends Omit<GraphRendererProps, 'className' | 'width' | 'height'> {
+  onEditStateChange?: (editState: EditState) => void;
+  editStateRef: React.MutableRefObject<EditState>;
+}
+
 /**
  * Inner component that uses ReactFlow hooks
  */
-const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width' | 'height'>> = ({
+const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   configuration,
-  nodes,
-  edges,
+  nodes: propNodes,
+  edges: propEdges,
   violations = [],
   configName: _configName,
   showMinimap = true,
@@ -124,14 +162,13 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
   showBackground = true,
   events = [],
   onEventProcessed,
-  draggable = false,
-  onNodePositionsChange,
-  onEdgeDelete,
-  onEdgeCreate,
-  onNodeDelete,
-  onNodeUpdate,
+  editable = false,
+  onPendingChangesChange,
+  onEditStateChange,
+  editStateRef,
 }) => {
   const { fitView } = useReactFlow();
+
   // Track active animations
   const [animationState, setAnimationState] = useState<AnimationState>({
     nodeAnimations: {},
@@ -153,16 +190,71 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
     validTypes: string[];
   } | null>(null);
 
+  // ============================================
+  // INTERNAL EDIT STATE
+  // ============================================
+
+  // Local copies of nodes and edges for editing
+  const [localNodes, setLocalNodes] = useState<NodeState[]>(propNodes);
+  const [localEdges, setLocalEdges] = useState<EdgeState[]>(propEdges);
+
+  // Track the prop values to detect external changes
+  const propNodesKeyRef = useRef(propNodes.map(n => n.id).sort().join(','));
+  const propEdgesKeyRef = useRef(propEdges.map(e => e.id).sort().join(','));
+
+  // Sync local state with props when props change (e.g., config reload)
+  // This only happens when the structure changes, not during editing
+  useEffect(() => {
+    const newNodesKey = propNodes.map(n => n.id).sort().join(',');
+    const newEdgesKey = propEdges.map(e => e.id).sort().join(',');
+
+    if (newNodesKey !== propNodesKeyRef.current || newEdgesKey !== propEdgesKeyRef.current) {
+      propNodesKeyRef.current = newNodesKey;
+      propEdgesKeyRef.current = newEdgesKey;
+      setLocalNodes(propNodes);
+      setLocalEdges(propEdges);
+      // Reset edit state when props change
+      editStateRef.current = createEmptyEditState();
+      onEditStateChange?.(editStateRef.current);
+      onPendingChangesChange?.(false);
+    }
+  }, [propNodes, propEdges, editStateRef, onEditStateChange, onPendingChangesChange]);
+
+  // Use local state when editable, props when not
+  const nodes = editable ? localNodes : propNodes;
+  const edges = editable ? localEdges : propEdges;
+
+  // Helper to check if there are pending changes
+  const checkHasChanges = useCallback((state: EditState): boolean => {
+    return state.positionChanges.size > 0 ||
+      state.nodeUpdates.size > 0 ||
+      state.deletedNodeIds.size > 0 ||
+      state.createdEdges.length > 0 ||
+      state.deletedEdges.length > 0;
+  }, []);
+
+  // Helper to update edit state and notify parent
+  const updateEditState = useCallback((updater: (prev: EditState) => EditState) => {
+    const newState = updater(editStateRef.current);
+    editStateRef.current = newState;
+    onEditStateChange?.(newState);
+    onPendingChangesChange?.(checkHasChanges(newState));
+  }, [editStateRef, onEditStateChange, onPendingChangesChange, checkHasChanges]);
+
+  // ============================================
+  // EVENT HANDLERS
+  // ============================================
+
   // Handle edge click
   const onEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
     setSelectedEdgeId(edge.id);
-    setSelectedNodeId(null); // Close node panel when edge is selected
+    setSelectedNodeId(null);
   }, []);
 
   // Handle node click
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     setSelectedNodeId(node.id);
-    setSelectedEdgeId(null); // Close edge panel when node is selected
+    setSelectedEdgeId(null);
   }, []);
 
   // Handle close edge info panel
@@ -175,7 +267,191 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
     setSelectedNodeId(null);
   }, []);
 
-  // Get selected edge data
+  // Handle node update (internal - updates local state only)
+  const handleNodeUpdate = useCallback((nodeId: string, updates: { type?: string; data?: Record<string, unknown> }) => {
+    if (!editable) return;
+
+    // Update local nodes
+    setLocalNodes(prev => prev.map(node => {
+      if (node.id === nodeId) {
+        return {
+          ...node,
+          type: updates.type ?? node.type,
+          data: updates.data ? { ...node.data, ...updates.data } : node.data,
+        };
+      }
+      return node;
+    }));
+
+    // Track the change
+    updateEditState(prev => {
+      const newUpdates = new Map(prev.nodeUpdates);
+      const existing = newUpdates.get(nodeId) || {};
+      newUpdates.set(nodeId, {
+        type: updates.type ?? existing.type,
+        data: updates.data ? { ...existing.data, ...updates.data } : existing.data,
+      });
+      return { ...prev, nodeUpdates: newUpdates };
+    });
+  }, [editable, updateEditState]);
+
+  // Handle node delete (internal)
+  const handleNodeDelete = useCallback((nodeId: string) => {
+    if (!editable) return;
+
+    // Remove from local state
+    setLocalNodes(prev => prev.filter(n => n.id !== nodeId));
+    setLocalEdges(prev => prev.filter(e => e.from !== nodeId && e.to !== nodeId));
+
+    // Track the change
+    updateEditState(prev => {
+      const newDeletedNodes = new Set(prev.deletedNodeIds);
+      newDeletedNodes.add(nodeId);
+      // Remove any pending updates for this node
+      const newUpdates = new Map(prev.nodeUpdates);
+      newUpdates.delete(nodeId);
+      // Remove any position changes for this node
+      const newPositions = new Map(prev.positionChanges);
+      newPositions.delete(nodeId);
+      // Remove created edges that involve this node
+      const newCreatedEdges = prev.createdEdges.filter(e => e.from !== nodeId && e.to !== nodeId);
+      return {
+        ...prev,
+        deletedNodeIds: newDeletedNodes,
+        nodeUpdates: newUpdates,
+        positionChanges: newPositions,
+        createdEdges: newCreatedEdges,
+      };
+    });
+
+    setSelectedNodeId(null);
+  }, [editable, updateEditState]);
+
+  // Handle edge delete (internal)
+  const handleEdgeDelete = useCallback((edgeId: string) => {
+    if (!editable) return;
+
+    // Find the edge before removing it so we can track its full info
+    const edgeToDelete = localEdges.find(e => e.id === edgeId);
+
+    // Remove from local state
+    setLocalEdges(prev => prev.filter(e => e.id !== edgeId));
+
+    // Track the change
+    updateEditState(prev => {
+      // Check if this was a newly created edge
+      const createdEdgeIndex = prev.createdEdges.findIndex(e => e.id === edgeId);
+      if (createdEdgeIndex >= 0) {
+        // Just remove it from created edges
+        const newCreatedEdges = [...prev.createdEdges];
+        newCreatedEdges.splice(createdEdgeIndex, 1);
+        return { ...prev, createdEdges: newCreatedEdges };
+      }
+      // Otherwise mark as deleted with full edge info
+      if (edgeToDelete) {
+        const newDeletedEdges = [...prev.deletedEdges, {
+          id: edgeId,
+          from: edgeToDelete.from,
+          to: edgeToDelete.to,
+          type: edgeToDelete.type
+        }];
+        return { ...prev, deletedEdges: newDeletedEdges };
+      }
+      return prev;
+    });
+
+    setSelectedEdgeId(null);
+  }, [editable, updateEditState, localEdges]);
+
+  // Handle new connection from drag
+  const handleConnect = useCallback((connection: Connection) => {
+    if (!editable || !connection.source || !connection.target) return;
+
+    // Find source and target node types
+    const sourceNode = nodes.find(n => n.id === connection.source);
+    const targetNode = nodes.find(n => n.id === connection.target);
+    if (!sourceNode || !targetNode) return;
+
+    // Find valid edge types for this connection
+    const validTypes = configuration.allowedConnections
+      .filter(ac => ac.from === sourceNode.type && ac.to === targetNode.type)
+      .map(ac => ac.via);
+
+    const uniqueTypes = [...new Set(validTypes)];
+
+    if (uniqueTypes.length === 0) {
+      console.warn(`No valid edge types for connection from ${sourceNode.type} to ${targetNode.type}`);
+      return;
+    }
+
+    if (uniqueTypes.length === 1) {
+      // Create edge immediately with handle information
+      createEdge(
+        connection.source,
+        connection.target,
+        uniqueTypes[0],
+        connection.sourceHandle ?? undefined,
+        connection.targetHandle ?? undefined
+      );
+    } else {
+      // Show picker
+      setPendingConnection({
+        from: connection.source,
+        to: connection.target,
+        sourceHandle: connection.sourceHandle ?? undefined,
+        targetHandle: connection.targetHandle ?? undefined,
+        validTypes: uniqueTypes,
+      });
+    }
+  }, [editable, nodes, configuration.allowedConnections]);
+
+  // Create edge helper
+  const createEdge = useCallback((from: string, to: string, type: string, sourceHandle?: string, targetHandle?: string) => {
+    const edgeId = `${from}-${to}-${type}-${Date.now()}`;
+
+    // Add to local state with handle information
+    const newEdge: EdgeState & { sourceHandle?: string; targetHandle?: string } = {
+      id: edgeId,
+      type,
+      from,
+      to,
+      data: {},
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      sourceHandle,
+      targetHandle,
+    };
+    setLocalEdges(prev => [...prev, newEdge]);
+
+    // Track the change
+    updateEditState(prev => ({
+      ...prev,
+      createdEdges: [...prev.createdEdges, { id: edgeId, from, to, type, sourceHandle, targetHandle }],
+    }));
+  }, [updateEditState]);
+
+  // Handle edge type selection from picker
+  const handleEdgeTypeSelect = useCallback((type: string) => {
+    if (!pendingConnection) return;
+    createEdge(
+      pendingConnection.from,
+      pendingConnection.to,
+      type,
+      pendingConnection.sourceHandle,
+      pendingConnection.targetHandle
+    );
+    setPendingConnection(null);
+  }, [pendingConnection, createEdge]);
+
+  // Cancel edge type picker
+  const handleCancelEdgeTypePicker = useCallback(() => {
+    setPendingConnection(null);
+  }, []);
+
+  // ============================================
+  // SELECTED ITEMS
+  // ============================================
+
   const selectedEdge = useMemo(() => {
     if (!selectedEdgeId) return null;
     return edges.find(e => e.id === selectedEdgeId);
@@ -186,7 +462,6 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
     return configuration.edgeTypes[selectedEdge.type];
   }, [selectedEdge, configuration.edgeTypes]);
 
-  // Get selected node data
   const selectedNode = useMemo(() => {
     if (!selectedNodeId) return null;
     return nodes.find(n => n.id === selectedNodeId);
@@ -197,75 +472,15 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
     return configuration.nodeTypes[selectedNode.type];
   }, [selectedNode, configuration.nodeTypes]);
 
-  // Handle new connection from drag
-  const handleConnect = useCallback((connection: Connection) => {
-    if (!onEdgeCreate || !connection.source || !connection.target) return;
+  // ============================================
+  // ANIMATIONS
+  // ============================================
 
-    // Find source and target node types
-    const sourceNode = nodes.find(n => n.id === connection.source);
-    const targetNode = nodes.find(n => n.id === connection.target);
-    if (!sourceNode || !targetNode) return;
-
-    // Find valid edge types for this connection based on allowedConnections
-    const validTypes = configuration.allowedConnections
-      .filter(ac => ac.from === sourceNode.type && ac.to === targetNode.type)
-      .map(ac => ac.via);
-
-    // Remove duplicates
-    const uniqueTypes = [...new Set(validTypes)];
-
-    if (uniqueTypes.length === 0) {
-      // No valid connection types - connection not allowed
-      console.warn(`No valid edge types for connection from ${sourceNode.type} to ${targetNode.type}`);
-      return;
-    }
-
-    if (uniqueTypes.length === 1) {
-      // Only one valid type - create edge immediately
-      onEdgeCreate({
-        from: connection.source,
-        to: connection.target,
-        type: uniqueTypes[0],
-        sourceHandle: connection.sourceHandle ?? undefined,
-        targetHandle: connection.targetHandle ?? undefined,
-      });
-    } else {
-      // Multiple valid types - show picker
-      setPendingConnection({
-        from: connection.source,
-        to: connection.target,
-        sourceHandle: connection.sourceHandle ?? undefined,
-        targetHandle: connection.targetHandle ?? undefined,
-        validTypes: uniqueTypes,
-      });
-    }
-  }, [onEdgeCreate, nodes, configuration.allowedConnections]);
-
-  // Handle edge type selection from picker
-  const handleEdgeTypeSelect = useCallback((type: string) => {
-    if (!pendingConnection || !onEdgeCreate) return;
-    onEdgeCreate({
-      from: pendingConnection.from,
-      to: pendingConnection.to,
-      type,
-      sourceHandle: pendingConnection.sourceHandle,
-      targetHandle: pendingConnection.targetHandle,
-    });
-    setPendingConnection(null);
-  }, [pendingConnection, onEdgeCreate]);
-
-  // Cancel edge type picker
-  const handleCancelEdgeTypePicker = useCallback(() => {
-    setPendingConnection(null);
-  }, []);
-
-  // Process events and trigger animations
   useEffect(() => {
     if (events.length === 0) return;
 
     const latestEvent = events[events.length - 1];
 
-    // Process animation events
     if (latestEvent.operation === 'animate' && latestEvent.category === 'edge') {
       const edgeEvent = latestEvent.payload as any;
       const edgeId = edgeEvent.edgeId;
@@ -277,7 +492,7 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
           edgeAnimations: {
             ...prev.edgeAnimations,
             [edgeId]: {
-              type: 'flow', // Default to flow, can be customized
+              type: 'flow',
               duration: animation.duration || 1000,
               direction: animation.direction || 'forward',
               timestamp: Date.now(),
@@ -285,7 +500,6 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
           },
         }));
 
-        // Clear animation after duration
         const duration = animation.duration || 1000;
         setTimeout(() => {
           setAnimationState(prev => {
@@ -299,14 +513,12 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
       }
     }
 
-    // Process state change events for node animations
     if (latestEvent.category === 'state') {
       const stateEvent = latestEvent.payload as any;
       const nodeId = stateEvent.nodeId;
       const newState = stateEvent.newState;
 
       if (nodeId && newState) {
-        // Map states to animations
         const stateToAnimation: Record<string, 'pulse' | 'flash' | 'shake'> = {
           processing: 'pulse',
           completed: 'flash',
@@ -321,15 +533,10 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
             ...prev,
             nodeAnimations: {
               ...prev.nodeAnimations,
-              [nodeId]: {
-                type: animationType,
-                duration,
-                timestamp: Date.now(),
-              },
+              [nodeId]: { type: animationType, duration, timestamp: Date.now() },
             },
           }));
 
-          // Clear non-continuous animations
           if (animationType !== 'pulse') {
             setTimeout(() => {
               setAnimationState(prev => {
@@ -345,7 +552,6 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
       }
     }
 
-    // Process node create events for entry animation
     if (latestEvent.category === 'node' && latestEvent.operation === 'create') {
       const nodeEvent = latestEvent.payload as any;
       const nodeId = nodeEvent.nodeId;
@@ -355,11 +561,7 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
           ...prev,
           nodeAnimations: {
             ...prev.nodeAnimations,
-            [nodeId]: {
-              type: 'entry',
-              duration: 600,
-              timestamp: Date.now(),
-            },
+            [nodeId]: { type: 'entry', duration: 600, timestamp: Date.now() },
           },
         }));
 
@@ -376,20 +578,22 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
     }
   }, [events, onEventProcessed]);
 
-  // Determine if we're in edit mode (can create edges)
-  const editable = Boolean(onEdgeCreate);
+  // ============================================
+  // XYFLOW CONVERSION
+  // ============================================
 
-  // Convert our data format to xyflow format with animations
   const xyflowNodesBase = useMemo(() => {
     const converted = convertToXYFlowNodes(nodes, configuration, violations);
     const layoutType = configuration.display?.layout || 'hierarchical';
     const positioned = autoLayoutNodes(converted, [], layoutType);
 
-    // Inject animation state and editable flag into node data
     return positioned.map(node => {
       const animation = animationState.nodeAnimations[node.id];
+      // Apply any pending position changes
+      const pendingPosition = editStateRef.current.positionChanges.get(node.id);
       return {
         ...node,
+        ...(pendingPosition ? { position: pendingPosition } : {}),
         data: {
           ...node.data,
           editable,
@@ -400,103 +604,73 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
         } as CustomNodeData,
       };
     });
-  }, [nodes, configuration, violations, animationState.nodeAnimations, editable]);
+  }, [nodes, configuration, violations, animationState.nodeAnimations, editable, editStateRef]);
 
-  // Stable key for base nodes - only changes when node IDs change
   const baseNodesKey = useMemo(() => {
     return nodes.map(n => n.id).sort().join(',');
   }, [nodes]);
 
-  // Stable key for node content - changes when node data/type changes
-  const nodesContentKey = useMemo(() => {
-    return nodes.map(n => `${n.id}:${n.type}:${JSON.stringify(n.data)}`).sort().join('|');
-  }, [nodes]);
+  // Local xyflow nodes state for dragging
+  const [xyflowLocalNodes, setXyflowLocalNodes] = useState(xyflowNodesBase);
 
-  // Local state for node positions when dragging is enabled
-  const [localNodes, setLocalNodes] = useState(xyflowNodesBase);
-
-  // Track previous draggable state to detect when entering edit mode
-  const prevDraggableRef = React.useRef(draggable);
-
-  // Sync local nodes with base nodes when:
-  // 1. Base node IDs change (config reload)
-  // 2. Entering draggable mode (need fresh positions)
-  // 3. Node data/type changes (need to update visuals while preserving positions)
-  // When not in draggable mode, we use xyflowNodesBase directly (see line below)
-  const prevBaseNodesKeyRef = React.useRef(baseNodesKey);
-  const prevNodesContentKeyRef = React.useRef(nodesContentKey);
+  // Sync when base changes
+  const prevBaseNodesKeyRef = useRef(baseNodesKey);
   useEffect(() => {
-    const baseNodesChanged = prevBaseNodesKeyRef.current !== baseNodesKey;
-    const enteringDraggable = draggable && !prevDraggableRef.current;
-    const contentChanged = prevNodesContentKeyRef.current !== nodesContentKey;
-
-    prevBaseNodesKeyRef.current = baseNodesKey;
-    prevNodesContentKeyRef.current = nodesContentKey;
-    prevDraggableRef.current = draggable;
-
-    if (baseNodesChanged || enteringDraggable) {
-      setLocalNodes(xyflowNodesBase);
-    } else if (draggable && contentChanged) {
-      // Update node data while preserving dragged positions
-      setLocalNodes(prev => {
-        return xyflowNodesBase.map(baseNode => {
-          const localNode = prev.find(n => n.id === baseNode.id);
-          if (localNode) {
-            // Preserve local position but update data (type, name, etc.)
-            return {
-              ...baseNode,
-              position: localNode.position,
-              measured: localNode.measured,
-            };
-          }
-          return baseNode;
-        });
-      });
+    if (prevBaseNodesKeyRef.current !== baseNodesKey) {
+      prevBaseNodesKeyRef.current = baseNodesKey;
+      setXyflowLocalNodes(xyflowNodesBase);
     }
-  }, [baseNodesKey, nodesContentKey, xyflowNodesBase, draggable]);
+  }, [baseNodesKey, xyflowNodesBase]);
 
-  // Use local nodes when draggable, base nodes otherwise
-  const xyflowNodes = draggable ? localNodes : xyflowNodesBase;
+  // Also sync when entering edit mode or when base nodes change content
+  const prevEditableRef = useRef(editable);
+  useEffect(() => {
+    if (editable && !prevEditableRef.current) {
+      // Entering edit mode - sync positions
+      setXyflowLocalNodes(xyflowNodesBase);
+    }
+    prevEditableRef.current = editable;
+  }, [editable, xyflowNodesBase]);
 
-  // Handle node changes (drag events, dimension updates, selection, etc.)
+  const xyflowNodes = editable ? xyflowLocalNodes : xyflowNodesBase;
+
+  // Handle node changes (drag events)
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
-    if (!draggable) return;
+    if (!editable) return;
 
-    // Use ReactFlow's helper to apply all changes properly
-    setLocalNodes(nds => applyNodeChanges(changes, nds) as Node<CustomNodeData>[]);
+    setXyflowLocalNodes(nds => applyNodeChanges(changes, nds) as Node<CustomNodeData>[]);
 
-    // Notify parent only on drag end
-    if (onNodePositionsChange) {
-      const positionChanges = changes
-        .filter((change): change is NodeChange & {
-          type: 'position';
-          position: { x: number; y: number };
-          dragging: boolean
-        } =>
-          change.type === 'position' &&
-          'position' in change &&
-          change.position !== undefined &&
-          'dragging' in change &&
-          change.dragging === false
-        )
-        .map(change => ({
-          nodeId: change.id,
-          position: {
+    // Track position changes on drag end
+    const positionChanges = changes
+      .filter((change): change is NodeChange & {
+        type: 'position';
+        position: { x: number; y: number };
+        dragging: boolean
+      } =>
+        change.type === 'position' &&
+        'position' in change &&
+        change.position !== undefined &&
+        'dragging' in change &&
+        change.dragging === false
+      );
+
+    if (positionChanges.length > 0) {
+      updateEditState(prev => {
+        const newPositions = new Map(prev.positionChanges);
+        for (const change of positionChanges) {
+          newPositions.set(change.id, {
             x: Math.round(change.position.x),
             y: Math.round(change.position.y),
-          },
-        }));
-
-      if (positionChanges.length > 0) {
-        onNodePositionsChange(positionChanges);
-      }
+          });
+        }
+        return { ...prev, positionChanges: newPositions };
+      });
     }
-  }, [draggable, onNodePositionsChange]);
+  }, [editable, updateEditState]);
 
   const xyflowEdges = useMemo(() => {
     const converted = convertToXYFlowEdges(edges, configuration, violations);
 
-    // Inject animation state into edge data
     return converted.map(edge => {
       const animation = animationState.edgeAnimations[edge.id];
       if (animation) {
@@ -514,8 +688,7 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
     });
   }, [edges, configuration, violations, animationState.edgeAnimations]);
 
-  // Call fitView after mount and when base node structure changes (not during dragging)
-  // Use setTimeout to ensure the container has been sized and avoid loops
+  // Fit view on mount and structure changes
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       fitView({
@@ -530,52 +703,34 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
     return () => clearTimeout(timeoutId);
   }, [baseNodesKey, fitView]);
 
+  // ============================================
+  // RENDER
+  // ============================================
+
   return (
     <>
       <ReactFlow
-        // Key forces remount when node structure changes, avoiding internal store sync issues
         key={baseNodesKey}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         nodes={xyflowNodes as any}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         edges={xyflowEdges as any}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         nodeTypes={nodeTypes as any}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         edgeTypes={edgeTypes as any}
         minZoom={0.1}
         maxZoom={4}
-        defaultEdgeOptions={{
-          type: 'custom',
-        }}
+        defaultEdgeOptions={{ type: 'custom' }}
         onEdgeClick={onEdgeClick}
         onNodeClick={onNodeClick}
         proOptions={{ hideAttribution: true }}
-        nodesDraggable={draggable}
-        elementsSelectable={draggable || editable}
+        nodesDraggable={editable}
+        elementsSelectable={editable}
         nodesConnectable={editable}
         onNodesChange={handleNodesChange}
         onConnect={handleConnect}
-        // Ensure panning doesn't interfere with node dragging
-        panOnDrag={!draggable && !editable}
+        panOnDrag={!editable}
         selectionOnDrag={false}
       >
-        {showBackground && (
-          <Background
-            color="#e5e5e5"
-            gap={16}
-            size={1}
-          />
-        )}
-
-        {showControls && (
-          <Controls
-            showZoom
-            showFitView
-            showInteractive
-          />
-        )}
-
+        {showBackground && <Background color="#e5e5e5" gap={16} size={1} />}
+        {showControls && <Controls showZoom showFitView showInteractive />}
         {showMinimap && (
           <MiniMap
             nodeColor={(node) => {
@@ -588,7 +743,6 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
           />
         )}
 
-        {/* Info Panel */}
         <Panel position="top-left" style={{
           backgroundColor: 'white',
           padding: '8px 12px',
@@ -610,7 +764,6 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
         </Panel>
       </ReactFlow>
 
-      {/* Edge Info Panel */}
       {selectedEdge && selectedEdgeTypeDefinition && (
         <EdgeInfoPanel
           edge={selectedEdge}
@@ -618,23 +771,21 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
           sourceNodeId={selectedEdge.from}
           targetNodeId={selectedEdge.to}
           onClose={onCloseEdgeInfoPanel}
-          onDelete={onEdgeDelete}
+          onDelete={editable ? handleEdgeDelete : undefined}
         />
       )}
 
-      {/* Node Info Panel */}
       {selectedNode && selectedNodeTypeDefinition && (
         <NodeInfoPanel
           node={selectedNode}
           typeDefinition={selectedNodeTypeDefinition}
           availableNodeTypes={configuration.nodeTypes}
           onClose={onCloseNodeInfoPanel}
-          onDelete={onNodeDelete}
-          onUpdate={onNodeUpdate}
+          onDelete={editable ? handleNodeDelete : undefined}
+          onUpdate={editable ? handleNodeUpdate : undefined}
         />
       )}
 
-      {/* Edge Type Picker */}
       {pendingConnection && (
         <div
           style={{
@@ -703,16 +854,84 @@ const GraphRendererInner: React.FC<Omit<GraphRendererProps, 'className' | 'width
 };
 
 /**
- * Core graph visualization component using xyflow
+ * Core graph visualization component using xyflow.
+ *
+ * When `editable` is true, the component manages its own edit state internally.
+ * Use the ref to get pending changes when the user wants to save:
+ *
+ * ```tsx
+ * const graphRef = useRef<GraphRendererHandle>(null);
+ *
+ * const handleSave = () => {
+ *   const changes = graphRef.current?.getPendingChanges();
+ *   if (changes?.hasChanges) {
+ *     // Apply changes to your config and save to disk
+ *   }
+ * };
+ *
+ * <GraphRenderer
+ *   ref={graphRef}
+ *   editable={isEditMode}
+ *   onPendingChangesChange={setHasUnsavedChanges}
+ *   ...
+ * />
+ * ```
  */
-export const GraphRenderer: React.FC<GraphRendererProps> = (props) => {
+export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>((props, ref) => {
   const { className, width = '100%', height = '100%', ...rest } = props;
+
+  // Internal edit state ref
+  const editStateRef = useRef<EditState>(createEmptyEditState());
+
+  // Expose imperative handle
+  useImperativeHandle(ref, () => ({
+    getPendingChanges: (): PendingChanges => {
+      const state = editStateRef.current;
+      return {
+        positionChanges: Array.from(state.positionChanges.entries()).map(([nodeId, position]) => ({
+          nodeId,
+          position,
+        })),
+        nodeUpdates: Array.from(state.nodeUpdates.entries()).map(([nodeId, updates]) => ({
+          nodeId,
+          updates,
+        })),
+        deletedNodeIds: Array.from(state.deletedNodeIds),
+        createdEdges: state.createdEdges.map(e => ({
+          from: e.from,
+          to: e.to,
+          type: e.type,
+          sourceHandle: e.sourceHandle,
+          targetHandle: e.targetHandle,
+        })),
+        deletedEdges: state.deletedEdges.map(e => ({ from: e.from, to: e.to, type: e.type })),
+        hasChanges: state.positionChanges.size > 0 ||
+          state.nodeUpdates.size > 0 ||
+          state.deletedNodeIds.size > 0 ||
+          state.createdEdges.length > 0 ||
+          state.deletedEdges.length > 0,
+      };
+    },
+    resetEditState: () => {
+      editStateRef.current = createEmptyEditState();
+    },
+    hasUnsavedChanges: (): boolean => {
+      const state = editStateRef.current;
+      return state.positionChanges.size > 0 ||
+        state.nodeUpdates.size > 0 ||
+        state.deletedNodeIds.size > 0 ||
+        state.createdEdges.length > 0 ||
+        state.deletedEdges.length > 0;
+    },
+  }), []);
 
   return (
     <div className={className} style={{ width, height, position: 'relative' }}>
       <ReactFlowProvider>
-        <GraphRendererInner {...rest} />
+        <GraphRendererInner {...rest} editStateRef={editStateRef} />
       </ReactFlowProvider>
     </div>
   );
-};
+});
+
+GraphRenderer.displayName = 'GraphRenderer';

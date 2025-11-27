@@ -26,7 +26,7 @@ export type {
 
 // Export components
 export { GraphRenderer } from './components/GraphRenderer';
-export type { GraphRendererProps, NodePositionChange } from './components/GraphRenderer';
+export type { GraphRendererProps, GraphRendererHandle, NodePositionChange, PendingChanges } from './components/GraphRenderer';
 
 export { EventLog } from './components/EventLog';
 export type { EventLogProps } from './components/EventLog';
