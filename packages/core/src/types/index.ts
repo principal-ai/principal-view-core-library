@@ -80,7 +80,7 @@ export interface EdgeTypeDefinition {
 
   /** Animation configuration */
   animation?: {
-    type: 'flow' | 'pulse' | 'particle';
+    type: 'flow' | 'pulse' | 'particle' | 'glow';
     duration?: number;
     color?: string;
   };
@@ -142,17 +142,17 @@ export interface DisplayConfiguration {
 
   /** Color scheme */
   theme?: {
-    primary: string;
-    success: string;
-    warning: string;
-    danger: string;
-    info: string;
+    primary?: string;
+    success?: string;
+    warning?: string;
+    danger?: string;
+    info?: string;
   };
 
   /** Animation preferences */
   animations?: {
-    enabled: boolean;
-    speed: number;
+    enabled?: boolean;
+    speed?: number;
   };
 }
 

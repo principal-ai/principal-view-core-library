@@ -14,7 +14,8 @@ import {
   type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { GraphConfiguration, NodeState, EdgeState, Violation, GraphEvent } from '@principal-ai/visual-validation-core';
+import type { GraphConfiguration, NodeState, EdgeState, Violation, GraphEvent, ExtendedCanvas } from '@principal-ai/visual-validation-core';
+import { CanvasConverter } from '@principal-ai/visual-validation-core';
 import { CustomNode } from '../nodes/CustomNode';
 import type { CustomNodeData } from '../nodes/CustomNode';
 import { CustomEdge } from '../edges/CustomEdge';
@@ -55,16 +56,8 @@ export interface GraphRendererHandle {
   hasUnsavedChanges: () => boolean;
 }
 
-export interface GraphRendererProps {
-  /** Configuration for the graph */
-  configuration: GraphConfiguration;
-
-  /** Current nodes in the graph */
-  nodes: NodeState[];
-
-  /** Current edges in the graph */
-  edges: EdgeState[];
-
+/** Base props shared by all render modes */
+interface GraphRendererBaseProps {
   /** Optional violations to highlight */
   violations?: Violation[];
 
@@ -110,6 +103,29 @@ export interface GraphRendererProps {
   onPendingChangesChange?: (hasChanges: boolean) => void;
 }
 
+/** Props when using Canvas format (preferred) */
+interface CanvasProps extends GraphRendererBaseProps {
+  /** Extended Canvas document - the primary way to render graphs */
+  canvas: ExtendedCanvas;
+  configuration?: never;
+  nodes?: never;
+  edges?: never;
+}
+
+/** Props when using legacy configuration format */
+interface LegacyConfigProps extends GraphRendererBaseProps {
+  /** Configuration for the graph (legacy mode) */
+  configuration: GraphConfiguration;
+  /** Current nodes in the graph (legacy mode) */
+  nodes: NodeState[];
+  /** Current edges in the graph (legacy mode) */
+  edges: EdgeState[];
+  canvas?: never;
+}
+
+/** GraphRenderer accepts either canvas or configuration+nodes+edges */
+export type GraphRendererProps = CanvasProps | LegacyConfigProps;
+
 // Define custom node types
 const nodeTypes = {
   custom: CustomNode,
@@ -143,7 +159,20 @@ const createEmptyEditState = (): EditState => ({
   deletedEdges: [],
 });
 
-interface GraphRendererInnerProps extends Omit<GraphRendererProps, 'className' | 'width' | 'height'> {
+/** Inner component receives normalized legacy format */
+interface GraphRendererInnerProps {
+  configuration: GraphConfiguration;
+  nodes: NodeState[];
+  edges: EdgeState[];
+  violations?: Violation[];
+  configName?: string;
+  showMinimap?: boolean;
+  showControls?: boolean;
+  showBackground?: boolean;
+  events?: GraphEvent[];
+  onEventProcessed?: (event: GraphEvent) => void;
+  editable?: boolean;
+  onPendingChangesChange?: (hasChanges: boolean) => void;
   onEditStateChange?: (editState: EditState) => void;
   editStateRef: React.MutableRefObject<EditState>;
 }
@@ -854,31 +883,153 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 };
 
 /**
+ * Convert canvas to legacy configuration format for internal use
+ */
+function useCanvasToLegacy(canvas: ExtendedCanvas | undefined): {
+  configuration: GraphConfiguration;
+  nodes: NodeState[];
+  edges: EdgeState[];
+} | null {
+  return useMemo(() => {
+    if (!canvas) return null;
+
+    const { nodes, edges } = CanvasConverter.canvasToGraph(canvas);
+
+    // Build GraphConfiguration from canvas
+    const nodeTypes: GraphConfiguration['nodeTypes'] = {};
+    const edgeTypes: GraphConfiguration['edgeTypes'] = {};
+
+    // Extract node types from canvas nodes
+    for (const node of canvas.nodes || []) {
+      const vv = node.vv;
+      const nodeType = vv?.nodeType || node.id;
+
+      if (!nodeTypes[nodeType]) {
+        nodeTypes[nodeType] = {
+          shape: vv?.shape || 'rectangle',
+          icon: vv?.icon,
+          color: vv?.states?.idle?.color || (typeof node.color === 'string' ? node.color : undefined),
+          size: { width: node.width, height: node.height },
+          dataSchema: vv?.dataSchema || {},
+          states: vv?.states,
+          layout: vv?.layout,
+        };
+      }
+    }
+
+    // Extract edge types from canvas vv.edgeTypes
+    if (canvas.vv?.edgeTypes) {
+      for (const [id, def] of Object.entries(canvas.vv.edgeTypes)) {
+        edgeTypes[id] = {
+          style: def.style || 'solid',
+          color: def.color,
+          width: def.width,
+          directed: def.directed,
+          animation: def.animation,
+          label: def.label,
+        };
+      }
+    }
+
+    // Build allowed connections from edges
+    const allowedConnections: GraphConfiguration['allowedConnections'] = [];
+    for (const edge of canvas.edges || []) {
+      const edgeType = edge.vv?.edgeType || 'default';
+
+      // Ensure edge type exists
+      if (!edgeTypes[edgeType]) {
+        edgeTypes[edgeType] = {
+          style: edge.vv?.style || 'solid',
+          color: typeof edge.color === 'string' ? edge.color : undefined,
+          width: edge.vv?.width,
+          directed: true,
+        };
+      }
+
+      // Find node types for from/to
+      const fromNode = canvas.nodes?.find(n => n.id === edge.fromNode);
+      const toNode = canvas.nodes?.find(n => n.id === edge.toNode);
+      const fromType = fromNode?.vv?.nodeType || edge.fromNode;
+      const toType = toNode?.vv?.nodeType || edge.toNode;
+
+      allowedConnections.push({
+        from: fromType,
+        to: toType,
+        via: edgeType,
+      });
+    }
+
+    // Build display config with required layout field
+    const display: GraphConfiguration['display'] = canvas.vv?.display
+      ? {
+          layout: canvas.vv.display.layout || 'manual',
+          theme: canvas.vv.display.theme,
+          animations: canvas.vv.display.animations,
+        }
+      : { layout: 'manual' };
+
+    const configuration: GraphConfiguration = {
+      metadata: {
+        name: canvas.vv?.name || 'Untitled',
+        version: canvas.vv?.version || '1.0.0',
+        description: canvas.vv?.description,
+      },
+      nodeTypes,
+      edgeTypes,
+      allowedConnections,
+      display,
+    };
+
+    return { configuration, nodes, edges };
+  }, [canvas]);
+}
+
+/**
  * Core graph visualization component using xyflow.
+ *
+ * Supports two modes:
+ * 1. Canvas mode (preferred): Pass an ExtendedCanvas document
+ * 2. Legacy mode: Pass configuration + nodes + edges separately
  *
  * When `editable` is true, the component manages its own edit state internally.
  * Use the ref to get pending changes when the user wants to save:
  *
  * ```tsx
+ * // Canvas mode (preferred)
+ * <GraphRenderer canvas={myCanvas} />
+ *
+ * // Legacy mode
+ * <GraphRenderer configuration={config} nodes={nodes} edges={edges} />
+ *
+ * // With edit mode
  * const graphRef = useRef<GraphRendererHandle>(null);
- *
- * const handleSave = () => {
- *   const changes = graphRef.current?.getPendingChanges();
- *   if (changes?.hasChanges) {
- *     // Apply changes to your config and save to disk
- *   }
- * };
- *
  * <GraphRenderer
  *   ref={graphRef}
+ *   canvas={myCanvas}
  *   editable={isEditMode}
  *   onPendingChangesChange={setHasUnsavedChanges}
- *   ...
  * />
  * ```
  */
 export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>((props, ref) => {
-  const { className, width = '100%', height = '100%', ...rest } = props;
+  const { className, width = '100%', height = '100%' } = props;
+
+  // Convert canvas to legacy format if canvas mode
+  const canvasData = useCanvasToLegacy('canvas' in props ? props.canvas : undefined);
+
+  // Determine which data to use
+  const configuration = canvasData?.configuration ?? ('configuration' in props ? props.configuration : undefined);
+  const nodes = canvasData?.nodes ?? ('nodes' in props ? props.nodes : undefined);
+  const edges = canvasData?.edges ?? ('edges' in props ? props.edges : undefined);
+
+  // Validate we have required data
+  if (!configuration || !nodes || !edges) {
+    return (
+      <div className={className} style={{ width, height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: '#666' }}>No graph data provided. Pass either `canvas` or `configuration`+`nodes`+`edges`.</p>
+      </div>
+    );
+  }
 
   // Internal edit state ref
   const editStateRef = useRef<EditState>(createEmptyEditState());
@@ -925,10 +1076,37 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     },
   }), []);
 
+  // Extract only the props that inner component needs
+  const {
+    violations,
+    configName,
+    showMinimap,
+    showControls,
+    showBackground,
+    events,
+    onEventProcessed,
+    editable,
+    onPendingChangesChange,
+  } = props;
+
   return (
     <div className={className} style={{ width, height, position: 'relative' }}>
       <ReactFlowProvider>
-        <GraphRendererInner {...rest} editStateRef={editStateRef} />
+        <GraphRendererInner
+          configuration={configuration}
+          nodes={nodes}
+          edges={edges}
+          violations={violations}
+          configName={configName}
+          showMinimap={showMinimap}
+          showControls={showControls}
+          showBackground={showBackground}
+          events={events}
+          onEventProcessed={onEventProcessed}
+          editable={editable}
+          onPendingChangesChange={onPendingChangesChange}
+          editStateRef={editStateRef}
+        />
       </ReactFlowProvider>
     </div>
   );

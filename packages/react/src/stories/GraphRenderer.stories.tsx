@@ -311,3 +311,234 @@ export const Editable: Story = {
     },
   },
 };
+
+// ============================================================================
+// Canvas Mode Stories
+// ============================================================================
+
+import type { ExtendedCanvas } from '@principal-ai/visual-validation-core';
+
+/**
+ * Sample canvas document - this is the new preferred format
+ * Can be edited visually in Obsidian or other canvas tools
+ */
+const sampleCanvas: ExtendedCanvas = {
+  nodes: [
+    {
+      id: 'client',
+      type: 'text',
+      x: 100,
+      y: 200,
+      width: 120,
+      height: 120,
+      text: '# Client',
+      color: 5, // cyan preset
+      vv: {
+        nodeType: 'client',
+        shape: 'circle',
+        icon: 'user',
+        states: {
+          idle: { color: '#94a3b8', icon: 'user' },
+          connected: { color: '#22c55e', icon: 'user-check' },
+          error: { color: '#ef4444', icon: 'user-x' },
+        },
+      },
+    },
+    {
+      id: 'api-server',
+      type: 'text',
+      x: 350,
+      y: 180,
+      width: 200,
+      height: 140,
+      text: '# API Server\n\nHandles REST endpoints',
+      color: 6, // purple preset
+      vv: {
+        nodeType: 'api-server',
+        shape: 'rectangle',
+        icon: 'server',
+        states: {
+          idle: { color: '#94a3b8' },
+          processing: { color: '#3b82f6' },
+          error: { color: '#ef4444' },
+        },
+      },
+    },
+    {
+      id: 'database',
+      type: 'text',
+      x: 620,
+      y: 200,
+      width: 150,
+      height: 100,
+      text: '# Database',
+      color: 4, // green preset
+      vv: {
+        nodeType: 'database',
+        shape: 'hexagon',
+        icon: 'database',
+      },
+    },
+    {
+      id: 'cache',
+      type: 'text',
+      x: 350,
+      y: 380,
+      width: 140,
+      height: 80,
+      text: '# Cache',
+      color: 2, // orange preset
+      vv: {
+        nodeType: 'cache',
+        shape: 'diamond',
+        icon: 'zap',
+      },
+    },
+  ],
+  edges: [
+    {
+      id: 'client-to-api',
+      fromNode: 'client',
+      toNode: 'api-server',
+      fromSide: 'right',
+      toSide: 'left',
+      label: 'HTTP',
+      vv: {
+        edgeType: 'http-request',
+      },
+    },
+    {
+      id: 'api-to-db',
+      fromNode: 'api-server',
+      toNode: 'database',
+      fromSide: 'right',
+      toSide: 'left',
+      label: 'SQL',
+      vv: {
+        edgeType: 'db-query',
+      },
+    },
+    {
+      id: 'api-to-cache',
+      fromNode: 'api-server',
+      toNode: 'cache',
+      fromSide: 'bottom',
+      toSide: 'top',
+      label: 'GET/SET',
+      vv: {
+        edgeType: 'cache-access',
+      },
+    },
+  ],
+  vv: {
+    version: '1.0.0',
+    name: 'Simple Service Architecture',
+    description: 'A basic client-server architecture with caching',
+    edgeTypes: {
+      'http-request': {
+        style: 'solid',
+        color: '#3b82f6',
+        width: 3,
+        directed: true,
+        animation: {
+          type: 'flow',
+          duration: 1500,
+        },
+      },
+      'db-query': {
+        style: 'dashed',
+        color: '#22c55e',
+        width: 2,
+        directed: true,
+      },
+      'cache-access': {
+        style: 'dotted',
+        color: '#f97316',
+        width: 2,
+        directed: true,
+        animation: {
+          type: 'pulse',
+          duration: 1000,
+        },
+      },
+    },
+    display: {
+      layout: 'manual',
+      animations: {
+        enabled: true,
+        speed: 1.0,
+      },
+    },
+  },
+};
+
+export const CanvasMode: Story = {
+  args: {
+    canvas: sampleCanvas,
+    width: 900,
+    height: 600,
+  } as any, // Type assertion needed due to union type
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Canvas Mode** - The new preferred way to render graphs.
+
+Pass an \`ExtendedCanvas\` document directly to the GraphRenderer. This format:
+- Is compatible with Obsidian Canvas for visual editing
+- Includes positions directly in the document
+- Supports all VV extensions (states, animations, actions)
+- Can be round-tripped between visual editors and code
+
+\`\`\`tsx
+import type { ExtendedCanvas } from '@principal-ai/visual-validation-core';
+
+const canvas: ExtendedCanvas = {
+  nodes: [...],
+  edges: [...],
+  vv: { name: 'My Graph', edgeTypes: {...} }
+};
+
+<GraphRenderer canvas={canvas} />
+\`\`\`
+        `,
+      },
+    },
+  },
+};
+
+const CanvasEditableTemplate = () => {
+  const graphRef = React.useRef<GraphRendererHandle>(null);
+  const [hasChanges, setHasChanges] = React.useState(false);
+
+  return (
+    <div>
+      <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f0f9ff', borderRadius: 4, border: '1px solid #3b82f6' }}>
+        <strong style={{ color: '#1e40af' }}>Canvas Mode + Editing</strong>
+        <div style={{ marginTop: 8, fontSize: 12, color: '#1e40af' }}>
+          This graph is rendered from an ExtendedCanvas document. You can edit it just like legacy mode.
+          {hasChanges && <span style={{ marginLeft: 8, color: '#f97316' }}>(unsaved changes)</span>}
+        </div>
+      </div>
+      <GraphRenderer
+        ref={graphRef}
+        canvas={sampleCanvas}
+        width={900}
+        height={500}
+        editable={true}
+        onPendingChangesChange={setHasChanges}
+      />
+    </div>
+  );
+};
+
+export const CanvasEditable: Story = {
+  render: () => <CanvasEditableTemplate />,
+  parameters: {
+    docs: {
+      description: {
+        story: 'Canvas mode with editing enabled. The canvas document provides initial state, and edits are tracked internally.',
+      },
+    },
+  },
+};

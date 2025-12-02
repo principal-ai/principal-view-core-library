@@ -1,303 +1,406 @@
 # Manual Layout Guide
 
-This guide explains how to use manual positioning in the Visual Validation Framework to create custom 2D graph layouts.
-
-> **Note**: All configuration examples should be saved in the `.vgc/` folder (e.g., `.vgc/manual-layout.yaml`). See [.vgc/README.md](../.vgc/README.md) for details.
+This guide explains how to create and edit graph layouts using the JSON Canvas format.
 
 ## Overview
 
-The VVF supports four layout algorithms:
-- **`hierarchical`** - Automatic layered layout based on dependencies
-- **`circular`** - Arranges nodes in a circle
-- **`force-directed`** - Physics-based layout (planned)
-- **`manual`** - Custom positions specified in the configuration
+The Visual Validation Framework uses JSON Canvas (`.canvas`) files, which provide:
 
-## Using Manual Layout
+- **Visual editing** in Obsidian or other canvas tools
+- **Precise positioning** with pixel coordinates
+- **Round-trip editing** between visual tools and code
 
-### 1. Add Position Data to Node Types
+## Creating Layouts
 
-In your configuration file (e.g., `.vgc/my-layout.yaml`), add a `position` property to each node type:
+### Option 1: Visual Editor (Recommended)
 
-```yaml
-nodeTypes:
-  server:
-    shape: rectangle
-    icon: server
-    color: "#8b5cf6"
-    size:
-      width: 200
-      height: 120
-    position:        # Add custom position
-      x: 400
-      y: 250
-    dataSchema: {}
-    sources:
-      - "src/server/**/*.ts"
+1. **Open Obsidian** with your project as a vault
+2. **Create a new canvas** in `.vgc/` folder
+3. **Add text cards** for each component
+4. **Draw connections** between cards
+5. **Save** - positions are automatically stored
 
-  client:
-    shape: circle
-    icon: user
-    color: "#3b82f6"
-    size:
-      width: 120
-      height: 120
-    position:        # Add custom position
-      x: 100
-      y: 100
-    dataSchema: {}
-    sources:
-      - "src/client/**/*.ts"
+### Option 2: Manual JSON
+
+Create a `.canvas` file with explicit coordinates:
+
+```json
+{
+  "nodes": [
+    {
+      "id": "client",
+      "type": "text",
+      "x": 100,
+      "y": 200,
+      "width": 120,
+      "height": 120,
+      "text": "# Client"
+    },
+    {
+      "id": "server",
+      "type": "text",
+      "x": 400,
+      "y": 200,
+      "width": 200,
+      "height": 120,
+      "text": "# Server"
+    }
+  ],
+  "edges": [
+    {
+      "id": "client-to-server",
+      "fromNode": "client",
+      "toNode": "server"
+    }
+  ]
+}
 ```
 
-### 2. Set Display Layout to Manual
+## Coordinate System
 
-Update the `display` configuration to use manual layout:
-
-```yaml
-display:
-  layout: manual    # Use manual positioning
-  theme:
-    primary: "#3b82f6"
-    success: "#22c55e"
-    warning: "#f59e0b"
-    danger: "#ef4444"
-    info: "#06b6d4"
-  animations:
-    enabled: true
-    speed: 1.0
+```
+(0,0) ────────────────────────► X
+  │
+  │   ┌─────────┐
+  │   │  Node   │  position: (100, 100)
+  │   │         │  width: 150, height: 80
+  │   └─────────┘
+  │
+  ▼
+  Y
 ```
 
-### 3. Position Coordinate System
-
-The coordinate system uses:
 - **Origin (0, 0)**: Top-left corner
-- **X-axis**: Increases to the right
+- **X-axis**: Increases rightward
 - **Y-axis**: Increases downward
 - **Units**: Pixels
 
-### 4. Layout Tips
+## Layout Patterns
 
-**Spacing Recommendations:**
-- Minimum 150-200px between nodes vertically
-- Minimum 200-250px between nodes horizontally
-- Consider node sizes when positioning (use `size.width` and `size.height`)
+### Horizontal Flow (Left to Right)
 
-**Common Patterns:**
-
-**Horizontal Flow (Left to Right):**
-```yaml
-client:
-  position: { x: 100, y: 250 }
-transport:
-  position: { x: 300, y: 250 }
-server:
-  position: { x: 500, y: 250 }
+```json
+{
+  "nodes": [
+    { "id": "input",   "x": 100, "y": 200, "width": 120, "height": 80, "type": "text", "text": "# Input" },
+    { "id": "process", "x": 300, "y": 200, "width": 150, "height": 80, "type": "text", "text": "# Process" },
+    { "id": "output",  "x": 530, "y": 200, "width": 120, "height": 80, "type": "text", "text": "# Output" }
+  ]
+}
 ```
 
-**Vertical Flow (Top to Bottom):**
-```yaml
-api:
-  position: { x: 400, y: 100 }
-middleware:
-  position: { x: 400, y: 300 }
-database:
-  position: { x: 400, y: 500 }
+```
+┌─────────┐     ┌───────────┐     ┌─────────┐
+│  Input  │ ──► │  Process  │ ──► │ Output  │
+└─────────┘     └───────────┘     └─────────┘
 ```
 
-**Hub and Spoke:**
-```yaml
-hub:
-  position: { x: 400, y: 300 }
-spoke-1:
-  position: { x: 200, y: 150 }
-spoke-2:
-  position: { x: 600, y: 150 }
-spoke-3:
-  position: { x: 200, y: 450 }
-spoke-4:
-  position: { x: 600, y: 450 }
+### Vertical Flow (Top to Bottom)
+
+```json
+{
+  "nodes": [
+    { "id": "api",        "x": 300, "y": 100, "width": 180, "height": 80, "type": "text", "text": "# API Layer" },
+    { "id": "service",    "x": 300, "y": 250, "width": 180, "height": 80, "type": "text", "text": "# Service" },
+    { "id": "database",   "x": 300, "y": 400, "width": 180, "height": 80, "type": "text", "text": "# Database" }
+  ]
+}
 ```
 
-**Grid Layout:**
-```yaml
-# Row 1
-node-a: { position: { x: 100, y: 100 } }
-node-b: { position: { x: 300, y: 100 } }
-node-c: { position: { x: 500, y: 100 } }
-
-# Row 2
-node-d: { position: { x: 100, y: 300 } }
-node-e: { position: { x: 300, y: 300 } }
-node-f: { position: { x: 500, y: 300 } }
+```
+     ┌─────────────┐
+     │  API Layer  │
+     └──────┬──────┘
+            │
+            ▼
+     ┌─────────────┐
+     │   Service   │
+     └──────┬──────┘
+            │
+            ▼
+     ┌─────────────┐
+     │  Database   │
+     └─────────────┘
 ```
 
-## Example: Control Tower Architecture
+### Hub and Spoke
 
-Here's a complete example showing a messaging server architecture:
-
-```yaml
-metadata:
-  name: "Control Tower Core"
-  version: "0.1.19"
-  description: "Client-server messaging architecture"
-
-nodeTypes:
-  # Client (top-left)
-  client-a:
-    shape: circle
-    icon: user
-    color: "#3b82f6"
-    size:
-      width: 120
-      height: 120
-    position:
-      x: 100
-      y: 100
-
-  # Transport layer (middle-left)
-  transport:
-    shape: diamond
-    icon: radio
-    color: "#06b6d4"
-    size:
-      width: 140
-      height: 140
-    position:
-      x: 250
-      y: 250
-
-  # Server (center)
-  server:
-    shape: rectangle
-    icon: server
-    color: "#8b5cf6"
-    size:
-      width: 200
-      height: 120
-    position:
-      x: 400
-      y: 250
-
-  # Managers (right column)
-  room-manager:
-    shape: hexagon
-    icon: users
-    color: "#22c55e"
-    position:
-      x: 600
-      y: 100
-
-  lock-manager:
-    shape: hexagon
-    icon: lock
-    color: "#f59e0b"
-    position:
-      x: 600
-      y: 250
-
-  presence-manager:
-    shape: hexagon
-    icon: activity
-    color: "#ec4899"
-    position:
-      x: 600
-      y: 400
-
-  # Auth (bottom-center)
-  auth:
-    shape: rectangle
-    icon: shield
-    color: "#ef4444"
-    position:
-      x: 400
-      y: 450
-
-display:
-  layout: manual
-  animations:
-    enabled: true
-    speed: 1.0
+```json
+{
+  "nodes": [
+    { "id": "hub",     "x": 350, "y": 250, "width": 140, "height": 100, "type": "text", "text": "# Hub" },
+    { "id": "spoke-1", "x": 150, "y": 100, "width": 100, "height": 60, "type": "text", "text": "# Spoke 1" },
+    { "id": "spoke-2", "x": 550, "y": 100, "width": 100, "height": 60, "type": "text", "text": "# Spoke 2" },
+    { "id": "spoke-3", "x": 150, "y": 400, "width": 100, "height": 60, "type": "text", "text": "# Spoke 3" },
+    { "id": "spoke-4", "x": 550, "y": 400, "width": 100, "height": 60, "type": "text", "text": "# Spoke 4" }
+  ]
+}
 ```
+
+```
+┌────────┐           ┌────────┐
+│Spoke 1 │           │Spoke 2 │
+└────┬───┘           └───┬────┘
+     │                   │
+     └─────┐     ┌───────┘
+           │     │
+           ▼     ▼
+         ┌─────────┐
+         │   Hub   │
+         └─────────┘
+           ▲     ▲
+     ┌─────┘     └───────┐
+     │                   │
+┌────┴───┐           ┌───┴────┐
+│Spoke 3 │           │Spoke 4 │
+└────────┘           └────────┘
+```
+
+### Grid Layout
+
+```json
+{
+  "nodes": [
+    { "id": "a1", "x": 100, "y": 100, "width": 120, "height": 80, "type": "text", "text": "# A1" },
+    { "id": "a2", "x": 280, "y": 100, "width": 120, "height": 80, "type": "text", "text": "# A2" },
+    { "id": "a3", "x": 460, "y": 100, "width": 120, "height": 80, "type": "text", "text": "# A3" },
+    { "id": "b1", "x": 100, "y": 240, "width": 120, "height": 80, "type": "text", "text": "# B1" },
+    { "id": "b2", "x": 280, "y": 240, "width": 120, "height": 80, "type": "text", "text": "# B2" },
+    { "id": "b3", "x": 460, "y": 240, "width": 120, "height": 80, "type": "text", "text": "# B3" }
+  ]
+}
+```
+
+## Using Groups
+
+Canvas groups help organize related nodes:
+
+```json
+{
+  "nodes": [
+    {
+      "id": "backend-group",
+      "type": "group",
+      "x": 50,
+      "y": 50,
+      "width": 400,
+      "height": 300,
+      "label": "Backend Services",
+      "color": 5
+    },
+    {
+      "id": "api",
+      "type": "text",
+      "x": 100,
+      "y": 100,
+      "width": 150,
+      "height": 80,
+      "text": "# API Server"
+    },
+    {
+      "id": "db",
+      "type": "text",
+      "x": 100,
+      "y": 220,
+      "width": 150,
+      "height": 80,
+      "text": "# Database"
+    }
+  ]
+}
+```
+
+Groups appear as visual containers in both Obsidian and React Flow.
+
+## Edge Routing with Sides
+
+Control where edges connect using `fromSide` and `toSide`:
+
+```json
+{
+  "edges": [
+    {
+      "id": "edge-1",
+      "fromNode": "client",
+      "toNode": "server",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-2",
+      "fromNode": "server",
+      "toNode": "database",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ]
+}
+```
+
+Available sides: `top`, `right`, `bottom`, `left`
+
+## Complete Example
+
+```json
+{
+  "nodes": [
+    {
+      "id": "client",
+      "type": "text",
+      "x": 100,
+      "y": 100,
+      "width": 120,
+      "height": 120,
+      "text": "# Client",
+      "color": 5,
+      "vv": {
+        "nodeType": "client",
+        "shape": "circle",
+        "icon": "user",
+        "sources": ["src/client/**/*.ts"]
+      }
+    },
+    {
+      "id": "transport",
+      "type": "text",
+      "x": 280,
+      "y": 200,
+      "width": 140,
+      "height": 100,
+      "text": "# Transport",
+      "color": 5,
+      "vv": {
+        "nodeType": "transport",
+        "shape": "diamond",
+        "icon": "radio"
+      }
+    },
+    {
+      "id": "server",
+      "type": "text",
+      "x": 480,
+      "y": 180,
+      "width": 200,
+      "height": 140,
+      "text": "# Server",
+      "color": 6,
+      "vv": {
+        "nodeType": "server",
+        "shape": "rectangle",
+        "icon": "server",
+        "sources": ["src/server/**/*.ts"]
+      }
+    },
+    {
+      "id": "room-manager",
+      "type": "text",
+      "x": 740,
+      "y": 80,
+      "width": 150,
+      "height": 80,
+      "text": "# Room Manager",
+      "color": 4,
+      "vv": {
+        "nodeType": "room-manager",
+        "shape": "hexagon",
+        "icon": "users"
+      }
+    },
+    {
+      "id": "lock-manager",
+      "type": "text",
+      "x": 740,
+      "y": 200,
+      "width": 150,
+      "height": 80,
+      "text": "# Lock Manager",
+      "color": 2,
+      "vv": {
+        "nodeType": "lock-manager",
+        "shape": "hexagon",
+        "icon": "lock"
+      }
+    },
+    {
+      "id": "presence",
+      "type": "text",
+      "x": 740,
+      "y": 320,
+      "width": 150,
+      "height": 80,
+      "text": "# Presence",
+      "color": 6,
+      "vv": {
+        "nodeType": "presence",
+        "shape": "hexagon",
+        "icon": "activity"
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "fromNode": "client", "toNode": "transport", "fromSide": "right", "toSide": "left" },
+    { "id": "e2", "fromNode": "transport", "toNode": "server", "fromSide": "right", "toSide": "left" },
+    { "id": "e3", "fromNode": "server", "toNode": "room-manager", "fromSide": "right", "toSide": "left" },
+    { "id": "e4", "fromNode": "server", "toNode": "lock-manager", "fromSide": "right", "toSide": "left" },
+    { "id": "e5", "fromNode": "server", "toNode": "presence", "fromSide": "right", "toSide": "left" }
+  ],
+  "vv": {
+    "version": "1.0.0",
+    "name": "Control Tower Core",
+    "description": "Client-server messaging architecture",
+    "display": {
+      "layout": "manual",
+      "animations": { "enabled": true }
+    }
+  }
+}
+```
+
+## Spacing Guidelines
+
+| Element | Minimum Spacing |
+|---------|-----------------|
+| Horizontal gap | 50-80px |
+| Vertical gap | 40-60px |
+| Node width | 100-200px |
+| Node height | 60-120px |
+
+## Tips
+
+1. **Use Obsidian first** - Let it handle initial positioning, then tweak
+2. **Align to grid** - Use multiples of 20px for clean layouts
+3. **Leave edge room** - Don't crowd nodes; edges need space
+4. **Group related items** - Use canvas groups for visual organization
+5. **Standard viewport** - Target 800x600 to 1200x800px for typical graphs
 
 ## Programmatic Access
 
-The `GraphConverter` utility in `@principal-ai/visual-validation-core` automatically extracts positions from the configuration:
-
 ```typescript
-import { GraphConverter } from '@principal-ai/visual-validation-core';
-import type { PathBasedGraphConfiguration } from '@principal-ai/visual-validation-core';
+import { CanvasConverter, ExtendedCanvas } from '@principal-ai/visual-validation-core';
+import { readFileSync } from 'fs';
 
-const config: PathBasedGraphConfiguration = {
-  // ... your configuration
-};
+// Load canvas
+const canvas: ExtendedCanvas = JSON.parse(
+  readFileSync('.vgc/architecture.canvas', 'utf-8')
+);
 
-const { nodes, edges } = GraphConverter.configToGraph(config);
+// Convert to React Flow
+const { nodes, edges } = CanvasConverter.canvasToReactFlow(canvas);
 
-// nodes will include position data:
-// nodes[0].position = { x: 100, y: 100 }
+// Nodes include position data
+console.log(nodes[0].position); // { x: 100, y: 100 }
 ```
-
-## Migration from Automatic Layouts
-
-To migrate from `hierarchical` or `circular` layouts to manual:
-
-1. **Start with automatic layout** - Use `hierarchical` first to see the default positions
-2. **Take a screenshot** - Capture the current layout
-3. **Extract approximate positions** - Note where each node appears
-4. **Add positions to config** - Add `position` properties to each node type
-5. **Switch to manual** - Change `display.layout` to `manual`
-6. **Refine positions** - Adjust coordinates to improve the layout
-
-## TypeScript Type Definitions
-
-```typescript
-interface PathBasedNodeTypeDefinition {
-  shape: 'circle' | 'rectangle' | 'hexagon' | 'diamond' | 'custom';
-  icon?: string;
-  color?: string;
-  size?: { width: number; height: number };
-
-  // Manual position for 'manual' layout mode
-  position?: { x: number; y: number };
-
-  // ... other properties
-}
-
-interface DisplayConfiguration {
-  layout: 'hierarchical' | 'force-directed' | 'circular' | 'manual';
-  // ... other properties
-}
-```
-
-## Best Practices
-
-1. **Use a grid** - Align nodes to a virtual grid (e.g., multiples of 50px)
-2. **Consider viewport** - Most graphs fit well in 800x600 to 1200x800px
-3. **Leave room for edges** - Don't place nodes too close together
-4. **Account for node sizes** - Remember that position is typically the node center
-5. **Test on different screens** - Verify layout looks good on various resolutions
-6. **Document your layout** - Add comments to explain the positioning strategy
 
 ## Troubleshooting
 
-**Nodes appear in a line:**
-- Check that `display.layout` is set to `manual`
-- Verify each node type has a `position` property
-- Ensure position values are numbers, not strings
-
 **Nodes overlap:**
-- Increase spacing between nodes (minimum 150-200px)
-- Account for node sizes when positioning
+- Increase spacing between nodes
+- Check node dimensions (`width`, `height`)
 
-**Nodes appear off-screen:**
-- Use positive coordinates
-- Keep x and y values reasonable (e.g., < 2000px)
-- Consider the typical viewport size
+**Edges cross unexpectedly:**
+- Use `fromSide`/`toSide` to control connection points
+- Reposition nodes to minimize crossings
 
-## Future Enhancements
-
-Planned features for manual layouts:
-- **Interactive positioning** - Drag and drop in the UI
-- **Position export** - Save current positions back to config
-- **Layout templates** - Pre-defined patterns for common architectures
-- **Auto-spacing** - Automatically adjust spacing while preserving relative positions
+**Layout looks different in React Flow:**
+- Ensure `vv.display.layout` is set to `"manual"`
+- Verify coordinates are positive numbers

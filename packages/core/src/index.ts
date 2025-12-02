@@ -26,6 +26,46 @@ export type { LogEntry } from './PathBasedEventProcessor';
 export { PathMatcher } from './utils/PathMatcher';
 export { GraphConverter } from './utils/GraphConverter';
 
+// Export Canvas types and converter
+export * from './types/canvas';
+export { CanvasConverter } from './utils/CanvasConverter';
+export type { ReactFlowNode, ReactFlowEdge } from './utils/CanvasConverter';
+
+// Export session management (Event Recording System)
+export { SessionManager } from './SessionManager';
+export type {
+  SessionStatus,
+  SessionResult,
+  SessionMetadata,
+  EventSession,
+  CreateSessionOptions,
+  EndSessionOptions,
+  SessionChangeCallback,
+  SessionManagerConfig,
+} from './SessionManager';
+
+// Export event recorder service
+export { EventRecorderService } from './EventRecorderService';
+export type {
+  ProtocolMessageType,
+  ProtocolMessage,
+  SessionStartMessage,
+  SessionEndMessage,
+  LogMessage,
+  LogBatchMessage,
+  PingMessage,
+  PongMessage,
+  ErrorMessage,
+  AckMessage,
+  IncomingMessage,
+  OutgoingMessage,
+  RecordingMode,
+  EventCallback,
+  EventBatchCallback,
+  ConnectionState,
+  EventRecorderServiceConfig,
+} from './EventRecorderService';
+
 // Export configuration loading (Phase 2: Multi-config support)
 export { ConfigurationLoader } from './ConfigurationLoader';
 export type { ConfigurationFile, ConfigurationLoadResult } from './ConfigurationLoader';

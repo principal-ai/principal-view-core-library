@@ -1,1030 +1,604 @@
 # Configuration Reference
 
-Complete reference for the Visual Validation Framework configuration system.
+The Visual Validation Framework uses **JSON Canvas** (`.canvas`) files as its primary configuration format. This extends the [JSON Canvas spec](https://jsoncanvas.org/spec/1.0/) with visualization extensions.
 
 ## Table of Contents
 
-- [File Location](#file-location)
-- [Basic Structure](#basic-structure)
-- [Metadata](#metadata)
-- [Node Types (Components)](#node-types-components)
-- [Edge Types (Connections)](#edge-types-connections)
-- [Allowed Connections](#allowed-connections)
-- [Path-Based Configuration](#path-based-configuration)
-- [Display Configuration](#display-configuration)
+- [File Format](#file-format)
+- [Canvas Nodes](#canvas-nodes)
+- [Canvas Edges](#canvas-edges)
+- [Visual Validation Extensions](#visual-validation-extensions)
 - [Complete Examples](#complete-examples)
+- [Obsidian Workflow](#obsidian-workflow)
 
 ---
 
-## File Location
+## File Format
 
-**Visual Validation Framework now supports multiple configurations** stored in the `.vgc/` folder.
+### Location
 
-Place your configurations in the `.vgc/` directory at the project root:
+Place `.canvas` files in the `.vgc/` directory at your project root:
 
 ```
 your-project/
-  .vgc/                      ← Configuration folder
-    ├── architecture.yaml    ← System architecture graph
-    ├── data-flow.yaml       ← Data flow visualization
-    ├── deployment.yaml      ← Deployment topology
-    └── test-suite.yaml      ← Test validation graph
+  .vgc/
+    ├── architecture.canvas    ← System architecture
+    ├── data-flow.canvas       ← Data flow visualization
+    └── deployment.canvas      ← Deployment topology
   src/
-  lib/
   package.json
 ```
 
-**Naming Conventions:**
-- Use `.yaml` or `.yml` extensions
-- Use kebab-case: `my-config.yaml`
-- Descriptive names that indicate purpose
-- Group related configs with common prefixes (e.g., `arch-frontend.yaml`, `arch-backend.yaml`)
+### Basic Structure
 
-**Loading Configurations:**
-
-```typescript
-import { ConfigurationLoader } from '@principal-ai/visual-validation-core';
-import { NodeFileSystemAdapter } from '@principal-ai/repository-abstraction';
-
-// Create a file system adapter
-const fsAdapter = new NodeFileSystemAdapter();
-const loader = new ConfigurationLoader(fsAdapter);
-
-// List all available configurations
-const configNames = loader.listConfigurations(process.cwd());
-console.log('Available configs:', configNames);
-
-// Load a specific configuration
-const config = loader.loadByName('architecture', process.cwd());
-
-// Load all configurations
-const result = loader.loadAll(process.cwd());
-console.log(`Loaded ${result.configs.length} configurations`);
-if (result.errors.length > 0) {
-  console.error('Errors:', result.errors);
+```json
+{
+  "nodes": [
+    { "id": "node-1", "type": "text", "x": 100, "y": 100, "width": 200, "height": 100, "text": "# My Component" }
+  ],
+  "edges": [
+    { "id": "edge-1", "fromNode": "node-1", "toNode": "node-2" }
+  ],
+  "vv": {
+    "version": "1.0.0",
+    "name": "My System",
+    "edgeTypes": {},
+    "pathConfig": {},
+    "display": {}
+  }
 }
 ```
 
-See [.vgc/README.md](../.vgc/README.md) for complete usage guide.
+The `vv` (Visual Validation) field contains all framework-specific extensions. Standard canvas tools like Obsidian ignore this field, allowing seamless visual editing.
 
 ---
 
-## Multi-Config Benefits
+## Canvas Nodes
 
-Having multiple configurations allows you to:
+### Standard Canvas Node Types
 
-1. **Separate Concerns**: Different graphs for different aspects
-   - `architecture.yaml` - System components and their relationships
-   - `data-flow.yaml` - How data moves through your system
-   - `deployment.yaml` - Infrastructure and deployment topology
-   - `security.yaml` - Security boundaries and authentication flows
+All nodes share these base properties:
 
-2. **Different Granularity**: View your system at different levels
-   - `high-level.yaml` - Bird's eye view of major components
-   - `detailed.yaml` - Detailed view with all interactions
-   - `api-only.yaml` - Focus on API endpoints and contracts
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | string | ✓ | Unique identifier |
+| `type` | string | ✓ | `text`, `file`, `link`, or `group` |
+| `x` | number | ✓ | X position (pixels) |
+| `y` | number | ✓ | Y position (pixels) |
+| `width` | number | ✓ | Width (pixels) |
+| `height` | number | ✓ | Height (pixels) |
+| `color` | string \| 1-6 | | Color (hex or preset) |
 
-3. **Environment-Specific**: Different configs for different environments
-   - `dev-architecture.yaml` - Development environment setup
-   - `prod-architecture.yaml` - Production infrastructure
+#### Color Presets
 
-4. **Team-Specific**: Different views for different teams
-   - `frontend-arch.yaml` - Frontend team's view
-   - `backend-arch.yaml` - Backend team's view
-   - `infra-arch.yaml` - Infrastructure team's view
+| Preset | Color |
+|--------|-------|
+| 1 | Red (#ef4444) |
+| 2 | Orange (#f97316) |
+| 3 | Yellow (#eab308) |
+| 4 | Green (#22c55e) |
+| 5 | Cyan (#06b6d4) |
+| 6 | Purple (#8b5cf6) |
 
-5. **Comparison**: Compare different architectural approaches side-by-side using the React `ConfigurationSelector` component
+### Text Node
 
----
+Stores markdown-formatted content.
 
-## Basic Structure
+```json
+{
+  "id": "api-server",
+  "type": "text",
+  "x": 400,
+  "y": 200,
+  "width": 200,
+  "height": 120,
+  "color": 6,
+  "text": "# API Server\n\nHandles REST endpoints"
+}
+```
 
-**Note**: Each YAML file in the `.vgc/` folder follows this structure:
+### File Node
 
-```yaml
-# Project metadata
-metadata:
-  name: string
-  version: string
-  description: string (optional)
+References an external file.
 
-# Component definitions
-nodeTypes:
-  [component-id]:
-    # Visual appearance
-    shape: circle | rectangle | hexagon | diamond
-    icon: string (optional)
-    color: string (hex or named)
-    size:
-      width: number
-      height: number
+```json
+{
+  "id": "config-file",
+  "type": "file",
+  "x": 100,
+  "y": 100,
+  "width": 150,
+  "height": 80,
+  "file": "src/config.ts",
+  "subpath": "#DatabaseConfig"
+}
+```
 
-    # Path-based log association (Milestone 1)
-    sources:
-      - "path/to/file.ts"
-      - "path/**/*.ts"
+### Link Node
 
-    # Action patterns (Milestone 2 - optional)
-    actions:
-      - pattern: "regex pattern"
-        event: "event_name"
-        state: "state_name"
-        metadata:
-          key: "$captureGroup"
+References a URL.
 
-# Connection definitions
-edgeTypes:
-  [edge-id]:
-    style: solid | dashed | dotted | animated
-    color: string
-    width: number
-    directed: boolean
+```json
+{
+  "id": "docs-link",
+  "type": "link",
+  "x": 600,
+  "y": 100,
+  "width": 150,
+  "height": 80,
+  "url": "https://api.example.com/docs"
+}
+```
 
-    # Edge activation (Milestone 2 - optional)
-    activatedBy:
-      - action: "event_name"
-        animation: flow | particle | pulse | glow
-        direction: forward | backward | bidirectional
-        duration: number (milliseconds)
+### Group Node
 
-# Connection rules
-allowedConnections:
-  - from: "component-id"
-    to: "component-id"
-    via: "edge-id"
+Visual container for organizing nodes.
 
-# Path-based options
-pathBasedConfig:
-  projectRoot: string (optional, defaults to config file location)
-  captureSource: boolean (default: true)
-  enableActionPatterns: boolean (default: false)
-  logLevel: debug | info | warn | error (default: info)
-  ignoreUnsourced: boolean (default: false)
-
-# Display preferences
-display:
-  layout: hierarchical | force-directed | circular | manual
-  theme:
-    primary: string
-    success: string
-    warning: string
-    danger: string
-    info: string
-  animations:
-    enabled: boolean
-    speed: number
+```json
+{
+  "id": "backend-group",
+  "type": "group",
+  "x": 50,
+  "y": 50,
+  "width": 500,
+  "height": 400,
+  "label": "Backend Services",
+  "color": 5
+}
 ```
 
 ---
 
-## Metadata
+## Canvas Edges
 
-Project information displayed in the visualization.
+Edges connect nodes:
 
-```yaml
-metadata:
-  name: "Repository Traffic Controller"
-  version: "1.0.0"
-  description: "GitHub webhook processing system"
+```json
+{
+  "id": "api-to-db",
+  "fromNode": "api-server",
+  "toNode": "database",
+  "fromSide": "right",
+  "toSide": "left",
+  "fromEnd": "none",
+  "toEnd": "arrow",
+  "color": "#3b82f6",
+  "label": "queries"
+}
 ```
 
-**Fields:**
-- `name` (required): Human-readable project name
-- `version` (required): Semantic version
-- `description` (optional): Brief project description
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `id` | string | ✓ | Unique identifier |
+| `fromNode` | string | ✓ | Source node ID |
+| `toNode` | string | ✓ | Target node ID |
+| `fromSide` | string | | `top`, `right`, `bottom`, `left` |
+| `toSide` | string | | `top`, `right`, `bottom`, `left` |
+| `fromEnd` | string | | `none` or `arrow` (default: `none`) |
+| `toEnd` | string | | `none` or `arrow` (default: `arrow`) |
+| `color` | string | | Hex color |
+| `label` | string | | Edge label |
 
 ---
 
-## Node Types (Components)
+## Visual Validation Extensions
 
-Define the components in your system.
+### Node Extensions (`vv`)
 
-### Basic Node Definition
+Add a `vv` object to any node for rich visualization:
 
-```yaml
-nodeTypes:
-  lock-manager:
-    shape: rectangle
-    icon: lock
-    color: "#3b82f6"  # Blue
-    size:
-      width: 150
-      height: 80
-    dataSchema: {}  # Required but can be empty
+```json
+{
+  "id": "lock-manager",
+  "type": "text",
+  "x": 400,
+  "y": 250,
+  "width": 200,
+  "height": 120,
+  "text": "# Lock Manager",
+  "color": 6,
+  "vv": {
+    "nodeType": "lock-manager",
+    "shape": "hexagon",
+    "icon": "lock",
+    "sources": [
+      "lib/lock-manager.ts",
+      "lib/locks/**/*.ts"
+    ],
+    "states": {
+      "idle": { "color": "#94a3b8", "icon": "unlock" },
+      "acquired": { "color": "#22c55e", "icon": "lock" },
+      "waiting": { "color": "#eab308", "icon": "clock" },
+      "error": { "color": "#ef4444", "icon": "alert-circle" }
+    },
+    "actions": [
+      {
+        "pattern": "Lock acquired for (?<lockId>\\S+)",
+        "event": "lock_acquired",
+        "state": "acquired",
+        "metadata": { "lockId": "$lockId" }
+      },
+      {
+        "pattern": "Lock released",
+        "event": "lock_released",
+        "state": "idle"
+      }
+    ]
+  }
+}
 ```
 
-### Visual Properties
+#### Node Extension Properties
 
-**shape**: Component visual shape
-- `circle` - Round node (good for services, APIs)
-- `rectangle` - Box (good for processes, managers)
-- `hexagon` - Six-sided (good for databases, storage)
-- `diamond` - Decision points, routers
+| Property | Type | Description |
+|----------|------|-------------|
+| `nodeType` | string | Semantic type identifier |
+| `shape` | string | `circle`, `rectangle`, `hexagon`, `diamond`, `custom` |
+| `icon` | string | Lucide icon name |
+| `sources` | string[] | Glob patterns for log association |
+| `states` | object | State definitions with visual properties |
+| `actions` | object[] | Regex patterns for event extraction |
+| `dataSchema` | object | Typed data field definitions |
+| `layout` | object | Layout hints (`layer`, `cluster`) |
 
-**icon**: Icon identifier (supports Lucide icons)
-- Examples: `lock`, `database`, `server`, `github`, `mail`, `file`
+### Edge Extensions (`vv`)
 
-**color**: Hex color or CSS color name
-- Examples: `"#3b82f6"`, `"blue"`, `"rgb(59, 130, 246)"`
+Add a `vv` object to edges for animation and activation:
 
-**size**: Node dimensions in pixels
-```yaml
-size:
-  width: 150
-  height: 80
+```json
+{
+  "id": "lock-request-edge",
+  "fromNode": "api-server",
+  "toNode": "lock-manager",
+  "vv": {
+    "edgeType": "lock-request",
+    "style": "dashed",
+    "width": 2,
+    "animation": {
+      "type": "flow",
+      "duration": 2000,
+      "color": "#60a5fa"
+    },
+    "activatedBy": [
+      { "action": "lock_acquired", "animation": "flow", "direction": "forward" },
+      { "action": "lock_released", "animation": "particle", "direction": "backward" }
+    ]
+  }
+}
 ```
 
-### Source Path Mapping (Milestone 1)
-
-Associate components with source files for automatic log tracking.
-
-```yaml
-nodeTypes:
-  lock-manager:
-    shape: rectangle
-    icon: lock
-    color: "#3b82f6"
-    dataSchema: {}
-
-    # Map this component to source files
-    sources:
-      # Exact file path
-      - "lib/lock-manager.ts"
-
-      # Multiple files
-      - "lib/branch-aware-lock-manager.ts"
-
-      # Wildcard (single directory)
-      - "lib/lock-*.ts"
-
-      # Recursive wildcard (all subdirectories)
-      - "lib/locks/**/*.ts"
-
-      # Alternatives
-      - "{lib,src}/lock-manager.ts"
-
-      # Complex patterns
-      - "services/{lock,mutex}/**/*.{ts,js}"
-```
-
-**Pattern Syntax:**
-- `*` - Match any characters except `/` (single directory level)
-- `**` - Match any characters including `/` (recursive)
-- `?` - Match single character
-- `[abc]` - Match any character in set
-- `{a,b,c}` - Match any alternative
-
-**Example Patterns:**
-
-| Pattern | Matches | Doesn't Match |
-|---------|---------|---------------|
-| `lib/*.ts` | `lib/foo.ts` | `lib/sub/foo.ts` |
-| `lib/**/*.ts` | `lib/sub/foo.ts`, `lib/a/b/c.ts` | `src/foo.ts` |
-| `lib/lock-*.ts` | `lib/lock-manager.ts`, `lib/lock-utils.ts` | `lib/manager.ts` |
-| `{lib,src}/**/*.ts` | `lib/foo.ts`, `src/bar.ts` | `test/foo.ts` |
-
-### Action Patterns (Milestone 2 - Optional)
-
-Extract structured events from logs using regex patterns.
-
-```yaml
-nodeTypes:
-  lock-manager:
-    shape: rectangle
-    icon: lock
-    color: "#3b82f6"
-    dataSchema: {}
-    sources:
-      - "lib/lock-manager.ts"
-
-    # Optional: Extract specific actions from logs
-    actions:
-      # Pattern with capture groups
-      - pattern: "Lock acquired for (?<lockId>\\S+)"
-        event: lock_acquired
-        state: acquired
-        metadata:
-          lockId: "$lockId"  # Extract from capture group
-
-      # Pattern without metadata
-      - pattern: "Lock released"
-        event: lock_released
-        state: idle
-
-      # Pattern with multiple captures
-      - pattern: "Lock acquisition failed: (?<reason>.*) for (?<lockId>\\S+)"
-        event: lock_failed
-        state: error
-        metadata:
-          reason: "$reason"
-          lockId: "$lockId"
-```
-
-**Action Fields:**
-- `pattern` (required): JavaScript regex pattern
-  - Use `(?<name>...)` for named capture groups
-  - Escape backslashes: `\\s` not `\s`
-- `event` (required): Event type identifier
-- `state` (optional): Component state to transition to
-- `metadata` (optional): Extract data from capture groups
-  - Key: metadata field name
-  - Value: `"$groupName"` to extract from capture group
-
-**Common Regex Patterns:**
-
-| Pattern | Description | Example Match |
-|---------|-------------|---------------|
-| `(?<id>\\S+)` | Non-whitespace ID | `branch-123` |
-| `(?<msg>.*)` | Everything to end | `connection timeout` |
-| `(?<num>\\d+)` | Number | `42` |
-| `(?<status>success\|failure)` | Alternatives | `success` |
-
-### State Definitions (Optional)
-
-Define visual states for components.
-
-```yaml
-nodeTypes:
-  lock-manager:
-    # ... other fields ...
-    states:
-      idle:
-        color: "#94a3b8"  # Gray
-        icon: unlock
-        label: "Idle"
-
-      acquired:
-        color: "#22c55e"  # Green
-        icon: lock
-        label: "Lock Held"
-
-      waiting:
-        color: "#eab308"  # Yellow
-        icon: clock
-        label: "Waiting"
-
-      error:
-        color: "#ef4444"  # Red
-        icon: alert-circle
-        label: "Error"
-```
-
----
-
-## Edge Types (Connections)
-
-Define how components connect.
-
-### Basic Edge Definition
-
-```yaml
-edgeTypes:
-  api-request:
-    style: solid
-    color: "#3b82f6"
-    width: 2
-    directed: true
-
-    label:
-      position: middle
-      field: "requestType"  # Show data field on edge
-
-    animation:
-      type: flow
-      duration: 2000
-      color: "#60a5fa"
-```
-
-### Visual Properties
-
-**style**: Line style
-- `solid` - Continuous line
-- `dashed` - Dashed line
-- `dotted` - Dotted line
-- `animated` - Animated flow
-
-**width**: Line width in pixels (default: 2)
-
-**directed**: Show arrow (default: true)
-
-**color**: Line color (hex or CSS name)
-
-### Animation Configuration
-
-```yaml
-edgeTypes:
-  data-flow:
-    style: solid
-    color: "#3b82f6"
-    width: 2
-    directed: true
-
-    animation:
-      type: flow      # flow | pulse | particle | glow
-      duration: 2000  # Milliseconds
-      color: "#60a5fa"
-```
-
-**Animation Types:**
-- `flow` - Moving gradient along edge
-- `pulse` - Pulsing line thickness
-- `particle` - Particle traveling along edge
-- `glow` - Glowing effect
-
-### Edge Activation (Milestone 2 - Optional)
-
-Trigger edge animations based on component actions.
-
-```yaml
-edgeTypes:
-  lock-request:
-    style: solid
-    color: "#3b82f6"
-    width: 2
-    directed: true
-
-    # Activate this edge when specific actions occur
-    activatedBy:
-      - action: lock_acquired     # When this action happens...
-        animation: flow           # ...play flow animation
-        direction: forward
-        duration: 2000
-
-      - action: lock_released
-        animation: particle
-        direction: backward
-        duration: 1500
-```
-
-**Activation Fields:**
-- `action` (required): Action event name (from component actions)
-- `animation` (required): Animation type to play
-- `direction` (optional): `forward` | `backward` | `bidirectional`
-- `duration` (optional): Animation duration in milliseconds
-
----
-
-## Allowed Connections
-
-Define which components can connect and how.
-
-```yaml
-allowedConnections:
-  # Basic connection
-  - from: request-handler
-    to: lock-manager
-    via: lock-request
-
-  # Connection with constraints
-  - from: lock-manager
-    to: github-api
-    via: api-request
-    constraints:
-      maxInstances: 1        # Only one connection allowed
-      bidirectional: false   # One-way connection
-      exclusive: true        # Can't have other connection types
-```
-
-**Fields:**
-- `from` (required): Source component ID
-- `to` (required): Target component ID
-- `via` (required): Edge type ID
-
-**Constraints:**
-- `maxInstances`: Maximum number of this connection type
-- `bidirectional`: Allow reverse connection
-- `exclusive`: No other edge types allowed between these components
-
----
-
-## Path-Based Configuration
-
-Global options for path-based log association.
-
-```yaml
-pathBasedConfig:
-  # Project root for normalizing paths (default: config file location)
-  projectRoot: "/absolute/path/to/project"
-
-  # Enable source capture from stack traces (default: true)
-  captureSource: true
-
-  # Enable Milestone 2 action pattern matching (default: false)
-  enableActionPatterns: true
-
-  # Minimum log level to process (default: info)
-  # debug | info | warn | error
-  logLevel: info
-
-  # Ignore logs without source information (default: false)
-  ignoreUnsourced: false
-```
-
----
-
-## Display Configuration
-
-Visualization preferences.
-
-```yaml
-display:
-  # Layout algorithm
-  layout: hierarchical  # hierarchical | force-directed | circular | manual
-
-  # Color theme
-  theme:
-    primary: "#3b82f6"
-    success: "#22c55e"
-    warning: "#f59e0b"
-    danger: "#ef4444"
-    info: "#06b6d4"
-
-  # Animation settings
-  animations:
-    enabled: true
-    speed: 1.0  # Multiplier (0.5 = slower, 2.0 = faster)
+#### Edge Extension Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `edgeType` | string | Type identifier (references `vv.edgeTypes`) |
+| `style` | string | `solid`, `dashed`, `dotted`, `animated` |
+| `width` | number | Line width in pixels |
+| `animation` | object | Default animation config |
+| `activatedBy` | object[] | Event-triggered animations |
+
+### Canvas-Level Extensions (`vv`)
+
+The root `vv` object configures the entire canvas:
+
+```json
+{
+  "nodes": [...],
+  "edges": [...],
+  "vv": {
+    "version": "1.0.0",
+    "name": "Repository Traffic Controller",
+    "description": "GitHub webhook processing with lock management",
+
+    "edgeTypes": {
+      "api-call": {
+        "style": "solid",
+        "color": "#22c55e",
+        "width": 2,
+        "directed": true,
+        "animation": { "type": "particle", "duration": 1500 }
+      },
+      "lock-request": {
+        "style": "dashed",
+        "color": "#8b5cf6",
+        "activatedBy": [
+          { "action": "lock_acquired", "animation": "flow" }
+        ]
+      }
+    },
+
+    "pathConfig": {
+      "projectRoot": "/path/to/project",
+      "captureSource": true,
+      "enableActionPatterns": true,
+      "logLevel": "info",
+      "ignoreUnsourced": false
+    },
+
+    "display": {
+      "layout": "manual",
+      "theme": {
+        "primary": "#3b82f6",
+        "success": "#22c55e",
+        "warning": "#f59e0b",
+        "danger": "#ef4444",
+        "info": "#06b6d4"
+      },
+      "animations": {
+        "enabled": true,
+        "speed": 1.0
+      }
+    }
+  }
+}
 ```
 
 ---
 
 ## Complete Examples
 
-All examples below should be saved as separate files in the `.vgc/` folder (e.g., `.vgc/simple-service.yaml`, `.vgc/repository-traffic.yaml`, etc.).
-
-### Milestone 1: Basic Path-Based Association
-
-**File**: `.vgc/simple-service.yaml`
-
-Simple configuration with component activity tracking only.
-
-```yaml
-metadata:
-  name: "Simple Service"
-  version: "1.0.0"
-
-nodeTypes:
-  api-handler:
-    shape: rectangle
-    icon: server
-    color: "#3b82f6"
-    dataSchema: {}
-    sources:
-      - "src/api/**/*.ts"
-
-  database:
-    shape: hexagon
-    icon: database
-    color: "#8b5cf6"
-    dataSchema: {}
-    sources:
-      - "src/db/**/*.ts"
-
-  logger:
-    shape: circle
-    icon: file-text
-    color: "#06b6d4"
-    dataSchema: {}
-    sources:
-      - "src/logger.ts"
-
-edgeTypes:
-  data-flow:
-    style: solid
-    color: "#64748b"
-    width: 2
-    directed: true
-
-allowedConnections:
-  - from: api-handler
-    to: database
-    via: data-flow
-
-  - from: api-handler
-    to: logger
-    via: data-flow
-
-  - from: database
-    to: logger
-    via: data-flow
-
-pathBasedConfig:
-  logLevel: info
-  captureSource: true
-```
-
-### Milestone 2: Full Action Patterns & Edge Activation
-
-**File**: `.vgc/repository-traffic.yaml`
-
-Advanced configuration with state tracking and edge triggers.
-
-```yaml
-metadata:
-  name: "Repository Traffic Controller"
-  version: "1.0.0"
-  description: "GitHub webhook processing with lock management"
-
-nodeTypes:
-  request-handler:
-    shape: rectangle
-    icon: server
-    color: "#3b82f6"
-    dataSchema: {}
-    sources:
-      - "app/handlers/**/*.ts"
-    actions:
-      - pattern: "Webhook received: (?<event>\\S+)"
-        event: webhook_received
-        metadata:
-          eventType: "$event"
-
-  lock-manager:
-    shape: rectangle
-    icon: lock
-    color: "#8b5cf6"
-    dataSchema: {}
-    sources:
-      - "lib/lock-manager.ts"
-      - "lib/branch-aware-lock-manager.ts"
-    states:
-      idle:
-        color: "#94a3b8"
-        icon: unlock
-      acquired:
-        color: "#22c55e"
-        icon: lock
-      waiting:
-        color: "#eab308"
-        icon: clock
-      error:
-        color: "#ef4444"
-        icon: alert-circle
-    actions:
-      - pattern: "Lock acquired for (?<lockId>\\S+)"
-        event: lock_acquired
-        state: acquired
-        metadata:
-          lockId: "$lockId"
-
-      - pattern: "Lock released for (?<lockId>\\S+)"
-        event: lock_released
-        state: idle
-        metadata:
-          lockId: "$lockId"
-
-      - pattern: "Lock acquisition failed: (?<reason>.*)"
-        event: lock_failed
-        state: error
-        metadata:
-          reason: "$reason"
-
-  github-api:
-    shape: hexagon
-    icon: github
-    color: "#22c55e"
-    dataSchema: {}
-    sources:
-      - "lib/github-api-client.ts"
-      - "services/github/**/*.ts"
-    actions:
-      - pattern: "API call: (?<method>\\S+) (?<endpoint>\\S+)"
-        event: api_call
-        metadata:
-          method: "$method"
-          endpoint: "$endpoint"
-
-      - pattern: "API response: (?<status>\\d+)"
-        event: api_response
-        metadata:
-          statusCode: "$status"
-
-edgeTypes:
-  webhook-flow:
-    style: solid
-    color: "#3b82f6"
-    width: 3
-    directed: true
-    animation:
-      type: flow
-      duration: 1500
-
-  lock-request:
-    style: dashed
-    color: "#8b5cf6"
-    width: 2
-    directed: true
-    activatedBy:
-      - action: lock_acquired
-        animation: flow
-        direction: forward
-        duration: 2000
-
-      - action: lock_released
-        animation: particle
-        direction: backward
-        duration: 1000
-
-  api-call:
-    style: solid
-    color: "#22c55e"
-    width: 2
-    directed: true
-    activatedBy:
-      - action: api_call
-        animation: particle
-        direction: forward
-        duration: 2000
-
-      - action: api_response
-        animation: pulse
-        direction: backward
-        duration: 1000
-
-allowedConnections:
-  - from: request-handler
-    to: lock-manager
-    via: lock-request
-
-  - from: lock-manager
-    to: github-api
-    via: api-call
-
-  - from: request-handler
-    to: github-api
-    via: webhook-flow
-
-pathBasedConfig:
-  captureSource: true
-  enableActionPatterns: true
-  logLevel: debug
-  ignoreUnsourced: false
-
-display:
-  layout: hierarchical
-  theme:
-    primary: "#3b82f6"
-    success: "#22c55e"
-    warning: "#eab308"
-    danger: "#ef4444"
-    info: "#06b6d4"
-  animations:
-    enabled: true
-    speed: 1.0
-```
-
-### Real-World Example: Microservice Architecture
-
-**File**: `.vgc/ecommerce-platform.yaml`
-
-```yaml
-metadata:
-  name: "E-Commerce Platform"
-  version: "2.1.0"
-
-nodeTypes:
-  api-gateway:
-    shape: diamond
-    icon: router
-    color: "#3b82f6"
-    dataSchema: {}
-    sources:
-      - "services/gateway/src/**/*.ts"
-
-  auth-service:
-    shape: rectangle
-    icon: shield
-    color: "#8b5cf6"
-    dataSchema: {}
-    sources:
-      - "services/auth/src/**/*.ts"
-
-  product-service:
-    shape: rectangle
-    icon: package
-    color: "#06b6d4"
-    dataSchema: {}
-    sources:
-      - "services/products/src/**/*.ts"
-
-  order-service:
-    shape: rectangle
-    icon: shopping-cart
-    color: "#f59e0b"
-    dataSchema: {}
-    sources:
-      - "services/orders/src/**/*.ts"
-
-  database:
-    shape: hexagon
-    icon: database
-    color: "#64748b"
-    dataSchema: {}
-    sources:
-      - "shared/db/**/*.ts"
-
-  message-queue:
-    shape: circle
-    icon: activity
-    color: "#ec4899"
-    dataSchema: {}
-    sources:
-      - "shared/queue/**/*.ts"
-
-edgeTypes:
-  http-request:
-    style: solid
-    color: "#3b82f6"
-    width: 2
-    directed: true
-
-  db-query:
-    style: dashed
-    color: "#64748b"
-    width: 2
-    directed: true
-
-  queue-message:
-    style: dotted
-    color: "#ec4899"
-    width: 2
-    directed: true
-    animation:
-      type: particle
-      duration: 1500
-
-allowedConnections:
-  - from: api-gateway
-    to: auth-service
-    via: http-request
-
-  - from: api-gateway
-    to: product-service
-    via: http-request
-
-  - from: api-gateway
-    to: order-service
-    via: http-request
-
-  - from: auth-service
-    to: database
-    via: db-query
-
-  - from: product-service
-    to: database
-    via: db-query
-
-  - from: order-service
-    to: database
-    via: db-query
-
-  - from: order-service
-    to: message-queue
-    via: queue-message
-
-pathBasedConfig:
-  logLevel: info
-  captureSource: true
-
-display:
-  layout: hierarchical
-  animations:
-    enabled: true
-    speed: 1.0
-```
-
----
-
-## Validation
-
-The VVF validates your configuration and reports issues:
-
-```typescript
-import { PathBasedEventProcessor } from '@principal-ai/visual-validation-core';
-
-const processor = new PathBasedEventProcessor(config);
-const issues = processor.validate();
-
-issues.forEach(issue => {
-  console.log(`[${issue.type}] ${issue.message}`);
-  if (issue.componentId) {
-    console.log(`  Component: ${issue.componentId}`);
-  }
-});
-```
-
-**Common Issues:**
-- Overlapping source patterns (warning)
-- Invalid regex in action patterns (error)
-- Missing component references in edges (error)
-- Invalid glob patterns (error)
-
----
-
-## Tips & Best Practices
-
-### Source Path Mapping
-
-1. **Start broad, refine later**: Begin with `"src/**/*.ts"` and narrow down as needed
-2. **Avoid overlaps**: Each file should match only one component
-3. **Test patterns**: Use `PathMatcher.matches('path/to/file.ts', 'pattern')` to verify
-4. **Use consistent paths**: Relative to project root
-
-### Action Patterns
-
-1. **Start simple**: Basic logs work fine without action patterns (M1)
-2. **Name capture groups**: Use `(?<name>...)` for clarity
-3. **Test regex**: Use online regex testers before adding to config
-4. **Be specific**: Match exact log formats to avoid false positives
-
-### Performance
-
-1. **Sampling**: Use `samplingRate` for high-volume logging
-2. **Log level**: Set appropriate `logLevel` to filter noise
-3. **Disable M2**: Keep `enableActionPatterns: false` if not needed
-
-### Organization
-
-1. **Comments**: YAML supports comments - use them!
-2. **Consistent naming**: Use kebab-case for IDs
-3. **Color scheme**: Pick a consistent palette
-4. **Icons**: Use meaningful Lucide icons
-
----
-
-## Using with React Components
-
-The React package provides components for working with multiple configurations:
-
-```typescript
-import {
-  ConfigurationSelector,
-  GraphRenderer
-} from '@principal-ai/visual-validation-react';
-import { ConfigurationLoader } from '@principal-ai/visual-validation-core';
-import { NodeFileSystemAdapter } from '@principal-ai/repository-abstraction';
-
-function App() {
-  const [configs, setConfigs] = useState([]);
-  const [selectedConfig, setSelectedConfig] = useState('');
-
-  useEffect(() => {
-    const fsAdapter = new NodeFileSystemAdapter();
-    const loader = new ConfigurationLoader(fsAdapter);
-    const result = loader.loadAll(process.cwd());
-
-    setConfigs(result.configs);
-    if (result.configs.length > 0) {
-      setSelectedConfig(result.configs[0].name);
+### Simple Service Architecture
+
+```json
+{
+  "nodes": [
+    {
+      "id": "client",
+      "type": "text",
+      "x": 100,
+      "y": 200,
+      "width": 120,
+      "height": 120,
+      "text": "# Client",
+      "color": 5,
+      "vv": {
+        "nodeType": "client",
+        "shape": "circle",
+        "icon": "user",
+        "sources": ["src/client/**/*.ts"]
+      }
+    },
+    {
+      "id": "api-server",
+      "type": "text",
+      "x": 350,
+      "y": 200,
+      "width": 200,
+      "height": 120,
+      "text": "# API Server",
+      "color": 6,
+      "vv": {
+        "nodeType": "api-server",
+        "shape": "rectangle",
+        "icon": "server",
+        "sources": ["src/api/**/*.ts"],
+        "states": {
+          "idle": { "color": "#94a3b8" },
+          "processing": { "color": "#3b82f6" },
+          "error": { "color": "#ef4444" }
+        }
+      }
+    },
+    {
+      "id": "database",
+      "type": "text",
+      "x": 600,
+      "y": 200,
+      "width": 150,
+      "height": 100,
+      "text": "# Database",
+      "color": 4,
+      "vv": {
+        "nodeType": "database",
+        "shape": "hexagon",
+        "icon": "database",
+        "sources": ["src/db/**/*.ts"]
+      }
     }
-  }, []);
+  ],
+  "edges": [
+    {
+      "id": "client-to-api",
+      "fromNode": "client",
+      "toNode": "api-server",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "HTTP",
+      "vv": { "edgeType": "http-request" }
+    },
+    {
+      "id": "api-to-db",
+      "fromNode": "api-server",
+      "toNode": "database",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "SQL",
+      "vv": { "edgeType": "db-query" }
+    }
+  ],
+  "vv": {
+    "version": "1.0.0",
+    "name": "Simple Service",
+    "edgeTypes": {
+      "http-request": {
+        "style": "solid",
+        "color": "#3b82f6",
+        "width": 3,
+        "animation": { "type": "flow", "duration": 1500 }
+      },
+      "db-query": {
+        "style": "dashed",
+        "color": "#22c55e",
+        "width": 2
+      }
+    },
+    "display": {
+      "layout": "manual",
+      "animations": { "enabled": true }
+    }
+  }
+}
+```
 
-  const config = configs.find(c => c.name === selectedConfig);
+### With Action Patterns (Event Extraction)
 
-  return (
-    <div>
-      <ConfigurationSelector
-        configurations={configs}
-        selectedConfig={selectedConfig}
-        onConfigChange={setSelectedConfig}
-        showDescription
-        showVersion
-      />
-
-      {config && (
-        <GraphRenderer
-          configuration={config.config}
-          configName={selectedConfig}
-          nodes={nodes}
-          edges={edges}
-        />
-      )}
-    </div>
-  );
+```json
+{
+  "nodes": [
+    {
+      "id": "lock-manager",
+      "type": "text",
+      "x": 400,
+      "y": 200,
+      "width": 180,
+      "height": 100,
+      "text": "# Lock Manager",
+      "color": 6,
+      "vv": {
+        "nodeType": "lock-manager",
+        "shape": "rectangle",
+        "icon": "lock",
+        "sources": ["lib/lock-manager.ts", "lib/branch-aware-lock-manager.ts"],
+        "states": {
+          "idle": { "color": "#94a3b8", "icon": "unlock", "label": "Idle" },
+          "acquired": { "color": "#22c55e", "icon": "lock", "label": "Lock Held" },
+          "waiting": { "color": "#eab308", "icon": "clock", "label": "Waiting" },
+          "error": { "color": "#ef4444", "icon": "alert-circle", "label": "Error" }
+        },
+        "actions": [
+          {
+            "pattern": "Lock acquired for (?<lockId>\\S+)",
+            "event": "lock_acquired",
+            "state": "acquired",
+            "metadata": { "lockId": "$lockId" }
+          },
+          {
+            "pattern": "Lock released for (?<lockId>\\S+)",
+            "event": "lock_released",
+            "state": "idle",
+            "metadata": { "lockId": "$lockId" }
+          },
+          {
+            "pattern": "Lock acquisition failed: (?<reason>.*)",
+            "event": "lock_failed",
+            "state": "error",
+            "metadata": { "reason": "$reason" }
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [],
+  "vv": {
+    "version": "1.0.0",
+    "name": "Lock Manager Demo",
+    "pathConfig": {
+      "enableActionPatterns": true,
+      "logLevel": "debug"
+    }
+  }
 }
 ```
 
 ---
 
-## Schema Validation
+## Obsidian Workflow
 
-Configurations are automatically validated when loaded using `ConfigurationLoader`. The validation checks for:
+The JSON Canvas format enables a powerful visual editing workflow:
 
-- Required fields (metadata, nodeTypes, edgeTypes, allowedConnections)
-- Valid YAML syntax
-- Valid color values
-- Node/edge type references in connections
-- Invalid glob patterns in source mappings
+### 1. Create Layout in Obsidian
+
+1. Create a new canvas file in `.vgc/`
+2. Add text cards for each component
+3. Draw connections between cards
+4. Arrange visually using drag-and-drop
+
+### 2. Add VV Extensions
+
+Edit the `.canvas` file in a text editor to add `vv` properties:
+
+```json
+{
+  "id": "my-component",
+  "type": "text",
+  "x": 100,
+  "y": 100,
+  "width": 150,
+  "height": 80,
+  "text": "# My Component",
+  "vv": {
+    "nodeType": "my-component",
+    "shape": "rectangle",
+    "icon": "server",
+    "sources": ["src/my-component.ts"]
+  }
+}
+```
+
+### 3. Render in React Flow
 
 ```typescript
-const result = loader.loadAll(process.cwd());
+import { CanvasConverter } from '@principal-ai/visual-validation-core';
+import { readFileSync } from 'fs';
 
-// Check for errors
-if (result.errors.length > 0) {
-  result.errors.forEach(error => {
-    console.error(`[${error.file}] ${error.error}`);
-  });
-}
+// Load canvas file
+const canvasJson = readFileSync('.vgc/architecture.canvas', 'utf-8');
+const canvas = JSON.parse(canvasJson);
 
-// All successfully loaded configs
-console.log(`Loaded ${result.configs.length} valid configurations`);
+// Convert to React Flow format
+const { nodes, edges } = CanvasConverter.canvasToReactFlow(canvas);
+
+// Use in your React Flow component
+<ReactFlow nodes={nodes} edges={edges} />
+```
+
+### 4. Round-Trip Editing
+
+Changes in either Obsidian or your React app can be saved back:
+
+```typescript
+// Save React Flow state back to canvas
+const updatedCanvas = CanvasConverter.reactFlowToCanvas(nodes, edges, {
+  name: 'My Architecture',
+  version: '1.0.0'
+});
+
+writeFileSync('.vgc/architecture.canvas', JSON.stringify(updatedCanvas, null, 2));
+```
+
+---
+
+## TypeScript API
+
+### Loading Canvas Files
+
+```typescript
+import { CanvasConverter, ExtendedCanvas } from '@principal-ai/visual-validation-core';
+import { readFileSync } from 'fs';
+
+const canvas: ExtendedCanvas = JSON.parse(
+  readFileSync('.vgc/architecture.canvas', 'utf-8')
+);
+
+// Convert to React Flow
+const { nodes, edges } = CanvasConverter.canvasToReactFlow(canvas);
+
+// Or convert to internal graph state
+const { nodes: nodeStates, edges: edgeStates } = CanvasConverter.canvasToGraph(canvas);
+```
+
+### Saving Canvas Files
+
+```typescript
+import { CanvasConverter } from '@principal-ai/visual-validation-core';
+import { writeFileSync } from 'fs';
+
+// Convert React Flow state back to canvas
+const canvas = CanvasConverter.reactFlowToCanvas(nodes, edges, {
+  name: 'My Architecture',
+  version: '1.0.0'
+});
+
+// Save
+writeFileSync('.vgc/architecture.canvas', JSON.stringify(canvas, null, 2));
 ```

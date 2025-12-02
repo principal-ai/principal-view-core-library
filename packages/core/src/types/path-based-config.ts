@@ -85,7 +85,7 @@ export interface PathBasedEdgeTypeDefinition {
     position?: 'start' | 'middle' | 'end';
   };
   animation?: {
-    type: 'flow' | 'pulse' | 'particle';
+    type: 'flow' | 'pulse' | 'particle' | 'glow';
     duration?: number;
     color?: string;
   };
