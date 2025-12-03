@@ -108,17 +108,28 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
           padding: '8px',
         };
       case 'hexagon':
+        // Hexagon uses wrapper approach for proper border - styles returned here are for inner fill
+        // The outer border wrapper is rendered separately in the JSX
         return {
           ...baseStyles,
-          clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
-          minWidth: typeDefinition.size?.width || 100,
+          border: 'none', // Border handled by wrapper
+          clipPath: 'polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%)',
+          width: '100%',
+          height: '100%',
+          minWidth: 'unset',
+          minHeight: 'unset',
+          padding: '8px 20px',
+          boxShadow: 'none', // Shadow handled by wrapper
         };
       case 'diamond':
+        // Rotated square - fixed dimensions for proper diamond shape
+        const diamondSize = typeDefinition.size?.width || 70;
         return {
           ...baseStyles,
           transform: 'rotate(45deg)',
-          minWidth: typeDefinition.size?.width || 80,
-          minHeight: typeDefinition.size?.height || 80,
+          width: diamondSize,
+          height: diamondSize,
+          padding: '8px',
         };
       case 'rectangle':
       default:
@@ -130,9 +141,42 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
   };
 
   const isDiamond = typeDefinition.shape === 'diamond';
+  const isHexagon = typeDefinition.shape === 'hexagon';
+
+  // Hexagon border wrapper styles (outer shape that acts as border)
+  // Hexagon with gentle diagonals
+  const hexagonClipPath = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
+  const hexagonBorderWidth = 2;
+  const hexagonBorderStyle: React.CSSProperties = isHexagon ? {
+    position: 'relative',
+    clipPath: hexagonClipPath,
+    backgroundColor: hasViolations ? '#D0021B' : color,
+    width: typeDefinition.size?.width || 120,
+    height: typeDefinition.size?.height || 120,
+    boxShadow: selected ? `0 0 0 2px ${color}` : '0 2px 4px rgba(0,0,0,0.1)',
+    transition: 'all 0.2s ease',
+  } : {};
+
+  // Hexagon inner fill styles (white background inset from border)
+  const hexagonInnerStyle: React.CSSProperties = isHexagon ? {
+    position: 'absolute',
+    top: hexagonBorderWidth,
+    left: hexagonBorderWidth,
+    right: hexagonBorderWidth,
+    bottom: hexagonBorderWidth,
+    clipPath: hexagonClipPath,
+    backgroundColor: 'white',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '12px',
+    fontWeight: 500,
+    gap: '4px',
+  } : {};
 
   // Handle styles - larger and more visible in edit mode
-  const handleStyle = editable ? {
+  const baseHandleStyle = editable ? {
     background: color,
     width: 12,
     height: 12,
@@ -144,6 +188,40 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
     height: 8,
   };
 
+  // Diamond handles need to be offset to reach the tips of the rotated shape
+  // A 45° rotated square has tips at ~41% beyond the original edges
+  const diamondOffset = isDiamond ? '21%' : '0';
+
+  const getHandleStyle = (position: 'top' | 'bottom' | 'left' | 'right') => {
+    if (!isDiamond && !isHexagon) return baseHandleStyle;
+
+    const offsetStyle: React.CSSProperties = { ...baseHandleStyle };
+
+    if (isDiamond) {
+      switch (position) {
+        case 'top':
+          offsetStyle.top = `-${diamondOffset}`;
+          break;
+        case 'bottom':
+          offsetStyle.bottom = `-${diamondOffset}`;
+          break;
+        case 'left':
+          offsetStyle.left = `-${diamondOffset}`;
+          break;
+        case 'right':
+          offsetStyle.right = `-${diamondOffset}`;
+          break;
+      }
+    }
+
+    if (isHexagon) {
+      // Bring handles above the hexagon layers
+      offsetStyle.zIndex = 10;
+    }
+
+    return offsetStyle;
+  };
+
   return (
     <>
       {/* Input handles - multiple connection points */}
@@ -151,69 +229,103 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
         type="target"
         position={Position.Top}
         id="top"
-        style={handleStyle}
+        style={getHandleStyle('top')}
       />
       <Handle
         type="target"
         position={Position.Left}
         id="left"
-        style={handleStyle}
+        style={getHandleStyle('left')}
       />
       <Handle
         type="target"
         position={Position.Right}
         id="right"
-        style={handleStyle}
+        style={getHandleStyle('right')}
       />
 
-      <div style={getShapeStyles()} className={animationClass}>
-        {/* Inner content (rotated back if diamond) */}
-        <div style={isDiamond ? { transform: 'rotate(-45deg)' } : {}}>
-          {icon && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>{resolveIcon(icon, 20)}</div>}
-          <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>
-            {displayLabel}
+      {/* Hexagon needs a wrapper for proper border rendering */}
+      {isHexagon ? (
+        <div style={hexagonBorderStyle} className={animationClass}>
+          <div style={hexagonInnerStyle}>
+            {icon && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>{resolveIcon(icon, 20)}</div>}
+            <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>
+              {displayLabel}
+            </div>
+            {state && (
+              <div style={{
+                fontSize: '10px',
+                backgroundColor: color,
+                color: 'white',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                textAlign: 'center',
+              }}>
+                {typeDefinition.states?.[state]?.label || state}
+              </div>
+            )}
+            {hasViolations && (
+              <div style={{
+                fontSize: '10px',
+                color: '#D0021B',
+                fontWeight: 'bold',
+              }}>
+                ⚠️
+              </div>
+            )}
           </div>
-          {state && (
-            <div style={{
-              fontSize: '10px',
-              backgroundColor: color,
-              color: 'white',
-              padding: '2px 6px',
-              borderRadius: '4px',
-            }}>
-              {typeDefinition.states?.[state]?.label || state}
-            </div>
-          )}
-          {hasViolations && (
-            <div style={{
-              fontSize: '10px',
-              color: '#D0021B',
-              fontWeight: 'bold',
-            }}>
-              ⚠️
-            </div>
-          )}
         </div>
-      </div>
+      ) : (
+        <div style={getShapeStyles()} className={animationClass}>
+          {/* Inner content (rotated back if diamond) */}
+          <div style={isDiamond ? { transform: 'rotate(-45deg)' } : {}}>
+            {icon && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>{resolveIcon(icon, 20)}</div>}
+            <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>
+              {displayLabel}
+            </div>
+            {state && (
+              <div style={{
+                fontSize: '10px',
+                backgroundColor: color,
+                color: 'white',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                textAlign: 'center',
+              }}>
+                {typeDefinition.states?.[state]?.label || state}
+              </div>
+            )}
+            {hasViolations && (
+              <div style={{
+                fontSize: '10px',
+                color: '#D0021B',
+                fontWeight: 'bold',
+              }}>
+                ⚠️
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Output handles - multiple connection points */}
       <Handle
         type="source"
         position={Position.Bottom}
         id="bottom"
-        style={handleStyle}
+        style={getHandleStyle('bottom')}
       />
       <Handle
         type="source"
         position={Position.Left}
         id="left-out"
-        style={handleStyle}
+        style={getHandleStyle('left')}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="right-out"
-        style={handleStyle}
+        style={getHandleStyle('right')}
       />
 
       {/* CSS animations for node animation types */}
