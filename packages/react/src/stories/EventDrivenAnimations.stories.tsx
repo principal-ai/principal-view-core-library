@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
-import type { GraphConfiguration, NodeState, EdgeState, GraphEvent } from '@principal-ai/visual-validation-core';
+import type { GraphEvent, ExtendedCanvas } from '@principal-ai/visual-validation-core';
 import { useState, useEffect } from 'react';
 import React from 'react';
 
@@ -16,107 +16,94 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Sample configuration
-const sampleConfiguration: GraphConfiguration = {
-  metadata: {
-    name: 'Event-Driven Animation Demo',
-    version: '1.0.0',
-    description: 'Demonstrates event-driven animations',
-  },
-  nodeTypes: {
-    process: {
-      shape: 'rectangle',
+// Sample canvas for event-driven animations
+const sampleCanvas: ExtendedCanvas = {
+  nodes: [
+    {
+      id: 'node-1',
+      type: 'text',
+      x: 100,
+      y: 100,
+      width: 140,
+      height: 70,
+      text: 'Source',
       color: '#4A90E2',
-      icon: 'Settings',
-      dataSchema: {
-        name: { type: 'string', required: true, displayInLabel: true },
-      },
-      states: {
-        idle: { label: 'Idle', color: '#888' },
-        processing: { label: 'Processing', color: '#4A90E2' },
-        completed: { label: 'Completed', color: '#10B981' },
-        error: { label: 'Error', color: '#EF4444' },
+      vv: {
+        nodeType: 'process',
+        shape: 'rectangle',
+        icon: 'Settings',
+        states: {
+          idle: { label: 'Idle', color: '#888' },
+          processing: { label: 'Processing', color: '#4A90E2' },
+          completed: { label: 'Completed', color: '#10B981' },
+          error: { label: 'Error', color: '#EF4444' },
+        },
       },
     },
-    data: {
-      shape: 'circle',
+    {
+      id: 'node-2',
+      type: 'text',
+      x: 300,
+      y: 100,
+      width: 140,
+      height: 70,
+      text: 'Processor',
+      color: '#4A90E2',
+      vv: {
+        nodeType: 'process',
+        shape: 'rectangle',
+        icon: 'Settings',
+        states: {
+          idle: { label: 'Idle', color: '#888' },
+          processing: { label: 'Processing', color: '#4A90E2' },
+          completed: { label: 'Completed', color: '#10B981' },
+          error: { label: 'Error', color: '#EF4444' },
+        },
+      },
+    },
+    {
+      id: 'node-3',
+      type: 'text',
+      x: 500,
+      y: 100,
+      width: 100,
+      height: 100,
+      text: 'Storage',
       color: '#7B68EE',
-      icon: 'Database',
-      dataSchema: {
-        name: { type: 'string', required: true, displayInLabel: true },
+      vv: {
+        nodeType: 'data',
+        shape: 'circle',
+        icon: 'Database',
       },
-    },
-  },
-  edgeTypes: {
-    dataflow: {
-      style: 'solid',
-      color: '#50E3C2',
-      directed: true,
-    },
-  },
-  allowedConnections: [
-    {
-      from: 'process',
-      to: 'data',
-      via: 'dataflow',
-    },
-    {
-      from: 'data',
-      to: 'process',
-      via: 'dataflow',
     },
   ],
+  edges: [
+    {
+      id: 'edge-1',
+      fromNode: 'node-1',
+      toNode: 'node-2',
+      vv: { edgeType: 'dataflow' },
+    },
+    {
+      id: 'edge-2',
+      fromNode: 'node-2',
+      toNode: 'node-3',
+      vv: { edgeType: 'dataflow' },
+    },
+  ],
+  vv: {
+    version: '1.0.0',
+    name: 'Event-Driven Animation Demo',
+    description: 'Demonstrates event-driven animations',
+    edgeTypes: {
+      dataflow: {
+        style: 'solid',
+        color: '#50E3C2',
+        directed: true,
+      },
+    },
+  },
 };
-
-// Sample nodes
-const sampleNodes: NodeState[] = [
-  {
-    id: 'node-1',
-    type: 'process',
-    data: { name: 'Source' },
-    position: { x: 100, y: 100 },
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-  {
-    id: 'node-2',
-    type: 'process',
-    data: { name: 'Processor' },
-    position: { x: 300, y: 100 },
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-  {
-    id: 'node-3',
-    type: 'data',
-    data: { name: 'Storage' },
-    position: { x: 500, y: 100 },
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-];
-
-// Sample edges
-const sampleEdges: EdgeState[] = [
-  {
-    id: 'edge-1',
-    from: 'node-1',
-    to: 'node-2',
-    type: 'dataflow',
-    data: {},
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-  {
-    id: 'edge-2',
-    from: 'node-2',
-    to: 'node-3',
-    type: 'dataflow',
-    data: {},
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-];
 
 /**
  * Story: Automatic Event Sequence
@@ -205,8 +192,8 @@ export const AutomaticEventSequence: Story = {
       // Play events with delays
       eventSequence.forEach(({ delay, event }) => {
         setTimeout(() => {
-          setEvents(prev => [...prev, event]);
-          setEventLog(prev => [...prev, `${event.type} at ${delay}ms`]);
+          setEvents((prev) => [...prev, event]);
+          setEventLog((prev) => [...prev, `${event.type} at ${delay}ms`]);
         }, delay);
       });
 
@@ -216,8 +203,8 @@ export const AutomaticEventSequence: Story = {
         setEventLog(['--- Sequence restart ---']);
         eventSequence.forEach(({ delay, event }) => {
           setTimeout(() => {
-            setEvents(prev => [...prev, event]);
-            setEventLog(prev => [...prev, `${event.type} at ${delay}ms`]);
+            setEvents((prev) => [...prev, event]);
+            setEventLog((prev) => [...prev, `${event.type} at ${delay}ms`]);
           }, delay);
         });
       }, 5000);
@@ -229,9 +216,7 @@ export const AutomaticEventSequence: Story = {
       <div style={{ display: 'flex', height: '100vh' }}>
         <div style={{ flex: 1 }}>
           <GraphRenderer
-            configuration={sampleConfiguration}
-            nodes={sampleNodes}
-            edges={sampleEdges}
+            canvas={sampleCanvas}
             events={events}
             width="100%"
             height="100%"
@@ -240,13 +225,15 @@ export const AutomaticEventSequence: Story = {
             }}
           />
         </div>
-        <div style={{
-          width: '300px',
-          backgroundColor: '#f5f5f5',
-          padding: '16px',
-          overflowY: 'auto',
-          borderLeft: '1px solid #ddd',
-        }}>
+        <div
+          style={{
+            width: '300px',
+            backgroundColor: '#f5f5f5',
+            padding: '16px',
+            overflowY: 'auto',
+            borderLeft: '1px solid #ddd',
+          }}
+        >
           <h3 style={{ marginTop: 0 }}>Event Log</h3>
           <div style={{ fontSize: '12px', fontFamily: 'monospace' }}>
             {eventLog.map((log, idx) => (
@@ -288,7 +275,7 @@ export const InteractiveEventTriggers: Story = {
           },
         },
       };
-      setEvents(prev => [...prev, event]);
+      setEvents((prev) => [...prev, event]);
     };
 
     const triggerNodeState = (nodeId: string, state: string) => {
@@ -303,28 +290,23 @@ export const InteractiveEventTriggers: Story = {
           newState: state,
         },
       };
-      setEvents(prev => [...prev, event]);
+      setEvents((prev) => [...prev, event]);
     };
 
     return (
       <div style={{ display: 'flex', height: '100vh' }}>
         <div style={{ flex: 1 }}>
-          <GraphRenderer
-            configuration={sampleConfiguration}
-            nodes={sampleNodes}
-            edges={sampleEdges}
-            events={events}
-            width="100%"
-            height="100%"
-          />
+          <GraphRenderer canvas={sampleCanvas} events={events} width="100%" height="100%" />
         </div>
-        <div style={{
-          width: '300px',
-          backgroundColor: '#f5f5f5',
-          padding: '16px',
-          overflowY: 'auto',
-          borderLeft: '1px solid #ddd',
-        }}>
+        <div
+          style={{
+            width: '300px',
+            backgroundColor: '#f5f5f5',
+            padding: '16px',
+            overflowY: 'auto',
+            borderLeft: '1px solid #ddd',
+          }}
+        >
           <h3 style={{ marginTop: 0 }}>Event Controls</h3>
 
           <div style={{ marginBottom: '24px' }}>
@@ -435,36 +417,42 @@ export const PipelineProcessingFlow: Story = {
       sequence.forEach(({ delay, type, target, state }) => {
         setTimeout(() => {
           if (type === 'edge') {
-            setEvents(prev => [...prev, {
-              id: `evt-${Date.now()}`,
-              type: 'edge_animated',
-              timestamp: Date.now(),
-              category: 'edge',
-              operation: 'animate',
-              payload: {
+            setEvents((prev) => [
+              ...prev,
+              {
+                id: `evt-${Date.now()}`,
+                type: 'edge_animated',
+                timestamp: Date.now(),
+                category: 'edge',
                 operation: 'animate',
-                edgeId: target,
-                edgeType: 'dataflow',
-                from: target === 'edge-1' ? 'node-1' : 'node-2',
-                to: target === 'edge-1' ? 'node-2' : 'node-3',
-                animation: {
-                  duration: 1000,
-                  direction: 'forward' as const,
+                payload: {
+                  operation: 'animate',
+                  edgeId: target,
+                  edgeType: 'dataflow',
+                  from: target === 'edge-1' ? 'node-1' : 'node-2',
+                  to: target === 'edge-1' ? 'node-2' : 'node-3',
+                  animation: {
+                    duration: 1000,
+                    direction: 'forward' as const,
+                  },
                 },
               },
-            }]);
+            ]);
           } else if (type === 'state' && state) {
-            setEvents(prev => [...prev, {
-              id: `evt-${Date.now()}`,
-              type: 'state_changed',
-              timestamp: Date.now(),
-              category: 'state',
-              operation: 'update',
-              payload: {
-                nodeId: target,
-                newState: state,
+            setEvents((prev) => [
+              ...prev,
+              {
+                id: `evt-${Date.now()}`,
+                type: 'state_changed',
+                timestamp: Date.now(),
+                category: 'state',
+                operation: 'update',
+                payload: {
+                  nodeId: target,
+                  newState: state,
+                },
               },
-            }]);
+            ]);
           }
         }, delay);
       });
@@ -474,14 +462,16 @@ export const PipelineProcessingFlow: Story = {
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-        <div style={{
-          padding: '16px',
-          backgroundColor: '#f5f5f5',
-          borderBottom: '1px solid #ddd',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
+        <div
+          style={{
+            padding: '16px',
+            backgroundColor: '#f5f5f5',
+            borderBottom: '1px solid #ddd',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <h3 style={{ margin: 0 }}>Pipeline Processing Flow</h3>
           <button
             onClick={runPipeline}
@@ -501,14 +491,7 @@ export const PipelineProcessingFlow: Story = {
           </button>
         </div>
         <div style={{ flex: 1 }}>
-          <GraphRenderer
-            configuration={sampleConfiguration}
-            nodes={sampleNodes}
-            edges={sampleEdges}
-            events={events}
-            width="100%"
-            height="100%"
-          />
+          <GraphRenderer canvas={sampleCanvas} events={events} width="100%" height="100%" />
         </div>
       </div>
     );

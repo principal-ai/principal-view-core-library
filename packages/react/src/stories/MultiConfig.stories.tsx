@@ -1,9 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { GraphRenderer } from '../components/GraphRenderer';
-import { ConfigurationSelector } from '../components/ConfigurationSelector';
-import type { ConfigurationFile, NodeState, EdgeState } from '@principal-ai/visual-validation-core';
-import { ConfigurationLoader, InMemoryFileSystemAdapter } from '@principal-ai/visual-validation-core';
+import type { ExtendedCanvas } from '@principal-ai/visual-validation-core';
+import React from 'react';
 
 const meta: Meta<typeof GraphRenderer> = {
   title: 'Multi-Config/Configuration Switcher',
@@ -17,267 +16,354 @@ const meta: Meta<typeof GraphRenderer> = {
 export default meta;
 type Story = StoryObj<typeof GraphRenderer>;
 
-// Helper to create sample configurations in memory
-function createSampleConfigurations(): ConfigurationFile[] {
-  const fsAdapter = new InMemoryFileSystemAdapter();
-  fsAdapter.createDir('/project/.vgc');
+// ============================================================================
+// Sample Canvas Configurations
+// ============================================================================
 
-  // Simple Service Config
-  const simpleServiceYaml = `
-metadata:
-  name: Simple Service
-  version: 1.0.0
-  description: Basic 3-tier service architecture
-
-nodeTypes:
-  api:
-    shape: rectangle
-    color: '#4A90E2'
-    dataSchema:
-      name:
-        type: string
-        required: true
-  service:
-    shape: hexagon
-    color: '#7ED321'
-    dataSchema:
-      name:
-        type: string
-        required: true
-  database:
-    shape: circle
-    color: '#BD10E0'
-    dataSchema:
-      name:
-        type: string
-        required: true
-
-edgeTypes:
-  api_call:
-    style: solid
-    color: '#4A90E2'
-    width: 2
-    directed: true
-  data_access:
-    style: dashed
-    color: '#BD10E0'
-    width: 2
-    directed: true
-
-allowedConnections:
-  - from: api
-    to: service
-    via: api_call
-  - from: service
-    to: database
-    via: data_access
-`;
-
-  // Microservices Config
-  const microservicesYaml = `
-metadata:
-  name: Microservices
-  version: 2.0.0
-  description: Distributed microservices architecture
-
-nodeTypes:
-  gateway:
-    shape: rectangle
-    color: '#00C853'
-    dataSchema:
-      name:
-        type: string
-        required: true
-  auth_service:
-    shape: rectangle
-    color: '#FF6B6B'
-    dataSchema:
-      name:
-        type: string
-        required: true
-  user_service:
-    shape: rectangle
-    color: '#4A90E2'
-    dataSchema:
-      name:
-        type: string
-        required: true
-  cache:
-    shape: circle
-    color: '#3498DB'
-    dataSchema:
-      name:
-        type: string
-        required: true
-  database:
-    shape: circle
-    color: '#27AE60'
-    dataSchema:
-      name:
-        type: string
-        required: true
-
-edgeTypes:
-  http_request:
-    style: solid
-    color: '#4A90E2'
-    width: 2
-    directed: true
-    animated: true
-  cache_access:
-    style: dotted
-    color: '#3498DB'
-    width: 2
-    directed: true
-
-allowedConnections:
-  - from: gateway
-    to: auth_service
-    via: http_request
-  - from: gateway
-    to: user_service
-    via: http_request
-  - from: auth_service
-    to: cache
-    via: cache_access
-  - from: user_service
-    to: database
-    via: http_request
-`;
-
-  // Data Pipeline Config
-  const dataPipelineYaml = `
-metadata:
-  name: Data Pipeline
-  version: 1.0.0
-  description: ETL data processing pipeline
-
-nodeTypes:
-  data_source:
-    shape: rectangle
-    color: '#6C5CE7'
-    dataSchema:
-      name:
-        type: string
-        required: true
-  validator:
-    shape: diamond
-    color: '#00B894'
-    dataSchema:
-      name:
-        type: string
-        required: true
-  transformer:
-    shape: hexagon
-    color: '#FD79A8'
-    dataSchema:
-      name:
-        type: string
-        required: true
-  data_warehouse:
-    shape: circle
-    color: '#0984E3'
-    dataSchema:
-      name:
-        type: string
-        required: true
-
-edgeTypes:
-  data_flow:
-    style: solid
-    color: '#0984E3'
-    width: 3
-    directed: true
-    animated: true
-  validation_flow:
-    style: solid
-    color: '#00B894'
-    width: 2
-    directed: true
-
-allowedConnections:
-  - from: data_source
-    to: validator
-    via: validation_flow
-  - from: validator
-    to: transformer
-    via: data_flow
-  - from: transformer
-    to: data_warehouse
-    via: data_flow
-`;
-
-  fsAdapter.writeFile('/project/.vgc/simple-service.yaml', simpleServiceYaml);
-  fsAdapter.writeFile('/project/.vgc/microservices.yaml', microservicesYaml);
-  fsAdapter.writeFile('/project/.vgc/data-pipeline.yaml', dataPipelineYaml);
-
-  const loader = new ConfigurationLoader(fsAdapter);
-  const result = loader.loadAll('/project');
-
-  return result.configs;
-}
-
-// Helper to generate sample nodes and edges for a configuration
-function generateSampleData(config: ConfigurationFile): { nodes: NodeState[]; edges: EdgeState[] } {
-  const nodes: NodeState[] = [];
-  const edges: EdgeState[] = [];
-
-  // Generate sample nodes based on node types
-  const nodeTypes = Object.keys(config.config.nodeTypes);
-  nodeTypes.forEach((nodeType, index) => {
-    nodes.push({
-      id: `${nodeType}-1`,
-      type: nodeType,
-      state: 'active',
-      data: {
-        name: `${nodeType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} 1`,
+/**
+ * Simple Service Architecture Canvas
+ */
+const simpleServiceCanvas: ExtendedCanvas = {
+  nodes: [
+    {
+      id: 'api-1',
+      type: 'text',
+      x: 100,
+      y: 150,
+      width: 120,
+      height: 70,
+      text: 'API',
+      color: '#4A90E2',
+      vv: {
+        nodeType: 'api',
+        shape: 'rectangle',
+        icon: 'Globe',
       },
-      createdAt: Date.now() - (nodeTypes.length - index) * 1000,
-    });
-  });
+    },
+    {
+      id: 'service-1',
+      type: 'text',
+      x: 300,
+      y: 150,
+      width: 100,
+      height: 100,
+      text: 'Service',
+      color: '#7ED321',
+      vv: {
+        nodeType: 'service',
+        shape: 'hexagon',
+        icon: 'Cog',
+      },
+    },
+    {
+      id: 'database-1',
+      type: 'text',
+      x: 500,
+      y: 150,
+      width: 80,
+      height: 80,
+      text: 'Database',
+      color: '#BD10E0',
+      vv: {
+        nodeType: 'database',
+        shape: 'circle',
+        icon: 'Database',
+      },
+    },
+  ],
+  edges: [
+    {
+      id: 'edge-1',
+      fromNode: 'api-1',
+      toNode: 'service-1',
+      vv: { edgeType: 'api_call' },
+    },
+    {
+      id: 'edge-2',
+      fromNode: 'service-1',
+      toNode: 'database-1',
+      vv: { edgeType: 'data_access' },
+    },
+  ],
+  vv: {
+    version: '1.0.0',
+    name: 'Simple Service',
+    description: 'Basic 3-tier service architecture',
+    edgeTypes: {
+      api_call: {
+        style: 'solid',
+        color: '#4A90E2',
+        width: 2,
+        directed: true,
+      },
+      data_access: {
+        style: 'dashed',
+        color: '#BD10E0',
+        width: 2,
+        directed: true,
+      },
+    },
+  },
+};
 
-  // Generate edges based on allowed connections
-  config.config.allowedConnections.forEach((connection, index) => {
-    const sourceNode = nodes.find(n => n.type === connection.from);
-    const targetNode = nodes.find(n => n.type === connection.to);
+/**
+ * Microservices Architecture Canvas
+ */
+const microservicesCanvas: ExtendedCanvas = {
+  nodes: [
+    {
+      id: 'gateway-1',
+      type: 'text',
+      x: 300,
+      y: 50,
+      width: 120,
+      height: 70,
+      text: 'Gateway',
+      color: '#00C853',
+      vv: {
+        nodeType: 'gateway',
+        shape: 'rectangle',
+        icon: 'Network',
+      },
+    },
+    {
+      id: 'auth-1',
+      type: 'text',
+      x: 100,
+      y: 200,
+      width: 120,
+      height: 70,
+      text: 'Auth Service',
+      color: '#FF6B6B',
+      vv: {
+        nodeType: 'auth_service',
+        shape: 'rectangle',
+        icon: 'Lock',
+      },
+    },
+    {
+      id: 'user-1',
+      type: 'text',
+      x: 300,
+      y: 200,
+      width: 120,
+      height: 70,
+      text: 'User Service',
+      color: '#4A90E2',
+      vv: {
+        nodeType: 'user_service',
+        shape: 'rectangle',
+        icon: 'Users',
+      },
+    },
+    {
+      id: 'cache-1',
+      type: 'text',
+      x: 100,
+      y: 350,
+      width: 80,
+      height: 80,
+      text: 'Cache',
+      color: '#3498DB',
+      vv: {
+        nodeType: 'cache',
+        shape: 'circle',
+        icon: 'Zap',
+      },
+    },
+    {
+      id: 'db-1',
+      type: 'text',
+      x: 300,
+      y: 350,
+      width: 80,
+      height: 80,
+      text: 'Database',
+      color: '#27AE60',
+      vv: {
+        nodeType: 'database',
+        shape: 'circle',
+        icon: 'Database',
+      },
+    },
+  ],
+  edges: [
+    {
+      id: 'edge-1',
+      fromNode: 'gateway-1',
+      toNode: 'auth-1',
+      vv: { edgeType: 'http_request' },
+    },
+    {
+      id: 'edge-2',
+      fromNode: 'gateway-1',
+      toNode: 'user-1',
+      vv: { edgeType: 'http_request' },
+    },
+    {
+      id: 'edge-3',
+      fromNode: 'auth-1',
+      toNode: 'cache-1',
+      vv: { edgeType: 'cache_access' },
+    },
+    {
+      id: 'edge-4',
+      fromNode: 'user-1',
+      toNode: 'db-1',
+      vv: { edgeType: 'http_request' },
+    },
+  ],
+  vv: {
+    version: '2.0.0',
+    name: 'Microservices',
+    description: 'Distributed microservices architecture',
+    edgeTypes: {
+      http_request: {
+        style: 'solid',
+        color: '#4A90E2',
+        width: 2,
+        directed: true,
+        animation: {
+          type: 'flow',
+          duration: 1500,
+        },
+      },
+      cache_access: {
+        style: 'dotted',
+        color: '#3498DB',
+        width: 2,
+        directed: true,
+      },
+    },
+  },
+};
 
-    if (sourceNode && targetNode) {
-      edges.push({
-        id: `edge-${index}`,
-        from: sourceNode.id,
-        to: targetNode.id,
-        type: connection.via,
-        data: {},
-      });
-    }
-  });
+/**
+ * Data Pipeline Canvas
+ */
+const dataPipelineCanvas: ExtendedCanvas = {
+  nodes: [
+    {
+      id: 'source-1',
+      type: 'text',
+      x: 100,
+      y: 150,
+      width: 120,
+      height: 70,
+      text: 'Data Source',
+      color: '#6C5CE7',
+      vv: {
+        nodeType: 'data_source',
+        shape: 'rectangle',
+        icon: 'FileInput',
+      },
+    },
+    {
+      id: 'validator-1',
+      type: 'text',
+      x: 280,
+      y: 150,
+      width: 90,
+      height: 90,
+      text: 'Validator',
+      color: '#00B894',
+      vv: {
+        nodeType: 'validator',
+        shape: 'diamond',
+        icon: 'CheckCircle',
+      },
+    },
+    {
+      id: 'transformer-1',
+      type: 'text',
+      x: 450,
+      y: 150,
+      width: 100,
+      height: 100,
+      text: 'Transformer',
+      color: '#FD79A8',
+      vv: {
+        nodeType: 'transformer',
+        shape: 'hexagon',
+        icon: 'RefreshCw',
+      },
+    },
+    {
+      id: 'warehouse-1',
+      type: 'text',
+      x: 620,
+      y: 150,
+      width: 80,
+      height: 80,
+      text: 'Warehouse',
+      color: '#0984E3',
+      vv: {
+        nodeType: 'data_warehouse',
+        shape: 'circle',
+        icon: 'Database',
+      },
+    },
+  ],
+  edges: [
+    {
+      id: 'edge-1',
+      fromNode: 'source-1',
+      toNode: 'validator-1',
+      vv: { edgeType: 'validation_flow' },
+    },
+    {
+      id: 'edge-2',
+      fromNode: 'validator-1',
+      toNode: 'transformer-1',
+      vv: { edgeType: 'data_flow' },
+    },
+    {
+      id: 'edge-3',
+      fromNode: 'transformer-1',
+      toNode: 'warehouse-1',
+      vv: { edgeType: 'data_flow' },
+    },
+  ],
+  vv: {
+    version: '1.0.0',
+    name: 'Data Pipeline',
+    description: 'ETL data processing pipeline',
+    edgeTypes: {
+      data_flow: {
+        style: 'solid',
+        color: '#0984E3',
+        width: 3,
+        directed: true,
+        animation: {
+          type: 'flow',
+          duration: 2000,
+        },
+      },
+      validation_flow: {
+        style: 'solid',
+        color: '#00B894',
+        width: 2,
+        directed: true,
+      },
+    },
+  },
+};
 
-  return { nodes, edges };
-}
+// Available configurations
+const configurations = [
+  { name: 'Simple Service', canvas: simpleServiceCanvas },
+  { name: 'Microservices', canvas: microservicesCanvas },
+  { name: 'Data Pipeline', canvas: dataPipelineCanvas },
+];
 
 // Multi-config switcher component
 function MultiConfigDemo() {
-  const [configurations] = useState<ConfigurationFile[]>(() => createSampleConfigurations());
-  const [selectedConfigName, setSelectedConfigName] = useState<string>(
-    configurations[0]?.name || ''
-  );
-  const [nodes, setNodes] = useState<NodeState[]>([]);
-  const [edges, setEdges] = useState<EdgeState[]>([]);
+  const [selectedConfigName, setSelectedConfigName] = useState(configurations[0].name);
 
-  // Update nodes and edges when configuration changes
-  useEffect(() => {
-    const selectedConfig = configurations.find(c => c.name === selectedConfigName);
-    if (selectedConfig) {
-      const data = generateSampleData(selectedConfig);
-      setNodes(data.nodes);
-      setEdges(data.edges);
-    }
-  }, [selectedConfigName, configurations]);
-
-  const selectedConfig = configurations.find(c => c.name === selectedConfigName);
+  const selectedConfig = configurations.find((c) => c.name === selectedConfigName);
 
   if (!selectedConfig) {
-    return <div>No configuration loaded</div>;
+    return <div>No configuration selected</div>;
   }
 
   return (
@@ -290,27 +376,34 @@ function MultiConfigDemo() {
           borderBottom: '1px solid #ddd',
         }}
       >
-        <ConfigurationSelector
-          configurations={configurations}
-          selectedConfig={selectedConfigName}
-          onConfigChange={setSelectedConfigName}
-          showDescription
-          showVersion
-          style={{ maxWidth: '400px' }}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <label style={{ fontWeight: 'bold' }}>Configuration:</label>
+          <select
+            value={selectedConfigName}
+            onChange={(e) => setSelectedConfigName(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '4px',
+              border: '1px solid #ccc',
+              fontSize: '14px',
+              minWidth: '200px',
+            }}
+          >
+            {configurations.map((config) => (
+              <option key={config.name} value={config.name}>
+                {config.name}
+              </option>
+            ))}
+          </select>
+          <span style={{ color: '#666', fontSize: '12px' }}>
+            v{selectedConfig.canvas.vv?.version} - {selectedConfig.canvas.vv?.description}
+          </span>
+        </div>
       </div>
 
       {/* Graph visualization */}
       <div style={{ flex: 1 }}>
-        <GraphRenderer
-          configuration={selectedConfig.config}
-          configName={selectedConfigName}
-          nodes={nodes}
-          edges={edges}
-          showMinimap
-          showControls
-          showBackground
-        />
+        <GraphRenderer canvas={selectedConfig.canvas} showMinimap showControls showBackground />
       </div>
     </div>
   );
@@ -329,135 +422,104 @@ export const ConfigurationSwitcher: Story = {
   },
 };
 
-// Story: Configuration selector only
-export const SelectorComponent: Story = {
-  render: () => {
-    const [configurations] = useState<ConfigurationFile[]>(() => createSampleConfigurations());
-    const [selectedConfigName, setSelectedConfigName] = useState<string>(
-      configurations[0]?.name || ''
-    );
+// Side-by-side comparison component
+function SideBySideDemo() {
+  const [leftConfigName, setLeftConfigName] = useState(configurations[0].name);
+  const [rightConfigName, setRightConfigName] = useState(configurations[1].name);
 
-    return (
-      <div style={{ padding: '24px', backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-        <h2>Configuration Selector Component</h2>
-        <p>A standalone component for selecting between configurations.</p>
+  const leftConfig = configurations.find((c) => c.name === leftConfigName);
+  const rightConfig = configurations.find((c) => c.name === rightConfigName);
 
-        <div style={{ marginTop: '24px', maxWidth: '500px' }}>
-          <ConfigurationSelector
-            configurations={configurations}
-            selectedConfig={selectedConfigName}
-            onConfigChange={setSelectedConfigName}
-            showDescription
-            showVersion
-          />
-
-          <div
+  return (
+    <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <div
+        style={{
+          padding: '16px',
+          backgroundColor: '#f5f5f5',
+          borderBottom: '1px solid #ddd',
+          display: 'flex',
+          gap: '16px',
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>
+            Left Configuration
+          </label>
+          <select
+            value={leftConfigName}
+            onChange={(e) => setLeftConfigName(e.target.value)}
             style={{
-              marginTop: '24px',
-              padding: '16px',
-              backgroundColor: 'white',
-              borderRadius: '8px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              padding: '8px 12px',
+              borderRadius: '4px',
+              border: '1px solid #ccc',
+              fontSize: '14px',
+              width: '100%',
             }}
           >
-            <h3 style={{ marginTop: 0 }}>Selected Configuration</h3>
-            <pre style={{ fontSize: '12px', overflow: 'auto' }}>
-              {JSON.stringify(
-                configurations.find(c => c.name === selectedConfigName)?.config.metadata,
-                null,
-                2
-              )}
-            </pre>
-          </div>
+            {configurations.map((config) => (
+              <option key={config.name} value={config.name}>
+                {config.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>
+            Right Configuration
+          </label>
+          <select
+            value={rightConfigName}
+            onChange={(e) => setRightConfigName(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '4px',
+              border: '1px solid #ccc',
+              fontSize: '14px',
+              width: '100%',
+            }}
+          >
+            {configurations.map((config) => (
+              <option key={config.name} value={config.name}>
+                {config.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
-    );
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'The ConfigurationSelector component in isolation. Shows how to use it as a standalone UI element.',
-      },
-    },
-  },
-};
+
+      {/* Side by side graphs */}
+      <div style={{ flex: 1, display: 'flex' }}>
+        {leftConfig && (
+          <div style={{ flex: 1, borderRight: '1px solid #ddd' }}>
+            <GraphRenderer
+              canvas={leftConfig.canvas}
+              configName={leftConfigName}
+              showMinimap={false}
+              showControls
+              showBackground
+            />
+          </div>
+        )}
+        {rightConfig && (
+          <div style={{ flex: 1 }}>
+            <GraphRenderer
+              canvas={rightConfig.canvas}
+              configName={rightConfigName}
+              showMinimap={false}
+              showControls
+              showBackground
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // Story: Side-by-side comparison
 export const SideBySideComparison: Story = {
-  render: () => {
-    const [configurations] = useState<ConfigurationFile[]>(() => createSampleConfigurations());
-    const [leftConfig, setLeftConfig] = useState<string>(configurations[0]?.name || '');
-    const [rightConfig, setRightConfig] = useState<string>(configurations[1]?.name || '');
-
-    const leftConfigData = configurations.find(c => c.name === leftConfig);
-    const rightConfigData = configurations.find(c => c.name === rightConfig);
-
-    const leftData = leftConfigData ? generateSampleData(leftConfigData) : { nodes: [], edges: [] };
-    const rightData = rightConfigData
-      ? generateSampleData(rightConfigData)
-      : { nodes: [], edges: [] };
-
-    return (
-      <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-        {/* Header */}
-        <div
-          style={{
-            padding: '16px',
-            backgroundColor: '#f5f5f5',
-            borderBottom: '1px solid #ddd',
-            display: 'flex',
-            gap: '16px',
-          }}
-        >
-          <ConfigurationSelector
-            configurations={configurations}
-            selectedConfig={leftConfig}
-            onConfigChange={setLeftConfig}
-            label="Left Configuration"
-            style={{ flex: 1 }}
-          />
-          <ConfigurationSelector
-            configurations={configurations}
-            selectedConfig={rightConfig}
-            onConfigChange={setRightConfig}
-            label="Right Configuration"
-            style={{ flex: 1 }}
-          />
-        </div>
-
-        {/* Side by side graphs */}
-        <div style={{ flex: 1, display: 'flex' }}>
-          {leftConfigData && (
-            <div style={{ flex: 1, borderRight: '1px solid #ddd' }}>
-              <GraphRenderer
-                configuration={leftConfigData.config}
-                configName={leftConfig}
-                nodes={leftData.nodes}
-                edges={leftData.edges}
-                showMinimap={false}
-                showControls
-                showBackground
-              />
-            </div>
-          )}
-          {rightConfigData && (
-            <div style={{ flex: 1 }}>
-              <GraphRenderer
-                configuration={rightConfigData.config}
-                configName={rightConfig}
-                nodes={rightData.nodes}
-                edges={rightData.edges}
-                showMinimap={false}
-                showControls
-                showBackground
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  },
+  render: () => <SideBySideDemo />,
   parameters: {
     docs: {
       description: {

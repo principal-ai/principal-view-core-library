@@ -113,7 +113,7 @@ export const AllShapes: Story = {
     canvas: allShapesCanvas,
     width: 1100,
     height: 350,
-  } as any,
+  },
   parameters: {
     docs: {
       description: {
@@ -333,7 +333,7 @@ export const ShapeSizes: Story = {
     canvas: shapeSizesCanvas,
     width: 700,
     height: 550,
-  } as any,
+  },
   parameters: {
     docs: {
       description: {
@@ -427,7 +427,7 @@ export const ShapesWithIcons: Story = {
     canvas: shapesWithIconsCanvas,
     width: 900,
     height: 300,
-  } as any,
+  },
   parameters: {
     docs: {
       description: {
@@ -674,7 +674,7 @@ export const ShapesWithStates: Story = {
     canvas: shapesWithStatesCanvas,
     width: 800,
     height: 550,
-  } as any,
+  },
   parameters: {
     docs: {
       description: {
