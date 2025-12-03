@@ -1,0 +1,238 @@
+# Component Library
+# Reusable node and edge type definitions for this project.
+# Copy components from here into your .canvas files.
+
+version: "1.0.0"
+name: "Visual Validation Components"
+description: "Standard components for visualizing service architectures"
+
+nodeComponents:
+  # ─────────────────────────────────────────────
+  # API Layer
+  # ─────────────────────────────────────────────
+  rest-api:
+    description: "REST API endpoint handler"
+    tags: ["api", "http"]
+    defaultLabel: "REST API"
+    shape: rectangle
+    icon: "Globe"
+    color: "#4A90E2"
+    size: { width: 120, height: 60 }
+    states:
+      idle: { color: "#4A90E2", label: "Ready" }
+      processing: { color: "#F5A623", label: "Processing" }
+      error: { color: "#D0021B", label: "Error" }
+    sources:
+      - "src/api/**/*.ts"
+      - "src/routes/**/*.ts"
+    dataSchema:
+      name: { type: string, required: true, displayInLabel: true }
+      port: { type: number, required: false }
+
+  graphql-api:
+    description: "GraphQL API resolver"
+    tags: ["api", "graphql"]
+    defaultLabel: "GraphQL"
+    shape: rectangle
+    icon: "Share2"
+    color: "#E535AB"
+    size: { width: 120, height: 60 }
+    states:
+      idle: { color: "#E535AB", label: "Ready" }
+      processing: { color: "#F5A623", label: "Processing" }
+      error: { color: "#D0021B", label: "Error" }
+    sources:
+      - "src/graphql/**/*.ts"
+
+  # ─────────────────────────────────────────────
+  # Services
+  # ─────────────────────────────────────────────
+  service:
+    description: "Business logic service"
+    tags: ["service", "core"]
+    defaultLabel: "Service"
+    shape: hexagon
+    icon: "Cog"
+    color: "#7ED321"
+    size: { width: 100, height: 100 }
+    states:
+      active: { color: "#7ED321", label: "Active" }
+      busy: { color: "#F5A623", label: "Busy" }
+      error: { color: "#D0021B", label: "Error" }
+    sources:
+      - "src/services/**/*.ts"
+
+  worker:
+    description: "Background worker process"
+    tags: ["service", "async"]
+    defaultLabel: "Worker"
+    shape: hexagon
+    icon: "RefreshCw"
+    color: "#9B59B6"
+    size: { width: 100, height: 100 }
+    states:
+      idle: { color: "#9B59B6", label: "Idle" }
+      processing: { color: "#F5A623", label: "Processing" }
+      error: { color: "#D0021B", label: "Error" }
+    sources:
+      - "src/workers/**/*.ts"
+      - "src/jobs/**/*.ts"
+
+  # ─────────────────────────────────────────────
+  # Data Stores
+  # ─────────────────────────────────────────────
+  postgres-db:
+    description: "PostgreSQL database"
+    tags: ["database", "storage", "sql"]
+    defaultLabel: "PostgreSQL"
+    shape: circle
+    icon: "Database"
+    color: "#336791"
+    size: { width: 80, height: 80 }
+    states:
+      connected: { color: "#7ED321", label: "Connected" }
+      disconnected: { color: "#D0021B", label: "Disconnected" }
+    sources:
+      - "src/database/**/*.ts"
+      - "src/models/**/*.ts"
+
+  redis-cache:
+    description: "Redis cache layer"
+    tags: ["cache", "storage"]
+    defaultLabel: "Redis"
+    shape: circle
+    icon: "Zap"
+    color: "#DC382D"
+    size: { width: 80, height: 80 }
+    states:
+      connected: { color: "#7ED321", label: "Connected" }
+      disconnected: { color: "#D0021B", label: "Disconnected" }
+    sources:
+      - "src/cache/**/*.ts"
+
+  # ─────────────────────────────────────────────
+  # Messaging
+  # ─────────────────────────────────────────────
+  message-queue:
+    description: "Message queue (RabbitMQ, SQS, etc.)"
+    tags: ["messaging", "async"]
+    defaultLabel: "Queue"
+    shape: diamond
+    icon: "Inbox"
+    color: "#FF6B35"
+    size: { width: 80, height: 80 }
+    states:
+      active: { color: "#7ED321", label: "Active" }
+      backpressure: { color: "#F5A623", label: "Backpressure" }
+      error: { color: "#D0021B", label: "Error" }
+
+edgeComponents:
+  # ─────────────────────────────────────────────
+  # Synchronous Communication
+  # ─────────────────────────────────────────────
+  http-request:
+    description: "HTTP request between services"
+    tags: ["http", "sync"]
+    style: solid
+    color: "#4A90E2"
+    width: 2
+    directed: true
+    animation:
+      type: flow
+      duration: 1000
+
+  grpc-call:
+    description: "gRPC call between services"
+    tags: ["grpc", "sync"]
+    style: solid
+    color: "#00ADD8"
+    width: 2
+    directed: true
+    animation:
+      type: flow
+      duration: 800
+
+  # ─────────────────────────────────────────────
+  # Asynchronous Communication
+  # ─────────────────────────────────────────────
+  publish-event:
+    description: "Publish event to queue"
+    tags: ["messaging", "async"]
+    style: dashed
+    color: "#FF6B35"
+    width: 2
+    directed: true
+    animation:
+      type: particle
+      duration: 1500
+
+  subscribe-event:
+    description: "Subscribe to events from queue"
+    tags: ["messaging", "async"]
+    style: dashed
+    color: "#9B59B6"
+    width: 2
+    directed: true
+    animation:
+      type: particle
+      duration: 1500
+
+  # ─────────────────────────────────────────────
+  # Data Access
+  # ─────────────────────────────────────────────
+  db-query:
+    description: "Database query"
+    tags: ["database", "data"]
+    style: dashed
+    color: "#336791"
+    width: 2
+    directed: true
+    animation:
+      type: pulse
+      duration: 500
+
+  cache-access:
+    description: "Cache read/write"
+    tags: ["cache", "data"]
+    style: dotted
+    color: "#DC382D"
+    width: 2
+    directed: true
+    animation:
+      type: flow
+      duration: 300
+
+connectionRules:
+  # API to services
+  - from: rest-api
+    to: service
+    via: http-request
+
+  - from: graphql-api
+    to: service
+    via: http-request
+
+  # Services to databases
+  - from: service
+    to: postgres-db
+    via: db-query
+
+  - from: service
+    to: redis-cache
+    via: cache-access
+
+  # Services to messaging
+  - from: service
+    to: message-queue
+    via: publish-event
+
+  - from: message-queue
+    to: worker
+    via: subscribe-event
+
+  # Service to service
+  - from: service
+    to: service
+    via: http-request
+    constraints:
+      bidirectional: true

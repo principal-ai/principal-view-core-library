@@ -72,6 +72,11 @@ export type { ConfigurationFile, ConfigurationLoadResult } from './Configuration
 export { parseYaml, isYamlFile, getConfigNameFromFilename } from './utils/YamlParser';
 export type { YamlParseResult } from './utils/YamlParser';
 
+// Export component library support
+export { LibraryLoader } from './LibraryLoader';
+export { LibraryConverter } from './utils/LibraryConverter';
+export type { CreateNodeOptions, CreateEdgeOptions } from './utils/LibraryConverter';
+
 // Re-export FileSystemAdapter from repository-abstraction
 export type { FileSystemAdapter } from '@principal-ai/repository-abstraction';
 export { InMemoryFileSystemAdapter } from '@principal-ai/repository-abstraction';

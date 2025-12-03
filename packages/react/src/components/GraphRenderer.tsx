@@ -103,28 +103,11 @@ interface GraphRendererBaseProps {
   onPendingChangesChange?: (hasChanges: boolean) => void;
 }
 
-/** Props when using Canvas format (preferred) */
-interface CanvasProps extends GraphRendererBaseProps {
-  /** Extended Canvas document - the primary way to render graphs */
+/** GraphRenderer props - canvas format only */
+export interface GraphRendererProps extends GraphRendererBaseProps {
+  /** Extended Canvas document */
   canvas: ExtendedCanvas;
-  configuration?: never;
-  nodes?: never;
-  edges?: never;
 }
-
-/** Props when using legacy configuration format */
-interface LegacyConfigProps extends GraphRendererBaseProps {
-  /** Configuration for the graph (legacy mode) */
-  configuration: GraphConfiguration;
-  /** Current nodes in the graph (legacy mode) */
-  nodes: NodeState[];
-  /** Current edges in the graph (legacy mode) */
-  edges: EdgeState[];
-  canvas?: never;
-}
-
-/** GraphRenderer accepts either canvas or configuration+nodes+edges */
-export type GraphRendererProps = CanvasProps | LegacyConfigProps;
 
 // Define custom node types
 const nodeTypes = {
@@ -987,19 +970,13 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined): {
 /**
  * Core graph visualization component using xyflow.
  *
- * Supports two modes:
- * 1. Canvas mode (preferred): Pass an ExtendedCanvas document
- * 2. Legacy mode: Pass configuration + nodes + edges separately
+ * Accepts an ExtendedCanvas document for rendering.
  *
  * When `editable` is true, the component manages its own edit state internally.
  * Use the ref to get pending changes when the user wants to save:
  *
  * ```tsx
- * // Canvas mode (preferred)
  * <GraphRenderer canvas={myCanvas} />
- *
- * // Legacy mode
- * <GraphRenderer configuration={config} nodes={nodes} edges={edges} />
  *
  * // With edit mode
  * const graphRef = useRef<GraphRendererHandle>(null);
@@ -1012,24 +989,21 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined): {
  * ```
  */
 export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>((props, ref) => {
-  const { className, width = '100%', height = '100%' } = props;
+  const { canvas, className, width = '100%', height = '100%' } = props;
 
-  // Convert canvas to legacy format if canvas mode
-  const canvasData = useCanvasToLegacy('canvas' in props ? props.canvas : undefined);
-
-  // Determine which data to use
-  const configuration = canvasData?.configuration ?? ('configuration' in props ? props.configuration : undefined);
-  const nodes = canvasData?.nodes ?? ('nodes' in props ? props.nodes : undefined);
-  const edges = canvasData?.edges ?? ('edges' in props ? props.edges : undefined);
+  // Convert canvas to internal format
+  const canvasData = useCanvasToLegacy(canvas);
 
   // Validate we have required data
-  if (!configuration || !nodes || !edges) {
+  if (!canvasData) {
     return (
       <div className={className} style={{ width, height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#666' }}>No graph data provided. Pass either `canvas` or `configuration`+`nodes`+`edges`.</p>
+        <p style={{ color: '#666' }}>No canvas data provided.</p>
       </div>
     );
   }
+
+  const { configuration, nodes, edges } = canvasData;
 
   // Internal edit state ref
   const editStateRef = useRef<EditState>(createEmptyEditState());
