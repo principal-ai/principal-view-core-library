@@ -5,10 +5,11 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "bun run build:logger && bun run build:core && bun run build:react",
+    "build": "bun run build:logger && bun run build:core && bun run build:react && bun run build:cli",
     "build:logger": "cd packages/logger && bun run build",
     "build:core": "cd packages/core && bun run build",
     "build:react": "cd packages/react && bun run build",
+    "build:cli": "cd packages/cli && bun run build",
     "test": "bun run test:core",
     "test:core": "cd packages/core && bun test",
     "test:react": "cd packages/react && bun test",
@@ -23,6 +24,7 @@
     "dev:logger": "cd packages/logger && bun run dev",
     "dev:core": "cd packages/core && bun run dev",
     "dev:react": "cd packages/react && bun run dev",
+    "dev:cli": "cd packages/cli && bun run dev",
     "storybook": "bun run build:logger && bun run build:core && cd packages/react && bun run storybook",
     "build-storybook": "bun run build:logger && bun run build:core && cd packages/react && bun run build-storybook"
   },

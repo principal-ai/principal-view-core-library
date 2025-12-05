@@ -23,3 +23,17 @@ export type {
   LoggerEvent,
   LogTransport
 } from './types';
+
+// Transports
+export {
+  createRecorderTransport,
+  createBufferedRecorderTransport,
+  WebSocketTransport,
+  createWebSocketTransport,
+} from './transports';
+export type {
+  LogReceiver,
+  RecorderTransportOptions,
+  ConnectionState,
+  WebSocketTransportOptions,
+} from './transports';
