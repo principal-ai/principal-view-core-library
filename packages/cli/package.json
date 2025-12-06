@@ -1,12 +1,12 @@
 {
   "name": "@principal-ai/visual-validation-cli",
-  "version": "0.1.0",
+  "version": "0.1.5",
   "description": "Visual Validation CLI - Validate and manage .canvas configuration files",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
   "types": "dist/index.d.ts",
   "bin": {
-    "vv": "dist/index.js",
-    "visual-validation": "dist/index.js"
+    "vv": "dist/index.cjs",
+    "visual-validation": "dist/index.cjs"
   },
   "type": "module",
   "scripts": {
@@ -31,12 +31,7 @@
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {
-    "@principal-ai/visual-validation-core": "workspace:*",
-    "chalk": "^5.3.0",
-    "commander": "^12.1.0",
-    "globby": "^14.0.2"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^22.10.1",
     "esbuild": "^0.24.0",
@@ -49,7 +44,7 @@
     "LICENSE"
   ],
   "publishConfig": {
-    "access": "restricted",
+    "access": "public",
     "registry": "https://registry.npmjs.org/"
   }
 }

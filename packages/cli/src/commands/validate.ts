@@ -13,6 +13,7 @@ interface ValidationIssue {
   type: 'error' | 'warning';
   message: string;
   path?: string;
+  suggestion?: string;
 }
 
 interface ValidationResult {
@@ -23,7 +24,23 @@ interface ValidationResult {
 }
 
 /**
- * Validate an ExtendedCanvas object
+ * Standard JSON Canvas node types that don't require vv metadata
+ */
+const STANDARD_CANVAS_TYPES = ['text', 'group', 'file', 'link'] as const;
+
+/**
+ * Valid node shapes for vv.shape
+ */
+const VALID_NODE_SHAPES = ['circle', 'rectangle', 'hexagon', 'diamond', 'custom'] as const;
+
+/**
+ * Validate an ExtendedCanvas object with strict validation
+ *
+ * Strict validation ensures:
+ * - All required fields are present
+ * - Custom node types have proper vv metadata
+ * - Edge types reference defined types in vv.edgeTypes
+ * - Canvas has vv extension with name and version
  */
 function validateCanvas(canvas: unknown, filePath: string): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
@@ -34,6 +51,41 @@ function validateCanvas(canvas: unknown, filePath: string): ValidationIssue[] {
   }
 
   const c = canvas as Record<string, unknown>;
+
+  // Check vv extension (REQUIRED for strict validation)
+  let definedEdgeTypes: string[] = [];
+  if (c.vv === undefined) {
+    issues.push({
+      type: 'error',
+      message: 'Canvas must have a "vv" extension with name and version',
+      path: 'vv',
+      suggestion: 'Add: "vv": { "name": "My Graph", "version": "1.0.0" }',
+    });
+  } else if (typeof c.vv !== 'object') {
+    issues.push({ type: 'error', message: '"vv" extension must be an object' });
+  } else {
+    const vv = c.vv as Record<string, unknown>;
+    if (typeof vv.version !== 'string' || !vv.version) {
+      issues.push({
+        type: 'error',
+        message: 'vv.version is required',
+        path: 'vv.version',
+        suggestion: 'Add: "version": "1.0.0"',
+      });
+    }
+    if (typeof vv.name !== 'string' || !vv.name) {
+      issues.push({
+        type: 'error',
+        message: 'vv.name is required',
+        path: 'vv.name',
+        suggestion: 'Add: "name": "My Graph"',
+      });
+    }
+    // Collect defined edge types for later validation
+    if (vv.edgeTypes && typeof vv.edgeTypes === 'object') {
+      definedEdgeTypes = Object.keys(vv.edgeTypes as Record<string, unknown>);
+    }
+  }
 
   // Check nodes
   if (!Array.isArray(c.nodes)) {
@@ -58,16 +110,50 @@ function validateCanvas(canvas: unknown, filePath: string): ValidationIssue[] {
       if (typeof n.y !== 'number') {
         issues.push({ type: 'error', message: `Node "${n.id || index}" must have a numeric "y" position`, path: `nodes[${index}].y` });
       }
+      // Width and height are now REQUIRED (was warning)
       if (typeof n.width !== 'number') {
-        issues.push({ type: 'warning', message: `Node "${n.id || index}" is missing "width"`, path: `nodes[${index}].width` });
+        issues.push({ type: 'error', message: `Node "${n.id || index}" must have a numeric "width"`, path: `nodes[${index}].width` });
       }
       if (typeof n.height !== 'number') {
-        issues.push({ type: 'warning', message: `Node "${n.id || index}" is missing "height"`, path: `nodes[${index}].height` });
+        issues.push({ type: 'error', message: `Node "${n.id || index}" must have a numeric "height"`, path: `nodes[${index}].height` });
+      }
+
+      // Validate node type - must be standard canvas type OR have vv metadata
+      const nodeType = n.type as string;
+      const isStandardType = STANDARD_CANVAS_TYPES.includes(nodeType as typeof STANDARD_CANVAS_TYPES[number]);
+
+      if (!isStandardType) {
+        // Custom type - must have vv.nodeType with shape
+        if (!n.vv || typeof n.vv !== 'object') {
+          issues.push({
+            type: 'error',
+            message: `Node "${n.id || index}" uses custom type "${nodeType}" but has no "vv" extension`,
+            path: `nodes[${index}].vv`,
+            suggestion: `Use a standard type (${STANDARD_CANVAS_TYPES.join(', ')}) or add vv.nodeType and vv.shape`,
+          });
+        } else {
+          const nodeVv = n.vv as Record<string, unknown>;
+          if (typeof nodeVv.nodeType !== 'string' || !nodeVv.nodeType) {
+            issues.push({
+              type: 'error',
+              message: `Node "${n.id || index}" with custom type must have "vv.nodeType"`,
+              path: `nodes[${index}].vv.nodeType`,
+            });
+          }
+          if (typeof nodeVv.shape !== 'string' || !VALID_NODE_SHAPES.includes(nodeVv.shape as typeof VALID_NODE_SHAPES[number])) {
+            issues.push({
+              type: 'error',
+              message: `Node "${n.id || index}" must have a valid "vv.shape"`,
+              path: `nodes[${index}].vv.shape`,
+              suggestion: `Valid shapes: ${VALID_NODE_SHAPES.join(', ')}`,
+            });
+          }
+        }
       }
     });
   }
 
-  // Check edges (optional)
+  // Check edges (optional but validated strictly if present)
   if (c.edges !== undefined && !Array.isArray(c.edges)) {
     issues.push({ type: 'error', message: '"edges" must be an array if present' });
   } else if (Array.isArray(c.edges)) {
@@ -93,24 +179,29 @@ function validateCanvas(canvas: unknown, filePath: string): ValidationIssue[] {
       } else if (!nodeIds.has(e.toNode)) {
         issues.push({ type: 'error', message: `Edge "${e.id || index}" references unknown node "${e.toNode}"`, path: `edges[${index}].toNode` });
       }
-    });
-  }
 
-  // Check vv extension (optional but recommended)
-  if (c.vv !== undefined) {
-    if (typeof c.vv !== 'object') {
-      issues.push({ type: 'error', message: '"vv" extension must be an object' });
-    } else {
-      const vv = c.vv as Record<string, unknown>;
-      if (typeof vv.version !== 'string') {
-        issues.push({ type: 'warning', message: 'vv.version is recommended', path: 'vv.version' });
+      // Validate edge type if vv.edgeType is specified
+      if (e.vv && typeof e.vv === 'object') {
+        const edgeVv = e.vv as Record<string, unknown>;
+        if (edgeVv.edgeType && typeof edgeVv.edgeType === 'string') {
+          if (definedEdgeTypes.length === 0) {
+            issues.push({
+              type: 'error',
+              message: `Edge "${e.id || index}" uses edgeType "${edgeVv.edgeType}" but no edge types are defined in vv.edgeTypes`,
+              path: `edges[${index}].vv.edgeType`,
+              suggestion: 'Define edge types in the canvas vv.edgeTypes object',
+            });
+          } else if (!definedEdgeTypes.includes(edgeVv.edgeType)) {
+            issues.push({
+              type: 'error',
+              message: `Edge "${e.id || index}" uses undefined edgeType "${edgeVv.edgeType}"`,
+              path: `edges[${index}].vv.edgeType`,
+              suggestion: `Defined types: ${definedEdgeTypes.join(', ')}`,
+            });
+          }
+        }
       }
-      if (typeof vv.name !== 'string') {
-        issues.push({ type: 'warning', message: 'vv.name is recommended', path: 'vv.name' });
-      }
-    }
-  } else {
-    issues.push({ type: 'warning', message: '"vv" extension is recommended for Visual Validation metadata' });
+    });
   }
 
   return issues;
@@ -214,6 +305,9 @@ export function createValidateCommand(): Command {
                 const icon = issue.type === 'error' ? '✗' : '⚠';
                 const color = issue.type === 'error' ? chalk.red : chalk.yellow;
                 console.log(color(`  ${icon} ${issue.message}`));
+                if (issue.suggestion) {
+                  console.log(chalk.dim(`    → ${issue.suggestion}`));
+                }
               });
             }
           }
