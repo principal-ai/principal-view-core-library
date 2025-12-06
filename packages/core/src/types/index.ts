@@ -35,7 +35,10 @@ export interface NodeTypeDefinition {
   /** Visual representation */
   shape: 'circle' | 'rectangle' | 'hexagon' | 'diamond' | 'custom';
   icon?: string;
+  /** Fill color (used as primary node color) */
   color?: string;
+  /** Stroke/border color */
+  stroke?: string;
   size?: { width: number; height: number };
 
   /** Data schema for this node type */

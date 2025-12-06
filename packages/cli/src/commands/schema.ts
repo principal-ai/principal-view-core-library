@@ -73,8 +73,10 @@ ${chalk.bold('Custom Node Types:')}
     ${chalk.green('"vv"')}: {
       ${chalk.yellow('"nodeType"')}: "api-gateway",  ${chalk.dim('// Required')}
       ${chalk.yellow('"shape"')}: "rectangle",       ${chalk.dim('// Required')}
-      ${chalk.yellow('"icon"')}: "Server",           ${chalk.dim('// Optional: Lucide icon')}
-      ${chalk.yellow('"sources"')}: ["src/api/**"]   ${chalk.dim('// Optional: file patterns')}
+      ${chalk.cyan('"fill"')}: "#3b82f6",           ${chalk.dim('// Optional: fill color')}
+      ${chalk.cyan('"stroke"')}: "#1d4ed8",         ${chalk.dim('// Optional: border color')}
+      ${chalk.cyan('"icon"')}: "Server",            ${chalk.dim('// Optional: Lucide icon')}
+      ${chalk.cyan('"sources"')}: ["src/api/**"]    ${chalk.dim('// Optional: file patterns')}
     }
   ${chalk.dim('}')}
 
@@ -177,6 +179,8 @@ ${chalk.bold('Node-Level vv (for custom types):')}
     ${chalk.green('"vv"')}: {
       ${chalk.yellow('"nodeType"')}: "service",        ${chalk.dim('// Required: Type identifier')}
       ${chalk.yellow('"shape"')}: "rectangle",         ${chalk.dim('// Required: Visual shape')}
+      ${chalk.cyan('"fill"')}: "#3b82f6",             ${chalk.dim('// Optional: Fill color (hex)')}
+      ${chalk.cyan('"stroke"')}: "#1d4ed8",           ${chalk.dim('// Optional: Border color (hex)')}
       ${chalk.cyan('"icon"')}: "Server",              ${chalk.dim('// Optional: Lucide icon name')}
       ${chalk.cyan('"sources"')}: ["src/**/*.ts"],    ${chalk.dim('// Optional: Source patterns')}
       ${chalk.cyan('"states"')}: {                    ${chalk.dim('// Optional: State definitions')}
@@ -259,10 +263,11 @@ ${chalk.dim('─'.repeat(50))}
       "x": 100, "y": 100,
       "width": 150, "height": 80,
       "text": "API Gateway",
-      "color": "#3b82f6",
       "vv": {
         "nodeType": "service",
         "shape": "rectangle",
+        "fill": "#3b82f6",
+        "stroke": "#1d4ed8",
         "icon": "Server",
         "sources": ["src/api/**/*.ts"]
       }
@@ -273,10 +278,11 @@ ${chalk.dim('─'.repeat(50))}
       "x": 350, "y": 100,
       "width": 150, "height": 80,
       "text": "Database",
-      "color": "#8b5cf6",
       "vv": {
         "nodeType": "database",
         "shape": "hexagon",
+        "fill": "#8b5cf6",
+        "stroke": "#6d28d9",
         "icon": "Database"
       }
     }

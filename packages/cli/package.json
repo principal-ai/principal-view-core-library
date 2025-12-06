@@ -1,6 +1,6 @@
 {
   "name": "@principal-ai/visual-validation-cli",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Visual Validation CLI - Validate and manage .canvas configuration files",
   "main": "dist/index.cjs",
   "types": "dist/index.d.ts",

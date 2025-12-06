@@ -12,7 +12,7 @@ import { createListCommand } from './commands/list.js';
 import { createSchemaCommand } from './commands/schema.js';
 
 // Version is injected at build time via package.json
-const VERSION = '0.1.6';
+const VERSION = '0.1.7';
 
 const program = new Command();
 

@@ -888,10 +888,16 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined): {
       const nodeType = vv?.nodeType || node.id;
 
       if (!nodeTypes[nodeType]) {
+        // Color priority: vv.fill > node.color > vv.states.idle.color
+        const fillColor = vv?.fill
+          || (typeof node.color === 'string' ? node.color : undefined)
+          || vv?.states?.idle?.color;
+
         nodeTypes[nodeType] = {
           shape: vv?.shape || 'rectangle',
           icon: vv?.icon,
-          color: vv?.states?.idle?.color || (typeof node.color === 'string' ? node.color : undefined),
+          color: fillColor,
+          stroke: vv?.stroke,
           size: { width: node.width, height: node.height },
           dataSchema: vv?.dataSchema || {},
           states: vv?.states,

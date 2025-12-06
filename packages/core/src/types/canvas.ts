@@ -219,6 +219,10 @@ export interface VVNodeExtension {
   shape?: VVNodeShape;
   /** Icon identifier (Lucide icons) */
   icon?: string;
+  /** Fill color (hex string) - takes priority over node.color */
+  fill?: string;
+  /** Stroke/border color (hex string) */
+  stroke?: string;
   /** State definitions */
   states?: Record<string, VVNodeState>;
   /** Source file patterns for log association */

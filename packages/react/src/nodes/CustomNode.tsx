@@ -44,10 +44,16 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
     );
   }
 
-  // Get color based on state or default
+  // Get fill color based on state or default
   const baseColor = typeDefinition.color || '#888';
   const stateColor = state && typeDefinition.states?.[state]?.color;
-  const color = stateColor || baseColor;
+  const fillColor = stateColor || baseColor;
+
+  // Get stroke color - fallback to fill color if not specified
+  const strokeColor = typeDefinition.stroke || fillColor;
+
+  // Use fillColor as the primary "color" for backwards compatibility
+  const color = fillColor;
 
   // Get label from data schema
   const labelField = Object.entries(typeDefinition.dataSchema).find(
@@ -83,7 +89,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
     const baseStyles = {
       padding: '12px 16px',
       backgroundColor: 'white',
-      border: `2px solid ${hasViolations ? '#D0021B' : color}`,
+      border: `2px solid ${hasViolations ? '#D0021B' : strokeColor}`,
       fontSize: '12px',
       fontWeight: 500,
       minWidth: typeDefinition.size?.width || 80,
@@ -93,7 +99,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
       alignItems: 'center',
       justifyContent: 'center',
       gap: '4px',
-      boxShadow: selected ? `0 0 0 2px ${color}` : '0 2px 4px rgba(0,0,0,0.1)',
+      boxShadow: selected ? `0 0 0 2px ${strokeColor}` : '0 2px 4px rgba(0,0,0,0.1)',
       transition: 'all 0.2s ease',
       animationDuration: animationType ? `${animationDuration}ms` : undefined,
     };
@@ -150,10 +156,10 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
   const hexagonBorderStyle: React.CSSProperties = isHexagon ? {
     position: 'relative',
     clipPath: hexagonClipPath,
-    backgroundColor: hasViolations ? '#D0021B' : color,
+    backgroundColor: hasViolations ? '#D0021B' : strokeColor,
     width: typeDefinition.size?.width || 120,
     height: typeDefinition.size?.height || 120,
-    boxShadow: selected ? `0 0 0 2px ${color}` : '0 2px 4px rgba(0,0,0,0.1)',
+    boxShadow: selected ? `0 0 0 2px ${strokeColor}` : '0 2px 4px rgba(0,0,0,0.1)',
     transition: 'all 0.2s ease',
   } : {};
 
