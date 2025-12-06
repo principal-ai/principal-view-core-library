@@ -14,7 +14,7 @@ import { createDoctorCommand } from './commands/doctor.js';
 import { createHooksCommand } from './commands/hooks.js';
 
 // Version is injected at build time via package.json
-const VERSION = '0.1.8';
+const VERSION = '0.1.9';
 
 const program = new Command();
 
