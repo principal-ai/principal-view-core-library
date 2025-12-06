@@ -4,7 +4,6 @@ import {
   Background,
   Controls,
   MiniMap,
-  Panel,
   ReactFlowProvider,
   useReactFlow,
   applyNodeChanges,
@@ -460,6 +459,102 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     setPendingConnection(null);
   }, []);
 
+  // Track whether reconnection succeeded
+  const edgeReconnectSuccessful = useRef(true);
+
+  // Called when user starts dragging an edge endpoint
+  const handleReconnectStart = useCallback(() => {
+    edgeReconnectSuccessful.current = false;
+  }, []);
+
+  // Handle edge reconnection (dragging edge endpoint to new node)
+  const handleReconnect = useCallback((oldEdge: Edge, newConnection: Connection) => {
+    if (!editable || !newConnection.source || !newConnection.target) return;
+
+    // Find the original edge in our local state
+    const originalEdge = localEdges.find(e => e.id === oldEdge.id);
+    if (!originalEdge) return;
+
+    // Find source and target node types for validation
+    const sourceNode = nodes.find(n => n.id === newConnection.source);
+    const targetNode = nodes.find(n => n.id === newConnection.target);
+    if (!sourceNode || !targetNode) return;
+
+    // Check if the new connection is valid for this edge type
+    const isValidConnection = configuration.allowedConnections.some(
+      ac => ac.from === sourceNode.type && ac.to === targetNode.type && ac.via === originalEdge.type
+    );
+
+    if (!isValidConnection) {
+      console.warn(`Cannot reconnect: ${originalEdge.type} edge not allowed from ${sourceNode.type} to ${targetNode.type}`);
+      return;
+    }
+
+    // Mark as successful before updating
+    edgeReconnectSuccessful.current = true;
+
+    // Update local edges - manually update the edge to preserve its type and id
+    setLocalEdges(prev => prev.map(edge => {
+      if (edge.id === oldEdge.id) {
+        return {
+          ...edge,
+          from: newConnection.source!,
+          to: newConnection.target!,
+          sourceHandle: newConnection.sourceHandle ?? undefined,
+          targetHandle: newConnection.targetHandle ?? undefined,
+          updatedAt: Date.now(),
+        };
+      }
+      return edge;
+    }));
+
+    // Track the change - remove old edge and add new one
+    updateEditState(prev => {
+      // Check if this was a newly created edge
+      const createdEdgeIndex = prev.createdEdges.findIndex(e => e.id === oldEdge.id);
+
+      if (createdEdgeIndex >= 0) {
+        // Update the created edge entry
+        const newCreatedEdges = [...prev.createdEdges];
+        newCreatedEdges[createdEdgeIndex] = {
+          ...newCreatedEdges[createdEdgeIndex],
+          from: newConnection.source!,
+          to: newConnection.target!,
+          sourceHandle: newConnection.sourceHandle ?? undefined,
+          targetHandle: newConnection.targetHandle ?? undefined,
+        };
+        return { ...prev, createdEdges: newCreatedEdges };
+      }
+
+      // For existing edges, track as delete + create
+      const newDeletedEdges = [...prev.deletedEdges, {
+        id: oldEdge.id,
+        from: originalEdge.from,
+        to: originalEdge.to,
+        type: originalEdge.type,
+      }];
+
+      const newCreatedEdges = [...prev.createdEdges, {
+        id: oldEdge.id,
+        from: newConnection.source!,
+        to: newConnection.target!,
+        type: originalEdge.type,
+        sourceHandle: newConnection.sourceHandle ?? undefined,
+        targetHandle: newConnection.targetHandle ?? undefined,
+      }];
+
+      return { ...prev, deletedEdges: newDeletedEdges, createdEdges: newCreatedEdges };
+    });
+  }, [editable, localEdges, nodes, configuration.allowedConnections, updateEditState]);
+
+  // Called when reconnection ends (whether successful or not)
+  const handleReconnectEnd = useCallback(() => {
+    // If reconnection wasn't successful, the edge was dropped in empty space
+    // We need to keep the original edge (do nothing, it's still in localEdges)
+    // Edge is still in localEdges, no action needed - ReactFlow will re-render with it
+    edgeReconnectSuccessful.current = true;
+  }, []);
+
   // ============================================
   // SELECTED ITEMS
   // ============================================
@@ -736,9 +831,13 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         nodesDraggable={editable}
         elementsSelectable={editable}
         nodesConnectable={editable}
+        edgesReconnectable={editable}
         onNodesChange={handleNodesChange}
         onConnect={handleConnect}
-        panOnDrag={!editable}
+        onReconnectStart={handleReconnectStart}
+        onReconnect={handleReconnect}
+        onReconnectEnd={handleReconnectEnd}
+        panOnDrag
         selectionOnDrag={false}
       >
         {showBackground && <Background color="#e5e5e5" gap={16} size={1} />}
@@ -755,25 +854,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           />
         )}
 
-        <Panel position="top-left" style={{
-          backgroundColor: 'white',
-          padding: '8px 12px',
-          borderRadius: '4px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          fontSize: '12px',
-        }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-            {configuration.metadata.name}
-          </div>
-          <div style={{ color: '#666' }}>
-            {nodes.length} nodes • {edges.length} edges
-            {violations.length > 0 && (
-              <span style={{ color: '#D0021B', marginLeft: '8px' }}>
-                • {violations.length} violations
-              </span>
-            )}
-          </div>
-        </Panel>
       </ReactFlow>
 
       {selectedEdge && selectedEdgeTypeDefinition && (
