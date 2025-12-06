@@ -1,4 +1,4 @@
-import type { Node, Edge } from '@xyflow/react';
+import { MarkerType, type Node, type Edge } from '@xyflow/react';
 import type { NodeState, EdgeState, GraphConfiguration, Violation } from '@principal-ai/visual-validation-core';
 import type { CustomNodeData } from '../nodes/CustomNode';
 import type { CustomEdgeData } from '../edges/CustomEdge';
@@ -61,6 +61,14 @@ export function convertToXYFlowEdges(
     const hasViolations = violations.some(v => v.context?.edgeId === edge.id);
     const edgeWithHandles = edge as EdgeStateWithHandles;
 
+    // Add arrow marker if edge type is directed
+    const markerEnd = typeDefinition?.directed !== false ? {
+      type: MarkerType.ArrowClosed,
+      color: typeDefinition?.color || '#888',
+      width: 20,
+      height: 20,
+    } : undefined;
+
     return {
       id: edge.id,
       source: edge.from,
@@ -69,6 +77,7 @@ export function convertToXYFlowEdges(
       targetHandle: edgeWithHandles.targetHandle,
       type: 'custom',
       animated: typeDefinition?.style === 'animated',
+      markerEnd,
       data: {
         typeDefinition,
         hasViolations,
