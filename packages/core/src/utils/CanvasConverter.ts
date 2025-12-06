@@ -274,7 +274,10 @@ export class CanvasConverter {
             label: this.getNodeLabel(node),
             shape: vv?.shape || 'rectangle',
             icon: vv?.icon,
-            color: resolveCanvasColor(node.color),
+            // Color priority: vv.fill > node.color
+            color: vv?.fill || resolveCanvasColor(node.color),
+            // Stroke color for borders
+            stroke: vv?.stroke,
             width: node.width,
             height: node.height,
             sources: vv?.sources || [],

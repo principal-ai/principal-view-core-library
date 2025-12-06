@@ -45,12 +45,15 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
   }
 
   // Get fill color based on state or default
-  const baseColor = typeDefinition.color || '#888';
+  // Priority: state color > node data color > type definition color > default
+  const nodeDataColor = nodeData.color as string | undefined;
+  const baseColor = nodeDataColor || typeDefinition.color || '#888';
   const stateColor = state && typeDefinition.states?.[state]?.color;
   const fillColor = stateColor || baseColor;
 
-  // Get stroke color - fallback to fill color if not specified
-  const strokeColor = typeDefinition.stroke || fillColor;
+  // Get stroke color - priority: node data stroke > type definition stroke > fill color
+  const nodeDataStroke = nodeData.stroke as string | undefined;
+  const strokeColor = nodeDataStroke || typeDefinition.stroke || fillColor;
 
   // Use fillColor as the primary "color" for backwards compatibility
   const color = fillColor;
