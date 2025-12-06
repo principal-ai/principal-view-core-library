@@ -6,30 +6,26 @@
  */
 
 import { Command } from 'commander';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 import { createValidateCommand } from './commands/validate.js';
 import { createInitCommand } from './commands/init.js';
 import { createListCommand } from './commands/list.js';
+import { createSchemaCommand } from './commands/schema.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Get version from package.json
-const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8'));
+// Version is injected at build time via package.json
+const VERSION = '0.1.6';
 
 const program = new Command();
 
 program
   .name('vv')
   .description('Visual Validation CLI - Validate and manage .canvas configuration files')
-  .version(packageJson.version);
+  .version(VERSION);
 
 // Add commands
 program.addCommand(createInitCommand());
 program.addCommand(createValidateCommand());
 program.addCommand(createListCommand());
+program.addCommand(createSchemaCommand());
 
 // Parse command line arguments
 program.parse(process.argv);
