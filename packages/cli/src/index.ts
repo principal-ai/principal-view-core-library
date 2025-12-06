@@ -11,9 +11,10 @@ import { createInitCommand } from './commands/init.js';
 import { createListCommand } from './commands/list.js';
 import { createSchemaCommand } from './commands/schema.js';
 import { createDoctorCommand } from './commands/doctor.js';
+import { createHooksCommand } from './commands/hooks.js';
 
 // Version is injected at build time via package.json
-const VERSION = '0.1.7';
+const VERSION = '0.1.8';
 
 const program = new Command();
 
@@ -28,6 +29,7 @@ program.addCommand(createValidateCommand());
 program.addCommand(createListCommand());
 program.addCommand(createSchemaCommand());
 program.addCommand(createDoctorCommand());
+program.addCommand(createHooksCommand());
 
 // Parse command line arguments
 program.parse(process.argv);
