@@ -6,66 +6,18 @@ import { Command } from 'commander';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import chalk from 'chalk';
-import type { ExtendedCanvas } from '@principal-ai/visual-validation-core';
+import type { ExtendedCanvas, ComponentLibrary } from '@principal-ai/visual-validation-core';
+
+const TEMPLATE_LIBRARY: ComponentLibrary = {
+  version: '1.0.0',
+  name: 'Component Library',
+  nodeComponents: {},
+  edgeComponents: {},
+};
 
 const TEMPLATE_CANVAS: ExtendedCanvas = {
-  nodes: [
-    {
-      id: 'component-1',
-      type: 'text',
-      x: 100,
-      y: 100,
-      width: 140,
-      height: 80,
-      text: 'Component 1',
-      color: '#3b82f6',
-      vv: {
-        nodeType: 'service',
-        shape: 'rectangle',
-        icon: 'Server',
-        sources: ['src/**/*.ts'],
-      },
-    },
-    {
-      id: 'component-2',
-      type: 'text',
-      x: 350,
-      y: 100,
-      width: 140,
-      height: 80,
-      text: 'Component 2',
-      color: '#8b5cf6',
-      vv: {
-        nodeType: 'database',
-        shape: 'hexagon',
-        icon: 'Database',
-        sources: ['src/db/**/*.ts'],
-      },
-    },
-  ],
-  edges: [
-    {
-      id: 'edge-1-2',
-      fromNode: 'component-1',
-      toNode: 'component-2',
-      vv: {
-        edgeType: 'data-flow',
-      },
-    },
-  ],
-  vv: {
-    name: 'My Architecture',
-    version: '1.0.0',
-    description: 'Architecture diagram for my project',
-    edgeTypes: {
-      'data-flow': {
-        style: 'solid',
-        color: '#64748b',
-        width: 2,
-        directed: true,
-      },
-    },
-  },
+  nodes: [],
+  edges: [],
 };
 
 export function createInitCommand(): Command {
@@ -79,39 +31,42 @@ export function createInitCommand(): Command {
       try {
         const vgcDir = join(process.cwd(), '.vgc');
         const canvasFile = join(vgcDir, `${options.name}.canvas`);
+        const libraryFile = join(vgcDir, 'library.yaml');
 
         // Check if .vgc directory exists
-        if (existsSync(vgcDir)) {
-          if (existsSync(canvasFile) && !options.force) {
-            console.log(chalk.yellow(`Canvas file already exists: ${canvasFile}`));
-            console.log(chalk.dim('Use --force to overwrite'));
-            return;
-          }
-        } else {
+        if (!existsSync(vgcDir)) {
           mkdirSync(vgcDir, { recursive: true });
           console.log(chalk.green(`Created directory: .vgc/`));
         }
 
-        // Create the template canvas with the provided name
-        const canvas = {
-          ...TEMPLATE_CANVAS,
-          vv: {
-            ...TEMPLATE_CANVAS.vv,
-            name: options.name.charAt(0).toUpperCase() + options.name.slice(1).replace(/-/g, ' '),
-          },
-        };
+        // Create canvas file
+        if (existsSync(canvasFile) && !options.force) {
+          console.log(chalk.yellow(`Canvas file already exists: .vgc/${options.name}.canvas`));
+        } else {
+          writeFileSync(canvasFile, JSON.stringify(TEMPLATE_CANVAS, null, 2));
+          console.log(chalk.green(`Created canvas file: .vgc/${options.name}.canvas`));
+        }
 
-        // Write the canvas file
-        writeFileSync(canvasFile, JSON.stringify(canvas, null, 2));
-        console.log(chalk.green(`Created canvas file: .vgc/${options.name}.canvas`));
+        // Create library file
+        if (existsSync(libraryFile) && !options.force) {
+          console.log(chalk.yellow(`Library file already exists: .vgc/library.yaml`));
+        } else {
+          const libraryYaml = `version: "1.0.0"
+name: "Component Library"
 
-        // Add .vgc to .gitignore suggestion
+nodeComponents: {}
+
+edgeComponents: {}
+`;
+          writeFileSync(libraryFile, libraryYaml);
+          console.log(chalk.green(`Created library file: .vgc/library.yaml`));
+        }
+
         console.log('');
         console.log(chalk.bold('Next steps:'));
-        console.log(`  1. Edit ${chalk.cyan(`.vgc/${options.name}.canvas`)} to define your architecture`);
-        console.log(`  2. Run ${chalk.cyan('vv validate')} to check your configuration`);
-        console.log('');
-        console.log(chalk.dim('Tip: You can open .canvas files in Obsidian or any JSON editor'));
+        console.log(`  1. Define components in ${chalk.cyan('.vgc/library.yaml')}`);
+        console.log(`  2. Build your graph in ${chalk.cyan(`.vgc/${options.name}.canvas`)}`);
+        console.log(`  3. Run ${chalk.cyan('vv validate')} to check your configuration`);
       } catch (error) {
         console.error(chalk.red('Error:'), (error as Error).message);
         process.exit(1);

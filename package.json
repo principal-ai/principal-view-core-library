@@ -26,7 +26,8 @@
     "dev:react": "cd packages/react && bun run dev",
     "dev:cli": "cd packages/cli && bun run dev",
     "storybook": "bun run build:logger && bun run build:core && cd packages/react && bun run storybook",
-    "build-storybook": "bun run build:logger && bun run build:core && cd packages/react && bun run build-storybook"
+    "build-storybook": "bun run build:logger && bun run build:core && cd packages/react && bun run build-storybook",
+    "doctor": "node packages/cli/dist/index.cjs doctor"
   },
   "devDependencies": {
     "@types/bun": "latest",
