@@ -67,6 +67,13 @@ edgeComponents: {}
         console.log(`  1. Define components in ${chalk.cyan('.vgc/library.yaml')}`);
         console.log(`  2. Build your graph in ${chalk.cyan(`.vgc/${options.name}.canvas`)}`);
         console.log(`  3. Run ${chalk.cyan('vv validate')} to check your configuration`);
+        console.log('');
+        console.log(chalk.bold('Tips:'));
+        console.log(`  • Add ${chalk.cyan('color')} to nodes or edges to customize their appearance`);
+        console.log(`  • Use presets (1-6) or hex values: 1=red, 2=orange, 3=yellow, 4=green, 5=cyan, 6=purple`);
+        console.log(`  • Edge styles: ${chalk.cyan('solid')}, ${chalk.cyan('dashed')}, ${chalk.cyan('dotted')}, ${chalk.cyan('animated')}`);
+        console.log(`  • Add ${chalk.cyan('icon')} to nodes using Lucide icon names (e.g., "Database", "Globe")`);
+        console.log(`  • Add ${chalk.cyan('label')} to edges to describe connections`);
       } catch (error) {
         console.error(chalk.red('Error:'), (error as Error).message);
         process.exit(1);
