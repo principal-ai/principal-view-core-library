@@ -303,9 +303,25 @@ export interface VVDisplayConfig {
 }
 
 /**
+ * Node type definition (stored at canvas level in vv.nodeTypes)
+ */
+export interface VVNodeTypeDefinition {
+  /** Display label */
+  label?: string;
+  /** Fill color (hex string) */
+  color?: string;
+  /** Icon identifier (Lucide icons) */
+  icon?: string;
+  /** Visual shape */
+  shape?: VVNodeShape;
+}
+
+/**
  * Edge type definition (stored at canvas level)
  */
 export interface VVEdgeTypeDefinition {
+  /** Display label */
+  label?: string;
   /** Line style */
   style?: VVEdgeStyle;
   /** Line color */
@@ -320,8 +336,8 @@ export interface VVEdgeTypeDefinition {
     duration?: number;
     color?: string;
   };
-  /** Label configuration */
-  label?: {
+  /** Label configuration (for dynamic labels) */
+  labelConfig?: {
     field?: string;
     position?: 'start' | 'middle' | 'end';
   };
@@ -339,6 +355,8 @@ export interface VVCanvasExtension {
   name: string;
   /** Description */
   description?: string;
+  /** Node type definitions (shared across nodes) */
+  nodeTypes?: Record<string, VVNodeTypeDefinition>;
   /** Edge type definitions (shared across edges) */
   edgeTypes?: Record<string, VVEdgeTypeDefinition>;
   /** Path-based configuration */

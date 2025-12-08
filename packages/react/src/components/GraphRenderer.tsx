@@ -962,10 +962,22 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined): {
     const nodeTypes: GraphConfiguration['nodeTypes'] = {};
     const edgeTypes: GraphConfiguration['edgeTypes'] = {};
 
-    // Extract node types from canvas nodes
+    // First, add node types from canvas vv.nodeTypes (the authoritative definitions)
+    if (canvas.vv?.nodeTypes) {
+      for (const [id, def] of Object.entries(canvas.vv.nodeTypes)) {
+        nodeTypes[id] = {
+          shape: def.shape || 'rectangle',
+          icon: def.icon,
+          color: def.color,
+          dataSchema: {},
+        };
+      }
+    }
+
+    // Then extract node types from canvas nodes (for nodes that define their own types)
     for (const node of canvas.nodes || []) {
       const vv = node.vv;
-      const nodeType = vv?.nodeType || node.id;
+      const nodeType = vv?.nodeType || node.type;
 
       if (!nodeTypes[nodeType]) {
         // Color priority: vv.fill > node.color > vv.states.idle.color
@@ -995,7 +1007,7 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined): {
           width: def.width,
           directed: def.directed,
           animation: def.animation,
-          label: def.label,
+          label: def.labelConfig,
         };
       }
     }

@@ -170,7 +170,7 @@ export class LibraryConverter {
         width: component.width,
         directed: component.directed,
         animation: component.animation,
-        label: component.label,
+        labelConfig: component.label,
       };
     }
 

@@ -92,6 +92,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
     const baseStyles = {
       padding: '12px 16px',
       backgroundColor: 'white',
+      color: '#000',
       border: `2px solid ${hasViolations ? '#D0021B' : strokeColor}`,
       fontSize: '12px',
       fontWeight: 500,
@@ -175,6 +176,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
     bottom: hexagonBorderWidth,
     clipPath: hexagonClipPath,
     backgroundColor: 'white',
+    color: '#000',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',

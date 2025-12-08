@@ -54,6 +54,7 @@ function validateCanvas(canvas: unknown, filePath: string): ValidationIssue[] {
 
   // Check vv extension (REQUIRED for strict validation)
   let definedEdgeTypes: string[] = [];
+  let definedNodeTypes: string[] = [];
   if (c.vv === undefined) {
     issues.push({
       type: 'error',
@@ -84,6 +85,10 @@ function validateCanvas(canvas: unknown, filePath: string): ValidationIssue[] {
     // Collect defined edge types for later validation
     if (vv.edgeTypes && typeof vv.edgeTypes === 'object') {
       definedEdgeTypes = Object.keys(vv.edgeTypes as Record<string, unknown>);
+    }
+    // Collect defined node types for later validation
+    if (vv.nodeTypes && typeof vv.nodeTypes === 'object') {
+      definedNodeTypes = Object.keys(vv.nodeTypes as Record<string, unknown>);
     }
   }
 
@@ -146,6 +151,28 @@ function validateCanvas(canvas: unknown, filePath: string): ValidationIssue[] {
               message: `Node "${n.id || index}" must have a valid "vv.shape"`,
               path: `nodes[${index}].vv.shape`,
               suggestion: `Valid shapes: ${VALID_NODE_SHAPES.join(', ')}`,
+            });
+          }
+        }
+      }
+
+      // Validate vv.nodeType references a defined nodeType (for any node with vv.nodeType)
+      if (n.vv && typeof n.vv === 'object') {
+        const nodeVv = n.vv as Record<string, unknown>;
+        if (typeof nodeVv.nodeType === 'string' && nodeVv.nodeType) {
+          if (definedNodeTypes.length === 0) {
+            issues.push({
+              type: 'error',
+              message: `Node "${n.id || index}" uses nodeType "${nodeVv.nodeType}" but no node types are defined in vv.nodeTypes`,
+              path: `nodes[${index}].vv.nodeType`,
+              suggestion: 'Define node types in the canvas vv.nodeTypes object',
+            });
+          } else if (!definedNodeTypes.includes(nodeVv.nodeType)) {
+            issues.push({
+              type: 'error',
+              message: `Node "${n.id || index}" uses undefined nodeType "${nodeVv.nodeType}"`,
+              path: `nodes[${index}].vv.nodeType`,
+              suggestion: `Defined types: ${definedNodeTypes.join(', ')}`,
             });
           }
         }

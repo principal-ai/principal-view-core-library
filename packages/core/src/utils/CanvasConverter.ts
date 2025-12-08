@@ -289,7 +289,8 @@ export class CanvasConverter {
             ...(node.type === 'link' ? { url: node.url } : {}),
           },
           position: { x: node.x, y: node.y },
-          state: 'idle',
+          // Don't set a default state - only show state labels when explicitly set via events
+          state: undefined,
           createdAt: now,
           updatedAt: now,
         });
