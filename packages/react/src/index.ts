@@ -22,6 +22,10 @@ export type {
   EdgeState,
   ConfigurationFile,
   ConfigurationLoadResult,
+  // Library types for loading .vgc/library.yaml
+  ComponentLibrary,
+  LibraryNodeComponent,
+  LibraryEdgeComponent,
 } from '@principal-ai/visual-validation-core';
 
 // Export components

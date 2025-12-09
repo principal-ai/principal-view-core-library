@@ -13,7 +13,7 @@ import {
   type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { GraphConfiguration, NodeState, EdgeState, Violation, GraphEvent, ExtendedCanvas } from '@principal-ai/visual-validation-core';
+import type { GraphConfiguration, NodeState, EdgeState, Violation, GraphEvent, ExtendedCanvas, ComponentLibrary } from '@principal-ai/visual-validation-core';
 import { CanvasConverter } from '@principal-ai/visual-validation-core';
 import { CustomNode } from '../nodes/CustomNode';
 import type { CustomNodeData } from '../nodes/CustomNode';
@@ -106,6 +106,13 @@ interface GraphRendererBaseProps {
 export interface GraphRendererProps extends GraphRendererBaseProps {
   /** Extended Canvas document */
   canvas: ExtendedCanvas;
+
+  /**
+   * Optional component library containing reusable node and edge type definitions.
+   * Types from the library are merged with canvas-level types, with canvas types taking precedence.
+   * This allows sharing type definitions across multiple canvas files via a library.yaml file.
+   */
+  library?: ComponentLibrary;
 }
 
 // Define custom node types
@@ -948,7 +955,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 /**
  * Convert canvas to legacy configuration format for internal use
  */
-function useCanvasToLegacy(canvas: ExtendedCanvas | undefined): {
+function useCanvasToLegacy(canvas: ExtendedCanvas | undefined, library?: ComponentLibrary): {
   configuration: GraphConfiguration;
   nodes: NodeState[];
   edges: EdgeState[];
@@ -962,7 +969,35 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined): {
     const nodeTypes: GraphConfiguration['nodeTypes'] = {};
     const edgeTypes: GraphConfiguration['edgeTypes'] = {};
 
-    // First, add node types from canvas vv.nodeTypes (the authoritative definitions)
+    // First, add node types from library (lowest priority - can be overridden by canvas)
+    if (library?.nodeComponents) {
+      for (const [id, component] of Object.entries(library.nodeComponents)) {
+        nodeTypes[id] = {
+          shape: component.shape || 'rectangle',
+          icon: component.icon,
+          color: component.color,
+          size: component.size,
+          dataSchema: component.dataSchema || {},
+          states: component.states,
+          layout: component.layout,
+        };
+      }
+    }
+
+    // Then, add edge types from library
+    if (library?.edgeComponents) {
+      for (const [id, component] of Object.entries(library.edgeComponents)) {
+        edgeTypes[id] = {
+          style: component.style || 'solid',
+          color: component.color,
+          width: component.width,
+          directed: component.directed,
+          animation: component.animation,
+        };
+      }
+    }
+
+    // Next, add node types from canvas vv.nodeTypes (overrides library)
     if (canvas.vv?.nodeTypes) {
       for (const [id, def] of Object.entries(canvas.vv.nodeTypes)) {
         nodeTypes[id] = {
@@ -1062,7 +1097,7 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined): {
     };
 
     return { configuration, nodes, edges };
-  }, [canvas]);
+  }, [canvas, library]);
 }
 
 /**
@@ -1087,10 +1122,10 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined): {
  * ```
  */
 export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>((props, ref) => {
-  const { canvas, className, width = '100%', height = '100%' } = props;
+  const { canvas, library, className, width = '100%', height = '100%' } = props;
 
-  // Convert canvas to internal format
-  const canvasData = useCanvasToLegacy(canvas);
+  // Convert canvas to internal format (merging library types if provided)
+  const canvasData = useCanvasToLegacy(canvas, library);
 
   // Validate we have required data
   if (!canvasData) {
