@@ -215,6 +215,8 @@ export interface VVEdgeActivation {
 export interface VVNodeExtension {
   /** Custom node type identifier */
   nodeType: string;
+  /** Description of this node */
+  description?: string;
   /** Visual shape */
   shape?: VVNodeShape;
   /** Icon identifier (Lucide icons) */
@@ -308,6 +310,8 @@ export interface VVDisplayConfig {
 export interface VVNodeTypeDefinition {
   /** Display label */
   label?: string;
+  /** Description of this node type */
+  description?: string;
   /** Fill color (hex string) */
   color?: string;
   /** Icon identifier (Lucide icons) */
