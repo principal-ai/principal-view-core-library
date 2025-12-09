@@ -80,3 +80,6 @@ export type { CreateNodeOptions, CreateEdgeOptions } from './utils/LibraryConver
 // Re-export FileSystemAdapter from repository-abstraction
 export type { FileSystemAdapter } from '@principal-ai/repository-abstraction';
 export { InMemoryFileSystemAdapter } from '@principal-ai/repository-abstraction';
+
+// Export rules engine
+export * from './rules';
