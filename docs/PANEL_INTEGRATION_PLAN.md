@@ -4,7 +4,7 @@ Plan for integrating the Visual Validation Framework into the industry-themed-pa
 
 ## Overview
 
-Create a **Visual Validation Graph Panel** that visualizes configurations from the `.vgc/` folder as interactive graph diagrams within the Panel Extension Framework. The framework now supports multiple configurations, allowing users to switch between different architectural views (e.g., architecture, data-flow, deployment) within the same panel.
+Create a **Visual Validation Graph Panel** that visualizes configurations from the `.principal-views/` folder as interactive graph diagrams within the Panel Extension Framework. The framework now supports multiple configurations, allowing users to switch between different architectural views (e.g., architecture, data-flow, deployment) within the same panel.
 
 ## Phase 1: Setup & Dependencies
 
@@ -40,7 +40,7 @@ src/panels/
 ├── VisualValidationGraphPanel.tsx          # Main panel component
 ├── VisualValidationGraphPanel.stories.tsx  # Storybook stories
 ├── visual-validation/
-│   ├── ConfigManager.tsx                   # Loads configs from .vgc/ folder
+│   ├── ConfigManager.tsx                   # Loads configs from .principal-views/ folder
 │   ├── GraphContainer.tsx                  # Wrapper for GraphRenderer
 │   ├── ConfigSelector.tsx                  # Switch between configs
 │   ├── ConfigEditor.tsx                    # Optional: Edit config
@@ -89,7 +89,7 @@ export const VisualValidationGraphPanel: React.FC<PanelComponentProps> = ({
     error: null
   });
 
-  // Load all configurations from .vgc/ folder
+  // Load all configurations from .principal-views/ folder
   useEffect(() => {
     loadConfigurations();
   }, []);
@@ -117,7 +117,7 @@ export const VisualValidationGraphPanel: React.FC<PanelComponentProps> = ({
       // Create a file system adapter from the file tree
       const fsAdapter = createFileTreeAdapter(fileTree);
 
-      // Use ConfigurationLoader to load all configs from .vgc/
+      // Use ConfigurationLoader to load all configs from .principal-views/
       const loader = new ConfigurationLoader(fsAdapter);
       const result = loader.loadAll(context.getProjectRoot());
 
@@ -126,7 +126,7 @@ export const VisualValidationGraphPanel: React.FC<PanelComponentProps> = ({
       }
 
       if (result.configs.length === 0) {
-        throw new Error('No configurations found in .vgc/ folder');
+        throw new Error('No configurations found in .principal-views/ folder');
       }
 
       // Select the first config by default

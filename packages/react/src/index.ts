@@ -22,7 +22,7 @@ export type {
   EdgeState,
   ConfigurationFile,
   ConfigurationLoadResult,
-  // Library types for loading .vgc/library.yaml
+  // Library types for loading .principal-views/library.yaml
   ComponentLibrary,
   LibraryNodeComponent,
   LibraryEdgeComponent,

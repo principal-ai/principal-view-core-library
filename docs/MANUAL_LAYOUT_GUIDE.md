@@ -15,7 +15,7 @@ The Visual Validation Framework uses JSON Canvas (`.canvas`) files, which provid
 ### Option 1: Visual Editor (Recommended)
 
 1. **Open Obsidian** with your project as a vault
-2. **Create a new canvas** in `.vgc/` folder
+2. **Create a new canvas** in `.principal-views/` folder
 3. **Add text cards** for each component
 4. **Draw connections** between cards
 5. **Save** - positions are automatically stored
@@ -381,7 +381,7 @@ import { readFileSync } from 'fs';
 
 // Load canvas
 const canvas: ExtendedCanvas = JSON.parse(
-  readFileSync('.vgc/architecture.canvas', 'utf-8')
+  readFileSync('.principal-views/architecture.canvas', 'utf-8')
 );
 
 // Convert to React Flow

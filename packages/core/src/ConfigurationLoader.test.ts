@@ -74,35 +74,35 @@ describe('ConfigurationLoader', () => {
   });
 
   describe('hasConfigDirectory', () => {
-    test('returns true when .vgc directory exists', () => {
-      fsAdapter.createDir('/project/.vgc');
+    test('returns true when .principal-views directory exists', () => {
+      fsAdapter.createDir('/project/.principal-views');
 
       expect(loader.hasConfigDirectory('/project')).toBe(true);
     });
 
-    test('returns false when .vgc directory does not exist', () => {
+    test('returns false when .principal-views directory does not exist', () => {
       expect(loader.hasConfigDirectory('/project')).toBe(false);
     });
 
-    test('returns false when .vgc exists but is not a directory', () => {
-      fsAdapter.writeFile('/project/.vgc', 'not a directory');
+    test('returns false when .principal-views exists but is not a directory', () => {
+      fsAdapter.writeFile('/project/.principal-views', 'not a directory');
 
       expect(loader.hasConfigDirectory('/project')).toBe(false);
     });
   });
 
   describe('listConfigurations', () => {
-    test('returns empty array when .vgc does not exist', () => {
+    test('returns empty array when .principal-views does not exist', () => {
       const configs = loader.listConfigurations('/project');
 
       expect(configs).toEqual([]);
     });
 
     test('returns list of configuration names', () => {
-      fsAdapter.createDir('/project/.vgc');
-      fsAdapter.writeFile('/project/.vgc/architecture.yaml', JSON.stringify(validConfig));
-      fsAdapter.writeFile('/project/.vgc/data-flow.yaml', JSON.stringify(validConfig));
-      fsAdapter.writeFile('/project/.vgc/deployment.yml', JSON.stringify(validConfig));
+      fsAdapter.createDir('/project/.principal-views');
+      fsAdapter.writeFile('/project/.principal-views/architecture.yaml', JSON.stringify(validConfig));
+      fsAdapter.writeFile('/project/.principal-views/data-flow.yaml', JSON.stringify(validConfig));
+      fsAdapter.writeFile('/project/.principal-views/deployment.yml', JSON.stringify(validConfig));
 
       const configs = loader.listConfigurations('/project');
 
@@ -110,10 +110,10 @@ describe('ConfigurationLoader', () => {
     });
 
     test('filters out non-YAML files', () => {
-      fsAdapter.createDir('/project/.vgc');
-      fsAdapter.writeFile('/project/.vgc/config1.yaml', JSON.stringify(validConfig));
-      fsAdapter.writeFile('/project/.vgc/README.md', '# README');
-      fsAdapter.writeFile('/project/.vgc/config.json', '{}');
+      fsAdapter.createDir('/project/.principal-views');
+      fsAdapter.writeFile('/project/.principal-views/config1.yaml', JSON.stringify(validConfig));
+      fsAdapter.writeFile('/project/.principal-views/README.md', '# README');
+      fsAdapter.writeFile('/project/.principal-views/config.json', '{}');
 
       const configs = loader.listConfigurations('/project');
 
@@ -121,10 +121,10 @@ describe('ConfigurationLoader', () => {
     });
 
     test('returns sorted configuration names', () => {
-      fsAdapter.createDir('/project/.vgc');
-      fsAdapter.writeFile('/project/.vgc/zebra.yaml', JSON.stringify(validConfig));
-      fsAdapter.writeFile('/project/.vgc/alpha.yaml', JSON.stringify(validConfig));
-      fsAdapter.writeFile('/project/.vgc/middle.yaml', JSON.stringify(validConfig));
+      fsAdapter.createDir('/project/.principal-views');
+      fsAdapter.writeFile('/project/.principal-views/zebra.yaml', JSON.stringify(validConfig));
+      fsAdapter.writeFile('/project/.principal-views/alpha.yaml', JSON.stringify(validConfig));
+      fsAdapter.writeFile('/project/.principal-views/middle.yaml', JSON.stringify(validConfig));
 
       const configs = loader.listConfigurations('/project');
 
@@ -134,7 +134,7 @@ describe('ConfigurationLoader', () => {
 
   describe('loadByName', () => {
     beforeEach(() => {
-      fsAdapter.createDir('/project/.vgc');
+      fsAdapter.createDir('/project/.principal-views');
     });
 
     test('loads configuration by name with .yaml extension', () => {
@@ -159,7 +159,7 @@ allowedConnections:
     to: service
     via: call
 `;
-      fsAdapter.writeFile('/project/.vgc/simple.yaml', yamlContent);
+      fsAdapter.writeFile('/project/.principal-views/simple.yaml', yamlContent);
 
       const result = loader.loadByName('simple', '/project');
 
@@ -190,7 +190,7 @@ allowedConnections:
     to: component
     via: link
 `;
-      fsAdapter.writeFile('/project/.vgc/alt.yml', yamlContent);
+      fsAdapter.writeFile('/project/.principal-views/alt.yml', yamlContent);
 
       const result = loader.loadByName('alt', '/project');
 
@@ -205,14 +205,14 @@ allowedConnections:
       expect(result).toBeNull();
     });
 
-    test('returns null when .vgc directory does not exist', () => {
+    test('returns null when .principal-views directory does not exist', () => {
       const result = loader.loadByName('any', '/no-project');
 
       expect(result).toBeNull();
     });
 
     test('returns null when YAML is invalid', () => {
-      fsAdapter.writeFile('/project/.vgc/invalid.yaml', 'invalid: yaml: content:');
+      fsAdapter.writeFile('/project/.principal-views/invalid.yaml', 'invalid: yaml: content:');
 
       const result = loader.loadByName('invalid', '/project');
 
@@ -226,7 +226,7 @@ metadata:
 nodeTypes: {}
 # Missing edgeTypes and allowedConnections
 `;
-      fsAdapter.writeFile('/project/.vgc/incomplete.yaml', yamlContent);
+      fsAdapter.writeFile('/project/.principal-views/incomplete.yaml', yamlContent);
 
       const result = loader.loadByName('incomplete', '/project');
 
@@ -270,8 +270,8 @@ allowedConnections:
     to: service
     via: call
 `;
-      fsAdapter.writeFile('/project/.vgc/both.yaml', yamlContent);
-      fsAdapter.writeFile('/project/.vgc/both.yml', ymlContent);
+      fsAdapter.writeFile('/project/.principal-views/both.yaml', yamlContent);
+      fsAdapter.writeFile('/project/.principal-views/both.yml', ymlContent);
 
       const result = loader.loadByName('both', '/project');
 
@@ -281,17 +281,17 @@ allowedConnections:
   });
 
   describe('loadAll', () => {
-    test('returns error when .vgc directory does not exist', () => {
+    test('returns error when .principal-views directory does not exist', () => {
       const result = loader.loadAll('/project');
 
       expect(result.configs).toEqual([]);
       expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].file).toBe('.vgc');
+      expect(result.errors[0].file).toBe('.principal-views');
       expect(result.errors[0].error).toContain('not found');
     });
 
     test('loads all valid configurations', () => {
-      fsAdapter.createDir('/project/.vgc');
+      fsAdapter.createDir('/project/.principal-views');
 
       const config1 = `
 metadata:
@@ -330,8 +330,8 @@ allowedConnections:
     via: link
 `;
 
-      fsAdapter.writeFile('/project/.vgc/first.yaml', config1);
-      fsAdapter.writeFile('/project/.vgc/second.yml', config2);
+      fsAdapter.writeFile('/project/.principal-views/first.yaml', config1);
+      fsAdapter.writeFile('/project/.principal-views/second.yml', config2);
 
       const result = loader.loadAll('/project');
 
@@ -342,7 +342,7 @@ allowedConnections:
     });
 
     test('skips non-YAML files', () => {
-      fsAdapter.createDir('/project/.vgc');
+      fsAdapter.createDir('/project/.principal-views');
 
       const validYaml = `
 metadata:
@@ -363,9 +363,9 @@ allowedConnections:
     via: call
 `;
 
-      fsAdapter.writeFile('/project/.vgc/valid.yaml', validYaml);
-      fsAdapter.writeFile('/project/.vgc/README.md', '# README');
-      fsAdapter.writeFile('/project/.vgc/config.json', '{}');
+      fsAdapter.writeFile('/project/.principal-views/valid.yaml', validYaml);
+      fsAdapter.writeFile('/project/.principal-views/README.md', '# README');
+      fsAdapter.writeFile('/project/.principal-views/config.json', '{}');
 
       const result = loader.loadAll('/project');
 
@@ -375,7 +375,7 @@ allowedConnections:
     });
 
     test('collects errors for invalid files', () => {
-      fsAdapter.createDir('/project/.vgc');
+      fsAdapter.createDir('/project/.principal-views');
 
       const validYaml = `
 metadata:
@@ -396,9 +396,9 @@ allowedConnections:
     via: call
 `;
 
-      fsAdapter.writeFile('/project/.vgc/valid.yaml', validYaml);
-      fsAdapter.writeFile('/project/.vgc/invalid-yaml.yaml', 'invalid: yaml: content:');
-      fsAdapter.writeFile('/project/.vgc/incomplete.yaml', 'metadata:\n  name: Incomplete\nnodeTypes: {}');
+      fsAdapter.writeFile('/project/.principal-views/valid.yaml', validYaml);
+      fsAdapter.writeFile('/project/.principal-views/invalid-yaml.yaml', 'invalid: yaml: content:');
+      fsAdapter.writeFile('/project/.principal-views/incomplete.yaml', 'metadata:\n  name: Incomplete\nnodeTypes: {}');
 
       const result = loader.loadAll('/project');
 
@@ -408,7 +408,7 @@ allowedConnections:
     });
 
     test('returns configs sorted by name', () => {
-      fsAdapter.createDir('/project/.vgc');
+      fsAdapter.createDir('/project/.principal-views');
 
       const configTemplate = (name: string) => `
 metadata:
@@ -429,9 +429,9 @@ allowedConnections:
     via: call
 `;
 
-      fsAdapter.writeFile('/project/.vgc/zebra.yaml', configTemplate('Zebra'));
-      fsAdapter.writeFile('/project/.vgc/alpha.yaml', configTemplate('Alpha'));
-      fsAdapter.writeFile('/project/.vgc/middle.yaml', configTemplate('Middle'));
+      fsAdapter.writeFile('/project/.principal-views/zebra.yaml', configTemplate('Zebra'));
+      fsAdapter.writeFile('/project/.principal-views/alpha.yaml', configTemplate('Alpha'));
+      fsAdapter.writeFile('/project/.principal-views/middle.yaml', configTemplate('Middle'));
 
       const result = loader.loadAll('/project');
 
@@ -442,7 +442,7 @@ allowedConnections:
     });
 
     test('handles mixed .yaml and .yml extensions', () => {
-      fsAdapter.createDir('/project/.vgc');
+      fsAdapter.createDir('/project/.principal-views');
 
       const configTemplate = (name: string) => `
 metadata:
@@ -463,8 +463,8 @@ allowedConnections:
     via: call
 `;
 
-      fsAdapter.writeFile('/project/.vgc/config1.yaml', configTemplate('Config 1'));
-      fsAdapter.writeFile('/project/.vgc/config2.yml', configTemplate('Config 2'));
+      fsAdapter.writeFile('/project/.principal-views/config1.yaml', configTemplate('Config 1'));
+      fsAdapter.writeFile('/project/.principal-views/config2.yml', configTemplate('Config 2'));
 
       const result = loader.loadAll('/project');
 
@@ -474,17 +474,17 @@ allowedConnections:
   });
 
   describe('getConfigDirectoryPath', () => {
-    test('returns correct .vgc path', () => {
+    test('returns correct .principal-views path', () => {
       const path = loader.getConfigDirectoryPath('/my/project');
 
-      expect(path).toBe('/my/project/.vgc');
+      expect(path).toBe('/my/project/.principal-views');
     });
 
     test('handles trailing slashes', () => {
       const path = loader.getConfigDirectoryPath('/my/project/');
 
       // The path should be consistent regardless of trailing slash
-      expect(path).toContain('.vgc');
+      expect(path).toContain('.principal-views');
     });
   });
 });

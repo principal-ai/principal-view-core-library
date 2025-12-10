@@ -658,12 +658,12 @@ Add a `lint` command to the CLI package:
 
 ```bash
 # Lint a single configuration
-vgc lint .vgc/microservices.yaml
+vgc lint .principal-views/microservices.yaml
 
 # Lint with library validation
-vgc lint .vgc/microservices.yaml --library .vgc/library.yaml
+vgc lint .principal-views/microservices.yaml --library .principal-views/library.yaml
 
-# Lint all configurations in .vgc folder
+# Lint all configurations in .principal-views folder
 vgc lint
 
 # Output formats
@@ -681,9 +681,9 @@ vgc lint --fix
 ### CLI Output Example
 
 ```
-$ vgc lint .vgc/microservices.yaml
+$ vgc lint .principal-views/microservices.yaml
 
-  .vgc/microservices.yaml
+  .principal-views/microservices.yaml
 
   error  required-metadata            metadata.version is missing
          → Add a version field (e.g., "1.0.0") to metadata
@@ -714,8 +714,8 @@ $ vgc lint .vgc/microservices.yaml
 The CLI searches for configuration in the following order (first match wins):
 
 1. `--config <path>` CLI argument
-2. `.vgcrc.json` in current directory
-3. `.vgcrc.yaml` or `.vgcrc.yml` in current directory
+2. `.principal-viewsrc.json` in current directory
+3. `.principal-viewsrc.yaml` or `.principal-viewsrc.yml` in current directory
 4. `vgc.config.json` in current directory
 5. `vgc.config.yaml` or `vgc.config.yml` in current directory
 6. `"vgc"` key in `package.json`
@@ -752,7 +752,7 @@ interface VGCConfig {
 
   /**
    * Glob patterns for configuration files to lint
-   * @default [".vgc/**/*.yaml", ".vgc/**/*.yml", ".vgc/**/*.json"]
+   * @default [".principal-views/**/*.yaml", ".principal-views/**/*.yml", ".principal-views/**/*.json"]
    */
   include?: string[];
 
@@ -829,7 +829,7 @@ The CLI will provide a JSON Schema for editor autocompletion:
     "include": {
       "type": "array",
       "items": { "type": "string" },
-      "default": [".vgc/**/*.yaml", ".vgc/**/*.yml", ".vgc/**/*.json"],
+      "default": [".principal-views/**/*.yaml", ".principal-views/**/*.yml", ".principal-views/**/*.json"],
       "description": "Glob patterns for files to lint"
     },
     "exclude": {
@@ -871,7 +871,7 @@ The CLI will provide a JSON Schema for editor autocompletion:
 
 ### Example Configurations
 
-#### Minimal `.vgcrc.json`
+#### Minimal `.principal-viewsrc.json`
 
 ```json
 {
@@ -880,16 +880,16 @@ The CLI will provide a JSON Schema for editor autocompletion:
 }
 ```
 
-#### Full `.vgcrc.yaml`
+#### Full `.principal-viewsrc.yaml`
 
 ```yaml
 # yaml-language-server: $schema=https://principal.ai/schemas/vgcrc.json
 
 root: true
-library: .vgc/library.yaml
+library: .principal-views/library.yaml
 
 include:
-  - ".vgc/**/*.yaml"
+  - ".principal-views/**/*.yaml"
   - "configs/**/*.yaml"
 
 exclude:
@@ -924,7 +924,7 @@ rules:
   "version": "1.0.0",
   "vgc": {
     "root": true,
-    "library": ".vgc/library.yaml",
+    "library": ".principal-views/library.yaml",
     "rules": {
       "minimum-node-sources": {
         "severity": "error",
@@ -965,7 +965,7 @@ The CLI validates the config file on load:
 ```
 $ vgc lint
 
-  Configuration Error: .vgcrc.json
+  Configuration Error: .principal-viewsrc.json
 
   error  Invalid rule ID "uknown-rule" in rules configuration
          → Did you mean "no-unknown-fields"?

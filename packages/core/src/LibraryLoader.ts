@@ -1,7 +1,7 @@
 /**
  * Library Loader
  *
- * Loads component library files (.yaml, .yml, or .json) from the .vgc/ folder.
+ * Loads component library files (.yaml, .yml, or .json) from the .principal-views/ folder.
  * Component libraries contain reusable node and edge type definitions.
  */
 
@@ -17,7 +17,7 @@ const DEFAULT_LIBRARY_FILES = ['library.yaml', 'library.yml', 'library.json'];
 /**
  * Configuration directory name
  */
-const CONFIG_DIR = '.vgc';
+const CONFIG_DIR = '.principal-views';
 
 /**
  * Loader for component library files
@@ -26,21 +26,21 @@ export class LibraryLoader {
   constructor(private fsAdapter: FileSystemAdapter) {}
 
   /**
-   * Load the component library from the .vgc/ folder
+   * Load the component library from the .principal-views/ folder
    *
    * Searches for library.yaml, library.yml, or library.json (in that order).
    *
-   * @param baseDir - Base directory containing .vgc/ folder
+   * @param baseDir - Base directory containing .principal-views/ folder
    * @returns Library load result
    */
   load(baseDir: string): LibraryLoadResult {
     const configPath = this.fsAdapter.join(baseDir, CONFIG_DIR);
 
-    // Check if .vgc directory exists
+    // Check if .principal-views directory exists
     if (!this.fsAdapter.exists(configPath) || !this.fsAdapter.isDirectory(configPath)) {
       return {
         success: false,
-        error: 'Configuration directory .vgc/ not found',
+        error: 'Configuration directory .principal-views/ not found',
         path: configPath,
       };
     }
@@ -99,9 +99,9 @@ export class LibraryLoader {
   }
 
   /**
-   * Check if a library file exists in the .vgc/ folder
+   * Check if a library file exists in the .principal-views/ folder
    *
-   * @param baseDir - Base directory containing .vgc/ folder
+   * @param baseDir - Base directory containing .principal-views/ folder
    * @returns True if a library file exists
    */
   hasLibrary(baseDir: string): boolean {

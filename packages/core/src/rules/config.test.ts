@@ -18,10 +18,10 @@ describe('validatePrivuConfig', () => {
 
   it('should accept valid full config', () => {
     const config: PrivuConfig = {
-      $schema: 'https://principal.ai/schemas/vgcrc.json',
+      $schema: 'https://principal.ai/schemas/privurc.json',
       root: true,
-      library: '.vgc/library.yaml',
-      include: ['.vgc/**/*.yaml'],
+      library: '.principal-views/library.yaml',
+      include: ['.principal-views/**/*.yaml'],
       exclude: ['**/*.test.yaml'],
       rules: {
         'required-metadata': 'error',

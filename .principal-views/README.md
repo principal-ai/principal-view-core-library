@@ -1,6 +1,6 @@
 # Visual Validation Framework Configuration Directory
 
-This directory (`.vgc/`) contains graph configuration files for the Visual Validation Framework.
+This directory (`.principal-views/`) contains graph configuration files for the Visual Validation Framework.
 
 ## Overview
 
@@ -104,7 +104,7 @@ To create a new configuration:
 
 1. **Create a new YAML file** in this directory:
    ```bash
-   touch .vgc/my-new-config.yaml
+   touch .principal-views/my-new-config.yaml
    ```
 
 2. **Add the required structure** (see above)
@@ -237,14 +237,14 @@ For complete documentation, see:
 If you have an existing `vvf.config.yaml` file at the project root:
 
 ```bash
-# Create .vgc directory
-mkdir -p .vgc
+# Create .principal-views directory
+mkdir -p .principal-views
 
 # Move your config
-mv vvf.config.yaml .vgc/main.yaml
+mv vvf.config.yaml .principal-views/main.yaml
 
 # Or copy to preserve the original
-cp vvf.config.yaml .vgc/main.yaml
+cp vvf.config.yaml .principal-views/main.yaml
 ```
 
 See [MIGRATION.md](../docs/MIGRATION.md) for detailed migration instructions.

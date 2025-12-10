@@ -1,6 +1,6 @@
 /**
- * VGC Configuration Loader and Validator
- * Handles loading and validating .vgcrc files
+ * Principal Views Configuration Loader and Validator
+ * Handles loading and validating privu config files
  */
 
 import type { PrivuConfig, RuleSeverity, RuleConfig } from './types';
@@ -13,18 +13,18 @@ import type { PrivuConfig, RuleSeverity, RuleConfig } from './types';
  * Valid config file names in resolution order
  */
 export const CONFIG_FILE_NAMES = [
-  '.vgcrc.json',
-  '.vgcrc.yaml',
-  '.vgcrc.yml',
-  'vgc.config.json',
-  'vgc.config.yaml',
-  'vgc.config.yml',
+  '.principal-viewsrc.json',
+  '.principal-viewsrc.yaml',
+  '.principal-viewsrc.yml',
+  'privu.config.json',
+  'privu.config.yaml',
+  'privu.config.yml',
 ] as const;
 
 /**
  * Default include patterns
  */
-export const DEFAULT_INCLUDE_PATTERNS = ['.vgc/**/*.yaml', '.vgc/**/*.yml', '.vgc/**/*.json'];
+export const DEFAULT_INCLUDE_PATTERNS = ['.principal-views/**/*.yaml', '.principal-views/**/*.yml', '.principal-views/**/*.json'];
 
 /**
  * Default exclude patterns

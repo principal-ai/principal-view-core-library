@@ -74,7 +74,7 @@ export interface PrivuConfig {
 
   /**
    * Glob patterns for configuration files to lint
-   * @default [".vgc/**\/*.yaml", ".vgc/**\/*.yml", ".vgc/**\/*.json"]
+   * @default [".principal-views/**\/*.yaml", ".principal-views/**\/*.yml", ".principal-views/**\/*.json"]
    */
   include?: string[];
 

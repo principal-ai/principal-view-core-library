@@ -2,7 +2,7 @@
 
 This document outlines a two-phase implementation plan for integrating the Visual Validation Framework into existing projects using path-based log association.
 
-> **Note**: All configuration examples should be saved in the `.vgc/` folder (e.g., `.vgc/my-config.yaml`). See [.vgc/README.md](../.vgc/README.md) for details.
+> **Note**: All configuration examples should be saved in the `.principal-views/` folder (e.g., `.principal-views/my-config.yaml`). See [.principal-views/README.md](../.principal-views/README.md) for details.
 
 ## Overview
 

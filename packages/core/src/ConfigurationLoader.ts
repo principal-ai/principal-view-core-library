@@ -1,7 +1,7 @@
 /**
  * Configuration loader for managing multiple graph configurations
  *
- * Supports loading configurations from the .vgc/ folder using the adapter pattern
+ * Supports loading configurations from the .principal-views/ folder using the adapter pattern
  * for environment-agnostic file operations.
  */
 
@@ -32,18 +32,18 @@ export interface ConfigurationLoadResult {
 }
 
 /**
- * Loader for managing multiple graph configurations from .vgc/ folder
+ * Loader for managing multiple graph configurations from .principal-views/ folder
  */
 export class ConfigurationLoader {
-  private static readonly CONFIG_DIR = '.vgc';
+  private static readonly CONFIG_DIR = '.principal-views';
 
   constructor(private fsAdapter: FileSystemAdapter) {}
 
   /**
-   * Check if the .vgc/ configuration directory exists
+   * Check if the .principal-views/ configuration directory exists
    *
    * @param baseDir - Base directory to search from
-   * @returns True if .vgc/ directory exists
+   * @returns True if .principal-views/ directory exists
    */
   hasConfigDirectory(baseDir: string): boolean {
     const configPath = this.fsAdapter.join(baseDir, ConfigurationLoader.CONFIG_DIR);
@@ -51,9 +51,9 @@ export class ConfigurationLoader {
   }
 
   /**
-   * List all available configuration names in .vgc/ folder
+   * List all available configuration names in .principal-views/ folder
    *
-   * @param baseDir - Base directory containing .vgc/ folder
+   * @param baseDir - Base directory containing .principal-views/ folder
    * @returns Array of configuration names (without extensions)
    */
   listConfigurations(baseDir: string): string[] {
@@ -74,7 +74,7 @@ export class ConfigurationLoader {
    * Load a specific configuration by name
    *
    * @param name - Configuration name (without extension)
-   * @param baseDir - Base directory containing .vgc/ folder
+   * @param baseDir - Base directory containing .principal-views/ folder
    * @returns Configuration file or null if not found/invalid
    */
   loadByName(name: string, baseDir: string): ConfigurationFile | null {
@@ -112,9 +112,9 @@ export class ConfigurationLoader {
   }
 
   /**
-   * Load all configurations from .vgc/ folder
+   * Load all configurations from .principal-views/ folder
    *
-   * @param baseDir - Base directory containing .vgc/ folder
+   * @param baseDir - Base directory containing .principal-views/ folder
    * @returns Result containing all loaded configs and any errors
    */
   loadAll(baseDir: string): ConfigurationLoadResult {
@@ -125,8 +125,8 @@ export class ConfigurationLoader {
 
     if (!this.hasConfigDirectory(baseDir)) {
       result.errors.push({
-        file: '.vgc',
-        error: 'Configuration directory .vgc/ not found',
+        file: '.principal-views',
+        error: 'Configuration directory .principal-views/ not found',
       });
       return result;
     }
@@ -177,7 +177,7 @@ export class ConfigurationLoader {
    * Get the configuration directory path
    *
    * @param baseDir - Base directory
-   * @returns Full path to .vgc/ directory
+   * @returns Full path to .principal-views/ directory
    */
   getConfigDirectoryPath(baseDir: string): string {
     return this.fsAdapter.join(baseDir, ConfigurationLoader.CONFIG_DIR);

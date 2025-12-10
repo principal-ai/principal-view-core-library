@@ -17,11 +17,11 @@ The Visual Validation Framework uses **JSON Canvas** (`.canvas`) files as its pr
 
 ### Location
 
-Place `.canvas` files in the `.vgc/` directory at your project root:
+Place `.canvas` files in the `.principal-views/` directory at your project root:
 
 ```
 your-project/
-  .vgc/
+  .principal-views/
     ├── architecture.canvas    ← System architecture
     ├── data-flow.canvas       ← Data flow visualization
     └── deployment.canvas      ← Deployment topology
@@ -508,7 +508,7 @@ The JSON Canvas format enables a powerful visual editing workflow:
 
 ### 1. Create Layout in Obsidian
 
-1. Create a new canvas file in `.vgc/`
+1. Create a new canvas file in `.principal-views/`
 2. Add text cards for each component
 3. Draw connections between cards
 4. Arrange visually using drag-and-drop
@@ -542,7 +542,7 @@ import { CanvasConverter } from '@principal-ai/visual-validation-core';
 import { readFileSync } from 'fs';
 
 // Load canvas file
-const canvasJson = readFileSync('.vgc/architecture.canvas', 'utf-8');
+const canvasJson = readFileSync('.principal-views/architecture.canvas', 'utf-8');
 const canvas = JSON.parse(canvasJson);
 
 // Convert to React Flow format
@@ -563,7 +563,7 @@ const updatedCanvas = CanvasConverter.reactFlowToCanvas(nodes, edges, {
   version: '1.0.0'
 });
 
-writeFileSync('.vgc/architecture.canvas', JSON.stringify(updatedCanvas, null, 2));
+writeFileSync('.principal-views/architecture.canvas', JSON.stringify(updatedCanvas, null, 2));
 ```
 
 ---
@@ -577,7 +577,7 @@ import { CanvasConverter, ExtendedCanvas } from '@principal-ai/visual-validation
 import { readFileSync } from 'fs';
 
 const canvas: ExtendedCanvas = JSON.parse(
-  readFileSync('.vgc/architecture.canvas', 'utf-8')
+  readFileSync('.principal-views/architecture.canvas', 'utf-8')
 );
 
 // Convert to React Flow
@@ -600,5 +600,5 @@ const canvas = CanvasConverter.reactFlowToCanvas(nodes, edges, {
 });
 
 // Save
-writeFileSync('.vgc/architecture.canvas', JSON.stringify(canvas, null, 2));
+writeFileSync('.principal-views/architecture.canvas', JSON.stringify(canvas, null, 2));
 ```

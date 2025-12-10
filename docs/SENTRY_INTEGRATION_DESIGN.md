@@ -514,7 +514,7 @@ export class SentrySpanBufferStream {
 ### Extended GraphConfiguration for Sentry
 
 ```yaml
-# .vgc/sentry-instrumented.yaml
+# .principal-views/sentry-instrumented.yaml
 metadata:
   name: "Sentry Instrumented System"
   version: "1.0.0"
@@ -778,8 +778,8 @@ interface SentryNodeData {
 
 **Deliverables:**
 - [ ] `docs/SENTRY_INTEGRATION_GUIDE.md`
-- [ ] `.vgc/examples/sentry-web-app.yaml`
-- [ ] `.vgc/examples/sentry-microservices.yaml`
+- [ ] `.principal-views/examples/sentry-web-app.yaml`
+- [ ] `.principal-views/examples/sentry-microservices.yaml`
 - [ ] Example project with full integration
 
 ---
@@ -843,7 +843,7 @@ import * as Sentry from '@sentry/node';
 import { createSentryVVIntegration } from '@principal-ai/visual-validation-sentry';
 import { EventProcessor, loadConfiguration } from '@principal-ai/visual-validation-core';
 
-const config = loadConfiguration('.vgc/sentry-instrumented.yaml');
+const config = loadConfiguration('.principal-views/sentry-instrumented.yaml');
 const processor = new EventProcessor(config);
 
 Sentry.init({
@@ -892,7 +892,7 @@ Sentry.init({
    - Include real-time SDK integration in v1?
 
 2. **Configuration storage**
-   - Store Sentry org/project in `.vgc/` config?
+   - Store Sentry org/project in `.principal-views/` config?
    - Separate `.sentry` config file?
 
 3. **Performance issue visualization**

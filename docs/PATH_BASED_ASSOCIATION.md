@@ -6,7 +6,7 @@
 **Last Updated**: 2025-11-23
 **Status**: Implemented (v0.3.0+)
 
-> **Note**: All configuration examples in this document should be saved in the `.vgc/` folder at your project root. The framework now supports multiple configurations for different visualization needs. See [.vgc/README.md](../.vgc/README.md) and [CONFIGURATION_REFERENCE.md](./CONFIGURATION_REFERENCE.md) for details.
+> **Note**: All configuration examples in this document should be saved in the `.principal-views/` folder at your project root. The framework now supports multiple configurations for different visualization needs. See [.principal-views/README.md](../.principal-views/README.md) and [CONFIGURATION_REFERENCE.md](./CONFIGURATION_REFERENCE.md) for details.
 
 ---
 
@@ -74,7 +74,7 @@ components:
 
 ### Minimal Configuration
 
-**File**: `.vgc/order-processing.yaml`
+**File**: `.principal-views/order-processing.yaml`
 
 ```yaml
 metadata:

@@ -33,7 +33,7 @@ Depends on `@principal-ai/visual-validation-core`.
 
 ```
 visual-validation-core-library/
-├── .vgc/                           # Configuration folder (v0.3.0+)
+├── .principal-views/                           # Configuration folder (v0.3.0+)
 │   ├── simple-service.yaml         # Example: Basic architecture
 │   ├── microservices.yaml          # Example: Distributed system
 │   ├── data-pipeline.yaml          # Example: ETL pipeline
@@ -112,16 +112,16 @@ bun run format:check
 
 ## Configuration
 
-The framework uses a `.vgc/` folder for storing multiple graph configurations. This allows you to have different visualizations for different aspects of your system.
+The framework uses a `.principal-views/` folder for storing multiple graph configurations. This allows you to have different visualizations for different aspects of your system.
 
 ### Quick Start: Create a Configuration
 
-1. **Create the `.vgc/` folder**:
+1. **Create the `.principal-views/` folder**:
    ```bash
-   mkdir .vgc
+   mkdir .principal-views
    ```
 
-2. **Create a configuration file** (`.vgc/my-system.yaml`):
+2. **Create a configuration file** (`.principal-views/my-system.yaml`):
    ```yaml
    metadata:
      name: "My System"
@@ -157,7 +157,7 @@ The framework uses a `.vgc/` folder for storing multiple graph configurations. T
        via: connection
    ```
 
-3. **See [.vgc/README.md](./.vgc/README.md)** for complete guide and examples.
+3. **See [.principal-views/README.md](./.principal-views/README.md)** for complete guide and examples.
 
 ---
 
@@ -225,7 +225,7 @@ function MyPanel() {
   const [processor, setProcessor] = useState(null);
 
   useEffect(() => {
-    // Load all configurations from .vgc/ folder
+    // Load all configurations from .principal-views/ folder
     const fsAdapter = new NodeFileSystemAdapter();
     const loader = new ConfigurationLoader(fsAdapter);
     const result = loader.loadAll(process.cwd());
@@ -304,7 +304,7 @@ For full design details, see [GENERIC_GRAPH_PANEL_DESIGN.md](../control-tower-co
 
 ## Key Features
 
-- ✅ **Multi-config support** - Store multiple configurations in `.vgc/` folder (v0.3.0+)
+- ✅ **Multi-config support** - Store multiple configurations in `.principal-views/` folder (v0.3.0+)
 - ✅ **Configuration switcher** - Switch between configs with `ConfigurationSelector` component
 - ✅ **Adapter pattern** - Environment-agnostic file operations via FileSystemAdapter
 - ✅ Configuration-driven graph definition
@@ -341,7 +341,7 @@ For full design details, see [GENERIC_GRAPH_PANEL_DESIGN.md](../control-tower-co
 - ✅ Auto-layout algorithms (hierarchical, circular, manual)
 - ✅ Storybook examples
 - ✅ Comprehensive documentation with Mermaid diagrams
-- ✅ **Multi-config support with .vgc/ folder (v0.3.0+)**
+- ✅ **Multi-config support with .principal-views/ folder (v0.3.0+)**
 - ✅ **ConfigurationLoader with FileSystemAdapter pattern**
 - ✅ **ConfigurationSelector React component**
 - ✅ **Path-based log association (Milestone 1)**

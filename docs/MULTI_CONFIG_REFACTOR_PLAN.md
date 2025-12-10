@@ -1,7 +1,7 @@
 # Multi-Config Architecture Refactor Plan
 
 ## Overview
-Refactor Visual Validation Framework to support **multiple graph configurations** stored in `.vgc/` folder, using the **adapter pattern** for environment-agnostic file operations.
+Refactor Visual Validation Framework to support **multiple graph configurations** stored in `.principal-views/` folder, using the **adapter pattern** for environment-agnostic file operations.
 
 ---
 
@@ -55,7 +55,7 @@ export interface FileSystemAdapter {
 export class ConfigurationLoader {
   constructor(private fsAdapter: FileSystemAdapter) {}
 
-  // Scan .vgc/ folder for all YAML files
+  // Scan .principal-views/ folder for all YAML files
   loadAll(baseDir: string): ConfigurationLoadResult;
 
   // Load specific config by name
@@ -64,7 +64,7 @@ export class ConfigurationLoader {
   // List available config names
   listConfigurations(baseDir: string): string[];
 
-  // Check if .vgc/ exists
+  // Check if .principal-views/ exists
   hasConfigDirectory(baseDir: string): boolean;
 }
 ```
@@ -73,7 +73,7 @@ export class ConfigurationLoader {
 ```typescript
 interface ConfigurationFile {
   name: string;           // e.g., "architecture"
-  path: string;          // e.g., ".vgc/architecture.yaml"
+  path: string;          // e.g., ".principal-views/architecture.yaml"
   config: PathBasedGraphConfiguration;
 }
 
@@ -114,7 +114,7 @@ interface ConfigurationLoadResult {
 **Tasks**:
 - [ ] Create tests using `InMemoryFileSystemAdapter`
 - [ ] Test loading multiple configs
-- [ ] Test error handling (missing .vgc, invalid YAML, etc.)
+- [ ] Test error handling (missing .principal-views, invalid YAML, etc.)
 - [ ] Test loading by name
 - [ ] Test listing configurations
 
@@ -126,7 +126,7 @@ interface ConfigurationLoadResult {
 **File**: `docs/CONFIGURATION_REFERENCE.md`
 
 **Changes**:
-- [ ] Replace all `vvf.config.yaml` with `.vgc/` folder structure
+- [ ] Replace all `vvf.config.yaml` with `.principal-views/` folder structure
 - [ ] Update file location section (lines 19-32)
 - [ ] Add examples of multiple configs
 - [ ] Add section on naming conventions
@@ -135,7 +135,7 @@ interface ConfigurationLoadResult {
 **New structure**:
 ```yaml
 your-project/
-  .vgc/                    ← Configuration folder
+  .principal-views/                    ← Configuration folder
     ├── architecture.yaml  ← System architecture graph
     ├── data-flow.yaml     ← Data flow graph
     └── deployment.yaml    ← Deployment topology
@@ -148,7 +148,7 @@ your-project/
 
 **Changes**:
 - [ ] Update all config file references
-- [ ] Update examples to use `.vgc/` folder
+- [ ] Update examples to use `.principal-views/` folder
 - [ ] Show how different graphs can track different aspects
 
 ### 3.3 Update PANEL_INTEGRATION_PLAN.md
@@ -157,14 +157,14 @@ your-project/
 **Changes**:
 - [ ] Update ConfigLoader implementation (lines 260-329)
 - [ ] Show multi-config selector UI
-- [ ] Update file watching for `.vgc/` folder
+- [ ] Update file watching for `.principal-views/` folder
 - [ ] Remove "future enhancement" for multiple configs (it's now core)
 
 ### 3.4 Update IMPLEMENTATION_MILESTONES.md
 **File**: `docs/IMPLEMENTATION_MILESTONES.md`
 
 **Changes**:
-- [ ] Update all examples to use `.vgc/` folder
+- [ ] Update all examples to use `.principal-views/` folder
 - [ ] Add note about multi-config as core feature
 
 ### 3.5 Update MANUAL_LAYOUT_GUIDE.md
@@ -172,7 +172,7 @@ your-project/
 
 **Changes**:
 - [ ] Update config file references
-- [ ] Show examples in `.vgc/` context
+- [ ] Show examples in `.principal-views/` context
 
 ### 3.6 Update main README.md
 **File**: `README.md`
@@ -186,7 +186,7 @@ your-project/
 **Files**: `packages/core/README.md`, `packages/react/README.md`
 
 **Changes**:
-- [ ] Update examples to use `.vgc/` folder
+- [ ] Update examples to use `.principal-views/` folder
 - [ ] Show ConfigurationLoader API
 - [ ] Add adapter pattern documentation
 
@@ -226,17 +226,17 @@ interface ConfigurationSelectorProps {
 
 ## Phase 5: Example Configurations
 
-### 5.1 Create example .vgc folder
-**New folder**: `.vgc/` (at project root for examples)
+### 5.1 Create example .principal-views folder
+**New folder**: `.principal-views/` (at project root for examples)
 
 **Files to create**:
-- [ ] `.vgc/simple-service.yaml` - Basic 3-component example
-- [ ] `.vgc/microservices.yaml` - Complex microservice architecture
-- [ ] `.vgc/data-pipeline.yaml` - Data processing pipeline
-- [ ] `.vgc/test-validation.yaml` - Test validation graph
+- [ ] `.principal-views/simple-service.yaml` - Basic 3-component example
+- [ ] `.principal-views/microservices.yaml` - Complex microservice architecture
+- [ ] `.principal-views/data-pipeline.yaml` - Data processing pipeline
+- [ ] `.principal-views/test-validation.yaml` - Test validation graph
 
-### 5.2 Create .vgc README
-**New file**: `.vgc/README.md`
+### 5.2 Create .principal-views README
+**New file**: `.principal-views/README.md`
 
 **Content**:
 - Explain what this folder is
@@ -252,7 +252,7 @@ interface ConfigurationSelectorProps {
 **New file**: `docs/MIGRATION.md`
 
 **Content**:
-- [ ] How to migrate from single config to `.vgc/` folder
+- [ ] How to migrate from single config to `.principal-views/` folder
 - [ ] Breaking changes (if any)
 - [ ] Code examples showing before/after
 - [ ] Step-by-step migration instructions
@@ -265,7 +265,7 @@ your-project/
 
 # After (new way)
 your-project/
-  .vgc/
+  .principal-views/
     main.yaml  # Your existing config moved here
 ```
 
@@ -277,9 +277,9 @@ your-project/
 **New file**: `packages/core/src/__tests__/integration/multi-config.test.ts`
 
 **Tests**:
-- [ ] Load multiple configs from .vgc folder
+- [ ] Load multiple configs from .principal-views folder
 - [ ] Switch between configs
-- [ ] Handle missing .vgc folder gracefully
+- [ ] Handle missing .principal-views folder gracefully
 - [ ] Handle invalid YAML files
 - [ ] Verify each config loads independently
 
@@ -292,7 +292,7 @@ your-project/
 - [ ] Remove hardcoded file paths
 
 ### 7.3 Manual testing checklist
-- [ ] Create test project with .vgc folder
+- [ ] Create test project with .principal-views folder
 - [ ] Load all configs successfully
 - [ ] Verify error handling
 - [ ] Test with React components
@@ -328,7 +328,7 @@ your-project/
 
 ### Sprint 2: Core implementation
 3. Phase 2.4-2.6: Update types, exports, tests
-4. Phase 5: Create example .vgc folder
+4. Phase 5: Create example .principal-views folder
 
 ### Sprint 3: Documentation
 5. Phase 3: Update all documentation
@@ -361,11 +361,11 @@ your-project/
 ## Success Criteria
 
 - [ ] No references to single config file anywhere
-- [ ] All docs use `.vgc/` folder pattern
+- [ ] All docs use `.principal-views/` folder pattern
 - [ ] ConfigurationLoader works with adapters
 - [ ] Can load multiple configs simultaneously
 - [ ] Tests pass with InMemoryFileSystemAdapter
-- [ ] Example .vgc folder with 4+ configs
+- [ ] Example .principal-views folder with 4+ configs
 - [ ] Migration guide complete
 - [ ] Published version 0.3.0
 

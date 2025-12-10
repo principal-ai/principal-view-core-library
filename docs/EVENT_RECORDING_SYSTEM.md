@@ -529,7 +529,7 @@ interface SessionResult {
 Logs are automatically associated with components based on source file:
 
 ```yaml
-# .vgc/config.yaml
+# .principal-views/config.yaml
 nodeTypes:
   lock-manager:
     shape: rectangle
@@ -667,7 +667,7 @@ const handlePlaySession = (session: EventSession) => {
 - [ ] PR comment with recording playback link
 
 ### Phase 3: Persistence
-- [ ] Save recordings to `.vgc/recordings/` folder
+- [ ] Save recordings to `.principal-views/recordings/` folder
 - [ ] Load recordings from disk
 - [ ] Recording file format specification
 - [ ] Compression for large recordings
@@ -726,7 +726,7 @@ interface RecorderConfig {
 ```typescript
 const recorderConfig: RecorderConfig = {
   mode: 'auto-test',
-  graphConfig: loadConfig('.vgc/vvf.config.yaml'),
+  graphConfig: loadConfig('.principal-views/vvf.config.yaml'),
 
   server: {
     port: 9876,

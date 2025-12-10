@@ -16,7 +16,7 @@ The CLI provides two command aliases: `vv` (primary) and `visual-validation`.
 
 #### `init` - Initialize Project Structure
 
-Set up a new `.vgc` folder with template files:
+Set up a new `.principal-views` folder with template files:
 
 ```bash
 vv init
@@ -29,7 +29,7 @@ vv init --force  # Overwrite existing files
 Strict validation of `.canvas` configuration files:
 
 ```bash
-vv validate                    # Validates all .vgc/*.canvas files
+vv validate                    # Validates all .principal-views/*.canvas files
 vv validate path/to/file.canvas
 vv validate "**/*.canvas"      # Glob pattern
 vv validate --quiet            # Only output errors
