@@ -1,5 +1,5 @@
 import React from 'react';
-import type { EdgeState, EdgeTypeDefinition } from '@principal-ai/visual-validation-core';
+import type { EdgeState, EdgeTypeDefinition } from '@principal-ai/principal-view-core';
 
 export interface EdgeInfoPanelProps {
   edge: EdgeState;

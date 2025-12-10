@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { MetricsDashboard } from '../components/MetricsDashboard';
-import type { GraphMetrics } from '@principal-ai/visual-validation-core';
+import type { GraphMetrics } from '@principal-ai/principal-view-core';
 
 const meta = {
   title: 'Components/MetricsDashboard',

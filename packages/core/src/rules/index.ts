@@ -3,7 +3,7 @@
  *
  * @example
  * ```typescript
- * import { createRulesEngine, builtinRules } from '@principal-ai/visual-validation-core/rules';
+ * import { createRulesEngine, builtinRules } from '@principal-ai/principal-view-core/rules';
  *
  * const engine = createRulesEngine(builtinRules);
  * const result = await engine.lint(configuration);
@@ -32,7 +32,7 @@ export type {
   NormalizedSeverity,
   RuleCategory,
   RuleConfig,
-  VGCConfig,
+  PrivuConfig,
   FixResult,
 } from './types';
 
@@ -40,7 +40,7 @@ export { normalizeSeverity, isRuleDisabled } from './types';
 
 // Config validation
 export {
-  validateVGCConfig,
+  validatePrivuConfig,
   getDefaultConfig,
   mergeConfigs,
   formatConfigErrors,

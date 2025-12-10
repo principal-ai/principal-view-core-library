@@ -1,6 +1,6 @@
 /**
- * @principal-ai/visual-validation-core
- * Core logic and types for graph-based visual validation framework
+ * @principal-ai/principal-view-core
+ * Core logic and types for graph-based principal view framework
  */
 
 // Export all types

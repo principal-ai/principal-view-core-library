@@ -1,5 +1,5 @@
 /**
- * Core type definitions for the Visual Validation Framework
+ * Core type definitions for the Principal View Framework
  * Based on GENERIC_GRAPH_PANEL_DESIGN.md
  */
 

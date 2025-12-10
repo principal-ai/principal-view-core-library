@@ -2,7 +2,7 @@
  * Doctor command - Check configuration staleness and source pattern validity
  *
  * This command performs two types of checks:
- * 1. Pattern validation: Ensures source patterns in .vgc/*.yaml configs match actual files
+ * 1. Pattern validation: Ensures source patterns in .principal-views/*.yaml configs match actual files
  * 2. Freshness check: Compares config modification times vs source file changes
  */
 
@@ -66,7 +66,7 @@ function formatTimeDiff(ms: number): string {
 }
 
 /**
- * Check a single .vgc config file for staleness issues
+ * Check a single .principal-views config file for staleness issues
  */
 async function checkConfig(configPath: string, projectRoot: string): Promise<DoctorResult> {
   const absolutePath = resolve(configPath);
@@ -193,14 +193,14 @@ export function createDoctorCommand(): Command {
     .action(async (options) => {
       try {
         const projectRoot = resolve(options.dir || process.cwd());
-        const vgcDir = resolve(projectRoot, '.vgc');
+        const vgcDir = resolve(projectRoot, '.principal-views');
 
         if (!existsSync(vgcDir)) {
           if (options.json) {
-            console.log(JSON.stringify({ error: 'No .vgc directory found', results: [] }));
+            console.log(JSON.stringify({ error: 'No .principal-views directory found', results: [] }));
           } else {
-            console.log(chalk.yellow('No .vgc directory found.'));
-            console.log(chalk.dim('Run "vv init" to create a configuration.'));
+            console.log(chalk.yellow('No .principal-views directory found.'));
+            console.log(chalk.dim('Run "privu init" to create a configuration.'));
           }
           return;
         }
@@ -214,9 +214,9 @@ export function createDoctorCommand(): Command {
 
         if (configFiles.length === 0) {
           if (options.json) {
-            console.log(JSON.stringify({ error: 'No config files found in .vgc', results: [] }));
+            console.log(JSON.stringify({ error: 'No config files found in .principal-views', results: [] }));
           } else {
-            console.log(chalk.yellow('No configuration files found in .vgc/'));
+            console.log(chalk.yellow('No configuration files found in .principal-views/'));
           }
           return;
         }

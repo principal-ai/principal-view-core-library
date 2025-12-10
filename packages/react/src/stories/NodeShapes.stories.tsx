@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
-import type { ExtendedCanvas } from '@principal-ai/visual-validation-core';
+import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
 
 const meta = {
   title: 'Audit/NodeShapes',

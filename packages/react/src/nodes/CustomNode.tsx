@@ -1,7 +1,7 @@
 import React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import type { NodeTypeDefinition } from '@principal-ai/visual-validation-core';
+import type { NodeTypeDefinition } from '@principal-ai/principal-view-core';
 import { resolveIcon } from '../utils/iconResolver';
 
 export interface CustomNodeData extends Record<string, unknown> {

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { NodeTypeDefinition } from '@principal-ai/visual-validation-core';
+import type { NodeTypeDefinition } from '@principal-ai/principal-view-core';
 
 export interface GenericNodeProps {
   /** Node ID */

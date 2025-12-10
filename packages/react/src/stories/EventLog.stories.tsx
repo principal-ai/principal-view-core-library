@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { EventLog } from '../components/EventLog';
-import type { GraphEvent, Violation } from '@principal-ai/visual-validation-core';
+import type { GraphEvent, Violation } from '@principal-ai/principal-view-core';
 
 const meta = {
   title: 'Components/EventLog',

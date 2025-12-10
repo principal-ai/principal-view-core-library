@@ -1,8 +1,8 @@
 /**
- * Visual Validation CLI - Main entry point
+ * Principal View CLI - Main entry point
  *
  * This CLI provides tools to validate and manage .canvas configuration files
- * for the Visual Validation Framework.
+ * for the Principal View Framework.
  */
 
 import { Command } from 'commander';
@@ -21,8 +21,8 @@ const VERSION = '0.1.13';
 const program = new Command();
 
 program
-  .name('vv')
-  .description('Visual Validation CLI - Validate and manage .canvas configuration files')
+  .name('privu')
+  .description('Principal View CLI - Validate and manage .canvas configuration files')
   .version(VERSION);
 
 // Add commands

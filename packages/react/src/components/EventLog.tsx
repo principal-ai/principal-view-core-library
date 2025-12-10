@@ -1,5 +1,5 @@
 import React from 'react';
-import type { GraphEvent, Violation } from '@principal-ai/visual-validation-core';
+import type { GraphEvent, Violation } from '@principal-ai/principal-view-core';
 
 export interface EventLogProps {
   /** List of events to display */

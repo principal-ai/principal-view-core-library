@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { NodeState, NodeTypeDefinition } from '@principal-ai/visual-validation-core';
+import type { NodeState, NodeTypeDefinition } from '@principal-ai/principal-view-core';
 import { resolveIcon } from '../utils/iconResolver';
 
 // Common icons for the icon selector

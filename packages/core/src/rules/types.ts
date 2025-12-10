@@ -48,7 +48,7 @@ export interface RuleConfig {
 /**
  * VGC Configuration file schema
  */
-export interface VGCConfig {
+export interface PrivuConfig {
   /**
    * Schema version for forward compatibility
    */

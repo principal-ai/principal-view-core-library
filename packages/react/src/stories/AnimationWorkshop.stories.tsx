@@ -5,7 +5,7 @@ import { CustomNode } from '../nodes/CustomNode';
 import { CustomEdge } from '../edges/CustomEdge';
 import type { CustomNodeData } from '../nodes/CustomNode';
 import type { CustomEdgeData } from '../edges/CustomEdge';
-import type { NodeTypeDefinition, EdgeTypeDefinition } from '@principal-ai/visual-validation-core';
+import type { NodeTypeDefinition, EdgeTypeDefinition } from '@principal-ai/principal-view-core';
 import React from 'react';
 
 const meta = {

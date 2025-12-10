@@ -9,10 +9,10 @@
  * - Library files (.yaml/.json) = collections of reusable type definitions
  *
  * When a user adds a component from the library to a canvas,
- * the type definition gets embedded into the node's `vv` field.
+ * the type definition gets embedded into the node's `pv` field.
  */
 
-import type { VVNodeShape, VVEdgeStyle, VVAnimationType, VVActionPattern, VVNodeState } from './canvas';
+import type { PVNodeShape, PVEdgeStyle, PVAnimationType, PVActionPattern, PVNodeState } from './canvas';
 
 // ============================================================================
 // Library Component Types
@@ -33,7 +33,7 @@ export interface LibraryNodeComponent {
   defaultLabel?: string;
 
   /** Visual shape */
-  shape: VVNodeShape;
+  shape: PVNodeShape;
 
   /** Icon identifier (Lucide icons) */
   icon?: string;
@@ -45,13 +45,13 @@ export interface LibraryNodeComponent {
   size?: { width: number; height: number };
 
   /** State definitions */
-  states?: Record<string, VVNodeState>;
+  states?: Record<string, PVNodeState>;
 
   /** Source file patterns for log association */
   sources?: string[];
 
   /** Action patterns for event extraction */
-  actions?: VVActionPattern[];
+  actions?: PVActionPattern[];
 
   /** Data schema for typed fields */
   dataSchema?: Record<
@@ -81,7 +81,7 @@ export interface LibraryEdgeComponent {
   tags?: string[];
 
   /** Line style */
-  style: VVEdgeStyle;
+  style: PVEdgeStyle;
 
   /** Line color */
   color?: string;
@@ -94,7 +94,7 @@ export interface LibraryEdgeComponent {
 
   /** Default animation */
   animation?: {
-    type: VVAnimationType;
+    type: PVAnimationType;
     duration?: number;
     color?: string;
   };

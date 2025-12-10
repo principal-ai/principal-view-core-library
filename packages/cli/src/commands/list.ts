@@ -26,8 +26,8 @@ function getCanvasInfo(filePath: string): CanvasInfo | null {
 
     return {
       file: relative(process.cwd(), absolutePath),
-      name: canvas.vv?.name || 'Untitled',
-      version: canvas.vv?.version,
+      name: canvas.pv?.name || 'Untitled',
+      version: canvas.pv?.version,
       nodeCount: Array.isArray(canvas.nodes) ? canvas.nodes.length : 0,
       edgeCount: Array.isArray(canvas.edges) ? canvas.edges.length : 0,
       modified: stats.mtime,
@@ -43,13 +43,13 @@ export function createListCommand(): Command {
   command
     .alias('ls')
     .description('List all .canvas files in the project')
-    .option('-a, --all', 'Search all directories (not just .vgc)')
+    .option('-a, --all', 'Search all directories (not just .principal-views)')
     .option('--json', 'Output as JSON')
     .action(async (options) => {
       try {
         const patterns = options.all
           ? ['**/*.canvas', '!node_modules/**']
-          : ['.vgc/*.canvas'];
+          : ['.principal-views/*.canvas'];
 
         const files = await globby(patterns, {
           expandDirectories: false,
@@ -63,7 +63,7 @@ export function createListCommand(): Command {
             if (!options.all) {
               console.log(chalk.dim('Run with --all to search all directories'));
             }
-            console.log(chalk.dim('\nTo create a new canvas, run: vv init'));
+            console.log(chalk.dim('\nTo create a new canvas, run: privu init'));
           }
           return;
         }

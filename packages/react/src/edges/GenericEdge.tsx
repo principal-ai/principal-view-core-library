@@ -1,5 +1,5 @@
 import React from 'react';
-import type { EdgeTypeDefinition } from '@principal-ai/visual-validation-core';
+import type { EdgeTypeDefinition } from '@principal-ai/principal-view-core';
 
 export interface GenericEdgeProps {
   /** Edge ID */

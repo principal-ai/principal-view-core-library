@@ -1,5 +1,5 @@
 {
-  "name": "visual-validation-monorepo",
+  "name": "principal-view-monorepo",
   "private": true,
   "workspaces": [
     "packages/*"

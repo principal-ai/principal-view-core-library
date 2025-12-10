@@ -1,12 +1,12 @@
 {
-  "name": "@principal-ai/visual-validation-cli",
+  "name": "@principal-ai/principal-view-cli",
   "version": "0.1.13",
-  "description": "Visual Validation CLI - Validate and manage .canvas configuration files",
+  "description": "Principal View CLI - Validate and manage .canvas configuration files",
   "main": "dist/index.cjs",
   "types": "dist/index.d.ts",
   "bin": {
-    "vv": "dist/index.cjs",
-    "visual-validation": "dist/index.cjs"
+    "privu": "dist/index.cjs",
+    "principal-view": "dist/index.cjs"
   },
   "type": "module",
   "scripts": {
@@ -19,7 +19,7 @@
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
-    "visual-validation",
+    "principal-view",
     "cli",
     "canvas",
     "graph",
@@ -38,6 +38,7 @@
     "js-yaml": "^4.1.1"
   },
   "devDependencies": {
+    "@principal-ai/principal-view-core": "workspace:*",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.10.1",
     "esbuild": "^0.24.0",

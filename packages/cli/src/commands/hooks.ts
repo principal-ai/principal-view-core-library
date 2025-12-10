@@ -1,8 +1,8 @@
 /**
- * Hooks command - Manage husky pre-commit hooks for Visual Validation
+ * Hooks command - Manage husky pre-commit hooks for Principal View
  *
  * This command installs/removes pre-commit hooks into a target project
- * that will run `vv doctor` and `vv validate` before each commit.
+ * that will run `privu doctor` and `privu validate` before each commit.
  */
 
 import { Command } from 'commander';
@@ -13,25 +13,25 @@ import { execSync } from 'node:child_process';
 
 const HUSKY_DIR = '.husky';
 const PRE_COMMIT_HOOK = 'pre-commit';
-const VV_HOOK_MARKER = '# Visual Validation checks';
+const VV_HOOK_MARKER = '# Principal View checks';
 
 /**
- * Get the Visual Validation pre-commit hook content
+ * Get the Principal View pre-commit hook content
  */
 function getVVHookContent(): string {
   return `${VV_HOOK_MARKER}
-echo "Running Visual Validation doctor check..."
-npx vv doctor --errors-only || {
-  echo "❌ Visual Validation doctor check failed (errors found)"
-  echo "   Run 'vv doctor' to see details"
+echo "Running Principal View doctor check..."
+npx privu doctor --errors-only || {
+  echo "❌ Principal View doctor check failed (errors found)"
+  echo "   Run 'privu doctor' to see details"
   exit 1
 }
 
-echo "Running Visual Validation canvas validation..."
-npx vv validate --quiet 2>/dev/null || {
+echo "Running Principal View canvas validation..."
+npx privu validate --quiet 2>/dev/null || {
   if [ $? -ne 0 ]; then
     echo "❌ Canvas validation failed"
-    echo "   Run 'vv validate' to see details"
+    echo "   Run 'privu validate' to see details"
     exit 1
   fi
 }
@@ -107,7 +107,7 @@ function initializeHusky(repoPath: string): void {
 }
 
 /**
- * Check if pre-commit hook has VV validation
+ * Check if pre-commit hook has PV validation
  */
 function hasVVHook(repoPath: string): boolean {
   const hookPath = join(repoPath, HUSKY_DIR, PRE_COMMIT_HOOK);
@@ -120,7 +120,7 @@ function hasVVHook(repoPath: string): boolean {
 }
 
 /**
- * Add VV validation to pre-commit hook
+ * Add PV validation to pre-commit hook
  */
 function addVVHook(repoPath: string): void {
   const hookPath = join(repoPath, HUSKY_DIR, PRE_COMMIT_HOOK);
@@ -130,7 +130,7 @@ function addVVHook(repoPath: string): void {
     // Append to existing hook
     let existingContent = readFileSync(hookPath, 'utf8');
 
-    // Check if already has VV hook
+    // Check if already has PV hook
     if (existingContent.includes(VV_HOOK_MARKER)) {
       return;
     }
@@ -140,9 +140,9 @@ function addVVHook(repoPath: string): void {
     if (trimmedContent === 'npm test') {
       // Replace the placeholder entirely
       writeFileSync(hookPath, vvContent, 'utf8');
-      console.log('ℹ️  Replaced default husky placeholder with Visual Validation checks');
+      console.log('ℹ️  Replaced default husky placeholder with Principal View checks');
     } else {
-      // Add VV hook at the end
+      // Add PV hook at the end
       const updatedContent = existingContent.trimEnd() + '\n\n' + vvContent;
       writeFileSync(hookPath, updatedContent, 'utf8');
     }
@@ -155,7 +155,7 @@ function addVVHook(repoPath: string): void {
 }
 
 /**
- * Remove VV validation from pre-commit hook
+ * Remove PV validation from pre-commit hook
  */
 function removeVVHook(repoPath: string): void {
   const hookPath = join(repoPath, HUSKY_DIR, PRE_COMMIT_HOOK);
@@ -170,7 +170,7 @@ function removeVVHook(repoPath: string): void {
     return;
   }
 
-  // Split content by lines and find the VV section
+  // Split content by lines and find the PV section
   const lines = content.split('\n');
   const startIndex = lines.findIndex((line) => line.includes(VV_HOOK_MARKER));
 
@@ -178,7 +178,7 @@ function removeVVHook(repoPath: string): void {
     return;
   }
 
-  // Find the end of the VV section
+  // Find the end of the PV section
   let endIndex = lines.length - 1;
   let inVVBlock = true;
   let i = startIndex + 1;
@@ -186,11 +186,11 @@ function removeVVHook(repoPath: string): void {
   while (i < lines.length && inVVBlock) {
     const line = lines[i];
 
-    // Check if this line is part of the VV block
+    // Check if this line is part of the PV block
     if (
       line &&
-      (line.includes('vv ') ||
-        line.includes('Visual Validation') ||
+      (line.includes('privu ') ||
+        line.includes('Principal View') ||
         line.includes('echo "Running Visual') ||
         (line.includes('exit 1') && i > startIndex && i < startIndex + 15) ||
         (line === '}' && i > startIndex && i < startIndex + 15) ||
@@ -227,11 +227,11 @@ export function createHooksCommand(): Command {
   const command = new Command('hooks');
 
   command
-    .description('Manage husky pre-commit hooks for Visual Validation')
+    .description('Manage husky pre-commit hooks for Principal View')
     .option('-p, --path <path>', 'Repository path (defaults to current directory)')
-    .option('--add', 'Add Visual Validation checks to pre-commit hook')
-    .option('--remove', 'Remove Visual Validation checks from pre-commit hook')
-    .option('--check', 'Check if Visual Validation checks exist in pre-commit hook')
+    .option('--add', 'Add Principal View checks to pre-commit hook')
+    .option('--remove', 'Remove Principal View checks from pre-commit hook')
+    .option('--check', 'Check if Principal View checks exist in pre-commit hook')
     .option('--init', 'Initialize husky if not already installed')
     .action((options) => {
       try {
@@ -253,19 +253,19 @@ export function createHooksCommand(): Command {
         if (!isHuskyInstalled(repoPath)) {
           if (options.check) {
             console.log(chalk.red('❌ Husky is not installed'));
-            console.log('   Run "vv hooks --init" to install husky');
+            console.log('   Run "privu hooks --init" to install husky');
             process.exit(1);
           } else if (options.add) {
             console.log(chalk.red('❌ Husky is not installed'));
-            console.log('   Run "vv hooks --init" first to install husky');
+            console.log('   Run "privu hooks --init" first to install husky');
             process.exit(1);
           } else if (options.remove) {
             console.log('ℹ️  Husky is not installed');
             return;
           } else {
             console.log(chalk.red('❌ Husky is not installed in this repository'));
-            console.log('\nTo install husky and set up Visual Validation hooks:');
-            console.log('  vv hooks --init --add');
+            console.log('\nTo install husky and set up Principal View hooks:');
+            console.log('  privu hooks --init --add');
             process.exit(1);
           }
         }
@@ -274,34 +274,34 @@ export function createHooksCommand(): Command {
 
         if (options.check) {
           if (hasHook) {
-            console.log(chalk.green('✅ Visual Validation checks found in pre-commit hook'));
+            console.log(chalk.green('✅ Principal View checks found in pre-commit hook'));
           } else {
-            console.log(chalk.red('❌ No Visual Validation checks in pre-commit hook'));
+            console.log(chalk.red('❌ No Principal View checks in pre-commit hook'));
             process.exit(1);
           }
         } else if (options.add) {
           if (hasHook) {
-            console.log('ℹ️  Visual Validation checks already exist in pre-commit hook');
+            console.log('ℹ️  Principal View checks already exist in pre-commit hook');
           } else {
             addVVHook(repoPath);
-            console.log(chalk.green('✅ Added Visual Validation checks to pre-commit hook'));
+            console.log(chalk.green('✅ Added Principal View checks to pre-commit hook'));
             console.log('\nPre-commit hook will now:');
-            console.log('  • Run vv doctor to check for stale configurations');
+            console.log('  • Run privu doctor to check for stale configurations');
             console.log('  • Validate all .canvas files');
           }
         } else if (options.remove) {
           if (!hasHook) {
-            console.log('ℹ️  No Visual Validation checks found in pre-commit hook');
+            console.log('ℹ️  No Principal View checks found in pre-commit hook');
           } else {
             removeVVHook(repoPath);
-            console.log(chalk.green('✅ Removed Visual Validation checks from pre-commit hook'));
+            console.log(chalk.green('✅ Removed Principal View checks from pre-commit hook'));
           }
         } else {
           // Default action: show status
-          console.log(chalk.bold('\nVisual Validation Hooks Status\n'));
+          console.log(chalk.bold('\nPrincipal View Hooks Status\n'));
           console.log(`Repository: ${repoPath}`);
           console.log(`Husky: ${chalk.green('installed')}`);
-          console.log(`VV Hooks: ${hasHook ? chalk.green('configured') : chalk.yellow('not configured')}`);
+          console.log(`PV Hooks: ${hasHook ? chalk.green('configured') : chalk.yellow('not configured')}`);
 
           if (hasHook) {
             console.log('\nUse --remove to remove or --check to verify');

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import { GraphRenderer } from '../components/GraphRenderer';
-import type { ExtendedCanvas } from '@principal-ai/visual-validation-core';
+import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
 import React from 'react';
 
 const meta: Meta<typeof GraphRenderer> = {

@@ -10,15 +10,15 @@ import { globby } from 'globby';
 import yaml from 'js-yaml';
 import {
   createDefaultRulesEngine,
-  validateVGCConfig,
+  validatePrivuConfig,
   mergeConfigs,
   getDefaultConfig,
   type GraphConfiguration,
   type GraphLintResult,
   type GraphRuleViolation,
-  type VGCConfig,
+  type PrivuConfig,
   type ComponentLibrary,
-} from '@principal-ai/visual-validation-core';
+} from '@principal-ai/principal-view-core';
 
 // ============================================================================
 // Config File Loading
@@ -28,18 +28,18 @@ import {
  * Config file names in resolution order
  */
 const CONFIG_FILE_NAMES = [
-  '.vgcrc.json',
-  '.vgcrc.yaml',
-  '.vgcrc.yml',
-  'vgc.config.json',
-  'vgc.config.yaml',
-  'vgc.config.yml',
+  '.principal-viewsrc.json',
+  '.principal-viewsrc.yaml',
+  '.principal-viewsrc.yml',
+  'privu.config.json',
+  'privu.config.yaml',
+  'privu.config.yml',
 ];
 
 /**
  * Find and load VGC config file
  */
-function findConfig(startDir: string): { config: VGCConfig; path: string } | null {
+function findConfig(startDir: string): { config: PrivuConfig; path: string } | null {
   let currentDir = resolve(startDir);
 
   while (true) {
@@ -54,13 +54,13 @@ function findConfig(startDir: string): { config: VGCConfig; path: string } | nul
       }
     }
 
-    // Check package.json for "vgc" key
+    // Check package.json for "privu" key
     const packageJsonPath = resolve(currentDir, 'package.json');
     if (existsSync(packageJsonPath)) {
       try {
         const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
-        if (packageJson.vgc && typeof packageJson.vgc === 'object') {
-          return { config: packageJson.vgc as VGCConfig, path: packageJsonPath };
+        if (packageJson.privu && typeof packageJson.privu === 'object') {
+          return { config: packageJson.privu as PrivuConfig, path: packageJsonPath };
         }
       } catch {
         // Ignore parse errors
@@ -81,15 +81,15 @@ function findConfig(startDir: string): { config: VGCConfig; path: string } | nul
 /**
  * Load a config file (JSON or YAML)
  */
-function loadConfigFile(filePath: string): VGCConfig | null {
+function loadConfigFile(filePath: string): PrivuConfig | null {
   try {
     const content = readFileSync(filePath, 'utf8');
     const ext = filePath.toLowerCase();
 
     if (ext.endsWith('.json')) {
-      return JSON.parse(content) as VGCConfig;
+      return JSON.parse(content) as PrivuConfig;
     } else {
-      return yaml.load(content) as VGCConfig;
+      return yaml.load(content) as PrivuConfig;
     }
   } catch {
     return null;
@@ -264,7 +264,7 @@ export function createLintCommand(): Command {
 
   command
     .description('Lint graph configuration files')
-    .argument('[files...]', 'Files or glob patterns to lint (defaults to .vgc/**/*.yaml)')
+    .argument('[files...]', 'Files or glob patterns to lint (defaults to .principal-views/**/*.yaml)')
     .option('-c, --config <path>', 'Path to config file')
     .option('--library <path>', 'Path to component library file')
     .option('-q, --quiet', 'Only output errors')
@@ -276,7 +276,7 @@ export function createLintCommand(): Command {
         const cwd = process.cwd();
 
         // Load VGC config
-        let vgcConfig: VGCConfig = getDefaultConfig();
+        let privuConfig: PrivuConfig = getDefaultConfig();
         let configPath: string | undefined;
 
         if (options.config) {
@@ -288,7 +288,7 @@ export function createLintCommand(): Command {
           }
 
           // Validate config
-          const validation = validateVGCConfig(loadedConfig);
+          const validation = validatePrivuConfig(loadedConfig);
           if (!validation.valid) {
             console.error(chalk.red('Configuration Error:'), options.config);
             for (const error of validation.errors) {
@@ -300,13 +300,13 @@ export function createLintCommand(): Command {
             process.exit(1);
           }
 
-          vgcConfig = mergeConfigs(vgcConfig, loadedConfig);
+          privuConfig = mergeConfigs(privuConfig, loadedConfig);
           configPath = resolve(cwd, options.config);
         } else {
           // Search for config file
           const found = findConfig(cwd);
           if (found) {
-            const validation = validateVGCConfig(found.config);
+            const validation = validatePrivuConfig(found.config);
             if (!validation.valid) {
               console.error(chalk.red('Configuration Error:'), found.path);
               for (const error of validation.errors) {
@@ -317,7 +317,7 @@ export function createLintCommand(): Command {
               }
               process.exit(1);
             }
-            vgcConfig = mergeConfigs(vgcConfig, found.config);
+            privuConfig = mergeConfigs(privuConfig, found.config);
             configPath = found.path;
           }
         }
@@ -326,22 +326,22 @@ export function createLintCommand(): Command {
         let patterns: string[];
         if (files.length > 0) {
           patterns = files;
-        } else if (vgcConfig.include && vgcConfig.include.length > 0) {
-          patterns = vgcConfig.include;
+        } else if (privuConfig.include && privuConfig.include.length > 0) {
+          patterns = privuConfig.include;
         } else {
-          patterns = ['.vgc/**/*.yaml', '.vgc/**/*.yml', '.vgc/**/*.json'];
+          patterns = ['.principal-views/**/*.yaml', '.principal-views/**/*.yml', '.principal-views/**/*.json'];
         }
 
         // Find matching files
         const matchedFiles = await globby(patterns, {
-          ignore: vgcConfig.exclude || ['**/node_modules/**'],
+          ignore: privuConfig.exclude || ['**/node_modules/**'],
           expandDirectories: false,
         });
 
         // Filter out library files and config files
         const configFiles = matchedFiles.filter((f) => {
           const name = basename(f).toLowerCase();
-          return !name.startsWith('library.') && !name.startsWith('.vgcrc') && !name.startsWith('vgc.config');
+          return !name.startsWith('library.') && !name.startsWith('.principal-viewsrc') && !name.startsWith('privu.config');
         });
 
         if (configFiles.length === 0) {
@@ -356,7 +356,7 @@ export function createLintCommand(): Command {
 
         // Load library if specified
         let library: ComponentLibrary | undefined;
-        const libraryPath = options.library || vgcConfig.library;
+        const libraryPath = options.library || privuConfig.library;
         if (libraryPath) {
           const resolvedLibraryPath = resolve(cwd, libraryPath);
           library = loadLibrary(resolvedLibraryPath) ?? undefined;
@@ -397,7 +397,7 @@ export function createLintCommand(): Command {
           }
 
           // Run linting
-          const result = await engine.lintWithConfig(loaded.config, vgcConfig, {
+          const result = await engine.lintWithConfig(loaded.config, privuConfig, {
             library,
             configPath: relativePath,
             rawContent: loaded.raw,

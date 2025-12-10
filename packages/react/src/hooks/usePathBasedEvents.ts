@@ -11,7 +11,7 @@ import type {
   ComponentActionEvent,
   EdgeAnimationEvent,
   PathBasedEvent
-} from '@principal-ai/visual-validation-core';
+} from '@principal-ai/principal-view-core';
 import {
   logLevelToNodeAnimation,
   actionToNodeAnimation,

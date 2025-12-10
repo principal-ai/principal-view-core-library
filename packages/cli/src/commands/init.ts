@@ -1,5 +1,5 @@
 /**
- * Init command - Initialize a .vgc folder with template files and linting setup
+ * Init command - Initialize a .principal-views folder with template files and linting setup
  */
 
 import { Command } from 'commander';
@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync, chmodSync } from 'n
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
 import chalk from 'chalk';
-import type { ExtendedCanvas, ComponentLibrary } from '@principal-ai/visual-validation-core';
+import type { ExtendedCanvas, ComponentLibrary } from '@principal-ai/principal-view-core';
 
 const TEMPLATE_LIBRARY: ComponentLibrary = {
   version: '1.0.0',
@@ -21,22 +21,22 @@ const TEMPLATE_CANVAS: ExtendedCanvas = {
   edges: [],
 };
 
-const TEMPLATE_VGCRC = `# Visual Graph Configuration Lint Rules
-# See: https://github.com/principal-ai/visual-validation
+const TEMPLATE_PRIVURC = `# Principal View Configuration Lint Rules
+# See: https://github.com/principal-ai/principal-view
 
 # File patterns to include
 include:
-  - ".vgc/**/*.yaml"
-  - ".vgc/**/*.yml"
-  - ".vgc/**/*.json"
+  - ".principal-views/**/*.yaml"
+  - ".principal-views/**/*.yml"
+  - ".principal-views/**/*.json"
 
 # File patterns to exclude
 exclude:
   - "**/node_modules/**"
-  - ".vgc/library.yaml"
+  - ".principal-views/library.yaml"
 
 # Path to component library (optional)
-library: ".vgc/library.yaml"
+library: ".principal-views/library.yaml"
 
 # Rule configuration
 # Severity: "off" | "warn" | "error" (or 0 | 1 | 2)
@@ -78,8 +78,8 @@ rules:
 const HUSKY_PRE_COMMIT = `#!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-# Run visual validation linting on staged .vgc files
-vv lint --quiet
+# Run principal view linting on staged .principal-views files
+privu lint --quiet
 `;
 
 /**
@@ -138,36 +138,36 @@ export function createInitCommand(): Command {
   const command = new Command('init');
 
   command
-    .description('Initialize a .vgc folder with template files and linting setup')
+    .description('Initialize a .principal-views folder with template files and linting setup')
     .option('-f, --force', 'Overwrite existing files')
     .option('-n, --name <name>', 'Name for the canvas file', 'architecture')
     .option('--no-husky', 'Skip Husky pre-commit hook setup')
-    .option('--no-lint-config', 'Skip .vgcrc.yaml creation')
+    .option('--no-lint-config', 'Skip .privurc.yaml creation')
     .action(async (options) => {
       try {
         const cwd = process.cwd();
-        const vgcDir = join(cwd, '.vgc');
-        const canvasFile = join(vgcDir, `${options.name}.canvas`);
-        const libraryFile = join(vgcDir, 'library.yaml');
-        const vgcrcFile = join(cwd, '.vgcrc.yaml');
+        const principalViewsDir = join(cwd, '.principal-views');
+        const canvasFile = join(principalViewsDir, `${options.name}.canvas`);
+        const libraryFile = join(principalViewsDir, 'library.yaml');
+        const privurcFile = join(cwd, '.privurc.yaml');
 
-        // Check if .vgc directory exists
-        if (!existsSync(vgcDir)) {
-          mkdirSync(vgcDir, { recursive: true });
-          console.log(chalk.green(`Created directory: .vgc/`));
+        // Check if .principal-views directory exists
+        if (!existsSync(principalViewsDir)) {
+          mkdirSync(principalViewsDir, { recursive: true });
+          console.log(chalk.green(`Created directory: .principal-views/`));
         }
 
         // Create canvas file
         if (existsSync(canvasFile) && !options.force) {
-          console.log(chalk.yellow(`Canvas file already exists: .vgc/${options.name}.canvas`));
+          console.log(chalk.yellow(`Canvas file already exists: .principal-views/${options.name}.canvas`));
         } else {
           writeFileSync(canvasFile, JSON.stringify(TEMPLATE_CANVAS, null, 2));
-          console.log(chalk.green(`Created canvas file: .vgc/${options.name}.canvas`));
+          console.log(chalk.green(`Created canvas file: .principal-views/${options.name}.canvas`));
         }
 
         // Create library file
         if (existsSync(libraryFile) && !options.force) {
-          console.log(chalk.yellow(`Library file already exists: .vgc/library.yaml`));
+          console.log(chalk.yellow(`Library file already exists: .principal-views/library.yaml`));
         } else {
           const libraryYaml = `version: "1.0.0"
 name: "Component Library"
@@ -177,16 +177,16 @@ nodeComponents: {}
 edgeComponents: {}
 `;
           writeFileSync(libraryFile, libraryYaml);
-          console.log(chalk.green(`Created library file: .vgc/library.yaml`));
+          console.log(chalk.green(`Created library file: .principal-views/library.yaml`));
         }
 
-        // Create .vgcrc.yaml config file
+        // Create .privurc.yaml config file
         if (options.lintConfig !== false) {
-          if (existsSync(vgcrcFile) && !options.force) {
-            console.log(chalk.yellow(`Config file already exists: .vgcrc.yaml`));
+          if (existsSync(privurcFile) && !options.force) {
+            console.log(chalk.yellow(`Config file already exists: .privurc.yaml`));
           } else {
-            writeFileSync(vgcrcFile, TEMPLATE_VGCRC);
-            console.log(chalk.green(`Created lint config: .vgcrc.yaml`));
+            writeFileSync(privurcFile, TEMPLATE_PRIVURC);
+            console.log(chalk.green(`Created lint config: .privurc.yaml`));
           }
         }
 
@@ -208,13 +208,13 @@ edgeComponents: {}
                 if (existsSync(preCommitFile)) {
                   // Check if our hook is already in the file
                   const existingContent = readFileSync(preCommitFile, 'utf8');
-                  if (existingContent.includes('vv lint')) {
-                    console.log(chalk.yellow(`Husky pre-commit hook already includes vv lint`));
+                  if (existingContent.includes('privu lint')) {
+                    console.log(chalk.yellow(`Husky pre-commit hook already includes privu lint`));
                   } else {
                     // Append our lint command to existing pre-commit
-                    const updatedContent = existingContent.trimEnd() + '\n\n# Run visual validation linting\nvv lint --quiet\n';
+                    const updatedContent = existingContent.trimEnd() + '\n\n# Run principal view linting\nprivu lint --quiet\n';
                     writeFileSync(preCommitFile, updatedContent);
-                    console.log(chalk.green(`Updated Husky pre-commit hook with vv lint`));
+                    console.log(chalk.green(`Updated Husky pre-commit hook with privu lint`));
                     huskySetup = true;
                   }
                 } else {
@@ -267,10 +267,10 @@ edgeComponents: {}
         console.log(chalk.bold('Setup complete!'));
         console.log('');
         console.log(chalk.bold('Files created:'));
-        console.log(`  • ${chalk.cyan('.vgc/library.yaml')} - Component library definitions`);
-        console.log(`  • ${chalk.cyan(`.vgc/${options.name}.canvas`)} - Graph canvas file`);
+        console.log(`  • ${chalk.cyan('.principal-views/library.yaml')} - Component library definitions`);
+        console.log(`  • ${chalk.cyan(`.principal-views/${options.name}.canvas`)} - Graph canvas file`);
         if (options.lintConfig !== false) {
-          console.log(`  • ${chalk.cyan('.vgcrc.yaml')} - Lint configuration`);
+          console.log(`  • ${chalk.cyan('.privurc.yaml')} - Lint configuration`);
         }
         if (huskySetup) {
           console.log(`  • ${chalk.cyan('.husky/pre-commit')} - Pre-commit hook`);
@@ -278,19 +278,19 @@ edgeComponents: {}
 
         console.log('');
         console.log(chalk.bold('Next steps:'));
-        console.log(`  1. Define components in ${chalk.cyan('.vgc/library.yaml')}`);
-        console.log(`  2. Build your graph in ${chalk.cyan(`.vgc/${options.name}.canvas`)}`);
-        console.log(`  3. Run ${chalk.cyan('vv lint')} to validate your configuration`);
+        console.log(`  1. Define components in ${chalk.cyan('.principal-views/library.yaml')}`);
+        console.log(`  2. Build your graph in ${chalk.cyan(`.principal-views/${options.name}.canvas`)}`);
+        console.log(`  3. Run ${chalk.cyan('privu lint')} to validate your configuration`);
         if (huskySetup) {
-          console.log(`  4. Commits will now automatically lint .vgc files`);
+          console.log(`  4. Commits will now automatically lint .principal-views files`);
         }
 
         console.log('');
         console.log(chalk.bold('Commands:'));
-        console.log(`  • ${chalk.cyan('vv lint')} - Lint configuration files`);
-        console.log(`  • ${chalk.cyan('vv lint --json')} - Output lint results as JSON`);
-        console.log(`  • ${chalk.cyan('vv validate')} - Validate canvas files`);
-        console.log(`  • ${chalk.cyan('vv doctor')} - Check project setup`);
+        console.log(`  • ${chalk.cyan('privu lint')} - Lint configuration files`);
+        console.log(`  • ${chalk.cyan('privu lint --json')} - Output lint results as JSON`);
+        console.log(`  • ${chalk.cyan('privu validate')} - Validate canvas files`);
+        console.log(`  • ${chalk.cyan('privu doctor')} - Check project setup`);
       } catch (error) {
         console.error(chalk.red('Error:'), (error as Error).message);
         process.exit(1);

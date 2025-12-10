@@ -8,7 +8,7 @@ import { resolve, relative, dirname } from 'node:path';
 import chalk from 'chalk';
 import { globby } from 'globby';
 import yaml from 'js-yaml';
-import type { ExtendedCanvas } from '@principal-ai/visual-validation-core';
+import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
 
 interface ValidationIssue {
   type: 'error' | 'warning';
@@ -33,13 +33,13 @@ interface LoadedLibrary {
 }
 
 /**
- * Load the library.yaml file from the .vgc directory
+ * Load the library.yaml file from the .principal-views directory
  */
-function loadLibrary(vgcDir: string): LoadedLibrary | null {
+function loadLibrary(principalViewsDir: string): LoadedLibrary | null {
   const libraryFiles = ['library.yaml', 'library.yml', 'library.json'];
 
   for (const fileName of libraryFiles) {
-    const libraryPath = resolve(vgcDir, fileName);
+    const libraryPath = resolve(principalViewsDir, fileName);
     if (existsSync(libraryPath)) {
       try {
         const content = readFileSync(libraryPath, 'utf8');
@@ -63,12 +63,12 @@ function loadLibrary(vgcDir: string): LoadedLibrary | null {
 }
 
 /**
- * Standard JSON Canvas node types that don't require vv metadata
+ * Standard JSON Canvas node types that don't require pv metadata
  */
 const STANDARD_CANVAS_TYPES = ['text', 'group', 'file', 'link'] as const;
 
 /**
- * Valid node shapes for vv.shape
+ * Valid node shapes for pv.shape
  */
 const VALID_NODE_SHAPES = ['circle', 'rectangle', 'hexagon', 'diamond', 'custom'] as const;
 
@@ -77,10 +77,10 @@ const VALID_NODE_SHAPES = ['circle', 'rectangle', 'hexagon', 'diamond', 'custom'
  *
  * Strict validation ensures:
  * - All required fields are present
- * - Custom node types have proper vv metadata
- * - Edge types reference defined types in vv.edgeTypes or library.edgeComponents
- * - Node types reference defined types in vv.nodeTypes or library.nodeComponents
- * - Canvas has vv extension with name and version
+ * - Custom node types have proper pv metadata
+ * - Edge types reference defined types in pv.edgeTypes or library.edgeComponents
+ * - Node types reference defined types in pv.nodeTypes or library.nodeComponents
+ * - Canvas has pv extension with name and version
  */
 function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrary | null): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
@@ -96,43 +96,43 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
   const libraryNodeTypes = library ? Object.keys(library.nodeComponents) : [];
   const libraryEdgeTypes = library ? Object.keys(library.edgeComponents) : [];
 
-  // Check vv extension (REQUIRED for strict validation)
+  // Check pv extension (REQUIRED for strict validation)
   let canvasEdgeTypes: string[] = [];
   let canvasNodeTypes: string[] = [];
-  if (c.vv === undefined) {
+  if (c.pv === undefined) {
     issues.push({
       type: 'error',
-      message: 'Canvas must have a "vv" extension with name and version',
-      path: 'vv',
-      suggestion: 'Add: "vv": { "name": "My Graph", "version": "1.0.0" }',
+      message: 'Canvas must have a "pv" extension with name and version',
+      path: 'pv',
+      suggestion: 'Add: "pv": { "name": "My Graph", "version": "1.0.0" }',
     });
-  } else if (typeof c.vv !== 'object') {
-    issues.push({ type: 'error', message: '"vv" extension must be an object' });
+  } else if (typeof c.pv !== 'object') {
+    issues.push({ type: 'error', message: '"pv" extension must be an object' });
   } else {
-    const vv = c.vv as Record<string, unknown>;
-    if (typeof vv.version !== 'string' || !vv.version) {
+    const pv = c.pv as Record<string, unknown>;
+    if (typeof pv.version !== 'string' || !pv.version) {
       issues.push({
         type: 'error',
-        message: 'vv.version is required',
-        path: 'vv.version',
+        message: 'pv.version is required',
+        path: 'pv.version',
         suggestion: 'Add: "version": "1.0.0"',
       });
     }
-    if (typeof vv.name !== 'string' || !vv.name) {
+    if (typeof pv.name !== 'string' || !pv.name) {
       issues.push({
         type: 'error',
-        message: 'vv.name is required',
-        path: 'vv.name',
+        message: 'pv.name is required',
+        path: 'pv.name',
         suggestion: 'Add: "name": "My Graph"',
       });
     }
     // Collect defined edge types for later validation
-    if (vv.edgeTypes && typeof vv.edgeTypes === 'object') {
-      canvasEdgeTypes = Object.keys(vv.edgeTypes as Record<string, unknown>);
+    if (pv.edgeTypes && typeof pv.edgeTypes === 'object') {
+      canvasEdgeTypes = Object.keys(pv.edgeTypes as Record<string, unknown>);
     }
     // Collect defined node types for later validation
-    if (vv.nodeTypes && typeof vv.nodeTypes === 'object') {
-      canvasNodeTypes = Object.keys(vv.nodeTypes as Record<string, unknown>);
+    if (pv.nodeTypes && typeof pv.nodeTypes === 'object') {
+      canvasNodeTypes = Object.keys(pv.nodeTypes as Record<string, unknown>);
     }
   }
 
@@ -171,67 +171,67 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
         issues.push({ type: 'error', message: `Node "${n.id || index}" must have a numeric "height"`, path: `nodes[${index}].height` });
       }
 
-      // Validate node type - must be standard canvas type OR have vv metadata
+      // Validate node type - must be standard canvas type OR have pv metadata
       const nodeType = n.type as string;
       const isStandardType = STANDARD_CANVAS_TYPES.includes(nodeType as typeof STANDARD_CANVAS_TYPES[number]);
 
       if (!isStandardType) {
-        // Custom type - must have vv.nodeType with shape
-        if (!n.vv || typeof n.vv !== 'object') {
+        // Custom type - must have pv.nodeType with shape
+        if (!n.pv || typeof n.pv !== 'object') {
           issues.push({
             type: 'error',
-            message: `Node "${n.id || index}" uses custom type "${nodeType}" but has no "vv" extension`,
-            path: `nodes[${index}].vv`,
-            suggestion: `Use a standard type (${STANDARD_CANVAS_TYPES.join(', ')}) or add vv.nodeType and vv.shape`,
+            message: `Node "${n.id || index}" uses custom type "${nodeType}" but has no "pv" extension`,
+            path: `nodes[${index}].pv`,
+            suggestion: `Use a standard type (${STANDARD_CANVAS_TYPES.join(', ')}) or add pv.nodeType and pv.shape`,
           });
         } else {
-          const nodeVv = n.vv as Record<string, unknown>;
-          if (typeof nodeVv.nodeType !== 'string' || !nodeVv.nodeType) {
+          const nodePv = n.pv as Record<string, unknown>;
+          if (typeof nodePv.nodeType !== 'string' || !nodePv.nodeType) {
             issues.push({
               type: 'error',
-              message: `Node "${n.id || index}" with custom type must have "vv.nodeType"`,
-              path: `nodes[${index}].vv.nodeType`,
+              message: `Node "${n.id || index}" with custom type must have "pv.nodeType"`,
+              path: `nodes[${index}].pv.nodeType`,
             });
           }
-          if (typeof nodeVv.shape !== 'string' || !VALID_NODE_SHAPES.includes(nodeVv.shape as typeof VALID_NODE_SHAPES[number])) {
+          if (typeof nodePv.shape !== 'string' || !VALID_NODE_SHAPES.includes(nodePv.shape as typeof VALID_NODE_SHAPES[number])) {
             issues.push({
               type: 'error',
-              message: `Node "${n.id || index}" must have a valid "vv.shape"`,
-              path: `nodes[${index}].vv.shape`,
+              message: `Node "${n.id || index}" must have a valid "pv.shape"`,
+              path: `nodes[${index}].pv.shape`,
               suggestion: `Valid shapes: ${VALID_NODE_SHAPES.join(', ')}`,
             });
           }
         }
       }
 
-      // Validate vv.nodeType references a defined nodeType (for any node with vv.nodeType)
-      if (n.vv && typeof n.vv === 'object') {
-        const nodeVv = n.vv as Record<string, unknown>;
-        if (typeof nodeVv.nodeType === 'string' && nodeVv.nodeType) {
+      // Validate pv.nodeType references a defined nodeType (for any node with pv.nodeType)
+      if (n.pv && typeof n.pv === 'object') {
+        const nodePv = n.pv as Record<string, unknown>;
+        if (typeof nodePv.nodeType === 'string' && nodePv.nodeType) {
           if (allDefinedNodeTypes.length === 0) {
             issues.push({
               type: 'error',
-              message: `Node "${n.id || index}" uses nodeType "${nodeVv.nodeType}" but no node types are defined`,
-              path: `nodes[${index}].vv.nodeType`,
-              suggestion: 'Define node types in canvas vv.nodeTypes or library.yaml nodeComponents',
+              message: `Node "${n.id || index}" uses nodeType "${nodePv.nodeType}" but no node types are defined`,
+              path: `nodes[${index}].pv.nodeType`,
+              suggestion: 'Define node types in canvas pv.nodeTypes or library.yaml nodeComponents',
             });
-          } else if (!allDefinedNodeTypes.includes(nodeVv.nodeType)) {
+          } else if (!allDefinedNodeTypes.includes(nodePv.nodeType)) {
             // Build a helpful suggestion showing where types can be defined
             const sources: string[] = [];
             if (canvasNodeTypes.length > 0) {
-              sources.push(`canvas vv.nodeTypes: ${canvasNodeTypes.join(', ')}`);
+              sources.push(`canvas pv.nodeTypes: ${canvasNodeTypes.join(', ')}`);
             }
             if (libraryNodeTypes.length > 0) {
               sources.push(`library.yaml nodeComponents: ${libraryNodeTypes.join(', ')}`);
             }
             const suggestion = sources.length > 0
               ? `Available types from ${sources.join(' | ')}`
-              : 'Define node types in canvas vv.nodeTypes or library.yaml nodeComponents';
+              : 'Define node types in canvas pv.nodeTypes or library.yaml nodeComponents';
 
             issues.push({
               type: 'error',
-              message: `Node "${n.id || index}" uses undefined nodeType "${nodeVv.nodeType}"`,
-              path: `nodes[${index}].vv.nodeType`,
+              message: `Node "${n.id || index}" uses undefined nodeType "${nodePv.nodeType}"`,
+              path: `nodes[${index}].pv.nodeType`,
               suggestion,
             });
           }
@@ -267,34 +267,34 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
         issues.push({ type: 'error', message: `Edge "${e.id || index}" references unknown node "${e.toNode}"`, path: `edges[${index}].toNode` });
       }
 
-      // Validate edge type if vv.edgeType is specified
-      if (e.vv && typeof e.vv === 'object') {
-        const edgeVv = e.vv as Record<string, unknown>;
-        if (edgeVv.edgeType && typeof edgeVv.edgeType === 'string') {
+      // Validate edge type if pv.edgeType is specified
+      if (e.pv && typeof e.pv === 'object') {
+        const edgePv = e.pv as Record<string, unknown>;
+        if (edgePv.edgeType && typeof edgePv.edgeType === 'string') {
           if (allDefinedEdgeTypes.length === 0) {
             issues.push({
               type: 'error',
-              message: `Edge "${e.id || index}" uses edgeType "${edgeVv.edgeType}" but no edge types are defined`,
-              path: `edges[${index}].vv.edgeType`,
-              suggestion: 'Define edge types in canvas vv.edgeTypes or library.yaml edgeComponents',
+              message: `Edge "${e.id || index}" uses edgeType "${edgePv.edgeType}" but no edge types are defined`,
+              path: `edges[${index}].pv.edgeType`,
+              suggestion: 'Define edge types in canvas pv.edgeTypes or library.yaml edgeComponents',
             });
-          } else if (!allDefinedEdgeTypes.includes(edgeVv.edgeType)) {
+          } else if (!allDefinedEdgeTypes.includes(edgePv.edgeType)) {
             // Build a helpful suggestion showing where types can be defined
             const sources: string[] = [];
             if (canvasEdgeTypes.length > 0) {
-              sources.push(`canvas vv.edgeTypes: ${canvasEdgeTypes.join(', ')}`);
+              sources.push(`canvas pv.edgeTypes: ${canvasEdgeTypes.join(', ')}`);
             }
             if (libraryEdgeTypes.length > 0) {
               sources.push(`library.yaml edgeComponents: ${libraryEdgeTypes.join(', ')}`);
             }
             const suggestion = sources.length > 0
               ? `Available types from ${sources.join(' | ')}`
-              : 'Define edge types in canvas vv.edgeTypes or library.yaml edgeComponents';
+              : 'Define edge types in canvas pv.edgeTypes or library.yaml edgeComponents';
 
             issues.push({
               type: 'error',
-              message: `Edge "${e.id || index}" uses undefined edgeType "${edgeVv.edgeType}"`,
-              path: `edges[${index}].vv.edgeType`,
+              message: `Edge "${e.id || index}" uses undefined edgeType "${edgePv.edgeType}"`,
+              path: `edges[${index}].pv.edgeType`,
               suggestion,
             });
           }
@@ -347,13 +347,13 @@ export function createValidateCommand(): Command {
 
   command
     .description('Validate .canvas configuration files')
-    .argument('[files...]', 'Files or glob patterns to validate (defaults to .vgc/*.canvas)')
+    .argument('[files...]', 'Files or glob patterns to validate (defaults to .principal-views/*.canvas)')
     .option('-q, --quiet', 'Only output errors')
     .option('--json', 'Output results as JSON')
     .action(async (files: string[], options) => {
       try {
-        // Default to .vgc/*.canvas if no files specified
-        const patterns = files.length > 0 ? files : ['.vgc/*.canvas'];
+        // Default to .principal-views/*.canvas if no files specified
+        const patterns = files.length > 0 ? files : ['.principal-views/*.canvas'];
 
         // Find all matching files
         const matchedFiles = await globby(patterns, {
@@ -366,14 +366,14 @@ export function createValidateCommand(): Command {
           } else {
             console.log(chalk.yellow('No .canvas files found matching the specified patterns.'));
             console.log(chalk.dim(`Patterns searched: ${patterns.join(', ')}`));
-            console.log(chalk.dim('\nTo create a new .vgc folder, run: vv init'));
+            console.log(chalk.dim('\nTo create a new .principal-views folder, run: privu init'));
           }
           return;
         }
 
-        // Load library from .vgc directory (used for type validation)
-        const vgcDir = resolve(process.cwd(), '.vgc');
-        const library = loadLibrary(vgcDir);
+        // Load library from .principal-views directory (used for type validation)
+        const principalViewsDir = resolve(process.cwd(), '.principal-views');
+        const library = loadLibrary(principalViewsDir);
 
         // Validate all files
         const results: ValidationResult[] = matchedFiles.map(f => validateFile(f, library));

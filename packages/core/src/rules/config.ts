@@ -3,7 +3,7 @@
  * Handles loading and validating .vgcrc files
  */
 
-import type { VGCConfig, RuleSeverity, RuleConfig } from './types';
+import type { PrivuConfig, RuleSeverity, RuleConfig } from './types';
 
 // ============================================================================
 // Constants
@@ -94,7 +94,7 @@ export interface ConfigValidationError {
 export interface ConfigValidationResult {
   valid: boolean;
   errors: ConfigValidationError[];
-  config?: VGCConfig;
+  config?: PrivuConfig;
 }
 
 // ============================================================================
@@ -104,7 +104,7 @@ export interface ConfigValidationResult {
 /**
  * Validate a VGC configuration object
  */
-export function validateVGCConfig(config: unknown): ConfigValidationResult {
+export function validatePrivuConfig(config: unknown): ConfigValidationResult {
   const errors: ConfigValidationError[] = [];
 
   if (typeof config !== 'object' || config === null) {
@@ -224,7 +224,7 @@ export function validateVGCConfig(config: unknown): ConfigValidationResult {
   return {
     valid: true,
     errors: [],
-    config: configObj as VGCConfig,
+    config: configObj as PrivuConfig,
   };
 }
 
@@ -345,7 +345,7 @@ function isValidSeverity(value: unknown): value is RuleSeverity {
 /**
  * Get the default VGC configuration
  */
-export function getDefaultConfig(): VGCConfig {
+export function getDefaultConfig(): PrivuConfig {
   return {
     root: false,
     include: DEFAULT_INCLUDE_PATTERNS,
@@ -357,7 +357,7 @@ export function getDefaultConfig(): VGCConfig {
 /**
  * Merge configs with proper precedence (later configs override earlier)
  */
-export function mergeConfigs(...configs: (VGCConfig | undefined)[]): VGCConfig {
+export function mergeConfigs(...configs: (PrivuConfig | undefined)[]): PrivuConfig {
   const result = getDefaultConfig();
 
   for (const config of configs) {

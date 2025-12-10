@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { EventLog } from './EventLog';
-import type { GraphEvent, Violation } from '@principal-ai/visual-validation-core';
+import type { GraphEvent, Violation } from '@principal-ai/principal-view-core';
 
 describe('EventLog', () => {
   const testEvents: GraphEvent[] = [

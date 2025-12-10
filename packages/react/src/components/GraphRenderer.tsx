@@ -13,8 +13,8 @@ import {
   type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { GraphConfiguration, NodeState, EdgeState, Violation, GraphEvent, ExtendedCanvas, ComponentLibrary } from '@principal-ai/visual-validation-core';
-import { CanvasConverter } from '@principal-ai/visual-validation-core';
+import type { GraphConfiguration, NodeState, EdgeState, Violation, GraphEvent, ExtendedCanvas, ComponentLibrary } from '@principal-ai/principal-view-core';
+import { CanvasConverter } from '@principal-ai/principal-view-core';
 import { CustomNode } from '../nodes/CustomNode';
 import type { CustomNodeData } from '../nodes/CustomNode';
 import { CustomEdge } from '../edges/CustomEdge';
@@ -998,8 +998,8 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined, library?: Compone
     }
 
     // Next, add node types from canvas vv.nodeTypes (overrides library)
-    if (canvas.vv?.nodeTypes) {
-      for (const [id, def] of Object.entries(canvas.vv.nodeTypes)) {
+    if (canvas.pv?.nodeTypes) {
+      for (const [id, def] of Object.entries(canvas.pv.nodeTypes)) {
         nodeTypes[id] = {
           shape: def.shape || 'rectangle',
           icon: def.icon,
@@ -1011,7 +1011,7 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined, library?: Compone
 
     // Then extract node types from canvas nodes (for nodes that define their own types)
     for (const node of canvas.nodes || []) {
-      const vv = node.vv;
+      const vv = node.pv;
       const nodeType = vv?.nodeType || node.type;
 
       if (!nodeTypes[nodeType]) {
@@ -1034,8 +1034,8 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined, library?: Compone
     }
 
     // Extract edge types from canvas vv.edgeTypes
-    if (canvas.vv?.edgeTypes) {
-      for (const [id, def] of Object.entries(canvas.vv.edgeTypes)) {
+    if (canvas.pv?.edgeTypes) {
+      for (const [id, def] of Object.entries(canvas.pv.edgeTypes)) {
         edgeTypes[id] = {
           style: def.style || 'solid',
           color: def.color,
@@ -1050,14 +1050,14 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined, library?: Compone
     // Build allowed connections from edges
     const allowedConnections: GraphConfiguration['allowedConnections'] = [];
     for (const edge of canvas.edges || []) {
-      const edgeType = edge.vv?.edgeType || 'default';
+      const edgeType = edge.pv?.edgeType || 'default';
 
       // Ensure edge type exists
       if (!edgeTypes[edgeType]) {
         edgeTypes[edgeType] = {
-          style: edge.vv?.style || 'solid',
+          style: edge.pv?.style || 'solid',
           color: typeof edge.color === 'string' ? edge.color : undefined,
-          width: edge.vv?.width,
+          width: edge.pv?.width,
           directed: true,
         };
       }
@@ -1065,8 +1065,8 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined, library?: Compone
       // Find node types for from/to
       const fromNode = canvas.nodes?.find(n => n.id === edge.fromNode);
       const toNode = canvas.nodes?.find(n => n.id === edge.toNode);
-      const fromType = fromNode?.vv?.nodeType || edge.fromNode;
-      const toType = toNode?.vv?.nodeType || edge.toNode;
+      const fromType = fromNode?.pv?.nodeType || edge.fromNode;
+      const toType = toNode?.pv?.nodeType || edge.toNode;
 
       allowedConnections.push({
         from: fromType,
@@ -1076,19 +1076,19 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined, library?: Compone
     }
 
     // Build display config with required layout field
-    const display: GraphConfiguration['display'] = canvas.vv?.display
+    const display: GraphConfiguration['display'] = canvas.pv?.display
       ? {
-          layout: canvas.vv.display.layout || 'manual',
-          theme: canvas.vv.display.theme,
-          animations: canvas.vv.display.animations,
+          layout: canvas.pv.display.layout || 'manual',
+          theme: canvas.pv.display.theme,
+          animations: canvas.pv.display.animations,
         }
       : { layout: 'manual' };
 
     const configuration: GraphConfiguration = {
       metadata: {
-        name: canvas.vv?.name || 'Untitled',
-        version: canvas.vv?.version || '1.0.0',
-        description: canvas.vv?.description,
+        name: canvas.pv?.name || 'Untitled',
+        version: canvas.pv?.version || '1.0.0',
+        description: canvas.pv?.description,
       },
       nodeTypes,
       edgeTypes,

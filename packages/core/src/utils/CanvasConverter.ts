@@ -8,10 +8,10 @@ import type {
   ExtendedCanvas,
   ExtendedCanvasNode,
   ExtendedCanvasEdge,
-  VVEdgeTypeDefinition,
-  VVNodeShape,
-  VVEdgeStyle,
-  VVAnimationType,
+  PVEdgeTypeDefinition,
+  PVNodeShape,
+  PVEdgeStyle,
+  PVAnimationType,
 } from '../types/canvas';
 import { resolveCanvasColor } from '../types/canvas';
 import type { NodeState, EdgeState } from '../types';
@@ -140,17 +140,17 @@ export class CanvasConverter {
    * Convert a single canvas node to React Flow node
    */
   private static convertNode(node: ExtendedCanvasNode, canvas: ExtendedCanvas): ReactFlowNode {
-    const vv = node.vv;
+    const pv = node.pv;
     const color = resolveCanvasColor(node.color);
 
     // Build the data object based on canvas node type
     const data: ReactFlowNode['data'] = {
       label: this.getNodeLabel(node),
-      nodeType: vv?.nodeType || node.id,
+      nodeType: pv?.nodeType || node.id,
       canvasType: node.type,
-      shape: vv?.shape || 'rectangle',
-      icon: vv?.icon,
-      color: vv?.states?.idle?.color || color,
+      shape: pv?.shape || 'rectangle',
+      icon: pv?.icon,
+      color: pv?.states?.idle?.color || color,
       width: node.width,
       height: node.height,
     };
@@ -166,19 +166,19 @@ export class CanvasConverter {
       data.label = node.label || data.label;
     }
 
-    // Add VV extensions if present
-    if (vv) {
-      data.states = vv.states;
-      data.sources = vv.sources;
-      data.actions = vv.actions;
-      if (vv.dataSchema) {
-        data.dataSchema = vv.dataSchema;
+    // Add PV extensions if present
+    if (pv) {
+      data.states = pv.states;
+      data.sources = pv.sources;
+      data.actions = pv.actions;
+      if (pv.dataSchema) {
+        data.dataSchema = pv.dataSchema;
       }
     }
 
     return {
       id: node.id,
-      type: vv?.shape || 'default',
+      type: pv?.shape || 'default',
       position: { x: node.x, y: node.y },
       data,
       style: {
@@ -192,8 +192,8 @@ export class CanvasConverter {
    * Get display label for a node
    */
   private static getNodeLabel(node: ExtendedCanvasNode): string {
-    if (node.vv?.nodeType) {
-      return node.vv.nodeType;
+    if (node.pv?.nodeType) {
+      return node.pv.nodeType;
     }
     switch (node.type) {
       case 'text':
@@ -214,8 +214,8 @@ export class CanvasConverter {
    * Convert a single canvas edge to React Flow edge
    */
   private static convertEdge(edge: ExtendedCanvasEdge, canvas: ExtendedCanvas): ReactFlowEdge {
-    const vv = edge.vv;
-    const edgeTypeDef = vv?.edgeType ? canvas.vv?.edgeTypes?.[vv.edgeType] : undefined;
+    const pv = edge.pv;
+    const edgeTypeDef = pv?.edgeType ? canvas.pv?.edgeTypes?.[pv.edgeType] : undefined;
     const color = resolveCanvasColor(edge.color) || edgeTypeDef?.color;
 
     const rfEdge: ReactFlowEdge = {
@@ -226,19 +226,19 @@ export class CanvasConverter {
       targetHandle: sideToHandle(edge.toSide),
       label: edge.label,
       data: {
-        edgeType: vv?.edgeType || 'default',
-        style: vv?.style || edgeTypeDef?.style || 'solid',
+        edgeType: pv?.edgeType || 'default',
+        style: pv?.style || edgeTypeDef?.style || 'solid',
         color,
-        width: vv?.width || edgeTypeDef?.width || 2,
-        animation: vv?.animation || edgeTypeDef?.animation,
-        activatedBy: vv?.activatedBy || edgeTypeDef?.activatedBy,
+        width: pv?.width || edgeTypeDef?.width || 2,
+        animation: pv?.animation || edgeTypeDef?.animation,
+        activatedBy: pv?.activatedBy || edgeTypeDef?.activatedBy,
       },
       style: {
         stroke: color,
-        strokeWidth: vv?.width || edgeTypeDef?.width || 2,
-        strokeDasharray: styleToStrokeDasharray(vv?.style || edgeTypeDef?.style),
+        strokeWidth: pv?.width || edgeTypeDef?.width || 2,
+        strokeDasharray: styleToStrokeDasharray(pv?.style || edgeTypeDef?.style),
       },
-      animated: vv?.style === 'animated' || edgeTypeDef?.style === 'animated',
+      animated: pv?.style === 'animated' || edgeTypeDef?.style === 'animated',
     };
 
     // Add marker based on canvas endpoint settings
@@ -266,23 +266,23 @@ export class CanvasConverter {
     // Convert nodes
     if (canvas.nodes) {
       for (const node of canvas.nodes) {
-        const vv = node.vv;
+        const pv = node.pv;
         nodes.push({
           id: node.id,
-          type: vv?.nodeType || node.type,
+          type: pv?.nodeType || node.type,
           data: {
             label: this.getNodeLabel(node),
-            shape: vv?.shape || 'rectangle',
-            icon: vv?.icon,
-            // Color priority: vv.fill > node.color
-            color: vv?.fill || resolveCanvasColor(node.color),
+            shape: pv?.shape || 'rectangle',
+            icon: pv?.icon,
+            // Color priority: pv.fill > node.color
+            color: pv?.fill || resolveCanvasColor(node.color),
             // Stroke color for borders
-            stroke: vv?.stroke,
+            stroke: pv?.stroke,
             width: node.width,
             height: node.height,
-            sources: vv?.sources || [],
-            actions: vv?.actions || [],
-            states: vv?.states,
+            sources: pv?.sources || [],
+            actions: pv?.actions || [],
+            states: pv?.states,
             canvasType: node.type,
             ...(node.type === 'text' ? { text: node.text } : {}),
             ...(node.type === 'file' ? { file: node.file } : {}),
@@ -300,21 +300,21 @@ export class CanvasConverter {
     // Convert edges
     if (canvas.edges) {
       for (const edge of canvas.edges) {
-        const vv = edge.vv;
-        const edgeTypeDef = vv?.edgeType ? canvas.vv?.edgeTypes?.[vv.edgeType] : undefined;
+        const pv = edge.pv;
+        const edgeTypeDef = pv?.edgeType ? canvas.pv?.edgeTypes?.[pv.edgeType] : undefined;
 
         edges.push({
           id: edge.id,
-          type: vv?.edgeType || 'default',
+          type: pv?.edgeType || 'default',
           from: edge.fromNode,
           to: edge.toNode,
           data: {
             label: edge.label,
-            style: vv?.style || edgeTypeDef?.style || 'solid',
+            style: pv?.style || edgeTypeDef?.style || 'solid',
             color: resolveCanvasColor(edge.color) || edgeTypeDef?.color,
-            width: vv?.width || edgeTypeDef?.width,
-            animation: vv?.animation || edgeTypeDef?.animation,
-            activatedBy: vv?.activatedBy || edgeTypeDef?.activatedBy,
+            width: pv?.width || edgeTypeDef?.width,
+            animation: pv?.animation || edgeTypeDef?.animation,
+            activatedBy: pv?.activatedBy || edgeTypeDef?.activatedBy,
             fromSide: edge.fromSide,
             toSide: edge.toSide,
           },
@@ -338,7 +338,7 @@ export class CanvasConverter {
     const canvas: ExtendedCanvas = {
       nodes: [],
       edges: [],
-      vv: {
+      pv: {
         version: metadata?.version || '1.0.0',
         name: metadata?.name || 'Untitled',
         description: metadata?.description,
@@ -347,7 +347,7 @@ export class CanvasConverter {
     };
 
     // Collect edge types
-    const edgeTypes = new Map<string, VVEdgeTypeDefinition>();
+    const edgeTypes = new Map<string, PVEdgeTypeDefinition>();
 
     // Convert nodes
     for (const node of nodes) {
@@ -366,11 +366,11 @@ export class CanvasConverter {
         canvasNode.color = node.data.color;
       }
 
-      // Add VV extension if there's custom data
+      // Add PV extension if there's custom data
       if (node.data.nodeType || node.data.shape || node.data.sources?.length) {
-        canvasNode.vv = {
+        canvasNode.pv = {
           nodeType: node.data.nodeType || node.id,
-          shape: node.data.shape as VVNodeShape | undefined,
+          shape: node.data.shape as PVNodeShape | undefined,
           icon: node.data.icon,
           states: node.data.states,
           sources: node.data.sources,
@@ -398,23 +398,23 @@ export class CanvasConverter {
         canvasEdge.color = edge.style.stroke;
       }
 
-      // Add VV extension
+      // Add PV extension
       if (edge.data?.edgeType) {
-        canvasEdge.vv = {
+        canvasEdge.pv = {
           edgeType: edge.data.edgeType,
-          style: edge.data.style as VVEdgeStyle | undefined,
+          style: edge.data.style as PVEdgeStyle | undefined,
           width: edge.data.width,
-          animation: edge.data.animation as { type: VVAnimationType; duration?: number; color?: string } | undefined,
+          animation: edge.data.animation as { type: PVAnimationType; duration?: number; color?: string } | undefined,
           activatedBy: edge.data.activatedBy,
         };
 
         // Collect edge type definition
         if (!edgeTypes.has(edge.data.edgeType)) {
           edgeTypes.set(edge.data.edgeType, {
-            style: edge.data.style as VVEdgeStyle | undefined,
+            style: edge.data.style as PVEdgeStyle | undefined,
             color: edge.data.color,
             width: edge.data.width,
-            animation: edge.data.animation as { type: VVAnimationType; duration?: number; color?: string } | undefined,
+            animation: edge.data.animation as { type: PVAnimationType; duration?: number; color?: string } | undefined,
             activatedBy: edge.data.activatedBy,
           });
         }
@@ -424,7 +424,7 @@ export class CanvasConverter {
     }
 
     // Add collected edge types to canvas
-    canvas.vv!.edgeTypes = Object.fromEntries(edgeTypes);
+    canvas.pv!.edgeTypes = Object.fromEntries(edgeTypes);
 
     return canvas;
   }

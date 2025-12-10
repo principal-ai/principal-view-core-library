@@ -7,11 +7,11 @@ import chalk from 'chalk';
 
 const SCHEMA_SECTIONS = {
   overview: `
-${chalk.bold.cyan('Visual Validation Canvas Schema')}
+${chalk.bold.cyan('Principal View Canvas Schema')}
 ${chalk.dim('═'.repeat(50))}
 
-Canvas files (.canvas) follow the JSON Canvas spec with Visual Validation extensions.
-All VV extensions are placed in a ${chalk.yellow('"vv"')} field to maintain compatibility
+Canvas files (.canvas) follow the JSON Canvas spec with Principal View extensions.
+All PV extensions are placed in a ${chalk.yellow('"pv"')} field to maintain compatibility
 with standard canvas tools like Obsidian.
 
 ${chalk.bold('Required Structure:')}
@@ -19,17 +19,17 @@ ${chalk.dim('┌─────────────────────�
 ${chalk.dim('│')} {                                               ${chalk.dim('│')}
 ${chalk.dim('│')}   ${chalk.green('"nodes"')}: [...],    ${chalk.dim('// Required: array of nodes')}  ${chalk.dim('│')}
 ${chalk.dim('│')}   ${chalk.green('"edges"')}: [...],    ${chalk.dim('// Optional: array of edges')}  ${chalk.dim('│')}
-${chalk.dim('│')}   ${chalk.green('"vv"')}: {            ${chalk.dim('// Required: VV extension')}    ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"pv"')}: {            ${chalk.dim('// Required: PV extension')}    ${chalk.dim('│')}
 ${chalk.dim('│')}     ${chalk.yellow('"name"')}: "...",   ${chalk.dim('// Required: graph name')}      ${chalk.dim('│')}
 ${chalk.dim('│')}     ${chalk.yellow('"version"')}: "..." ${chalk.dim('// Required: schema version')}  ${chalk.dim('│')}
 ${chalk.dim('│')}   }                                             ${chalk.dim('│')}
 ${chalk.dim('│')} }                                               ${chalk.dim('│')}
 ${chalk.dim('└─────────────────────────────────────────────────┘')}
 
-Run ${chalk.cyan('vv schema <section>')} for details on:
+Run ${chalk.cyan('privu schema <section>')} for details on:
   ${chalk.yellow('nodes')}      Node types and properties
   ${chalk.yellow('edges')}      Edge properties and types
-  ${chalk.yellow('vv')}         Visual Validation extension fields
+  ${chalk.yellow('vv')}         Principal View extension fields
   ${chalk.yellow('examples')}   Complete example configurations
 `,
 
@@ -70,7 +70,7 @@ ${chalk.bold('Custom Node Types:')}
     ${chalk.green('"type"')}: "api-gateway",  ${chalk.dim('// Custom type')}
     ${chalk.green('"x"')}: 100, ${chalk.green('"y"')}: 100,
     ${chalk.green('"width"')}: 150, ${chalk.green('"height"')}: 80,
-    ${chalk.green('"vv"')}: {
+    ${chalk.green('"pv"')}: {
       ${chalk.yellow('"nodeType"')}: "api-gateway",  ${chalk.dim('// Required')}
       ${chalk.yellow('"shape"')}: "rectangle",       ${chalk.dim('// Required')}
       ${chalk.cyan('"fill"')}: "#3b82f6",           ${chalk.dim('// Optional: fill color')}
@@ -109,18 +109,18 @@ ${chalk.bold('Optional Fields:')}
   ${chalk.green('color')}       ${chalk.dim('string')}   Edge color (hex or preset)
   ${chalk.green('label')}       ${chalk.dim('string')}   Edge label text
 
-${chalk.bold('VV Edge Extension:')}
+${chalk.bold('PV Edge Extension:')}
   ${chalk.dim('{')}
     ${chalk.green('"id"')}: "edge-1",
     ${chalk.green('"fromNode"')}: "api", ${chalk.green('"toNode"')}: "db",
-    ${chalk.green('"vv"')}: {
+    ${chalk.green('"pv"')}: {
       ${chalk.yellow('"edgeType"')}: "query"  ${chalk.dim('// Must be defined in vv.edgeTypes')}
     }
   ${chalk.dim('}')}
 
 ${chalk.bold('Defining Edge Types (in canvas vv):')}
   ${chalk.dim('{')}
-    ${chalk.green('"vv"')}: {
+    ${chalk.green('"pv"')}: {
       "name": "My Graph",
       "version": "1.0.0",
       ${chalk.yellow('"edgeTypes"')}: {
@@ -156,15 +156,15 @@ ${chalk.bold('Animation Types:')}
 `,
 
   vv: `
-${chalk.bold.cyan('Visual Validation Extension')}
+${chalk.bold.cyan('Principal View Extension')}
 ${chalk.dim('═'.repeat(50))}
 
 The ${chalk.yellow('vv')} extension adds rich visualization capabilities while
 maintaining compatibility with standard JSON Canvas tools.
 
-${chalk.bold('Canvas-Level vv (Required):')}
+${chalk.bold('Canvas-Level pv (Required):')}
   ${chalk.dim('{')}
-    ${chalk.green('"vv"')}: {
+    ${chalk.green('"pv"')}: {
       ${chalk.yellow('"name"')}: "My Architecture",     ${chalk.dim('// Required: Display name')}
       ${chalk.yellow('"version"')}: "1.0.0",            ${chalk.dim('// Required: Schema version')}
       ${chalk.cyan('"description"')}: "...",           ${chalk.dim('// Optional: Description')}
@@ -174,9 +174,9 @@ ${chalk.bold('Canvas-Level vv (Required):')}
     }
   ${chalk.dim('}')}
 
-${chalk.bold('Node-Level vv (for custom types):')}
+${chalk.bold('Node-Level pv (for custom types):')}
   ${chalk.dim('{')}
-    ${chalk.green('"vv"')}: {
+    ${chalk.green('"pv"')}: {
       ${chalk.yellow('"nodeType"')}: "service",        ${chalk.dim('// Required: Type identifier')}
       ${chalk.yellow('"shape"')}: "rectangle",         ${chalk.dim('// Required: Visual shape')}
       ${chalk.cyan('"fill"')}: "#3b82f6",             ${chalk.dim('// Optional: Fill color (hex)')}
@@ -197,7 +197,7 @@ ${chalk.bold('Node-Level vv (for custom types):')}
 
 ${chalk.bold('Edge-Level vv:')}
   ${chalk.dim('{')}
-    ${chalk.green('"vv"')}: {
+    ${chalk.green('"pv"')}: {
       ${chalk.yellow('"edgeType"')}: "query",          ${chalk.dim('// References vv.edgeTypes')}
       ${chalk.cyan('"style"')}: "solid",              ${chalk.dim('// Override: line style')}
       ${chalk.cyan('"width"')}: 2,                    ${chalk.dim('// Override: line width')}
@@ -247,7 +247,7 @@ ${chalk.dim('─'.repeat(50))}
     }
   ],
   "edges": [],
-  "vv": {
+  "pv": {
     "name": "My Graph",
     "version": "1.0.0"
   }
@@ -263,7 +263,7 @@ ${chalk.dim('─'.repeat(50))}
       "x": 100, "y": 100,
       "width": 150, "height": 80,
       "text": "API Gateway",
-      "vv": {
+      "pv": {
         "nodeType": "service",
         "shape": "rectangle",
         "fill": "#3b82f6",
@@ -278,7 +278,7 @@ ${chalk.dim('─'.repeat(50))}
       "x": 350, "y": 100,
       "width": 150, "height": 80,
       "text": "Database",
-      "vv": {
+      "pv": {
         "nodeType": "database",
         "shape": "hexagon",
         "fill": "#8b5cf6",
@@ -292,10 +292,10 @@ ${chalk.dim('─'.repeat(50))}
       "id": "api-to-db",
       "fromNode": "api",
       "toNode": "db",
-      "vv": { "edgeType": "query" }
+      "pv": { "edgeType": "query" }
     }
   ],
-  "vv": {
+  "pv": {
     "name": "Service Architecture",
     "version": "1.0.0",
     "edgeTypes": {
@@ -312,8 +312,8 @@ ${chalk.dim('─'.repeat(50))}
   }
 }
 
-${chalk.bold('Run validation:')} ${chalk.cyan('vv validate <file>')}
-${chalk.bold('Initialize project:')} ${chalk.cyan('vv init')}
+${chalk.bold('Run validation:')} ${chalk.cyan('privu validate <file>')}
+${chalk.bold('Initialize project:')} ${chalk.cyan('privu init')}
 `,
 };
 

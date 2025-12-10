@@ -1,23 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import {
-  validateVGCConfig,
+  validatePrivuConfig,
   getDefaultConfig,
   mergeConfigs,
   formatConfigErrors,
   VALID_RULE_IDS,
 } from './config';
-import type { VGCConfig } from './types';
+import type { PrivuConfig } from './types';
 
-describe('validateVGCConfig', () => {
+describe('validatePrivuConfig', () => {
   it('should accept valid minimal config', () => {
     const config = { root: true };
-    const result = validateVGCConfig(config);
+    const result = validatePrivuConfig(config);
     expect(result.valid).toBe(true);
     expect(result.errors).toHaveLength(0);
   });
 
   it('should accept valid full config', () => {
-    const config: VGCConfig = {
+    const config: PrivuConfig = {
       $schema: 'https://principal.ai/schemas/vgcrc.json',
       root: true,
       library: '.vgc/library.yaml',
@@ -36,18 +36,18 @@ describe('validateVGCConfig', () => {
         },
       },
     };
-    const result = validateVGCConfig(config);
+    const result = validatePrivuConfig(config);
     expect(result.valid).toBe(true);
   });
 
   it('should reject non-object config', () => {
-    const result = validateVGCConfig('string');
+    const result = validatePrivuConfig('string');
     expect(result.valid).toBe(false);
     expect(result.errors[0].message).toContain('must be an object');
   });
 
   it('should reject null config', () => {
-    const result = validateVGCConfig(null);
+    const result = validatePrivuConfig(null);
     expect(result.valid).toBe(false);
   });
 
@@ -56,41 +56,41 @@ describe('validateVGCConfig', () => {
       root: true,
       unknownField: 'value',
     };
-    const result = validateVGCConfig(config);
+    const result = validatePrivuConfig(config);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.message.includes('unknownField'))).toBe(true);
   });
 
   it('should validate root is boolean', () => {
     const config = { root: 'yes' };
-    const result = validateVGCConfig(config);
+    const result = validatePrivuConfig(config);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.path === 'root')).toBe(true);
   });
 
   it('should validate library is string', () => {
     const config = { library: 123 };
-    const result = validateVGCConfig(config);
+    const result = validatePrivuConfig(config);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.path === 'library')).toBe(true);
   });
 
   it('should validate include is array of strings', () => {
     const config = { include: 'not-an-array' };
-    const result = validateVGCConfig(config);
+    const result = validatePrivuConfig(config);
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.path === 'include')).toBe(true);
   });
 
   it('should validate extends is string or array', () => {
     const validString = { extends: 'base-config' };
-    expect(validateVGCConfig(validString).valid).toBe(true);
+    expect(validatePrivuConfig(validString).valid).toBe(true);
 
     const validArray = { extends: ['config1', 'config2'] };
-    expect(validateVGCConfig(validArray).valid).toBe(true);
+    expect(validatePrivuConfig(validArray).valid).toBe(true);
 
     const invalid = { extends: 123 };
-    expect(validateVGCConfig(invalid).valid).toBe(false);
+    expect(validatePrivuConfig(invalid).valid).toBe(false);
   });
 
   describe('rules validation', () => {
@@ -100,7 +100,7 @@ describe('validateVGCConfig', () => {
           'required-metadata': 'error',
         },
       };
-      const result = validateVGCConfig(config);
+      const result = validatePrivuConfig(config);
       expect(result.valid).toBe(true);
     });
 
@@ -110,7 +110,7 @@ describe('validateVGCConfig', () => {
           'unknown-rule': 'error',
         },
       };
-      const result = validateVGCConfig(config);
+      const result = validatePrivuConfig(config);
       expect(result.valid).toBe(false);
       expect(result.errors.some((e) => e.message.includes('Unknown rule ID'))).toBe(true);
     });
@@ -121,7 +121,7 @@ describe('validateVGCConfig', () => {
           'required-metdata': 'error', // typo
         },
       };
-      const result = validateVGCConfig(config);
+      const result = validatePrivuConfig(config);
       expect(result.valid).toBe(false);
       expect(result.errors.some((e) => e.suggestion?.includes('required-metadata'))).toBe(true);
     });
@@ -132,7 +132,7 @@ describe('validateVGCConfig', () => {
           'required-metadata': 2,
         },
       };
-      const result = validateVGCConfig(config);
+      const result = validatePrivuConfig(config);
       expect(result.valid).toBe(true);
     });
 
@@ -142,7 +142,7 @@ describe('validateVGCConfig', () => {
           'required-metadata': false,
         },
       };
-      const result = validateVGCConfig(config);
+      const result = validatePrivuConfig(config);
       expect(result.valid).toBe(true);
     });
 
@@ -152,7 +152,7 @@ describe('validateVGCConfig', () => {
           'required-metadata': 'fatal',
         },
       };
-      const result = validateVGCConfig(config);
+      const result = validatePrivuConfig(config);
       expect(result.valid).toBe(false);
       expect(result.errors.some((e) => e.message.includes('Invalid severity'))).toBe(true);
     });
@@ -166,7 +166,7 @@ describe('validateVGCConfig', () => {
           },
         },
       };
-      expect(validateVGCConfig(valid).valid).toBe(true);
+      expect(validatePrivuConfig(valid).valid).toBe(true);
     });
 
     it('should flag unknown rule config fields', () => {
@@ -178,7 +178,7 @@ describe('validateVGCConfig', () => {
           },
         },
       };
-      const result = validateVGCConfig(config);
+      const result = validatePrivuConfig(config);
       expect(result.valid).toBe(false);
       expect(result.errors.some((e) => e.message.includes('unknownField'))).toBe(true);
     });
@@ -193,7 +193,7 @@ describe('validateVGCConfig', () => {
           },
         },
       };
-      const result = validateVGCConfig(config);
+      const result = validatePrivuConfig(config);
       expect(result.valid).toBe(false);
       expect(result.errors.some((e) => e.suggestion?.includes('minimum'))).toBe(true);
     });
@@ -212,7 +212,7 @@ describe('getDefaultConfig', () => {
 
 describe('mergeConfigs', () => {
   it('should merge configs with later taking precedence', () => {
-    const base: VGCConfig = {
+    const base: PrivuConfig = {
       root: false,
       library: 'base-lib.yaml',
       rules: {
@@ -220,7 +220,7 @@ describe('mergeConfigs', () => {
       },
     };
 
-    const override: VGCConfig = {
+    const override: PrivuConfig = {
       root: true,
       rules: {
         'required-metadata': 'error',
@@ -236,7 +236,7 @@ describe('mergeConfigs', () => {
   });
 
   it('should handle undefined configs', () => {
-    const config: VGCConfig = { root: true };
+    const config: PrivuConfig = { root: true };
     const merged = mergeConfigs(undefined, config, undefined);
     expect(merged.root).toBe(true);
   });

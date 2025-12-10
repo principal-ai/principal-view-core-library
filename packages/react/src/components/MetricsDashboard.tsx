@@ -1,5 +1,5 @@
 import React from 'react';
-import type { GraphMetrics } from '@principal-ai/visual-validation-core';
+import type { GraphMetrics } from '@principal-ai/principal-view-core';
 
 export interface MetricsDashboardProps {
   /** Current metrics */

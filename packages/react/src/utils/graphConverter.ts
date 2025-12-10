@@ -1,5 +1,5 @@
 import { MarkerType, type Node, type Edge } from '@xyflow/react';
-import type { NodeState, EdgeState, GraphConfiguration, Violation } from '@principal-ai/visual-validation-core';
+import type { NodeState, EdgeState, GraphConfiguration, Violation } from '@principal-ai/principal-view-core';
 import type { CustomNodeData } from '../nodes/CustomNode';
 import type { CustomEdgeData } from '../edges/CustomEdge';
 

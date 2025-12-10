@@ -9,9 +9,9 @@ import type { LibraryNodeComponent, LibraryEdgeComponent, ComponentLibrary } fro
 import type {
   ExtendedCanvasTextNode,
   ExtendedCanvasEdge,
-  VVNodeExtension,
-  VVEdgeExtension,
-  VVEdgeTypeDefinition,
+  PVNodeExtension,
+  PVEdgeExtension,
+  PVEdgeTypeDefinition,
 } from '../types/canvas';
 
 /**
@@ -76,8 +76,8 @@ export class LibraryConverter {
   ): ExtendedCanvasTextNode {
     const { id, x, y, label, data } = options;
 
-    // Build the VV extension from the library component
-    const vv: VVNodeExtension = {
+    // Build the PV extension from the library component
+    const pv: PVNodeExtension = {
       nodeType: componentKey,
       shape: component.shape,
       icon: component.icon,
@@ -98,14 +98,14 @@ export class LibraryConverter {
       width: component.size?.width || 120,
       height: component.size?.height || 60,
       color: component.color,
-      vv,
+      pv,
     };
 
     // If there's initial data, merge it with the text
     if (data) {
-      // Store additional data in the vv extension
+      // Store additional data in the pv extension
       // The data will be accessible via the node's data field when converted to React Flow
-      (vv as VVNodeExtension & { initialData?: Record<string, unknown> }).initialData = data;
+      (pv as PVNodeExtension & { initialData?: Record<string, unknown> }).initialData = data;
     }
 
     return node;
@@ -126,8 +126,8 @@ export class LibraryConverter {
   ): ExtendedCanvasEdge {
     const { id, fromNode, toNode, label, fromSide, toSide } = options;
 
-    // Build the VV extension
-    const vv: VVEdgeExtension = {
+    // Build the PV extension
+    const pv: PVEdgeExtension = {
       edgeType: componentKey,
       style: component.style,
       width: component.width,
@@ -144,7 +144,7 @@ export class LibraryConverter {
       toSide,
       color: component.color,
       toEnd: component.directed !== false ? 'arrow' : 'none',
-      vv,
+      pv,
     };
 
     return edge;
@@ -156,12 +156,12 @@ export class LibraryConverter {
    * This is useful when initializing a new canvas from a library.
    *
    * @param edgeComponents - Library edge components
-   * @returns Record of edge type definitions for the canvas vv.edgeTypes field
+   * @returns Record of edge type definitions for the canvas pv.edgeTypes field
    */
   static createEdgeTypeDefinitions(
     edgeComponents: Record<string, LibraryEdgeComponent>
-  ): Record<string, VVEdgeTypeDefinition> {
-    const edgeTypes: Record<string, VVEdgeTypeDefinition> = {};
+  ): Record<string, PVEdgeTypeDefinition> {
+    const edgeTypes: Record<string, PVEdgeTypeDefinition> = {};
 
     for (const [key, component] of Object.entries(edgeComponents)) {
       edgeTypes[key] = {

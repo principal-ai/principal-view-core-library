@@ -2,9 +2,9 @@
  * JSON Canvas Extended Types
  *
  * This module defines types that extend the JSON Canvas spec (https://jsoncanvas.org/spec/1.0/)
- * with Visual Validation Framework extensions.
+ * with Principal View Framework extensions.
  *
- * Design principle: All extensions are placed in a `vv` (Visual Validation) field,
+ * Design principle: All extensions are placed in a `pv` (Principal View) field,
  * which is ignored by standard canvas tools (like Obsidian) but used by our React Flow renderer.
  *
  * This allows:
@@ -139,38 +139,38 @@ export interface Canvas {
 }
 
 // ============================================================================
-// Visual Validation Extensions
+// Principal View Extensions
 // ============================================================================
 
 /**
  * Animation types for edges
  */
-export type VVAnimationType = 'flow' | 'pulse' | 'particle' | 'glow';
+export type PVAnimationType = 'flow' | 'pulse' | 'particle' | 'glow';
 
 /**
  * Animation direction
  */
-export type VVAnimationDirection = 'forward' | 'backward' | 'bidirectional';
+export type PVAnimationDirection = 'forward' | 'backward' | 'bidirectional';
 
 /**
  * Node shape for rendering
  */
-export type VVNodeShape = 'circle' | 'rectangle' | 'hexagon' | 'diamond' | 'custom';
+export type PVNodeShape = 'circle' | 'rectangle' | 'hexagon' | 'diamond' | 'custom';
 
 /**
  * Edge line style
  */
-export type VVEdgeStyle = 'solid' | 'dashed' | 'dotted' | 'animated';
+export type PVEdgeStyle = 'solid' | 'dashed' | 'dotted' | 'animated';
 
 /**
  * Log level for path-based association
  */
-export type VVLogLevel = 'debug' | 'info' | 'warn' | 'error';
+export type PVLogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 /**
  * Action pattern for extracting events from logs
  */
-export interface VVActionPattern {
+export interface PVActionPattern {
   /** Regex pattern with named capture groups */
   pattern: string;
   /** Event type to emit */
@@ -186,7 +186,7 @@ export interface VVActionPattern {
 /**
  * State definition for a node
  */
-export interface VVNodeState {
+export interface PVNodeState {
   /** Color when in this state */
   color?: string;
   /** Icon when in this state */
@@ -198,27 +198,27 @@ export interface VVNodeState {
 /**
  * Edge activation trigger
  */
-export interface VVEdgeActivation {
+export interface PVEdgeActivation {
   /** Action that triggers this animation */
   action: string;
   /** Animation type */
-  animation: VVAnimationType;
+  animation: PVAnimationType;
   /** Animation direction */
-  direction?: VVAnimationDirection;
+  direction?: PVAnimationDirection;
   /** Duration in milliseconds */
   duration?: number;
 }
 
 /**
- * Visual Validation node extensions
+ * Principal View node extensions
  */
-export interface VVNodeExtension {
+export interface PVNodeExtension {
   /** Custom node type identifier */
   nodeType: string;
   /** Description of this node */
   description?: string;
   /** Visual shape */
-  shape?: VVNodeShape;
+  shape?: PVNodeShape;
   /** Icon identifier (Lucide icons) */
   icon?: string;
   /** Fill color (hex string) - takes priority over node.color */
@@ -226,11 +226,11 @@ export interface VVNodeExtension {
   /** Stroke/border color (hex string) */
   stroke?: string;
   /** State definitions */
-  states?: Record<string, VVNodeState>;
+  states?: Record<string, PVNodeState>;
   /** Source file patterns for log association */
   sources?: string[];
   /** Action patterns for event extraction */
-  actions?: VVActionPattern[];
+  actions?: PVActionPattern[];
   /** Data schema for typed fields */
   dataSchema?: Record<
     string,
@@ -248,29 +248,29 @@ export interface VVNodeExtension {
 }
 
 /**
- * Visual Validation edge extensions
+ * Principal View edge extensions
  */
-export interface VVEdgeExtension {
+export interface PVEdgeExtension {
   /** Custom edge type identifier */
   edgeType: string;
   /** Line style */
-  style?: VVEdgeStyle;
+  style?: PVEdgeStyle;
   /** Line width in pixels */
   width?: number;
   /** Default animation */
   animation?: {
-    type: VVAnimationType;
+    type: PVAnimationType;
     duration?: number;
     color?: string;
   };
   /** Activation triggers */
-  activatedBy?: VVEdgeActivation[];
+  activatedBy?: PVEdgeActivation[];
 }
 
 /**
  * Path-based configuration options
  */
-export interface VVPathConfig {
+export interface PVPathConfig {
   /** Project root for path normalization */
   projectRoot?: string;
   /** Enable source capture from stack traces */
@@ -278,7 +278,7 @@ export interface VVPathConfig {
   /** Enable action pattern matching */
   enableActionPatterns?: boolean;
   /** Minimum log level to process */
-  logLevel?: VVLogLevel;
+  logLevel?: PVLogLevel;
   /** Ignore logs without source info */
   ignoreUnsourced?: boolean;
 }
@@ -286,7 +286,7 @@ export interface VVPathConfig {
 /**
  * Display configuration
  */
-export interface VVDisplayConfig {
+export interface PVDisplayConfig {
   /** Layout algorithm (manual uses canvas positions) */
   layout?: 'hierarchical' | 'force-directed' | 'circular' | 'manual';
   /** Color theme */
@@ -305,9 +305,9 @@ export interface VVDisplayConfig {
 }
 
 /**
- * Node type definition (stored at canvas level in vv.nodeTypes)
+ * Node type definition (stored at canvas level in pv.nodeTypes)
  */
-export interface VVNodeTypeDefinition {
+export interface PVNodeTypeDefinition {
   /** Display label */
   label?: string;
   /** Description of this node type */
@@ -317,17 +317,17 @@ export interface VVNodeTypeDefinition {
   /** Icon identifier (Lucide icons) */
   icon?: string;
   /** Visual shape */
-  shape?: VVNodeShape;
+  shape?: PVNodeShape;
 }
 
 /**
  * Edge type definition (stored at canvas level)
  */
-export interface VVEdgeTypeDefinition {
+export interface PVEdgeTypeDefinition {
   /** Display label */
   label?: string;
   /** Line style */
-  style?: VVEdgeStyle;
+  style?: PVEdgeStyle;
   /** Line color */
   color?: string;
   /** Line width */
@@ -336,7 +336,7 @@ export interface VVEdgeTypeDefinition {
   directed?: boolean;
   /** Default animation */
   animation?: {
-    type: VVAnimationType;
+    type: PVAnimationType;
     duration?: number;
     color?: string;
   };
@@ -346,13 +346,13 @@ export interface VVEdgeTypeDefinition {
     position?: 'start' | 'middle' | 'end';
   };
   /** Activation triggers */
-  activatedBy?: VVEdgeActivation[];
+  activatedBy?: PVEdgeActivation[];
 }
 
 /**
- * Canvas-level Visual Validation extensions
+ * Canvas-level Principal View extensions
  */
-export interface VVCanvasExtension {
+export interface PVCanvasExtension {
   /** Schema version */
   version: string;
   /** Graph name */
@@ -360,45 +360,45 @@ export interface VVCanvasExtension {
   /** Description */
   description?: string;
   /** Node type definitions (shared across nodes) */
-  nodeTypes?: Record<string, VVNodeTypeDefinition>;
+  nodeTypes?: Record<string, PVNodeTypeDefinition>;
   /** Edge type definitions (shared across edges) */
-  edgeTypes?: Record<string, VVEdgeTypeDefinition>;
+  edgeTypes?: Record<string, PVEdgeTypeDefinition>;
   /** Path-based configuration */
-  pathConfig?: VVPathConfig;
+  pathConfig?: PVPathConfig;
   /** Display configuration */
-  display?: VVDisplayConfig;
+  display?: PVDisplayConfig;
 }
 
 // ============================================================================
-// Extended Canvas Types (Canvas + VV Extensions)
+// Extended Canvas Types (Canvas + PV Extensions)
 // ============================================================================
 
 /**
- * Extended text node with VV extensions
+ * Extended text node with PV extensions
  */
 export interface ExtendedCanvasTextNode extends CanvasTextNode {
-  vv?: VVNodeExtension;
+  pv?: PVNodeExtension;
 }
 
 /**
- * Extended file node with VV extensions
+ * Extended file node with PV extensions
  */
 export interface ExtendedCanvasFileNode extends CanvasFileNode {
-  vv?: VVNodeExtension;
+  pv?: PVNodeExtension;
 }
 
 /**
- * Extended link node with VV extensions
+ * Extended link node with PV extensions
  */
 export interface ExtendedCanvasLinkNode extends CanvasLinkNode {
-  vv?: VVNodeExtension;
+  pv?: PVNodeExtension;
 }
 
 /**
- * Extended group node with VV extensions
+ * Extended group node with PV extensions
  */
 export interface ExtendedCanvasGroupNode extends CanvasGroupNode {
-  vv?: VVNodeExtension;
+  pv?: PVNodeExtension;
 }
 
 /**
@@ -411,26 +411,26 @@ export type ExtendedCanvasNode =
   | ExtendedCanvasGroupNode;
 
 /**
- * Extended edge with VV extensions
+ * Extended edge with PV extensions
  */
 export interface ExtendedCanvasEdge extends CanvasEdge {
-  vv?: VVEdgeExtension;
+  pv?: PVEdgeExtension;
 }
 
 /**
- * Extended Canvas document with Visual Validation support
+ * Extended Canvas document with Principal View support
  *
- * This is the primary type for .canvas files used with the Visual Validation Framework.
+ * This is the primary type for .canvas files used with the Principal View Framework.
  * It's fully compatible with standard JSON Canvas tools while supporting rich
  * visualization features when rendered in React Flow.
  */
 export interface ExtendedCanvas extends Canvas {
-  /** Nodes with optional VV extensions */
+  /** Nodes with optional PV extensions */
   nodes?: ExtendedCanvasNode[];
-  /** Edges with optional VV extensions */
+  /** Edges with optional PV extensions */
   edges?: ExtendedCanvasEdge[];
-  /** Canvas-level VV configuration */
-  vv?: VVCanvasExtension;
+  /** Canvas-level PV configuration */
+  pv?: PVCanvasExtension;
 }
 
 // ============================================================================
@@ -466,10 +466,10 @@ export function isGroupNode(node: CanvasNode | ExtendedCanvasNode): node is Canv
 }
 
 /**
- * Type guard for extended nodes (with VV extension)
+ * Type guard for extended nodes (with PV extension)
  */
-export function hasVVExtension(node: CanvasNode | ExtendedCanvasNode): node is ExtendedCanvasNode {
-  return 'vv' in node && node.vv !== undefined;
+export function hasPVExtension(node: CanvasNode | ExtendedCanvasNode): node is ExtendedCanvasNode {
+  return 'pv' in node && node.pv !== undefined;
 }
 
 /**

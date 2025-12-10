@@ -14,7 +14,7 @@ import type {
   RuleOptions,
   NormalizedSeverity,
   RuleCategory,
-  VGCConfig,
+  PrivuConfig,
   RuleConfig,
   RuleSeverity,
 } from './types';
@@ -127,12 +127,12 @@ export class GraphRulesEngine {
    */
   async lintWithConfig(
     configuration: GraphConfiguration,
-    vgcConfig: VGCConfig,
+    privuConfig: PrivuConfig,
     options?: Omit<LintOptions, 'ruleOptions' | 'severityOverrides'>
   ): Promise<GraphLintResult> {
     // Convert VGC config rules to lint options
-    const { ruleOptions, severityOverrides, disabledRules } = this.parseVGCConfigRules(
-      vgcConfig.rules
+    const { ruleOptions, severityOverrides, disabledRules } = this.parsePrivuConfigRules(
+      privuConfig.rules
     );
 
     return this.lint(configuration, {
@@ -254,7 +254,7 @@ export class GraphRulesEngine {
   /**
    * Parse VGC config rules into lint options
    */
-  private parseVGCConfigRules(rules?: VGCConfig['rules']): {
+  private parsePrivuConfigRules(rules?: PrivuConfig['rules']): {
     ruleOptions: Map<string, RuleOptions>;
     severityOverrides: Map<string, NormalizedSeverity>;
     disabledRules: string[];
