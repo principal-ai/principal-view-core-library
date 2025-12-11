@@ -28,16 +28,13 @@ import {
  * Config file names in resolution order
  */
 const CONFIG_FILE_NAMES = [
-  '.principal-viewsrc.json',
-  '.principal-viewsrc.yaml',
-  '.principal-viewsrc.yml',
-  'privu.config.json',
-  'privu.config.yaml',
-  'privu.config.yml',
+  '.privurc.yaml',
+  '.privurc.yml',
+  '.privurc.json',
 ];
 
 /**
- * Find and load VGC config file
+ * Find and load privurc config file
  */
 function findConfig(startDir: string): { config: PrivuConfig; path: string } | null {
   let currentDir = resolve(startDir);
@@ -275,7 +272,7 @@ export function createLintCommand(): Command {
       try {
         const cwd = process.cwd();
 
-        // Load VGC config
+        // Load privurc config
         let privuConfig: PrivuConfig = getDefaultConfig();
         let configPath: string | undefined;
 
@@ -341,7 +338,7 @@ export function createLintCommand(): Command {
         // Filter out library files and config files
         const configFiles = matchedFiles.filter((f) => {
           const name = basename(f).toLowerCase();
-          return !name.startsWith('library.') && !name.startsWith('.principal-viewsrc') && !name.startsWith('privu.config');
+          return !name.startsWith('library.') && !name.startsWith('.privurc');
         });
 
         if (configFiles.length === 0) {

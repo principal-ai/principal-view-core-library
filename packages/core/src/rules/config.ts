@@ -13,12 +13,9 @@ import type { PrivuConfig, RuleSeverity, RuleConfig } from './types';
  * Valid config file names in resolution order
  */
 export const CONFIG_FILE_NAMES = [
-  '.principal-viewsrc.json',
-  '.principal-viewsrc.yaml',
-  '.principal-viewsrc.yml',
-  'privu.config.json',
-  'privu.config.yaml',
-  'privu.config.yml',
+  '.privurc.yaml',
+  '.privurc.yml',
+  '.privurc.json',
 ] as const;
 
 /**
