@@ -238,8 +238,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     }
   }, [propNodes, propEdges, editStateRef, onEditStateChange, onPendingChangesChange]);
 
-  // Use local state when editable, props when not
-  const nodes = editable ? localNodes : propNodes;
+  // Always use localNodes for rendering - it syncs with props when structure changes
+  // and receives state_changed event updates. localEdges only used in edit mode.
+  const nodes = localNodes;
   const edges = editable ? localEdges : propEdges;
 
   // Helper to check if there are pending changes
@@ -633,6 +634,12 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       const newState = stateEvent.newState;
 
       if (nodeId && newState) {
+        // Update the node's state
+        setLocalNodes(prev => prev.map(node =>
+          node.id === nodeId ? { ...node, state: newState } : node
+        ));
+
+        // Trigger animation based on state
         const stateToAnimation: Record<string, 'pulse' | 'flash' | 'shake'> = {
           processing: 'pulse',
           completed: 'flash',
@@ -660,9 +667,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
               });
             }, duration);
           }
-
-          onEventProcessed?.(latestEvent);
         }
+
+        onEventProcessed?.(latestEvent);
       }
     }
 

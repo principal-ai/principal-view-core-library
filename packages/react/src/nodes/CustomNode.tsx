@@ -48,7 +48,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
   // Priority: state color > node data color > type definition color > default
   const nodeDataColor = nodeData.color as string | undefined;
   const baseColor = nodeDataColor || typeDefinition.color || '#888';
-  const stateColor = state && typeDefinition.states?.[state]?.color;
+  // Check node's own states first (from pv.states), then fall back to type definition states
+  const nodeDataStates = nodeData.states as Record<string, { color?: string; label?: string; icon?: string }> | undefined;
+  const stateColor = state && (nodeDataStates?.[state]?.color || typeDefinition.states?.[state]?.color);
   const fillColor = stateColor || baseColor;
 
   // Get stroke color - priority: node data stroke > type definition stroke > fill color
@@ -64,9 +66,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
   )?.[0];
   const displayLabel = labelField && nodeData[labelField] ? String(nodeData[labelField]) : nodeProps.label;
 
-  // Icon priority: node data override > state icon > type definition icon
+  // Icon priority: node data override > state icon (node data states first) > type definition icon
   const icon = (nodeData.icon as string)
-    || (state && typeDefinition.states?.[state]?.icon)
+    || (state && (nodeDataStates?.[state]?.icon || typeDefinition.states?.[state]?.icon))
     || typeDefinition.icon;
 
   // Get animation class based on type
@@ -272,7 +274,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
                 borderRadius: '4px',
                 textAlign: 'center',
               }}>
-                {typeDefinition.states?.[state]?.label || state}
+                {nodeDataStates?.[state]?.label || typeDefinition.states?.[state]?.label || state}
               </div>
             )}
             {hasViolations && (
@@ -303,7 +305,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
                 borderRadius: '4px',
                 textAlign: 'center',
               }}>
-                {typeDefinition.states?.[state]?.label || state}
+                {nodeDataStates?.[state]?.label || typeDefinition.states?.[state]?.label || state}
               </div>
             )}
             {hasViolations && (

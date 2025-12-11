@@ -62,7 +62,9 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
     return null;
   }
 
-  const color = hasViolations ? '#D0021B' : (typeDefinition.color || '#888');
+  // Color priority: violations > edge data color > type definition color > default
+  const edgeColor = edgeData?.color as string | undefined;
+  const color = hasViolations ? '#D0021B' : (edgeColor || typeDefinition.color || '#888');
   const width = typeDefinition.width || 2;
 
   // Get Bezier path

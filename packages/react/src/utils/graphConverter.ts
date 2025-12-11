@@ -62,9 +62,11 @@ export function convertToXYFlowEdges(
     const edgeWithHandles = edge as EdgeStateWithHandles;
 
     // Add arrow marker if edge type is directed
+    // Color priority: edge data color > type definition color > default
+    const edgeColor = edge.data?.color as string | undefined;
     const markerEnd = typeDefinition?.directed !== false ? {
       type: MarkerType.ArrowClosed,
-      color: typeDefinition?.color || '#888',
+      color: edgeColor || typeDefinition?.color || '#888',
       width: 20,
       height: 20,
     } : undefined;
