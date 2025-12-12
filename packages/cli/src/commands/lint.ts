@@ -335,10 +335,13 @@ export function createLintCommand(): Command {
           expandDirectories: false,
         });
 
-        // Filter out library files and config files
+        // Filter out library files, config files, and canvas files (canvas files use `validate` command)
         const configFiles = matchedFiles.filter((f) => {
           const name = basename(f).toLowerCase();
-          return !name.startsWith('library.') && !name.startsWith('.privurc');
+          const isLibraryFile = name.startsWith('library.');
+          const isConfigFile = name.startsWith('.privurc');
+          const isCanvasFile = f.toLowerCase().endsWith('.canvas');
+          return !isLibraryFile && !isConfigFile && !isCanvasFile;
         });
 
         if (configFiles.length === 0) {
