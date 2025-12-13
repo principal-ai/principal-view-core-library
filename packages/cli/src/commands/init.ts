@@ -54,32 +54,30 @@ rules:
 
   # Structure rules - ensure completeness
   minimum-node-sources:
-    - error
-    - minimum: 1
+    severity: error
+    options:
+      minimum: 1
       excludeNodeTypes: []
   orphaned-node-types: error
   orphaned-edge-types: error
   unreachable-states: error
-  dead-end-states:
-    - error
-    - allowTerminalStates: true
+  dead-end-states: error
 
   # Pattern rules - validate regex patterns
   valid-action-patterns:
-    - error
-    - strictMode: false
+    severity: error
+    options:
+      strictMode: false
 
   # Library rules - check against component library
   library-node-type-match:
-    - error
-    - requireLibraryMatch: false
+    severity: error
+    options:
+      allowExtra: true
 `;
 
-const HUSKY_PRE_COMMIT = `#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
-# Run principal view linting on staged .principal-views files
-privu lint --quiet
+const HUSKY_PRE_COMMIT = `# Run principal view linting on staged .principal-views files
+npx @principal-ai/principal-view-cli lint --quiet
 `;
 
 /**
@@ -208,13 +206,13 @@ edgeComponents: {}
                 if (existsSync(preCommitFile)) {
                   // Check if our hook is already in the file
                   const existingContent = readFileSync(preCommitFile, 'utf8');
-                  if (existingContent.includes('privu lint')) {
-                    console.log(chalk.yellow(`Husky pre-commit hook already includes privu lint`));
+                  if (existingContent.includes('principal-view-cli lint') || existingContent.includes('privu lint')) {
+                    console.log(chalk.yellow(`Husky pre-commit hook already includes principal view linting`));
                   } else {
                     // Append our lint command to existing pre-commit
-                    const updatedContent = existingContent.trimEnd() + '\n\n# Run principal view linting\nprivu lint --quiet\n';
+                    const updatedContent = existingContent.trimEnd() + '\n\n# Run principal view linting\nnpx @principal-ai/principal-view-cli lint --quiet\n';
                     writeFileSync(preCommitFile, updatedContent);
-                    console.log(chalk.green(`Updated Husky pre-commit hook with privu lint`));
+                    console.log(chalk.green(`Updated Husky pre-commit hook with principal view linting`));
                     huskySetup = true;
                   }
                 } else {
