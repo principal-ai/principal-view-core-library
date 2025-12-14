@@ -32,7 +32,7 @@ const multiDirectionalCanvas: ExtendedCanvas = {
       height: 100,
       text: 'API Gateway',
       color: '#06B6D4',
-      vv: {
+      pv: {
         nodeType: 'gateway',
         shape: 'diamond',
         icon: 'Network',
@@ -47,7 +47,7 @@ const multiDirectionalCanvas: ExtendedCanvas = {
       height: 80,
       text: 'Auth Service',
       color: '#4A90E2',
-      vv: {
+      pv: {
         nodeType: 'service',
         shape: 'rectangle',
         icon: 'Server',
@@ -67,7 +67,7 @@ const multiDirectionalCanvas: ExtendedCanvas = {
       height: 80,
       text: 'API Service',
       color: '#4A90E2',
-      vv: {
+      pv: {
         nodeType: 'service',
         shape: 'rectangle',
         icon: 'Server',
@@ -87,7 +87,7 @@ const multiDirectionalCanvas: ExtendedCanvas = {
       height: 100,
       text: 'Redis Cache',
       color: '#F59E0B',
-      vv: {
+      pv: {
         nodeType: 'cache',
         shape: 'hexagon',
         icon: 'Zap',
@@ -102,7 +102,7 @@ const multiDirectionalCanvas: ExtendedCanvas = {
       height: 100,
       text: 'PostgreSQL',
       color: '#7B68EE',
-      vv: {
+      pv: {
         nodeType: 'database',
         shape: 'circle',
         icon: 'Database',
@@ -117,7 +117,7 @@ const multiDirectionalCanvas: ExtendedCanvas = {
       height: 80,
       text: 'Notification Service',
       color: '#4A90E2',
-      vv: {
+      pv: {
         nodeType: 'service',
         shape: 'rectangle',
         icon: 'Bell',
@@ -138,7 +138,7 @@ const multiDirectionalCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'POST /auth/login',
-      vv: { edgeType: 'http' },
+      pv: { edgeType: 'http' },
     },
     {
       id: 'edge-2',
@@ -147,7 +147,7 @@ const multiDirectionalCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'GET /api/users',
-      vv: { edgeType: 'http' },
+      pv: { edgeType: 'http' },
     },
     // Horizontal connections (left <-> right)
     {
@@ -157,7 +157,7 @@ const multiDirectionalCanvas: ExtendedCanvas = {
       fromSide: 'right',
       toSide: 'left',
       label: '/internal/validate',
-      vv: { edgeType: 'http' },
+      pv: { edgeType: 'http' },
     },
     // Services to data layer
     {
@@ -167,7 +167,7 @@ const multiDirectionalCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'GET',
-      vv: { edgeType: 'cache_access' },
+      pv: { edgeType: 'cache_access' },
     },
     {
       id: 'edge-5',
@@ -176,7 +176,7 @@ const multiDirectionalCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'SELECT users',
-      vv: { edgeType: 'database_query' },
+      pv: { edgeType: 'database_query' },
     },
     {
       id: 'edge-6',
@@ -185,7 +185,7 @@ const multiDirectionalCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'UPDATE sessions',
-      vv: { edgeType: 'database_query' },
+      pv: { edgeType: 'database_query' },
     },
     {
       id: 'edge-7',
@@ -194,7 +194,7 @@ const multiDirectionalCanvas: ExtendedCanvas = {
       fromSide: 'right',
       toSide: 'left',
       label: 'POST /notify',
-      vv: { edgeType: 'http' },
+      pv: { edgeType: 'http' },
     },
     // Cache to database (horizontal)
     {
@@ -204,10 +204,10 @@ const multiDirectionalCanvas: ExtendedCanvas = {
       fromSide: 'right',
       toSide: 'left',
       label: 'cache miss',
-      vv: { edgeType: 'database_query' },
+      pv: { edgeType: 'database_query' },
     },
   ],
-  vv: {
+  pv: {
     version: '1.0.0',
     name: 'Multi-Directional Connection Demo',
     description: 'Showcasing edges connecting from all sides with rich metadata',
@@ -243,7 +243,7 @@ const multiDirectionalCanvas: ExtendedCanvas = {
 // Canvas with violation highlighting
 const canvasWithViolations: ExtendedCanvas = {
   ...multiDirectionalCanvas,
-  vv: {
+  pv: {
     ...multiDirectionalCanvas.vv!,
     name: 'Connection Demo with Violations',
   },
@@ -253,7 +253,7 @@ const canvasWithViolations: ExtendedCanvas = {
 const minimalCanvas: ExtendedCanvas = {
   nodes: multiDirectionalCanvas.nodes!.slice(0, 4),
   edges: multiDirectionalCanvas.edges!.slice(0, 4),
-  vv: {
+  pv: {
     ...multiDirectionalCanvas.vv!,
     name: 'Minimal View',
   },
@@ -272,7 +272,7 @@ const complexMeshCanvas: ExtendedCanvas = {
       height: 100,
       text: 'Internal Gateway',
       color: '#06B6D4',
-      vv: {
+      pv: {
         nodeType: 'gateway',
         shape: 'diamond',
         icon: 'Network',
@@ -288,10 +288,10 @@ const complexMeshCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'wss',
-      vv: { edgeType: 'websocket' },
+      pv: { edgeType: 'websocket' },
     },
   ],
-  vv: {
+  pv: {
     ...multiDirectionalCanvas.vv!,
     name: 'Complex Mesh',
   },

@@ -24,7 +24,7 @@ export interface ReactFlowNode {
   type: string;
   position: { x: number; y: number };
   data: {
-    label: string;
+    name: string;
     nodeType: string;
     shape?: string;
     icon?: string;
@@ -143,9 +143,26 @@ export class CanvasConverter {
     const pv = node.pv;
     const color = resolveCanvasColor(node.color);
 
+    // Get name based on node type
+    let nodeName: string;
+    switch (node.type) {
+      case 'text':
+        nodeName = node.text.split('\n')[0].replace(/^#+ /, '').substring(0, 50);
+        break;
+      case 'file':
+        nodeName = node.file.split('/').pop() || node.file;
+        break;
+      case 'link':
+        nodeName = node.url;
+        break;
+      case 'group':
+        nodeName = node.label || 'Group';
+        break;
+    }
+
     // Build the data object based on canvas node type
     const data: ReactFlowNode['data'] = {
-      label: this.getNodeLabel(node),
+      name: nodeName,
       nodeType: pv?.nodeType || node.id,
       canvasType: node.type,
       shape: pv?.shape || 'rectangle',
@@ -162,8 +179,6 @@ export class CanvasConverter {
       data.file = node.file;
     } else if (node.type === 'link') {
       data.url = node.url;
-    } else if (node.type === 'group') {
-      data.label = node.label || data.label;
     }
 
     // Add PV extensions if present
@@ -186,28 +201,6 @@ export class CanvasConverter {
         height: node.height,
       },
     };
-  }
-
-  /**
-   * Get display label for a node
-   */
-  private static getNodeLabel(node: ExtendedCanvasNode): string {
-    if (node.pv?.nodeType) {
-      return node.pv.nodeType;
-    }
-    switch (node.type) {
-      case 'text':
-        // Use first line of text as label
-        const firstLine = node.text.split('\n')[0];
-        return firstLine.replace(/^#+ /, '').substring(0, 50);
-      case 'file':
-        // Use filename as label
-        return node.file.split('/').pop() || node.file;
-      case 'link':
-        return node.url;
-      case 'group':
-        return node.label || 'Group';
-    }
   }
 
   /**
@@ -267,11 +260,29 @@ export class CanvasConverter {
     if (canvas.nodes) {
       for (const node of canvas.nodes) {
         const pv = node.pv;
+        // Get name based on node type
+        let nodeName: string;
+        switch (node.type) {
+          case 'text':
+            nodeName = node.text.split('\n')[0].replace(/^#+ /, '').substring(0, 50);
+            break;
+          case 'file':
+            nodeName = node.file.split('/').pop() || node.file;
+            break;
+          case 'link':
+            nodeName = node.url;
+            break;
+          case 'group':
+            nodeName = node.label || 'Group';
+            break;
+        }
+
         nodes.push({
           id: node.id,
           type: pv?.nodeType || node.type,
           data: {
-            label: this.getNodeLabel(node),
+            name: nodeName,
+            description: pv?.description,
             shape: pv?.shape || 'rectangle',
             icon: pv?.icon,
             // Color priority: pv.fill > node.color

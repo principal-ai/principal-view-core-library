@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { NodeState, NodeTypeDefinition } from '@principal-ai/principal-view-core';
 import { resolveIcon } from '../utils/iconResolver';
 
@@ -40,10 +40,9 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
   const color = typeDefinition?.color || '#888';
   const canEdit = Boolean(onUpdate);
 
-  // Local state for editing
-  const [editingName, setEditingName] = useState(false);
-  const [nameValue, setNameValue] = useState('');
+  // Local state for UI
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   // Current icon - either from node data override or type definition
   const currentIcon = (node.data?.icon as string) || typeDefinition?.icon;
@@ -52,13 +51,6 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
   const nameField = typeDefinition?.dataSchema
     ? Object.entries(typeDefinition.dataSchema).find(([, schema]) => schema.displayInLabel)?.[0]
     : null;
-
-  // Initialize name value when node changes
-  useEffect(() => {
-    if (nameField && node.data?.[nameField]) {
-      setNameValue(String(node.data[nameField]));
-    }
-  }, [node.id, nameField, node.data]);
 
   // Get fields to display based on dataSchema
   const displayFields = typeDefinition?.dataSchema
@@ -73,16 +65,10 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
 
   // Always show basic node data if no schema is defined
   const hasSchemaFields = displayFields.length > 0;
-  const nodeDataEntries = node.data ? Object.entries(node.data).filter(([key]) => key !== 'icon') : [];
+  const nodeDataEntries = node.data ? Object.entries(node.data).filter(([key]) => !['icon', 'name', 'description', 'sources'].includes(key)) : [];
 
-  const handleNameSave = () => {
-    if (onUpdate && nameField && nameValue !== node.data?.[nameField]) {
-      onUpdate(node.id, {
-        data: { ...node.data, [nameField]: nameValue },
-      });
-    }
-    setEditingName(false);
-  };
+  // Get sources from node data
+  const sources = (node.data?.sources as string[]) || [];
 
   const handleTypeChange = (newType: string) => {
     if (onUpdate && newType !== node.type) {
@@ -114,7 +100,7 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
         zIndex: 1000,
       }}
     >
-      {/* Header */}
+      {/* Header - shows node name */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -124,7 +110,7 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
         borderBottom: `2px solid ${color}`,
       }}>
         <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
-          Node Information
+          {node.data?.name || node.id}
         </div>
         <button
           onClick={onClose}
@@ -146,256 +132,265 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
         </button>
       </div>
 
-      {/* Icon Selector */}
-      <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>
-          Icon
-        </div>
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => canEdit && setShowIconPicker(!showIconPicker)}
-            disabled={!canEdit}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '6px 10px',
-              backgroundColor: '#f5f5f5',
-              border: canEdit ? '1px dashed #ccc' : '1px solid #eee',
-              borderRadius: '4px',
-              cursor: canEdit ? 'pointer' : 'default',
-              fontSize: '12px',
-              width: '100%',
-              justifyContent: 'flex-start',
-            }}
-          >
-            <span style={{ display: 'flex', alignItems: 'center' }}>
-              {resolveIcon(currentIcon, 18)}
-            </span>
-            <span>{currentIcon || 'No icon'}</span>
-            {canEdit && <span style={{ marginLeft: 'auto', color: '#999', fontSize: '10px' }}>✎</span>}
-          </button>
-
-          {/* Icon Picker Dropdown */}
-          {showIconPicker && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                marginTop: '4px',
-                backgroundColor: 'white',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                padding: '8px',
-                maxHeight: '200px',
-                overflowY: 'auto',
-                zIndex: 1001,
-              }}
-            >
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(6, 1fr)',
-                  gap: '4px',
-                }}
-              >
-                {COMMON_ICONS.map(iconName => (
-                  <button
-                    key={iconName}
-                    onClick={() => handleIconSelect(iconName)}
-                    title={iconName}
-                    style={{
-                      padding: '6px',
-                      border: currentIcon === iconName ? `2px solid ${color}` : '1px solid #eee',
-                      borderRadius: '4px',
-                      backgroundColor: currentIcon === iconName ? '#f0f7ff' : 'white',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {resolveIcon(iconName, 16)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Node Type - Editable if availableNodeTypes provided */}
-      <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>
-          Type
-        </div>
-        {canEdit && availableNodeTypes && Object.keys(availableNodeTypes).length > 1 ? (
-          <select
-            value={node.type}
-            onChange={(e) => handleTypeChange(e.target.value)}
-            style={{
-              fontSize: '12px',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              border: '1px solid #ccc',
-              backgroundColor: 'white',
-              cursor: 'pointer',
-              width: '100%',
-            }}
-          >
-            {Object.entries(availableNodeTypes).map(([typeName, typeDef]) => (
-              <option key={typeName} value={typeName}>
-                {typeName} ({typeDef.shape})
-              </option>
-            ))}
-          </select>
-        ) : (
-          <div style={{
-            fontSize: '12px',
-            padding: '4px 8px',
-            backgroundColor: color,
-            color: 'white',
-            borderRadius: '4px',
-            display: 'inline-block',
-          }}>
-            {node.type}
-          </div>
-        )}
-      </div>
-
-      {/* Node State */}
-      {node.state && (
+      {/* Description - first field under header */}
+      {node.data?.description && (
         <div style={{ marginBottom: '12px' }}>
           <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>
-            State
+            Description
           </div>
           <div style={{
             fontSize: '12px',
-            padding: '4px 8px',
-            backgroundColor: typeDefinition?.states?.[node.state]?.color || '#888',
-            color: 'white',
-            borderRadius: '4px',
-            display: 'inline-block',
+            color: '#333',
           }}>
-            {typeDefinition?.states?.[node.state]?.label || node.state}
+            {String(node.data.description)}
           </div>
         </div>
       )}
 
-      {/* Editable Name Field */}
-      {nameField && (
+      {/* Sources - shown after description */}
+      {sources.length > 0 && (
         <div style={{ marginBottom: '12px' }}>
           <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>
-            Name
+            Sources
           </div>
-          {canEdit && editingName ? (
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <input
-                type="text"
-                value={nameValue}
-                onChange={(e) => setNameValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleNameSave();
-                  if (e.key === 'Escape') setEditingName(false);
-                }}
-                autoFocus
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            {sources.map((source, index) => (
+              <span
+                key={index}
                 style={{
-                  flex: 1,
+                  fontSize: '11px',
+                  padding: '2px 8px',
+                  backgroundColor: '#f0f0f0',
+                  borderRadius: '4px',
+                  color: '#555',
+                }}
+              >
+                {source}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Expand/Collapse button for additional details */}
+      <button
+        onClick={() => setShowDetails(!showDetails)}
+        style={{
+          width: '100%',
+          padding: '8px',
+          backgroundColor: '#f5f5f5',
+          border: '1px solid #ddd',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontSize: '12px',
+          color: '#666',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          marginBottom: showDetails ? '12px' : '0',
+        }}
+      >
+        <span style={{ transform: showDetails ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+          ▼
+        </span>
+        {showDetails ? 'Hide Details' : 'Show Details'}
+      </button>
+
+      {/* Expandable details section */}
+      {showDetails && (
+        <>
+          {/* Icon Selector */}
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>
+              Icon
+            </div>
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => canEdit && setShowIconPicker(!showIconPicker)}
+                disabled={!canEdit}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 10px',
+                  backgroundColor: '#f5f5f5',
+                  border: canEdit ? '1px dashed #ccc' : '1px solid #eee',
+                  borderRadius: '4px',
+                  cursor: canEdit ? 'pointer' : 'default',
+                  fontSize: '12px',
+                  width: '100%',
+                  justifyContent: 'flex-start',
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center' }}>
+                  {resolveIcon(currentIcon, 18)}
+                </span>
+                <span>{currentIcon || 'No icon'}</span>
+                {canEdit && <span style={{ marginLeft: 'auto', color: '#999', fontSize: '10px' }}>✎</span>}
+              </button>
+
+              {/* Icon Picker Dropdown */}
+              {showIconPicker && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    marginTop: '4px',
+                    backgroundColor: 'white',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    padding: '8px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    zIndex: 1001,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(6, 1fr)',
+                      gap: '4px',
+                    }}
+                  >
+                    {COMMON_ICONS.map(iconName => (
+                      <button
+                        key={iconName}
+                        onClick={() => handleIconSelect(iconName)}
+                        title={iconName}
+                        style={{
+                          padding: '6px',
+                          border: currentIcon === iconName ? `2px solid ${color}` : '1px solid #eee',
+                          borderRadius: '4px',
+                          backgroundColor: currentIcon === iconName ? '#f0f7ff' : 'white',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {resolveIcon(iconName, 16)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Node Type - Editable if availableNodeTypes provided */}
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>
+              Type
+            </div>
+            {canEdit && availableNodeTypes && Object.keys(availableNodeTypes).length > 1 ? (
+              <select
+                value={node.type}
+                onChange={(e) => handleTypeChange(e.target.value)}
+                style={{
                   fontSize: '12px',
                   padding: '4px 8px',
                   borderRadius: '4px',
-                  border: '1px solid #4A90E2',
-                  outline: 'none',
-                }}
-              />
-              <button
-                onClick={handleNameSave}
-                style={{
-                  padding: '4px 8px',
-                  backgroundColor: '#4A90E2',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
+                  border: '1px solid #ccc',
+                  backgroundColor: 'white',
                   cursor: 'pointer',
-                  fontSize: '11px',
+                  width: '100%',
                 }}
               >
-                Save
-              </button>
-            </div>
-          ) : (
-            <div
-              onClick={() => canEdit && setEditingName(true)}
-              style={{
+                {Object.entries(availableNodeTypes).map(([typeName, typeDef]) => (
+                  <option key={typeName} value={typeName}>
+                    {typeName} ({typeDef.shape})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div style={{
                 fontSize: '12px',
                 padding: '4px 8px',
-                backgroundColor: '#f5f5f5',
+                backgroundColor: color,
+                color: 'white',
                 borderRadius: '4px',
-                cursor: canEdit ? 'pointer' : 'default',
-                border: canEdit ? '1px dashed #ccc' : 'none',
-              }}
-              title={canEdit ? 'Click to edit' : undefined}
-            >
-              {node.data?.[nameField] ?? '-'}
-              {canEdit && <span style={{ marginLeft: '8px', color: '#999', fontSize: '10px' }}>✎</span>}
+                display: 'inline-block',
+              }}>
+                {node.type}
+              </div>
+            )}
+          </div>
+
+          {/* Node State */}
+          {node.state && (
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>
+                State
+              </div>
+              <div style={{
+                fontSize: '12px',
+                padding: '4px 8px',
+                backgroundColor: typeDefinition?.states?.[node.state]?.color || '#888',
+                color: 'white',
+                borderRadius: '4px',
+                display: 'inline-block',
+              }}>
+                {typeDefinition?.states?.[node.state]?.label || node.state}
+              </div>
             </div>
           )}
-        </div>
-      )}
 
-      {/* Display other schema-defined fields (non-editable for now) */}
-      {hasSchemaFields && displayFields.filter(f => f.field !== nameField).length > 0 && (
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{ fontSize: '10px', color: '#666', marginBottom: '8px', fontWeight: 'bold' }}>
-            Properties
-          </div>
-          {displayFields.filter(f => f.field !== nameField).map(({ field, label, value }) => (
-            <div key={field} style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>
-                {label}
+          {/* Display other schema-defined fields (non-editable for now) */}
+          {hasSchemaFields && displayFields.filter(f => f.field !== nameField).length > 0 && (
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '10px', color: '#666', marginBottom: '8px', fontWeight: 'bold' }}>
+                Properties
               </div>
-              <div style={{ fontSize: '12px', color: '#333' }}>
-                {value !== undefined && value !== null
-                  ? typeof value === 'object'
-                    ? JSON.stringify(value, null, 2)
-                    : String(value)
-                  : '-'}
-              </div>
+              {displayFields.filter(f => f.field !== nameField).map(({ field, label, value }) => (
+                <div key={field} style={{ marginBottom: '8px' }}>
+                  <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>
+                    {label}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#333' }}>
+                    {value !== undefined && value !== null
+                      ? typeof value === 'object'
+                        ? JSON.stringify(value, null, 2)
+                        : String(value)
+                      : '-'}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {/* Show all node data if no schema is defined */}
-      {!hasSchemaFields && nodeDataEntries.length > 0 && (
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{ fontSize: '10px', color: '#666', marginBottom: '8px', fontWeight: 'bold' }}>
-            Data
-          </div>
-          {nodeDataEntries.map(([key, value]) => (
-            <div key={key} style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>
-                {key}
+          {/* Show all node data if no schema is defined */}
+          {!hasSchemaFields && nodeDataEntries.length > 0 && (
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '10px', color: '#666', marginBottom: '8px', fontWeight: 'bold' }}>
+                Data
               </div>
-              <div style={{ fontSize: '12px', color: '#333', wordBreak: 'break-word' }}>
-                {value !== undefined && value !== null
-                  ? typeof value === 'object'
-                    ? JSON.stringify(value, null, 2)
-                    : String(value)
-                  : '-'}
-              </div>
+              {nodeDataEntries.map(([key, value]) => (
+                <div key={key} style={{ marginBottom: '8px' }}>
+                  <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>
+                    {key}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#333', wordBreak: 'break-word' }}>
+                    {value !== undefined && value !== null
+                      ? typeof value === 'object'
+                        ? JSON.stringify(value, null, 2)
+                        : String(value)
+                      : '-'}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {/* Metadata */}
-      <div style={{ fontSize: '10px', color: '#999', marginTop: '12px', paddingTop: '8px', borderTop: '1px solid #eee' }}>
-        ID: {node.id}
-      </div>
+          {/* Metadata */}
+          <div style={{ fontSize: '10px', color: '#999', marginTop: '12px', paddingTop: '8px', borderTop: '1px solid #eee' }}>
+            ID: {node.id}
+          </div>
+        </>
+      )}
 
       {/* Delete Button */}
       {onDelete && (

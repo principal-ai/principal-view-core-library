@@ -28,7 +28,7 @@ const sampleCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Source',
       color: '#4A90E2',
-      vv: {
+      pv: {
         nodeType: 'process',
         shape: 'rectangle',
         icon: 'Settings',
@@ -49,7 +49,7 @@ const sampleCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Processor',
       color: '#4A90E2',
-      vv: {
+      pv: {
         nodeType: 'process',
         shape: 'rectangle',
         icon: 'Settings',
@@ -70,7 +70,7 @@ const sampleCanvas: ExtendedCanvas = {
       height: 100,
       text: 'Storage',
       color: '#7B68EE',
-      vv: {
+      pv: {
         nodeType: 'data',
         shape: 'circle',
         icon: 'Database',
@@ -82,16 +82,16 @@ const sampleCanvas: ExtendedCanvas = {
       id: 'edge-1',
       fromNode: 'node-1',
       toNode: 'node-2',
-      vv: { edgeType: 'dataflow' },
+      pv: { edgeType: 'dataflow' },
     },
     {
       id: 'edge-2',
       fromNode: 'node-2',
       toNode: 'node-3',
-      vv: { edgeType: 'dataflow' },
+      pv: { edgeType: 'dataflow' },
     },
   ],
-  vv: {
+  pv: {
     version: '1.0.0',
     name: 'Event-Driven Animation Demo',
     description: 'Demonstrates event-driven animations',

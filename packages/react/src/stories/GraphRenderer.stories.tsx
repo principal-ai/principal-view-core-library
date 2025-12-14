@@ -34,7 +34,7 @@ const sampleCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Input Processor',
       color: '#4A90E2',
-      vv: {
+      pv: {
         nodeType: 'process',
         shape: 'rectangle',
         icon: 'Settings',
@@ -49,7 +49,7 @@ const sampleCanvas: ExtendedCanvas = {
       height: 100,
       text: 'Database',
       color: '#7B68EE',
-      vv: {
+      pv: {
         nodeType: 'data',
         shape: 'circle',
         icon: 'Database',
@@ -64,7 +64,7 @@ const sampleCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Output Handler',
       color: '#4A90E2',
-      vv: {
+      pv: {
         nodeType: 'process',
         shape: 'rectangle',
         icon: 'Settings',
@@ -76,16 +76,16 @@ const sampleCanvas: ExtendedCanvas = {
       id: 'edge-1',
       fromNode: 'node-1',
       toNode: 'node-2',
-      vv: { edgeType: 'dataflow' },
+      pv: { edgeType: 'dataflow' },
     },
     {
       id: 'edge-2',
       fromNode: 'node-2',
       toNode: 'node-3',
-      vv: { edgeType: 'dataflow' },
+      pv: { edgeType: 'dataflow' },
     },
   ],
-  vv: {
+  pv: {
     version: '1.0.0',
     name: 'Sample Validation Graph',
     description: 'Example graph configuration',
@@ -110,7 +110,7 @@ const sampleCanvas: ExtendedCanvas = {
 const emptyCanvas: ExtendedCanvas = {
   nodes: [],
   edges: [],
-  vv: {
+  pv: {
     version: '1.0.0',
     name: 'Empty Graph',
     edgeTypes: {},
@@ -131,7 +131,7 @@ const singleNodeCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Input Processor',
       color: '#4A90E2',
-      vv: {
+      pv: {
         nodeType: 'process',
         shape: 'rectangle',
         icon: 'Settings',
@@ -139,7 +139,7 @@ const singleNodeCanvas: ExtendedCanvas = {
     },
   ],
   edges: [],
-  vv: {
+  pv: {
     version: '1.0.0',
     name: 'Single Node',
     edgeTypes: {},
@@ -160,7 +160,7 @@ const largeCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Input Processor',
       color: '#4A90E2',
-      vv: {
+      pv: {
         nodeType: 'process',
         shape: 'rectangle',
         icon: 'Settings',
@@ -175,7 +175,7 @@ const largeCanvas: ExtendedCanvas = {
       height: 100,
       text: 'Database',
       color: '#7B68EE',
-      vv: {
+      pv: {
         nodeType: 'data',
         shape: 'circle',
         icon: 'Database',
@@ -190,7 +190,7 @@ const largeCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Output Handler',
       color: '#4A90E2',
-      vv: {
+      pv: {
         nodeType: 'process',
         shape: 'rectangle',
         icon: 'Settings',
@@ -205,7 +205,7 @@ const largeCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Validator',
       color: '#4A90E2',
-      vv: {
+      pv: {
         nodeType: 'process',
         shape: 'rectangle',
         icon: 'Check',
@@ -220,7 +220,7 @@ const largeCanvas: ExtendedCanvas = {
       height: 100,
       text: 'Cache',
       color: '#7B68EE',
-      vv: {
+      pv: {
         nodeType: 'data',
         shape: 'circle',
         icon: 'Zap',
@@ -232,28 +232,28 @@ const largeCanvas: ExtendedCanvas = {
       id: 'edge-1',
       fromNode: 'node-1',
       toNode: 'node-2',
-      vv: { edgeType: 'dataflow' },
+      pv: { edgeType: 'dataflow' },
     },
     {
       id: 'edge-2',
       fromNode: 'node-2',
       toNode: 'node-3',
-      vv: { edgeType: 'dataflow' },
+      pv: { edgeType: 'dataflow' },
     },
     {
       id: 'edge-3',
       fromNode: 'node-1',
       toNode: 'node-4',
-      vv: { edgeType: 'dataflow' },
+      pv: { edgeType: 'dataflow' },
     },
     {
       id: 'edge-4',
       fromNode: 'node-4',
       toNode: 'node-5',
-      vv: { edgeType: 'dataflow' },
+      pv: { edgeType: 'dataflow' },
     },
   ],
-  vv: {
+  pv: {
     version: '1.0.0',
     name: 'Large Graph',
     edgeTypes: {
@@ -280,7 +280,7 @@ const serviceArchitectureCanvas: ExtendedCanvas = {
       height: 120,
       text: '# Client',
       color: 5, // cyan preset
-      vv: {
+      pv: {
         nodeType: 'client',
         shape: 'circle',
         icon: 'user',
@@ -300,7 +300,7 @@ const serviceArchitectureCanvas: ExtendedCanvas = {
       height: 140,
       text: '# API Server\n\nHandles REST endpoints',
       color: 6, // purple preset
-      vv: {
+      pv: {
         nodeType: 'api-server',
         shape: 'rectangle',
         icon: 'server',
@@ -320,7 +320,7 @@ const serviceArchitectureCanvas: ExtendedCanvas = {
       height: 100,
       text: '# Database',
       color: 4, // green preset
-      vv: {
+      pv: {
         nodeType: 'database',
         shape: 'hexagon',
         icon: 'database',
@@ -335,7 +335,7 @@ const serviceArchitectureCanvas: ExtendedCanvas = {
       height: 80,
       text: '# Cache',
       color: 2, // orange preset
-      vv: {
+      pv: {
         nodeType: 'cache',
         shape: 'diamond',
         icon: 'zap',
@@ -350,7 +350,7 @@ const serviceArchitectureCanvas: ExtendedCanvas = {
       fromSide: 'right',
       toSide: 'left',
       label: 'HTTP',
-      vv: {
+      pv: {
         edgeType: 'http-request',
       },
     },
@@ -361,7 +361,7 @@ const serviceArchitectureCanvas: ExtendedCanvas = {
       fromSide: 'right',
       toSide: 'left',
       label: 'SQL',
-      vv: {
+      pv: {
         edgeType: 'db-query',
       },
     },
@@ -372,12 +372,12 @@ const serviceArchitectureCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'GET/SET',
-      vv: {
+      pv: {
         edgeType: 'cache-access',
       },
     },
   ],
-  vv: {
+  pv: {
     version: '1.0.0',
     name: 'Simple Service Architecture',
     description: 'A basic client-server architecture with caching',

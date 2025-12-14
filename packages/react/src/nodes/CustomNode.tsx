@@ -5,7 +5,7 @@ import type { NodeTypeDefinition } from '@principal-ai/principal-view-core';
 import { resolveIcon } from '../utils/iconResolver';
 
 export interface CustomNodeData extends Record<string, unknown> {
-  label: string;
+  name: string;
   typeDefinition: NodeTypeDefinition;
   state?: string;
   hasViolations?: boolean;
@@ -60,11 +60,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
   // Use fillColor as the primary "color" for backwards compatibility
   const color = fillColor;
 
-  // Get label from data schema
-  const labelField = Object.entries(typeDefinition.dataSchema).find(
-    ([, schema]) => schema.displayInLabel
-  )?.[0];
-  const displayLabel = labelField && nodeData[labelField] ? String(nodeData[labelField]) : nodeProps.label;
+  // Get display name - use name from props (falls back to node.id in converter)
+  const displayName = nodeProps.name;
 
   // Icon priority: node data override > state icon (node data states first) > type definition icon
   const icon = (nodeData.icon as string)
@@ -263,7 +260,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
           <div style={hexagonInnerStyle}>
             {icon && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>{resolveIcon(icon, 20)}</div>}
             <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>
-              {displayLabel}
+              {displayName}
             </div>
             {state && (
               <div style={{
@@ -294,7 +291,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
           <div style={isDiamond ? { transform: 'rotate(-45deg)' } : {}}>
             {icon && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>{resolveIcon(icon, 20)}</div>}
             <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>
-              {displayLabel}
+              {displayName}
             </div>
             {state && (
               <div style={{

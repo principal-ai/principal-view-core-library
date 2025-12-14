@@ -30,7 +30,7 @@ const allShapesCanvas: ExtendedCanvas = {
       height: 80,
       text: '# Rectangle\nDefault shape',
       color: 6, // purple
-      vv: {
+      pv: {
         nodeType: 'rectangle-demo',
         shape: 'rectangle',
         icon: 'square',
@@ -45,7 +45,7 @@ const allShapesCanvas: ExtendedCanvas = {
       height: 100,
       text: '# Circle',
       color: 5, // cyan
-      vv: {
+      pv: {
         nodeType: 'circle-demo',
         shape: 'circle',
         icon: 'circle',
@@ -60,7 +60,7 @@ const allShapesCanvas: ExtendedCanvas = {
       height: 120,
       text: '# Hexagon',
       color: 4, // green
-      vv: {
+      pv: {
         nodeType: 'hexagon-demo',
         shape: 'hexagon',
         icon: 'hexagon',
@@ -76,7 +76,7 @@ const allShapesCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Diamond',
       color: 2, // orange
-      vv: {
+      pv: {
         nodeType: 'diamond-demo',
         shape: 'diamond',
         icon: 'diamond',
@@ -92,7 +92,7 @@ const allShapesCanvas: ExtendedCanvas = {
       height: 80,
       text: '# Custom\n(Falls back to rect)',
       color: 1, // red
-      vv: {
+      pv: {
         nodeType: 'custom-demo',
         shape: 'custom',
         icon: 'settings',
@@ -100,7 +100,7 @@ const allShapesCanvas: ExtendedCanvas = {
     },
   ],
   edges: [],
-  vv: {
+  pv: {
     version: '1.0.0',
     name: 'Node Shapes Audit',
     description: 'All available node shapes for visual inspection',
@@ -147,7 +147,7 @@ const shapeSizesCanvas: ExtendedCanvas = {
       height: 50,
       text: 'Small',
       color: 6,
-      vv: {
+      pv: {
         nodeType: 'rect-small',
         shape: 'rectangle',
         size: { width: 80, height: 50 },
@@ -162,7 +162,7 @@ const shapeSizesCanvas: ExtendedCanvas = {
       height: 60,
       text: 'S',
       color: 5,
-      vv: {
+      pv: {
         nodeType: 'circle-small',
         shape: 'circle',
         size: { width: 60, height: 60 },
@@ -177,7 +177,7 @@ const shapeSizesCanvas: ExtendedCanvas = {
       height: 60,
       text: 'Small',
       color: 4,
-      vv: {
+      pv: {
         nodeType: 'hex-small',
         shape: 'hexagon',
         size: { width: 80, height: 60 },
@@ -192,7 +192,7 @@ const shapeSizesCanvas: ExtendedCanvas = {
       height: 60,
       text: 'S',
       color: 2,
-      vv: {
+      pv: {
         nodeType: 'diamond-small',
         shape: 'diamond',
         size: { width: 60, height: 60 },
@@ -209,7 +209,7 @@ const shapeSizesCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Medium',
       color: 6,
-      vv: {
+      pv: {
         nodeType: 'rect-medium',
         shape: 'rectangle',
       },
@@ -223,7 +223,7 @@ const shapeSizesCanvas: ExtendedCanvas = {
       height: 80,
       text: 'M',
       color: 5,
-      vv: {
+      pv: {
         nodeType: 'circle-medium',
         shape: 'circle',
       },
@@ -237,7 +237,7 @@ const shapeSizesCanvas: ExtendedCanvas = {
       height: 80,
       text: 'Medium',
       color: 4,
-      vv: {
+      pv: {
         nodeType: 'hex-medium',
         shape: 'hexagon',
       },
@@ -251,7 +251,7 @@ const shapeSizesCanvas: ExtendedCanvas = {
       height: 80,
       text: 'M',
       color: 2,
-      vv: {
+      pv: {
         nodeType: 'diamond-medium',
         shape: 'diamond',
       },
@@ -267,7 +267,7 @@ const shapeSizesCanvas: ExtendedCanvas = {
       height: 100,
       text: '# Large\nWith content',
       color: 6,
-      vv: {
+      pv: {
         nodeType: 'rect-large',
         shape: 'rectangle',
         size: { width: 180, height: 100 },
@@ -282,7 +282,7 @@ const shapeSizesCanvas: ExtendedCanvas = {
       height: 120,
       text: 'Large',
       color: 5,
-      vv: {
+      pv: {
         nodeType: 'circle-large',
         shape: 'circle',
         size: { width: 120, height: 120 },
@@ -297,7 +297,7 @@ const shapeSizesCanvas: ExtendedCanvas = {
       height: 110,
       text: 'Large',
       color: 4,
-      vv: {
+      pv: {
         nodeType: 'hex-large',
         shape: 'hexagon',
         size: { width: 140, height: 110 },
@@ -312,7 +312,7 @@ const shapeSizesCanvas: ExtendedCanvas = {
       height: 110,
       text: 'Large',
       color: 2,
-      vv: {
+      pv: {
         nodeType: 'diamond-large',
         shape: 'diamond',
         size: { width: 110, height: 110 },
@@ -320,7 +320,7 @@ const shapeSizesCanvas: ExtendedCanvas = {
     },
   ],
   edges: [],
-  vv: {
+  pv: {
     version: '1.0.0',
     name: 'Node Sizes Audit',
     description: 'Node shapes at different sizes',
@@ -361,7 +361,7 @@ const shapesWithIconsCanvas: ExtendedCanvas = {
       height: 80,
       text: 'Server',
       color: 6,
-      vv: {
+      pv: {
         nodeType: 'server',
         shape: 'rectangle',
         icon: 'server',
@@ -376,7 +376,7 @@ const shapesWithIconsCanvas: ExtendedCanvas = {
       height: 100,
       text: 'User',
       color: 5,
-      vv: {
+      pv: {
         nodeType: 'user',
         shape: 'circle',
         icon: 'user',
@@ -391,7 +391,7 @@ const shapesWithIconsCanvas: ExtendedCanvas = {
       height: 100,
       text: 'Database',
       color: 4,
-      vv: {
+      pv: {
         nodeType: 'database',
         shape: 'hexagon',
         icon: 'database',
@@ -406,7 +406,7 @@ const shapesWithIconsCanvas: ExtendedCanvas = {
       height: 100,
       text: 'Cache',
       color: 2,
-      vv: {
+      pv: {
         nodeType: 'cache',
         shape: 'diamond',
         icon: 'zap',
@@ -414,7 +414,7 @@ const shapesWithIconsCanvas: ExtendedCanvas = {
     },
   ],
   edges: [],
-  vv: {
+  pv: {
     version: '1.0.0',
     name: 'Shapes with Icons',
     description: 'Node shapes with Lucide icons',
@@ -456,7 +456,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Idle',
       color: 6,
-      vv: {
+      pv: {
         nodeType: 'process',
         shape: 'rectangle',
         icon: 'box',
@@ -476,7 +476,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       height: 90,
       text: 'Idle',
       color: 5,
-      vv: {
+      pv: {
         nodeType: 'agent',
         shape: 'circle',
         icon: 'user',
@@ -496,7 +496,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       height: 90,
       text: 'Idle',
       color: 4,
-      vv: {
+      pv: {
         nodeType: 'storage',
         shape: 'hexagon',
         icon: 'database',
@@ -516,7 +516,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       height: 90,
       text: 'Idle',
       color: 2,
-      vv: {
+      pv: {
         nodeType: 'decision',
         shape: 'diamond',
         icon: 'git-branch',
@@ -538,7 +538,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Active',
       color: 6,
-      vv: {
+      pv: {
         nodeType: 'process-active',
         shape: 'rectangle',
         icon: 'play',
@@ -554,7 +554,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       height: 90,
       text: 'Active',
       color: 5,
-      vv: {
+      pv: {
         nodeType: 'agent-active',
         shape: 'circle',
         icon: 'user-check',
@@ -570,7 +570,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       height: 90,
       text: 'Active',
       color: 4,
-      vv: {
+      pv: {
         nodeType: 'storage-active',
         shape: 'hexagon',
         icon: 'hard-drive',
@@ -586,7 +586,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       height: 90,
       text: 'Active',
       color: 2,
-      vv: {
+      pv: {
         nodeType: 'decision-active',
         shape: 'diamond',
         icon: 'git-commit',
@@ -604,7 +604,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Error',
       color: 1,
-      vv: {
+      pv: {
         nodeType: 'process-error',
         shape: 'rectangle',
         icon: 'alert-circle',
@@ -620,7 +620,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       height: 90,
       text: 'Error',
       color: 1,
-      vv: {
+      pv: {
         nodeType: 'agent-error',
         shape: 'circle',
         icon: 'user-x',
@@ -636,7 +636,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       height: 90,
       text: 'Error',
       color: 1,
-      vv: {
+      pv: {
         nodeType: 'storage-error',
         shape: 'hexagon',
         icon: 'database',
@@ -652,7 +652,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       height: 90,
       text: 'Error',
       color: 1,
-      vv: {
+      pv: {
         nodeType: 'decision-error',
         shape: 'diamond',
         icon: 'git-branch',
@@ -661,7 +661,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
     },
   ],
   edges: [],
-  vv: {
+  pv: {
     version: '1.0.0',
     name: 'Shapes with States',
     description: 'Node shapes in different states (idle, active, error)',

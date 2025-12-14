@@ -34,7 +34,7 @@ const simpleServiceCanvas: ExtendedCanvas = {
       height: 70,
       text: 'API',
       color: '#4A90E2',
-      vv: {
+      pv: {
         nodeType: 'api',
         shape: 'rectangle',
         icon: 'Globe',
@@ -49,7 +49,7 @@ const simpleServiceCanvas: ExtendedCanvas = {
       height: 100,
       text: 'Service',
       color: '#7ED321',
-      vv: {
+      pv: {
         nodeType: 'service',
         shape: 'hexagon',
         icon: 'Cog',
@@ -64,7 +64,7 @@ const simpleServiceCanvas: ExtendedCanvas = {
       height: 80,
       text: 'Database',
       color: '#BD10E0',
-      vv: {
+      pv: {
         nodeType: 'database',
         shape: 'circle',
         icon: 'Database',
@@ -76,16 +76,16 @@ const simpleServiceCanvas: ExtendedCanvas = {
       id: 'edge-1',
       fromNode: 'api-1',
       toNode: 'service-1',
-      vv: { edgeType: 'api_call' },
+      pv: { edgeType: 'api_call' },
     },
     {
       id: 'edge-2',
       fromNode: 'service-1',
       toNode: 'database-1',
-      vv: { edgeType: 'data_access' },
+      pv: { edgeType: 'data_access' },
     },
   ],
-  vv: {
+  pv: {
     version: '1.0.0',
     name: 'Simple Service',
     description: 'Basic 3-tier service architecture',
@@ -120,7 +120,7 @@ const microservicesCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Gateway',
       color: '#00C853',
-      vv: {
+      pv: {
         nodeType: 'gateway',
         shape: 'rectangle',
         icon: 'Network',
@@ -135,7 +135,7 @@ const microservicesCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Auth Service',
       color: '#FF6B6B',
-      vv: {
+      pv: {
         nodeType: 'auth_service',
         shape: 'rectangle',
         icon: 'Lock',
@@ -150,7 +150,7 @@ const microservicesCanvas: ExtendedCanvas = {
       height: 70,
       text: 'User Service',
       color: '#4A90E2',
-      vv: {
+      pv: {
         nodeType: 'user_service',
         shape: 'rectangle',
         icon: 'Users',
@@ -165,7 +165,7 @@ const microservicesCanvas: ExtendedCanvas = {
       height: 80,
       text: 'Cache',
       color: '#3498DB',
-      vv: {
+      pv: {
         nodeType: 'cache',
         shape: 'circle',
         icon: 'Zap',
@@ -180,7 +180,7 @@ const microservicesCanvas: ExtendedCanvas = {
       height: 80,
       text: 'Database',
       color: '#27AE60',
-      vv: {
+      pv: {
         nodeType: 'database',
         shape: 'circle',
         icon: 'Database',
@@ -192,28 +192,28 @@ const microservicesCanvas: ExtendedCanvas = {
       id: 'edge-1',
       fromNode: 'gateway-1',
       toNode: 'auth-1',
-      vv: { edgeType: 'http_request' },
+      pv: { edgeType: 'http_request' },
     },
     {
       id: 'edge-2',
       fromNode: 'gateway-1',
       toNode: 'user-1',
-      vv: { edgeType: 'http_request' },
+      pv: { edgeType: 'http_request' },
     },
     {
       id: 'edge-3',
       fromNode: 'auth-1',
       toNode: 'cache-1',
-      vv: { edgeType: 'cache_access' },
+      pv: { edgeType: 'cache_access' },
     },
     {
       id: 'edge-4',
       fromNode: 'user-1',
       toNode: 'db-1',
-      vv: { edgeType: 'http_request' },
+      pv: { edgeType: 'http_request' },
     },
   ],
-  vv: {
+  pv: {
     version: '2.0.0',
     name: 'Microservices',
     description: 'Distributed microservices architecture',
@@ -252,7 +252,7 @@ const dataPipelineCanvas: ExtendedCanvas = {
       height: 70,
       text: 'Data Source',
       color: '#6C5CE7',
-      vv: {
+      pv: {
         nodeType: 'data_source',
         shape: 'rectangle',
         icon: 'FileInput',
@@ -267,7 +267,7 @@ const dataPipelineCanvas: ExtendedCanvas = {
       height: 90,
       text: 'Validator',
       color: '#00B894',
-      vv: {
+      pv: {
         nodeType: 'validator',
         shape: 'diamond',
         icon: 'CheckCircle',
@@ -282,7 +282,7 @@ const dataPipelineCanvas: ExtendedCanvas = {
       height: 100,
       text: 'Transformer',
       color: '#FD79A8',
-      vv: {
+      pv: {
         nodeType: 'transformer',
         shape: 'hexagon',
         icon: 'RefreshCw',
@@ -297,7 +297,7 @@ const dataPipelineCanvas: ExtendedCanvas = {
       height: 80,
       text: 'Warehouse',
       color: '#0984E3',
-      vv: {
+      pv: {
         nodeType: 'data_warehouse',
         shape: 'circle',
         icon: 'Database',
@@ -309,22 +309,22 @@ const dataPipelineCanvas: ExtendedCanvas = {
       id: 'edge-1',
       fromNode: 'source-1',
       toNode: 'validator-1',
-      vv: { edgeType: 'validation_flow' },
+      pv: { edgeType: 'validation_flow' },
     },
     {
       id: 'edge-2',
       fromNode: 'validator-1',
       toNode: 'transformer-1',
-      vv: { edgeType: 'data_flow' },
+      pv: { edgeType: 'data_flow' },
     },
     {
       id: 'edge-3',
       fromNode: 'transformer-1',
       toNode: 'warehouse-1',
-      vv: { edgeType: 'data_flow' },
+      pv: { edgeType: 'data_flow' },
     },
   ],
-  vv: {
+  pv: {
     version: '1.0.0',
     name: 'Data Pipeline',
     description: 'ETL data processing pipeline',
