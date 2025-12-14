@@ -1,6 +1,6 @@
 {
   "name": "@principal-ai/principal-view-core",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "description": "Core logic and types for graph-based principal view framework",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -10,7 +10,11 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist", "src", "README.md"],
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
   "scripts": {
     "build": "bun run build:clean && bun run build:ts",
     "build:clean": "rm -rf dist",

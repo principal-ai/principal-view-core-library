@@ -1,6 +1,6 @@
 {
   "name": "@principal-ai/principal-view-logger",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Enhanced logger with automatic source path capture for principal view framework",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -10,7 +10,11 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist", "src", "README.md"],
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
   "scripts": {
     "build": "bun run build:clean && bun run build:ts",
     "build:clean": "rm -rf dist",
