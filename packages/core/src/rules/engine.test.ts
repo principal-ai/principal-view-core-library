@@ -110,6 +110,7 @@ describe('GraphRulesEngine', () => {
       },
       nodeTypes: {
         service: {
+          description: 'A service node',
           shape: 'rectangle',
           dataSchema: {
             name: { type: 'string' },
@@ -237,11 +238,13 @@ describe('GraphRulesEngine', () => {
         metadata: { name: 'Test', version: '1.0.0' },
         nodeTypes: {
           service: {
+            description: 'A service node',
             shape: 'rectangle',
             color: 'invalid1',
             dataSchema: {},
           },
           database: {
+            description: 'A database node',
             shape: 'rectangle',
             color: 'invalid2',
             dataSchema: {},

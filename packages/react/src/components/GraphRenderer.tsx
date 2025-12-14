@@ -980,6 +980,7 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined, library?: Compone
     if (library?.nodeComponents) {
       for (const [id, component] of Object.entries(library.nodeComponents)) {
         nodeTypes[id] = {
+          description: component.description,
           shape: component.shape || 'rectangle',
           icon: component.icon,
           color: component.color,
@@ -1008,6 +1009,7 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined, library?: Compone
     if (canvas.pv?.nodeTypes) {
       for (const [id, def] of Object.entries(canvas.pv.nodeTypes)) {
         nodeTypes[id] = {
+          description: def.description,
           shape: def.shape || 'rectangle',
           icon: def.icon,
           color: def.color,
@@ -1028,6 +1030,7 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined, library?: Compone
           || vv?.states?.idle?.color;
 
         nodeTypes[nodeType] = {
+          description: vv?.description || `${nodeType} node`,
           shape: vv?.shape || 'rectangle',
           icon: vv?.icon,
           color: fillColor,

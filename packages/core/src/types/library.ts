@@ -23,8 +23,8 @@ import type { PVNodeShape, PVEdgeStyle, PVAnimationType, PVActionPattern, PVNode
  * Contains all the information needed to create a canvas node.
  */
 export interface LibraryNodeComponent {
-  /** Human-readable description for the library UI */
-  description?: string;
+  /** Human-readable description for the library UI (required) */
+  description: string;
 
   /** Tags for filtering/categorizing in the library UI */
   tags?: string[];

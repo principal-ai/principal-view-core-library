@@ -65,6 +65,20 @@ export const validNodeTypes: GraphRule = {
     for (const [typeId, nodeType] of Object.entries(configuration.nodeTypes)) {
       const basePath = `nodeTypes.${typeId}`;
 
+      // Check required description field
+      if (!nodeType.description) {
+        violations.push({
+          ruleId: 'valid-node-types',
+          severity: 'error',
+          file: configPath,
+          path: `${basePath}.description`,
+          message: `Node type "${typeId}" is missing required "description" field`,
+          impact: 'Node type must have a description explaining its purpose',
+          suggestion: 'Add a description field explaining what this node type represents',
+          fixable: false,
+        });
+      }
+
       // Check required shape field
       if (!nodeType.shape) {
         violations.push({

@@ -135,6 +135,7 @@ export class EventProcessor {
         this.state.nodes.set(payload.nodeId, {
           id: payload.nodeId,
           type: payload.nodeType,
+          name: payload.data?.name || payload.nodeId,
           data: payload.data || {},
           position: payload.position,
           createdAt: timestamp,

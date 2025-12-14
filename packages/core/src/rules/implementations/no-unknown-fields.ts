@@ -12,6 +12,7 @@ const ALLOWED_FIELDS = {
   root: ['metadata', 'nodeTypes', 'edgeTypes', 'allowedConnections', 'validation', 'display'],
   metadata: ['name', 'version', 'description'],
   nodeType: [
+    'description',
     'shape',
     'icon',
     'color',

@@ -25,6 +25,7 @@ export class GraphConverter {
       nodes.push({
         id,
         type: id,
+        name: id,
         data: {
           label: id,
           shape: nodeType.shape,

@@ -17,6 +17,8 @@ export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 export interface PathBasedNodeTypeDefinition {
   /** Base node type properties (inherited from NodeTypeDefinition) */
   shape: 'circle' | 'rectangle' | 'hexagon' | 'diamond' | 'custom';
+  /** Description of this node type (required) */
+  description: string;
   icon?: string;
   color?: string;
   size?: { width: number; height: number };

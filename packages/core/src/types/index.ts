@@ -32,6 +32,8 @@ export interface GraphConfiguration {
 }
 
 export interface NodeTypeDefinition {
+  /** Description of this node type (required) */
+  description: string;
   /** Visual representation */
   shape: 'circle' | 'rectangle' | 'hexagon' | 'diamond' | 'custom';
   icon?: string;
@@ -242,8 +244,8 @@ export interface EventStream {
 
   /** Initial graph state (optional) */
   initialState?: {
-    nodes: Array<{ id: string; type: string; data: any }>;
-    edges: Array<{ id: string; type: string; from: string; to: string; data?: any }>;
+    nodes: Array<Omit<NodeState, 'createdAt' | 'updatedAt'>>;
+    edges: Array<Omit<EdgeState, 'createdAt' | 'updatedAt'>>;
   };
 
   /** Stream of events */
@@ -310,6 +312,8 @@ export interface GraphState {
 export interface NodeState {
   id: string;
   type: string;
+  /** Display name for this node instance (required) */
+  name: string;
   data: Record<string, any>;
   state?: string;
   position?: { x: number; y: number };

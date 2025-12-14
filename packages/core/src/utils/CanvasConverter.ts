@@ -280,8 +280,8 @@ export class CanvasConverter {
         nodes.push({
           id: node.id,
           type: pv?.nodeType || node.type,
+          name: nodeName,
           data: {
-            name: nodeName,
             description: pv?.description,
             shape: pv?.shape || 'rectangle',
             icon: pv?.icon,
@@ -381,6 +381,7 @@ export class CanvasConverter {
       if (node.data.nodeType || node.data.shape || node.data.sources?.length) {
         canvasNode.pv = {
           nodeType: node.data.nodeType || node.id,
+          description: node.data.description || `${node.data.nodeType || node.id} node`,
           shape: node.data.shape as PVNodeShape | undefined,
           icon: node.data.icon,
           states: node.data.states,

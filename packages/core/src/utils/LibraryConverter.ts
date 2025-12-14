@@ -79,6 +79,7 @@ export class LibraryConverter {
     // Build the PV extension from the library component
     const pv: PVNodeExtension = {
       nodeType: componentKey,
+      description: component.description,
       shape: component.shape,
       icon: component.icon,
       states: component.states,
