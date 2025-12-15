@@ -1,6 +1,7 @@
 # Multi-Config Architecture Refactor Plan
 
 ## Overview
+
 Refactor Visual Validation Framework to support **multiple graph configurations** stored in `.principal-views/` folder, using the **adapter pattern** for environment-agnostic file operations.
 
 ---
@@ -8,9 +9,11 @@ Refactor Visual Validation Framework to support **multiple graph configurations*
 ## Phase 1: Repository Abstraction Updates
 
 ### 1.1 Move FileSystemAdapter to repository-abstraction
+
 **Location**: `/Users/griever/Developer/repository-abstraction`
 
 **Tasks**:
+
 - [ ] Create `src/adapters/FileSystemAdapter.ts` interface
 - [ ] Create `src/adapters/NodeFileSystemAdapter.ts` implementation
 - [ ] Create `src/adapters/InMemoryFileSystemAdapter.ts` for testing
@@ -20,6 +23,7 @@ Refactor Visual Validation Framework to support **multiple graph configurations*
 - [ ] Publish to npm (or ensure workspace linking works)
 
 **Interface to add**:
+
 ```typescript
 export interface FileSystemAdapter {
   // File operations
@@ -41,16 +45,20 @@ export interface FileSystemAdapter {
 ## Phase 2: Visual Validation Core Library Updates
 
 ### 2.1 Add repository-abstraction dependency
+
 **Files**: `packages/core/package.json`
 
 **Tasks**:
+
 - [ ] Add `@principal-ai/repository-abstraction` to dependencies
 - [ ] Install dependencies (`bun install`)
 
 ### 2.2 Create ConfigurationLoader utility
+
 **New file**: `packages/core/src/ConfigurationLoader.ts`
 
 **Features**:
+
 ```typescript
 export class ConfigurationLoader {
   constructor(private fsAdapter: FileSystemAdapter) {}
@@ -70,10 +78,11 @@ export class ConfigurationLoader {
 ```
 
 **Returns**:
+
 ```typescript
 interface ConfigurationFile {
-  name: string;           // e.g., "architecture"
-  path: string;          // e.g., ".principal-views/architecture.yaml"
+  name: string; // e.g., "architecture"
+  path: string; // e.g., ".principal-views/architecture.yaml"
   config: PathBasedGraphConfiguration;
 }
 
@@ -84,34 +93,42 @@ interface ConfigurationLoadResult {
 ```
 
 ### 2.3 Add YAML parsing support
+
 **New file**: `packages/core/src/utils/YamlParser.ts`
 
 **Tasks**:
+
 - [ ] Add `js-yaml` dependency
 - [ ] Create parser utility
 - [ ] Add error handling for invalid YAML
 - [ ] Support both .yaml and .yml extensions
 
 ### 2.4 Update core types
+
 **File**: `packages/core/src/types/index.ts`
 
 **Tasks**:
+
 - [ ] Remove any single-config assumptions
 - [ ] Add multi-config types if needed
 - [ ] Keep existing types backward compatible
 
 ### 2.5 Update exports
+
 **File**: `packages/core/src/index.ts`
 
 **Tasks**:
+
 - [ ] Export `ConfigurationLoader`
 - [ ] Export configuration-related types
 - [ ] Export `FileSystemAdapter` re-export from repository-abstraction
 
 ### 2.6 Update tests
+
 **Files**: `packages/core/src/__tests__/ConfigurationLoader.test.ts` (new)
 
 **Tasks**:
+
 - [ ] Create tests using `InMemoryFileSystemAdapter`
 - [ ] Test loading multiple configs
 - [ ] Test error handling (missing .principal-views, invalid YAML, etc.)
@@ -123,9 +140,11 @@ interface ConfigurationLoadResult {
 ## Phase 3: Documentation Updates
 
 ### 3.1 Update CONFIGURATION_REFERENCE.md
+
 **File**: `docs/CONFIGURATION_REFERENCE.md`
 
 **Changes**:
+
 - [ ] Replace all `vvf.config.yaml` with `.principal-views/` folder structure
 - [ ] Update file location section (lines 19-32)
 - [ ] Add examples of multiple configs
@@ -133,59 +152,72 @@ interface ConfigurationLoadResult {
 - [ ] Update all examples to show folder structure
 
 **New structure**:
+
 ```yaml
 your-project/
-  .principal-views/                    ← Configuration folder
-    ├── architecture.yaml  ← System architecture graph
-    ├── data-flow.yaml     ← Data flow graph
-    └── deployment.yaml    ← Deployment topology
-  src/
-  package.json
+.principal-views/                    ← Configuration folder
+├── architecture.yaml  ← System architecture graph
+├── data-flow.yaml     ← Data flow graph
+└── deployment.yaml    ← Deployment topology
+src/
+package.json
 ```
 
 ### 3.2 Update PATH_BASED_ASSOCIATION.md
+
 **File**: `docs/PATH_BASED_ASSOCIATION.md`
 
 **Changes**:
+
 - [ ] Update all config file references
 - [ ] Update examples to use `.principal-views/` folder
 - [ ] Show how different graphs can track different aspects
 
 ### 3.3 Update PANEL_INTEGRATION_PLAN.md
+
 **File**: `docs/PANEL_INTEGRATION_PLAN.md`
 
 **Changes**:
+
 - [ ] Update ConfigLoader implementation (lines 260-329)
 - [ ] Show multi-config selector UI
 - [ ] Update file watching for `.principal-views/` folder
 - [ ] Remove "future enhancement" for multiple configs (it's now core)
 
 ### 3.4 Update IMPLEMENTATION_MILESTONES.md
+
 **File**: `docs/IMPLEMENTATION_MILESTONES.md`
 
 **Changes**:
+
 - [ ] Update all examples to use `.principal-views/` folder
 - [ ] Add note about multi-config as core feature
 
 ### 3.5 Update MANUAL_LAYOUT_GUIDE.md
+
 **File**: `docs/MANUAL_LAYOUT_GUIDE.md`
 
 **Changes**:
+
 - [ ] Update config file references
 - [ ] Show examples in `.principal-views/` context
 
 ### 3.6 Update main README.md
+
 **File**: `README.md`
 
 **Changes**:
+
 - [ ] Update usage examples
 - [ ] Show ConfigurationLoader usage
 - [ ] Update file structure diagrams
 
 ### 3.7 Update package READMEs
+
 **Files**: `packages/core/README.md`, `packages/react/README.md`
 
 **Changes**:
+
 - [ ] Update examples to use `.principal-views/` folder
 - [ ] Show ConfigurationLoader API
 - [ ] Add adapter pattern documentation
@@ -195,17 +227,21 @@ your-project/
 ## Phase 4: React Package Updates
 
 ### 4.1 Update GraphRenderer for multi-config
+
 **File**: `packages/react/src/components/GraphRenderer.tsx`
 
 **Changes**:
+
 - [ ] Ensure component works with any config (already should)
 - [ ] Add optional `configName` prop for identification
 - [ ] No breaking changes needed (config is already passed in)
 
 ### 4.2 Create ConfigurationSelector component (optional)
+
 **New file**: `packages/react/src/components/ConfigurationSelector.tsx`
 
 **Features**:
+
 ```typescript
 interface ConfigurationSelectorProps {
   configurations: ConfigurationFile[];
@@ -215,9 +251,11 @@ interface ConfigurationSelectorProps {
 ```
 
 ### 4.3 Update examples and stories
+
 **Files**: `packages/react/src/stories/*.stories.tsx`
 
 **Changes**:
+
 - [ ] Update examples to show multi-config usage
 - [ ] Add story showing config switching
 - [ ] Update documentation in stories
@@ -227,18 +265,22 @@ interface ConfigurationSelectorProps {
 ## Phase 5: Example Configurations
 
 ### 5.1 Create example .principal-views folder
+
 **New folder**: `.principal-views/` (at project root for examples)
 
 **Files to create**:
+
 - [ ] `.principal-views/simple-service.yaml` - Basic 3-component example
 - [ ] `.principal-views/microservices.yaml` - Complex microservice architecture
 - [ ] `.principal-views/data-pipeline.yaml` - Data processing pipeline
 - [ ] `.principal-views/test-validation.yaml` - Test validation graph
 
 ### 5.2 Create .principal-views README
+
 **New file**: `.principal-views/README.md`
 
 **Content**:
+
 - Explain what this folder is
 - Naming conventions
 - How to create new configs
@@ -249,15 +291,18 @@ interface ConfigurationSelectorProps {
 ## Phase 6: Migration Guide
 
 ### 6.1 Create MIGRATION.md
+
 **New file**: `docs/MIGRATION.md`
 
 **Content**:
+
 - [ ] How to migrate from single config to `.principal-views/` folder
 - [ ] Breaking changes (if any)
 - [ ] Code examples showing before/after
 - [ ] Step-by-step migration instructions
 
 **Migration steps**:
+
 ```bash
 # Before (old way - no longer supported)
 your-project/
@@ -274,9 +319,11 @@ your-project/
 ## Phase 7: Testing & Validation
 
 ### 7.1 Integration tests
+
 **New file**: `packages/core/src/__tests__/integration/multi-config.test.ts`
 
 **Tests**:
+
 - [ ] Load multiple configs from .principal-views folder
 - [ ] Switch between configs
 - [ ] Handle missing .principal-views folder gracefully
@@ -284,14 +331,17 @@ your-project/
 - [ ] Verify each config loads independently
 
 ### 7.2 Update existing tests
+
 **Files**: All existing test files
 
 **Changes**:
+
 - [ ] Update mocks to use adapter pattern
 - [ ] Use InMemoryFileSystemAdapter for tests
 - [ ] Remove hardcoded file paths
 
 ### 7.3 Manual testing checklist
+
 - [ ] Create test project with .principal-views folder
 - [ ] Load all configs successfully
 - [ ] Verify error handling
@@ -303,17 +353,21 @@ your-project/
 ## Phase 8: Cleanup
 
 ### 8.1 Remove old single-config code
+
 **Tasks**:
+
 - [ ] Search for any hardcoded "vvf.config.yaml" references
 - [ ] Remove or update deprecated code
 - [ ] Update error messages
 
 ### 8.2 Update package versions
+
 **Files**: `package.json` files
 
 **Version bump**: `0.2.0` → `0.3.0` (minor version - new feature)
 
 **Changes**:
+
 - [ ] Update core package version
 - [ ] Update react package version
 - [ ] Update dependencies between packages
@@ -323,22 +377,27 @@ your-project/
 ## Implementation Order
 
 ### Sprint 1: Foundation (repository-abstraction + core loader)
+
 1. Phase 1: Move FileSystemAdapter to repository-abstraction
 2. Phase 2.1-2.3: Add dependency, create ConfigurationLoader, add YAML parsing
 
 ### Sprint 2: Core implementation
+
 3. Phase 2.4-2.6: Update types, exports, tests
 4. Phase 5: Create example .principal-views folder
 
 ### Sprint 3: Documentation
+
 5. Phase 3: Update all documentation
 6. Phase 6: Create migration guide
 
 ### Sprint 4: React & Testing
+
 7. Phase 4: Update React package
 8. Phase 7: Testing & validation
 
 ### Sprint 5: Polish & Release
+
 9. Phase 8: Cleanup
 10. Final review & publish
 
@@ -347,10 +406,12 @@ your-project/
 ## Breaking Changes
 
 ### What breaks:
+
 ❌ Looking for `vvf.config.yaml` at project root
 ❌ Any code that assumes single config file
 
 ### What stays compatible:
+
 ✅ All configuration schemas (just location changes)
 ✅ Core event processing logic
 ✅ React components (config is injected)

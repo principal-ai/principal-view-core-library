@@ -80,7 +80,9 @@ interface ProtocolMessage {
  */
 export class WebSocketTransport {
   private ws: WebSocket | null = null;
-  private options: Required<Omit<WebSocketTransportOptions, 'filter' | 'onConnectionChange' | 'onError'>> & {
+  private options: Required<
+    Omit<WebSocketTransportOptions, 'filter' | 'onConnectionChange' | 'onError'>
+  > & {
     filter?: (event: LoggerEvent) => boolean;
     onConnectionChange?: (state: ConnectionState) => void;
     onError?: (error: Error) => void;
@@ -91,7 +93,10 @@ export class WebSocketTransport {
   private messageQueue: ProtocolMessage[] = [];
   private currentSessionId: string | null = null;
   private requestIdCounter = 0;
-  private pendingRequests = new Map<string, { resolve: (value: any) => void; reject: (error: Error) => void }>();
+  private pendingRequests = new Map<
+    string,
+    { resolve: (value: any) => void; reject: (error: Error) => void }
+  >();
 
   constructor(options: WebSocketTransportOptions) {
     this.options = {

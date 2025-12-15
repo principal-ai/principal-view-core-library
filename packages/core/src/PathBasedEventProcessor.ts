@@ -16,7 +16,7 @@ import type {
   EdgeAnimationEvent,
   PathBasedEvent,
   ActionPattern,
-  LogLevel
+  LogLevel,
 } from './types/path-based-config';
 
 /**
@@ -74,7 +74,7 @@ export class PathBasedEventProcessor {
         this.componentSourceMap.push({
           componentId,
           sources: nodeType.sources,
-          actions: nodeType.actions
+          actions: nodeType.actions,
         });
       }
     }
@@ -130,9 +130,9 @@ export class PathBasedEventProcessor {
       source: {
         file: log.metadata.source.file,
         line: log.metadata.source.line,
-        column: log.metadata.source.column
+        column: log.metadata.source.column,
       },
-      args: log.args
+      args: log.args,
     };
 
     events.push(activityEvent);
@@ -185,8 +185,8 @@ export class PathBasedEventProcessor {
           source: {
             file: log.metadata.source!.file,
             line: log.metadata.source!.line,
-            column: log.metadata.source!.column
-          }
+            column: log.metadata.source!.column,
+          },
         };
       }
     }
@@ -220,10 +220,7 @@ export class PathBasedEventProcessor {
   /**
    * Get edge animations triggered by a component action (Milestone 2)
    */
-  private getEdgeAnimationsForAction(
-    componentId: string,
-    action: string
-  ): EdgeAnimationEvent[] {
+  private getEdgeAnimationsForAction(componentId: string, action: string): EdgeAnimationEvent[] {
     const events: EdgeAnimationEvent[] = [];
 
     // Check all edges to see if they're activated by this action
@@ -240,8 +237,8 @@ export class PathBasedEventProcessor {
               timestamp: Date.now(),
               triggeredBy: {
                 componentId,
-                action
-              }
+                action,
+              },
             });
           }
         }
@@ -277,9 +274,14 @@ export class PathBasedEventProcessor {
     return {
       totalComponents: Object.keys(this.config.nodeTypes).length,
       componentsWithSources: this.componentSourceMap.length,
-      componentsWithActions: this.componentSourceMap.filter(c => c.actions && c.actions.length > 0).length,
+      componentsWithActions: this.componentSourceMap.filter(
+        (c) => c.actions && c.actions.length > 0
+      ).length,
       totalSourcePatterns: this.componentSourceMap.reduce((sum, c) => sum + c.sources.length, 0),
-      totalActionPatterns: this.componentSourceMap.reduce((sum, c) => sum + (c.actions?.length || 0), 0)
+      totalActionPatterns: this.componentSourceMap.reduce(
+        (sum, c) => sum + (c.actions?.length || 0),
+        0
+      ),
     };
   }
 
@@ -302,7 +304,7 @@ export class PathBasedEventProcessor {
               issues.push({
                 type: 'warning',
                 message: `Components "${comp1.componentId}" and "${comp2.componentId}" both use pattern "${pattern1}". Logs will be associated with the first match.`,
-                componentId: comp1.componentId
+                componentId: comp1.componentId,
               });
             }
           }
@@ -320,7 +322,7 @@ export class PathBasedEventProcessor {
             issues.push({
               type: 'error',
               message: `Invalid regex pattern in action "${action.event}": ${action.pattern}`,
-              componentId: component.componentId
+              componentId: component.componentId,
             });
           }
         }

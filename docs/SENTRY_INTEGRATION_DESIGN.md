@@ -10,6 +10,7 @@
 This document outlines a strategy for integrating the Visual Validation Framework with [Sentry](https://github.com/getsentry/sentry), enabling bidirectional compatibility between our graph-based visualization standard and Sentry's error/performance monitoring ecosystem.
 
 The integration will allow:
+
 1. **Span-to-Graph mapping** - Render Sentry traces as Visual Validation graphs
 2. **Error context enrichment** - Link graph nodes to Sentry issues/events
 3. **SDK integration** - Emit Visual Validation events from Sentry SDK hooks
@@ -36,12 +37,14 @@ The integration will allow:
 ### Visual Validation Framework
 
 Our framework provides configuration-driven, event-based graph visualization for:
+
 - System architecture visualization
 - Real-time monitoring via event streams
 - Test execution flow validation
 - Path-based log association with components
 
 **Core Concepts:**
+
 - `GraphConfiguration` - Defines node types, edge types, and connection rules
 - `GraphEvent` - Events that create/update/animate nodes and edges
 - `PathBasedEventProcessor` - Associates logs with graph components via source path matching
@@ -49,12 +52,14 @@ Our framework provides configuration-driven, event-based graph visualization for
 ### Why Sentry Integration?
 
 Sentry is the de facto standard for error/performance monitoring with:
+
 - 100k+ organizations using it
 - First-class distributed tracing support
 - Rich span/transaction data model
 - Performance issue detection
 
 Integrating with Sentry enables:
+
 1. **Adoption** - Users already instrumented with Sentry can immediately visualize their systems
 2. **Error context** - Clicking a graph node shows related Sentry issues
 3. **Performance insights** - Surface Sentry-detected N+1 queries, slow spans, etc. on graphs
@@ -108,11 +113,11 @@ interface SentrySpan {
 
   // Timing
   start_timestamp: number;
-  timestamp: number;  // end time
+  timestamp: number; // end time
   exclusive_time?: number;
 
   // Classification
-  op: string;  // e.g., 'http', 'db', 'cache', 'queue'
+  op: string; // e.g., 'http', 'db', 'cache', 'queue'
   description?: string;
   status: SpanStatus;
 
@@ -146,16 +151,16 @@ interface SentrySpan {
 
 Sentry categorizes spans by `op` (operation):
 
-| Category | Operations | Description |
-|----------|------------|-------------|
-| **HTTP** | `http`, `http.client`, `http.server` | HTTP requests |
-| **Database** | `db`, `db.query`, `db.sql.query`, `db.redis` | Database operations |
-| **Cache** | `cache`, `cache.get`, `cache.put` | Caching operations |
-| **Queue** | `queue`, `queue.submit`, `queue.process` | Message queues |
-| **File** | `file`, `file.read`, `file.write` | File I/O |
-| **Serialize** | `serialize`, `deserialize` | Data serialization |
-| **UI** | `ui.load`, `ui.render`, `navigation` | Frontend rendering |
-| **Function** | `function`, `middleware` | Code execution |
+| Category      | Operations                                   | Description         |
+| ------------- | -------------------------------------------- | ------------------- |
+| **HTTP**      | `http`, `http.client`, `http.server`         | HTTP requests       |
+| **Database**  | `db`, `db.query`, `db.sql.query`, `db.redis` | Database operations |
+| **Cache**     | `cache`, `cache.get`, `cache.put`            | Caching operations  |
+| **Queue**     | `queue`, `queue.submit`, `queue.process`     | Message queues      |
+| **File**      | `file`, `file.read`, `file.write`            | File I/O            |
+| **Serialize** | `serialize`, `deserialize`                   | Data serialization  |
+| **UI**        | `ui.load`, `ui.render`, `navigation`         | Frontend rendering  |
+| **Function**  | `function`, `middleware`                     | Code execution      |
 
 ### Performance Issue Detection
 
@@ -196,19 +201,20 @@ Sentry automatically detects performance issues via span analysis:
 
 ### Structural Mapping
 
-| Visual Validation | Sentry | Notes |
-|-------------------|--------|-------|
-| `GraphConfiguration` | - | No direct equivalent; VV is configuration-driven |
-| `NodeType` | `span.op` category | Map span operations to node types |
-| `EdgeType` | Parent-child relationship | Implicit in `parent_span_id` |
-| `Node` | `Span` | Each span becomes a node |
-| `Edge` | Span hierarchy | Connect parent to child spans |
-| `GraphEvent` | Span ingestion | Events emitted as spans arrive |
-| `NodeState` | `span.status` | Map span status to visual states |
+| Visual Validation    | Sentry                    | Notes                                            |
+| -------------------- | ------------------------- | ------------------------------------------------ |
+| `GraphConfiguration` | -                         | No direct equivalent; VV is configuration-driven |
+| `NodeType`           | `span.op` category        | Map span operations to node types                |
+| `EdgeType`           | Parent-child relationship | Implicit in `parent_span_id`                     |
+| `Node`               | `Span`                    | Each span becomes a node                         |
+| `Edge`               | Span hierarchy            | Connect parent to child spans                    |
+| `GraphEvent`         | Span ingestion            | Events emitted as spans arrive                   |
+| `NodeState`          | `span.status`             | Map span status to visual states                 |
 
 ### Hierarchy Comparison
 
 **Sentry:** Flat span list with `parent_span_id` references
+
 ```
 spans: [
   { span_id: 'a', parent_span_id: null },
@@ -219,6 +225,7 @@ spans: [
 ```
 
 **Visual Validation:** Explicit nodes and edges
+
 ```yaml
 nodes:
   - id: 'a'
@@ -321,15 +328,15 @@ function mapOpToNodeType(op: string | undefined): string {
   if (!op) return 'unknown';
 
   const mapping: Record<string, string> = {
-    'http': 'api',
+    http: 'api',
     'http.client': 'api',
     'http.server': 'server',
-    'db': 'database',
+    db: 'database',
     'db.query': 'database',
     'db.sql.query': 'database',
-    'cache': 'cache',
+    cache: 'cache',
     'cache.get': 'cache',
-    'queue': 'queue',
+    queue: 'queue',
     'queue.submit': 'queue',
   };
 
@@ -338,11 +345,13 @@ function mapOpToNodeType(op: string | undefined): string {
 ```
 
 **Pros:**
+
 - Real-time integration
 - Works with existing Sentry instrumentation
 - Minimal additional setup
 
 **Cons:**
+
 - Requires SDK modification
 - Client-side overhead
 
@@ -375,10 +384,7 @@ export async function fetchTraceAsGraph(
   return convertTraceToGraph(trace, config);
 }
 
-function convertTraceToGraph(
-  trace: SentryTraceResponse,
-  config: GraphConfiguration
-): GraphState {
+function convertTraceToGraph(trace: SentryTraceResponse, config: GraphConfiguration): GraphState {
   const nodes = new Map();
   const edges = new Map();
 
@@ -445,11 +451,13 @@ function convertTraceToGraph(
 ```
 
 **Pros:**
+
 - No SDK changes required
 - Works with historical data
 - Full trace context
 
 **Cons:**
+
 - Not real-time
 - Requires API access
 
@@ -500,10 +508,12 @@ export class SentrySpanBufferStream {
 ```
 
 **Pros:**
+
 - True real-time
 - Low latency
 
 **Cons:**
+
 - Self-hosted only
 - Direct infrastructure access required
 
@@ -516,16 +526,16 @@ export class SentrySpanBufferStream {
 ```yaml
 # .principal-views/sentry-instrumented.yaml
 metadata:
-  name: "Sentry Instrumented System"
-  version: "1.0.0"
-  description: "System with Sentry integration"
+  name: 'Sentry Instrumented System'
+  version: '1.0.0'
+  description: 'System with Sentry integration'
 
 # Sentry integration configuration
 sentry:
   enabled: true
-  dsn: "${SENTRY_DSN}"  # Optional: for SDK integration
-  org: "my-org"          # For API integration
-  project: "my-project"
+  dsn: '${SENTRY_DSN}' # Optional: for SDK integration
+  org: 'my-org' # For API integration
+  project: 'my-project'
 
   # Map Sentry span ops to node types
   opMappings:
@@ -546,18 +556,18 @@ sentry:
 nodeTypes:
   api:
     shape: hexagon
-    color: "#2196F3"
-    icon: "globe"
+    color: '#2196F3'
+    icon: 'globe'
     dataSchema:
       name: { type: string }
       method: { type: string }
       url: { type: string }
       statusCode: { type: number }
     states:
-      default: { color: "#2196F3" }
-      success: { color: "#4CAF50" }
-      error: { color: "#F44336" }
-      slow: { color: "#FF9800" }
+      default: { color: '#2196F3' }
+      success: { color: '#4CAF50' }
+      error: { color: '#F44336' }
+      slow: { color: '#FF9800' }
 
     # Sentry-specific extensions
     sentryMapping:
@@ -569,21 +579,21 @@ nodeTypes:
       stateRules:
         - condition: "data['http.status_code'] >= 500"
           state: error
-        - condition: "duration > 1000"
+        - condition: 'duration > 1000'
           state: slow
 
   database:
     shape: cylinder
-    color: "#9C27B0"
-    icon: "database"
+    color: '#9C27B0'
+    icon: 'database'
     dataSchema:
       name: { type: string }
       system: { type: string }
       query: { type: string }
     states:
-      default: { color: "#9C27B0" }
-      slow: { color: "#FF9800" }
-      n_plus_one: { color: "#F44336", pulse: true }
+      default: { color: '#9C27B0' }
+      slow: { color: '#FF9800' }
+      n_plus_one: { color: '#F44336', pulse: true }
 
     sentryMapping:
       spanOps: ['db', 'db.query', 'db.sql.query']
@@ -601,22 +611,22 @@ nodeTypes:
 
   cache:
     shape: diamond
-    color: "#00BCD4"
-    icon: "zap"
+    color: '#00BCD4'
+    icon: 'zap'
     sentryMapping:
       spanOps: ['cache', 'cache.get', 'cache.put', 'db.redis']
 
   queue:
     shape: rectangle
-    color: "#FF5722"
-    icon: "inbox"
+    color: '#FF5722'
+    icon: 'inbox'
     sentryMapping:
       spanOps: ['queue', 'queue.submit', 'queue.process']
 
   error:
     shape: octagon
-    color: "#F44336"
-    icon: "alert-triangle"
+    color: '#F44336'
+    icon: 'alert-triangle'
     dataSchema:
       title: { type: string }
       message: { type: string }
@@ -627,12 +637,12 @@ edgeTypes:
   calls:
     style: solid
     directed: true
-    color: "#666"
+    color: '#666'
 
   error_link:
     style: dashed
     directed: true
-    color: "#F44336"
+    color: '#F44336'
     animated: true
     animationType: pulse
 
@@ -646,16 +656,16 @@ allowedConnections:
   - from: queue
     to: [api, database]
     via: calls
-  - from: "*"
+  - from: '*'
     to: error
     via: error_link
 
 # Deep linking configuration
 linking:
   sentry:
-    issue: "https://sentry.io/organizations/{org}/issues/{issueId}/"
-    event: "https://sentry.io/organizations/{org}/issues/{issueId}/events/{eventId}/"
-    trace: "https://sentry.io/organizations/{org}/performance/trace/{traceId}/"
+    issue: 'https://sentry.io/organizations/{org}/issues/{issueId}/'
+    event: 'https://sentry.io/organizations/{org}/issues/{issueId}/events/{eventId}/'
+    trace: 'https://sentry.io/organizations/{org}/performance/trace/{traceId}/'
 ```
 
 ### Node Data Extensions
@@ -700,10 +710,12 @@ interface SentryNodeData {
 **Scope:** Add Sentry-related types to `@principal-ai/visual-validation-core`
 
 **Files to create/modify:**
+
 - `packages/core/src/types/sentry.ts` - Sentry type definitions
 - `packages/core/src/types/index.ts` - Export Sentry types
 
 **Deliverables:**
+
 - [ ] `SentrySpan` interface
 - [ ] `SentryTransaction` interface
 - [ ] `SentryError` interface
@@ -715,11 +727,13 @@ interface SentryNodeData {
 **Scope:** Utility to convert Sentry spans to Visual Validation graph state
 
 **Files to create:**
+
 - `packages/core/src/integrations/sentry/SpanConverter.ts`
 - `packages/core/src/integrations/sentry/OpMapper.ts`
 - `packages/core/src/integrations/sentry/index.ts`
 
 **Deliverables:**
+
 - [ ] `convertSpanToNode()` function
 - [ ] `convertSpanHierarchyToEdges()` function
 - [ ] `convertTraceToGraphState()` function
@@ -731,10 +745,12 @@ interface SentryNodeData {
 **Scope:** Fetch traces from Sentry API and convert to graph format
 
 **Files to create:**
+
 - `packages/core/src/integrations/sentry/TraceApiAdapter.ts`
 - `packages/core/src/integrations/sentry/SentryClient.ts`
 
 **Deliverables:**
+
 - [ ] `SentryClient` class for API calls
 - [ ] `fetchTrace()` method
 - [ ] `fetchProjectTraces()` method
@@ -746,10 +762,12 @@ interface SentryNodeData {
 **Scope:** Sentry SDK integration for real-time event emission
 
 **Files to create:**
+
 - `packages/sentry-integration/` - New package
 - `packages/sentry-integration/src/SentryVVIntegration.ts`
 
 **Deliverables:**
+
 - [ ] `createSentryVVIntegration()` factory
 - [ ] Transaction event processor
 - [ ] Span-to-event converter
@@ -761,11 +779,13 @@ interface SentryNodeData {
 **Scope:** UI components for Sentry-integrated visualizations
 
 **Files to create:**
+
 - `packages/react/src/components/SentryTraceViewer.tsx`
 - `packages/react/src/components/SentryErrorBadge.tsx`
 - `packages/react/src/components/SentryPerformanceIndicator.tsx`
 
 **Deliverables:**
+
 - [ ] Trace viewer component with Sentry deep links
 - [ ] Error badge component for nodes
 - [ ] Performance issue indicator component
@@ -777,6 +797,7 @@ interface SentryNodeData {
 **Scope:** Complete documentation and example configurations
 
 **Deliverables:**
+
 - [ ] `docs/SENTRY_INTEGRATION_GUIDE.md`
 - [ ] `.principal-views/examples/sentry-web-app.yaml`
 - [ ] `.principal-views/examples/sentry-microservices.yaml`
@@ -791,13 +812,13 @@ interface SentryNodeData {
 ```typescript
 import {
   SpanConverter,
-  SentryIntegrationConfig
+  SentryIntegrationConfig,
 } from '@principal-ai/visual-validation-core/integrations/sentry';
 
 const config: SentryIntegrationConfig = {
   opMappings: {
-    'http': 'api',
-    'db': 'database',
+    http: 'api',
+    db: 'database',
   },
   extractAttributes: ['http.method', 'http.url', 'db.name'],
 };
@@ -816,7 +837,7 @@ const graphState = converter.traceToGraphState(sentryTrace);
 ```typescript
 import {
   SentryClient,
-  TraceApiAdapter
+  TraceApiAdapter,
 } from '@principal-ai/visual-validation-core/integrations/sentry';
 
 const client = new SentryClient({
@@ -888,22 +909,27 @@ Sentry.init({
 ## Open Questions
 
 1. **Scope of initial integration**
+
    - Start with read-only trace visualization?
    - Include real-time SDK integration in v1?
 
 2. **Configuration storage**
+
    - Store Sentry org/project in `.principal-views/` config?
    - Separate `.sentry` config file?
 
 3. **Performance issue visualization**
+
    - How to visually indicate N+1 queries affecting multiple nodes?
    - Animate affected edges? Highlight node cluster?
 
 4. **Bi-directional linking**
+
    - Deep link from VV node → Sentry issue/event (easy)
    - Link from Sentry → VV visualization (requires URL scheme)
 
 5. **Self-hosted vs SaaS**
+
    - Different integration paths for self-hosted Sentry?
    - Direct Redis/Kafka access for self-hosted?
 
@@ -917,52 +943,52 @@ Sentry.init({
 
 Complete list of Sentry span operations and suggested Visual Validation node type mappings:
 
-| Sentry Op | Category | Suggested Node Type | Icon |
-|-----------|----------|---------------------|------|
-| `http` | HTTP | `api` | globe |
-| `http.client` | HTTP | `api` | arrow-right |
-| `http.server` | HTTP | `server` | server |
-| `db` | Database | `database` | database |
-| `db.query` | Database | `database` | search |
-| `db.sql.query` | Database | `database` | code |
-| `db.redis` | Cache | `cache` | zap |
-| `cache` | Cache | `cache` | layers |
-| `cache.get` | Cache | `cache` | download |
-| `cache.put` | Cache | `cache` | upload |
-| `queue` | Queue | `queue` | inbox |
-| `queue.submit` | Queue | `queue` | send |
-| `queue.process` | Queue | `worker` | cog |
-| `task` | Task | `worker` | play |
-| `subprocess` | Process | `worker` | terminal |
-| `serialize` | Data | `transform` | package |
-| `deserialize` | Data | `transform` | unpack |
-| `file` | File | `storage` | file |
-| `file.read` | File | `storage` | file-text |
-| `file.write` | File | `storage` | file-plus |
-| `grpc` | RPC | `api` | radio |
-| `graphql` | API | `api` | git-branch |
-| `websocket` | Realtime | `api` | radio |
-| `ui.load` | UI | `frontend` | monitor |
-| `ui.render` | UI | `frontend` | layout |
-| `navigation` | UI | `frontend` | compass |
-| `resource` | Resource | `resource` | box |
-| `function` | Code | `function` | code |
-| `middleware` | Code | `middleware` | layers |
+| Sentry Op       | Category | Suggested Node Type | Icon        |
+| --------------- | -------- | ------------------- | ----------- |
+| `http`          | HTTP     | `api`               | globe       |
+| `http.client`   | HTTP     | `api`               | arrow-right |
+| `http.server`   | HTTP     | `server`            | server      |
+| `db`            | Database | `database`          | database    |
+| `db.query`      | Database | `database`          | search      |
+| `db.sql.query`  | Database | `database`          | code        |
+| `db.redis`      | Cache    | `cache`             | zap         |
+| `cache`         | Cache    | `cache`             | layers      |
+| `cache.get`     | Cache    | `cache`             | download    |
+| `cache.put`     | Cache    | `cache`             | upload      |
+| `queue`         | Queue    | `queue`             | inbox       |
+| `queue.submit`  | Queue    | `queue`             | send        |
+| `queue.process` | Queue    | `worker`            | cog         |
+| `task`          | Task     | `worker`            | play        |
+| `subprocess`    | Process  | `worker`            | terminal    |
+| `serialize`     | Data     | `transform`         | package     |
+| `deserialize`   | Data     | `transform`         | unpack      |
+| `file`          | File     | `storage`           | file        |
+| `file.read`     | File     | `storage`           | file-text   |
+| `file.write`    | File     | `storage`           | file-plus   |
+| `grpc`          | RPC      | `api`               | radio       |
+| `graphql`       | API      | `api`               | git-branch  |
+| `websocket`     | Realtime | `api`               | radio       |
+| `ui.load`       | UI       | `frontend`          | monitor     |
+| `ui.render`     | UI       | `frontend`          | layout      |
+| `navigation`    | UI       | `frontend`          | compass     |
+| `resource`      | Resource | `resource`          | box         |
+| `function`      | Code     | `function`          | code        |
+| `middleware`    | Code     | `middleware`        | layers      |
 
 ---
 
 ## Appendix B: Sentry Performance Issue Types
 
-| Issue Type | Detection | Visual Treatment |
-|------------|-----------|------------------|
-| `n_plus_one_db` | Repeated similar DB queries | Pulse affected nodes, highlight edges |
-| `slow_db_query` | Query > 500ms | Orange state on DB node |
-| `consecutive_http` | Sequential HTTP calls | Dashed edges between API nodes |
-| `large_http_payload` | Response > 1MB | Warning badge on API node |
-| `file_io_main_thread` | File I/O on UI thread | Red state on file node |
-| `render_blocking_asset` | CSS/JS blocking render | Red edge to frontend node |
-| `m_n_plus_one_db` | M×N query pattern | Cluster highlight |
-| `http_overhead` | High HTTP overhead | Timing badge on edges |
+| Issue Type              | Detection                   | Visual Treatment                      |
+| ----------------------- | --------------------------- | ------------------------------------- |
+| `n_plus_one_db`         | Repeated similar DB queries | Pulse affected nodes, highlight edges |
+| `slow_db_query`         | Query > 500ms               | Orange state on DB node               |
+| `consecutive_http`      | Sequential HTTP calls       | Dashed edges between API nodes        |
+| `large_http_payload`    | Response > 1MB              | Warning badge on API node             |
+| `file_io_main_thread`   | File I/O on UI thread       | Red state on file node                |
+| `render_blocking_asset` | CSS/JS blocking render      | Red edge to frontend node             |
+| `m_n_plus_one_db`       | M×N query pattern           | Cluster highlight                     |
+| `http_overhead`         | High HTTP overhead          | Timing badge on edges                 |
 
 ---
 

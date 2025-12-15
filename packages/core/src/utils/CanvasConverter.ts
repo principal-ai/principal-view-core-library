@@ -416,7 +416,9 @@ export class CanvasConverter {
           edgeType: edge.data.edgeType,
           style: edge.data.style as PVEdgeStyle | undefined,
           width: edge.data.width,
-          animation: edge.data.animation as { type: PVAnimationType; duration?: number; color?: string } | undefined,
+          animation: edge.data.animation as
+            | { type: PVAnimationType; duration?: number; color?: string }
+            | undefined,
           activatedBy: edge.data.activatedBy,
         };
 
@@ -426,7 +428,9 @@ export class CanvasConverter {
             style: edge.data.style as PVEdgeStyle | undefined,
             color: edge.data.color,
             width: edge.data.width,
-            animation: edge.data.animation as { type: PVAnimationType; duration?: number; color?: string } | undefined,
+            animation: edge.data.animation as
+              | { type: PVAnimationType; duration?: number; color?: string }
+              | undefined,
             activatedBy: edge.data.activatedBy,
           });
         }

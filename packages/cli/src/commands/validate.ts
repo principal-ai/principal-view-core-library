@@ -45,14 +45,16 @@ function loadLibrary(principalViewsDir: string): LoadedLibrary | null {
     if (existsSync(libraryPath)) {
       try {
         const content = readFileSync(libraryPath, 'utf8');
-        const library = fileName.endsWith('.json')
-          ? JSON.parse(content)
-          : yaml.load(content);
+        const library = fileName.endsWith('.json') ? JSON.parse(content) : yaml.load(content);
 
         if (library && typeof library === 'object') {
           return {
-            nodeComponents: (library as Record<string, unknown>).nodeComponents as Record<string, unknown> || {},
-            edgeComponents: (library as Record<string, unknown>).edgeComponents as Record<string, unknown> || {},
+            nodeComponents:
+              ((library as Record<string, unknown>).nodeComponents as Record<string, unknown>) ||
+              {},
+            edgeComponents:
+              ((library as Record<string, unknown>).edgeComponents as Record<string, unknown>) ||
+              {},
             raw: library as Record<string, unknown>,
             path: libraryPath,
           };
@@ -81,37 +83,71 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
     for (const [compId, compDef] of Object.entries(lib.nodeComponents as Record<string, unknown>)) {
       if (compDef && typeof compDef === 'object') {
         const comp = compDef as Record<string, unknown>;
-        checkUnknownFields(comp, ALLOWED_LIBRARY_FIELDS.nodeComponent, `nodeComponents.${compId}`, issues);
+        checkUnknownFields(
+          comp,
+          ALLOWED_LIBRARY_FIELDS.nodeComponent,
+          `nodeComponents.${compId}`,
+          issues
+        );
 
         // Check nested fields
         if (comp.size && typeof comp.size === 'object') {
-          checkUnknownFields(comp.size as Record<string, unknown>, ALLOWED_LIBRARY_FIELDS.nodeComponentSize, `nodeComponents.${compId}.size`, issues);
+          checkUnknownFields(
+            comp.size as Record<string, unknown>,
+            ALLOWED_LIBRARY_FIELDS.nodeComponentSize,
+            `nodeComponents.${compId}.size`,
+            issues
+          );
         }
 
         if (comp.states && typeof comp.states === 'object') {
-          for (const [stateId, stateDef] of Object.entries(comp.states as Record<string, unknown>)) {
+          for (const [stateId, stateDef] of Object.entries(
+            comp.states as Record<string, unknown>
+          )) {
             if (stateDef && typeof stateDef === 'object') {
-              checkUnknownFields(stateDef as Record<string, unknown>, ALLOWED_LIBRARY_FIELDS.nodeComponentState, `nodeComponents.${compId}.states.${stateId}`, issues);
+              checkUnknownFields(
+                stateDef as Record<string, unknown>,
+                ALLOWED_LIBRARY_FIELDS.nodeComponentState,
+                `nodeComponents.${compId}.states.${stateId}`,
+                issues
+              );
             }
           }
         }
 
         if (comp.dataSchema && typeof comp.dataSchema === 'object') {
-          for (const [fieldName, fieldDef] of Object.entries(comp.dataSchema as Record<string, unknown>)) {
+          for (const [fieldName, fieldDef] of Object.entries(
+            comp.dataSchema as Record<string, unknown>
+          )) {
             if (fieldDef && typeof fieldDef === 'object') {
-              checkUnknownFields(fieldDef as Record<string, unknown>, ALLOWED_LIBRARY_FIELDS.nodeComponentDataSchemaField, `nodeComponents.${compId}.dataSchema.${fieldName}`, issues);
+              checkUnknownFields(
+                fieldDef as Record<string, unknown>,
+                ALLOWED_LIBRARY_FIELDS.nodeComponentDataSchemaField,
+                `nodeComponents.${compId}.dataSchema.${fieldName}`,
+                issues
+              );
             }
           }
         }
 
         if (comp.layout && typeof comp.layout === 'object') {
-          checkUnknownFields(comp.layout as Record<string, unknown>, ALLOWED_LIBRARY_FIELDS.nodeComponentLayout, `nodeComponents.${compId}.layout`, issues);
+          checkUnknownFields(
+            comp.layout as Record<string, unknown>,
+            ALLOWED_LIBRARY_FIELDS.nodeComponentLayout,
+            `nodeComponents.${compId}.layout`,
+            issues
+          );
         }
 
         if (Array.isArray(comp.actions)) {
           comp.actions.forEach((action: unknown, actionIndex: number) => {
             if (action && typeof action === 'object') {
-              checkUnknownFields(action as Record<string, unknown>, ALLOWED_LIBRARY_FIELDS.nodeComponentAction, `nodeComponents.${compId}.actions[${actionIndex}]`, issues);
+              checkUnknownFields(
+                action as Record<string, unknown>,
+                ALLOWED_LIBRARY_FIELDS.nodeComponentAction,
+                `nodeComponents.${compId}.actions[${actionIndex}]`,
+                issues
+              );
             }
           });
         }
@@ -124,15 +160,30 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
     for (const [compId, compDef] of Object.entries(lib.edgeComponents as Record<string, unknown>)) {
       if (compDef && typeof compDef === 'object') {
         const comp = compDef as Record<string, unknown>;
-        checkUnknownFields(comp, ALLOWED_LIBRARY_FIELDS.edgeComponent, `edgeComponents.${compId}`, issues);
+        checkUnknownFields(
+          comp,
+          ALLOWED_LIBRARY_FIELDS.edgeComponent,
+          `edgeComponents.${compId}`,
+          issues
+        );
 
         // Check nested fields
         if (comp.animation && typeof comp.animation === 'object') {
-          checkUnknownFields(comp.animation as Record<string, unknown>, ALLOWED_LIBRARY_FIELDS.edgeComponentAnimation, `edgeComponents.${compId}.animation`, issues);
+          checkUnknownFields(
+            comp.animation as Record<string, unknown>,
+            ALLOWED_LIBRARY_FIELDS.edgeComponentAnimation,
+            `edgeComponents.${compId}.animation`,
+            issues
+          );
         }
 
         if (comp.label && typeof comp.label === 'object') {
-          checkUnknownFields(comp.label as Record<string, unknown>, ALLOWED_LIBRARY_FIELDS.edgeComponentLabel, `edgeComponents.${compId}.label`, issues);
+          checkUnknownFields(
+            comp.label as Record<string, unknown>,
+            ALLOWED_LIBRARY_FIELDS.edgeComponentLabel,
+            `edgeComponents.${compId}.label`,
+            issues
+          );
         }
       }
     }
@@ -143,10 +194,20 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
     lib.connectionRules.forEach((rule: unknown, ruleIndex: number) => {
       if (rule && typeof rule === 'object') {
         const r = rule as Record<string, unknown>;
-        checkUnknownFields(r, ALLOWED_LIBRARY_FIELDS.connectionRule, `connectionRules[${ruleIndex}]`, issues);
+        checkUnknownFields(
+          r,
+          ALLOWED_LIBRARY_FIELDS.connectionRule,
+          `connectionRules[${ruleIndex}]`,
+          issues
+        );
 
         if (r.constraints && typeof r.constraints === 'object') {
-          checkUnknownFields(r.constraints as Record<string, unknown>, ALLOWED_LIBRARY_FIELDS.connectionRuleConstraints, `connectionRules[${ruleIndex}].constraints`, issues);
+          checkUnknownFields(
+            r.constraints as Record<string, unknown>,
+            ALLOWED_LIBRARY_FIELDS.connectionRuleConstraints,
+            `connectionRules[${ruleIndex}].constraints`,
+            issues
+          );
         }
       }
     });
@@ -175,12 +236,27 @@ const VALID_NODE_SHAPES = ['circle', 'rectangle', 'hexagon', 'diamond', 'custom'
 const ALLOWED_CANVAS_FIELDS = {
   root: ['nodes', 'edges', 'pv'],
   pv: ['version', 'name', 'description', 'nodeTypes', 'edgeTypes', 'pathConfig', 'display'],
-  pvPathConfig: ['projectRoot', 'captureSource', 'enableActionPatterns', 'logLevel', 'ignoreUnsourced'],
+  pvPathConfig: [
+    'projectRoot',
+    'captureSource',
+    'enableActionPatterns',
+    'logLevel',
+    'ignoreUnsourced',
+  ],
   pvDisplay: ['layout', 'theme', 'animations'],
   pvDisplayTheme: ['primary', 'success', 'warning', 'danger', 'info'],
   pvDisplayAnimations: ['enabled', 'speed'],
   pvNodeType: ['label', 'description', 'color', 'icon', 'shape'],
-  pvEdgeType: ['label', 'style', 'color', 'width', 'directed', 'animation', 'labelConfig', 'activatedBy'],
+  pvEdgeType: [
+    'label',
+    'style',
+    'color',
+    'width',
+    'directed',
+    'animation',
+    'labelConfig',
+    'activatedBy',
+  ],
   pvEdgeTypeAnimation: ['type', 'duration', 'color'],
   pvEdgeTypeLabelConfig: ['field', 'position'],
   // Base node fields from JSON Canvas spec
@@ -191,13 +267,36 @@ const ALLOWED_CANVAS_FIELDS = {
   nodeLink: ['url'],
   nodeGroup: ['label', 'background', 'backgroundStyle'],
   // Node pv extension
-  nodePv: ['nodeType', 'description', 'shape', 'icon', 'fill', 'stroke', 'states', 'sources', 'actions', 'dataSchema', 'layout'],
+  nodePv: [
+    'nodeType',
+    'description',
+    'shape',
+    'icon',
+    'fill',
+    'stroke',
+    'states',
+    'sources',
+    'actions',
+    'dataSchema',
+    'layout',
+  ],
   nodePvState: ['color', 'icon', 'label'],
   nodePvAction: ['pattern', 'event', 'state', 'metadata', 'triggerEdges'],
   nodePvDataSchemaField: ['type', 'required', 'displayInLabel'],
   nodePvLayout: ['layer', 'cluster'],
   // Edge fields
-  edge: ['id', 'fromNode', 'toNode', 'fromSide', 'toSide', 'fromEnd', 'toEnd', 'color', 'label', 'pv'],
+  edge: [
+    'id',
+    'fromNode',
+    'toNode',
+    'fromSide',
+    'toSide',
+    'fromEnd',
+    'toEnd',
+    'color',
+    'label',
+    'pv',
+  ],
   edgePv: ['edgeType', 'style', 'width', 'animation', 'activatedBy'],
   edgePvAnimation: ['type', 'duration', 'color'],
   edgePvActivatedBy: ['action', 'animation', 'direction', 'duration'],
@@ -208,13 +307,35 @@ const ALLOWED_CANVAS_FIELDS = {
  */
 const ALLOWED_LIBRARY_FIELDS = {
   root: ['version', 'name', 'description', 'nodeComponents', 'edgeComponents', 'connectionRules'],
-  nodeComponent: ['description', 'tags', 'defaultLabel', 'shape', 'icon', 'color', 'size', 'states', 'sources', 'actions', 'dataSchema', 'layout'],
+  nodeComponent: [
+    'description',
+    'tags',
+    'defaultLabel',
+    'shape',
+    'icon',
+    'color',
+    'size',
+    'states',
+    'sources',
+    'actions',
+    'dataSchema',
+    'layout',
+  ],
   nodeComponentSize: ['width', 'height'],
   nodeComponentState: ['color', 'icon', 'label'],
   nodeComponentAction: ['pattern', 'event', 'state', 'metadata', 'triggerEdges'],
   nodeComponentDataSchemaField: ['type', 'required', 'displayInLabel', 'label', 'displayInInfo'],
   nodeComponentLayout: ['layer', 'cluster'],
-  edgeComponent: ['description', 'tags', 'style', 'color', 'width', 'directed', 'animation', 'label'],
+  edgeComponent: [
+    'description',
+    'tags',
+    'style',
+    'color',
+    'width',
+    'directed',
+    'animation',
+    'label',
+  ],
   edgeComponentAnimation: ['type', 'duration', 'color'],
   edgeComponentLabel: ['field', 'position'],
   connectionRule: ['from', 'to', 'via', 'constraints'],
@@ -280,7 +401,11 @@ function findSimilarField(field: string, allowedFields: string[]): string | null
  * - Node types reference defined types in pv.nodeTypes or library.nodeComponents
  * - Canvas has pv extension with name and version
  */
-function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrary | null): ValidationIssue[] {
+function validateCanvas(
+  canvas: unknown,
+  filePath: string,
+  library: LoadedLibrary | null
+): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
   if (!canvas || typeof canvas !== 'object') {
@@ -334,7 +459,12 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
 
     // Validate pv.pathConfig if present
     if (pv.pathConfig && typeof pv.pathConfig === 'object') {
-      checkUnknownFields(pv.pathConfig as Record<string, unknown>, ALLOWED_CANVAS_FIELDS.pvPathConfig, 'pv.pathConfig', issues);
+      checkUnknownFields(
+        pv.pathConfig as Record<string, unknown>,
+        ALLOWED_CANVAS_FIELDS.pvPathConfig,
+        'pv.pathConfig',
+        issues
+      );
     }
 
     // Validate pv.display if present
@@ -343,10 +473,20 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
       checkUnknownFields(display, ALLOWED_CANVAS_FIELDS.pvDisplay, 'pv.display', issues);
 
       if (display.theme && typeof display.theme === 'object') {
-        checkUnknownFields(display.theme as Record<string, unknown>, ALLOWED_CANVAS_FIELDS.pvDisplayTheme, 'pv.display.theme', issues);
+        checkUnknownFields(
+          display.theme as Record<string, unknown>,
+          ALLOWED_CANVAS_FIELDS.pvDisplayTheme,
+          'pv.display.theme',
+          issues
+        );
       }
       if (display.animations && typeof display.animations === 'object') {
-        checkUnknownFields(display.animations as Record<string, unknown>, ALLOWED_CANVAS_FIELDS.pvDisplayAnimations, 'pv.display.animations', issues);
+        checkUnknownFields(
+          display.animations as Record<string, unknown>,
+          ALLOWED_CANVAS_FIELDS.pvDisplayAnimations,
+          'pv.display.animations',
+          issues
+        );
       }
     }
 
@@ -355,7 +495,12 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
       canvasNodeTypes = Object.keys(pv.nodeTypes as Record<string, unknown>);
       for (const [typeId, typeDef] of Object.entries(pv.nodeTypes as Record<string, unknown>)) {
         if (typeDef && typeof typeDef === 'object') {
-          checkUnknownFields(typeDef as Record<string, unknown>, ALLOWED_CANVAS_FIELDS.pvNodeType, `pv.nodeTypes.${typeId}`, issues);
+          checkUnknownFields(
+            typeDef as Record<string, unknown>,
+            ALLOWED_CANVAS_FIELDS.pvNodeType,
+            `pv.nodeTypes.${typeId}`,
+            issues
+          );
         }
       }
     }
@@ -366,13 +511,28 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
       for (const [typeId, typeDef] of Object.entries(pv.edgeTypes as Record<string, unknown>)) {
         if (typeDef && typeof typeDef === 'object') {
           const edgeTypeDef = typeDef as Record<string, unknown>;
-          checkUnknownFields(edgeTypeDef, ALLOWED_CANVAS_FIELDS.pvEdgeType, `pv.edgeTypes.${typeId}`, issues);
+          checkUnknownFields(
+            edgeTypeDef,
+            ALLOWED_CANVAS_FIELDS.pvEdgeType,
+            `pv.edgeTypes.${typeId}`,
+            issues
+          );
 
           if (edgeTypeDef.animation && typeof edgeTypeDef.animation === 'object') {
-            checkUnknownFields(edgeTypeDef.animation as Record<string, unknown>, ALLOWED_CANVAS_FIELDS.pvEdgeTypeAnimation, `pv.edgeTypes.${typeId}.animation`, issues);
+            checkUnknownFields(
+              edgeTypeDef.animation as Record<string, unknown>,
+              ALLOWED_CANVAS_FIELDS.pvEdgeTypeAnimation,
+              `pv.edgeTypes.${typeId}.animation`,
+              issues
+            );
           }
           if (edgeTypeDef.labelConfig && typeof edgeTypeDef.labelConfig === 'object') {
-            checkUnknownFields(edgeTypeDef.labelConfig as Record<string, unknown>, ALLOWED_CANVAS_FIELDS.pvEdgeTypeLabelConfig, `pv.edgeTypes.${typeId}.labelConfig`, issues);
+            checkUnknownFields(
+              edgeTypeDef.labelConfig as Record<string, unknown>,
+              ALLOWED_CANVAS_FIELDS.pvEdgeTypeLabelConfig,
+              `pv.edgeTypes.${typeId}.labelConfig`,
+              issues
+            );
           }
         }
       }
@@ -389,7 +549,11 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
   } else {
     c.nodes.forEach((node: unknown, index: number) => {
       if (!node || typeof node !== 'object') {
-        issues.push({ type: 'error', message: `Node at index ${index} must be an object`, path: `nodes[${index}]` });
+        issues.push({
+          type: 'error',
+          message: `Node at index ${index} must be an object`,
+          path: `nodes[${index}]`,
+        });
         return;
       }
       const n = node as Record<string, unknown>;
@@ -412,36 +576,66 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
       checkUnknownFields(n, allowedNodeFields, nodePath, issues);
 
       if (typeof n.id !== 'string' || !n.id) {
-        issues.push({ type: 'error', message: `Node at index ${index} must have a string "id"`, path: `${nodePath}.id` });
+        issues.push({
+          type: 'error',
+          message: `Node at index ${index} must have a string "id"`,
+          path: `${nodePath}.id`,
+        });
       }
       if (typeof n.type !== 'string') {
-        issues.push({ type: 'error', message: `Node "${nodeLabel}" must have a string "type"`, path: `${nodePath}.type` });
+        issues.push({
+          type: 'error',
+          message: `Node "${nodeLabel}" must have a string "type"`,
+          path: `${nodePath}.type`,
+        });
       }
       if (typeof n.x !== 'number') {
-        issues.push({ type: 'error', message: `Node "${nodeLabel}" must have a numeric "x" position`, path: `${nodePath}.x` });
+        issues.push({
+          type: 'error',
+          message: `Node "${nodeLabel}" must have a numeric "x" position`,
+          path: `${nodePath}.x`,
+        });
       }
       if (typeof n.y !== 'number') {
-        issues.push({ type: 'error', message: `Node "${nodeLabel}" must have a numeric "y" position`, path: `${nodePath}.y` });
+        issues.push({
+          type: 'error',
+          message: `Node "${nodeLabel}" must have a numeric "y" position`,
+          path: `${nodePath}.y`,
+        });
       }
       // Width and height are now REQUIRED (was warning)
       if (typeof n.width !== 'number') {
-        issues.push({ type: 'error', message: `Node "${nodeLabel}" must have a numeric "width"`, path: `${nodePath}.width` });
+        issues.push({
+          type: 'error',
+          message: `Node "${nodeLabel}" must have a numeric "width"`,
+          path: `${nodePath}.width`,
+        });
       }
       if (typeof n.height !== 'number') {
-        issues.push({ type: 'error', message: `Node "${nodeLabel}" must have a numeric "height"`, path: `${nodePath}.height` });
+        issues.push({
+          type: 'error',
+          message: `Node "${nodeLabel}" must have a numeric "height"`,
+          path: `${nodePath}.height`,
+        });
       }
 
       // Validate node type - must be standard canvas type OR have pv metadata
-      const isStandardType = STANDARD_CANVAS_TYPES.includes(nodeType as typeof STANDARD_CANVAS_TYPES[number]);
+      const isStandardType = STANDARD_CANVAS_TYPES.includes(
+        nodeType as (typeof STANDARD_CANVAS_TYPES)[number]
+      );
 
       if (!isStandardType) {
         // Custom type - must have pv.nodeType with shape
         if (!n.pv || typeof n.pv !== 'object') {
           issues.push({
             type: 'error',
-            message: `Node "${n.id || index}" uses custom type "${nodeType}" but has no "pv" extension`,
+            message: `Node "${
+              n.id || index
+            }" uses custom type "${nodeType}" but has no "pv" extension`,
             path: `nodes[${index}].pv`,
-            suggestion: `Use a standard type (${STANDARD_CANVAS_TYPES.join(', ')}) or add pv.nodeType and pv.shape`,
+            suggestion: `Use a standard type (${STANDARD_CANVAS_TYPES.join(
+              ', '
+            )}) or add pv.nodeType and pv.shape`,
           });
         } else {
           const nodePv = n.pv as Record<string, unknown>;
@@ -452,7 +646,10 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
               path: `nodes[${index}].pv.nodeType`,
             });
           }
-          if (typeof nodePv.shape !== 'string' || !VALID_NODE_SHAPES.includes(nodePv.shape as typeof VALID_NODE_SHAPES[number])) {
+          if (
+            typeof nodePv.shape !== 'string' ||
+            !VALID_NODE_SHAPES.includes(nodePv.shape as (typeof VALID_NODE_SHAPES)[number])
+          ) {
             issues.push({
               type: 'error',
               message: `Node "${n.id || index}" must have a valid "pv.shape"`,
@@ -472,29 +669,53 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
 
         // Check nested pv fields
         if (nodePv.states && typeof nodePv.states === 'object') {
-          for (const [stateId, stateDef] of Object.entries(nodePv.states as Record<string, unknown>)) {
+          for (const [stateId, stateDef] of Object.entries(
+            nodePv.states as Record<string, unknown>
+          )) {
             if (stateDef && typeof stateDef === 'object') {
-              checkUnknownFields(stateDef as Record<string, unknown>, ALLOWED_CANVAS_FIELDS.nodePvState, `${nodePath}.pv.states.${stateId}`, issues);
+              checkUnknownFields(
+                stateDef as Record<string, unknown>,
+                ALLOWED_CANVAS_FIELDS.nodePvState,
+                `${nodePath}.pv.states.${stateId}`,
+                issues
+              );
             }
           }
         }
 
         if (nodePv.dataSchema && typeof nodePv.dataSchema === 'object') {
-          for (const [fieldName, fieldDef] of Object.entries(nodePv.dataSchema as Record<string, unknown>)) {
+          for (const [fieldName, fieldDef] of Object.entries(
+            nodePv.dataSchema as Record<string, unknown>
+          )) {
             if (fieldDef && typeof fieldDef === 'object') {
-              checkUnknownFields(fieldDef as Record<string, unknown>, ALLOWED_CANVAS_FIELDS.nodePvDataSchemaField, `${nodePath}.pv.dataSchema.${fieldName}`, issues);
+              checkUnknownFields(
+                fieldDef as Record<string, unknown>,
+                ALLOWED_CANVAS_FIELDS.nodePvDataSchemaField,
+                `${nodePath}.pv.dataSchema.${fieldName}`,
+                issues
+              );
             }
           }
         }
 
         if (nodePv.layout && typeof nodePv.layout === 'object') {
-          checkUnknownFields(nodePv.layout as Record<string, unknown>, ALLOWED_CANVAS_FIELDS.nodePvLayout, `${nodePath}.pv.layout`, issues);
+          checkUnknownFields(
+            nodePv.layout as Record<string, unknown>,
+            ALLOWED_CANVAS_FIELDS.nodePvLayout,
+            `${nodePath}.pv.layout`,
+            issues
+          );
         }
 
         if (Array.isArray(nodePv.actions)) {
           nodePv.actions.forEach((action: unknown, actionIndex: number) => {
             if (action && typeof action === 'object') {
-              checkUnknownFields(action as Record<string, unknown>, ALLOWED_CANVAS_FIELDS.nodePvAction, `${nodePath}.pv.actions[${actionIndex}]`, issues);
+              checkUnknownFields(
+                action as Record<string, unknown>,
+                ALLOWED_CANVAS_FIELDS.nodePvAction,
+                `${nodePath}.pv.actions[${actionIndex}]`,
+                issues
+              );
             }
           });
         }
@@ -517,9 +738,10 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
             if (libraryNodeTypes.length > 0) {
               sources.push(`library.yaml nodeComponents: ${libraryNodeTypes.join(', ')}`);
             }
-            const suggestion = sources.length > 0
-              ? `Available types from ${sources.join(' | ')}`
-              : 'Define node types in canvas pv.nodeTypes or library.yaml nodeComponents';
+            const suggestion =
+              sources.length > 0
+                ? `Available types from ${sources.join(' | ')}`
+                : 'Define node types in canvas pv.nodeTypes or library.yaml nodeComponents';
 
             issues.push({
               type: 'error',
@@ -537,11 +759,15 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
   if (c.edges !== undefined && !Array.isArray(c.edges)) {
     issues.push({ type: 'error', message: '"edges" must be an array if present' });
   } else if (Array.isArray(c.edges)) {
-    const nodeIds = new Set((c.nodes as Array<{ id: string }>)?.map(n => n.id) || []);
+    const nodeIds = new Set((c.nodes as Array<{ id: string }>)?.map((n) => n.id) || []);
 
     c.edges.forEach((edge: unknown, index: number) => {
       if (!edge || typeof edge !== 'object') {
-        issues.push({ type: 'error', message: `Edge at index ${index} must be an object`, path: `edges[${index}]` });
+        issues.push({
+          type: 'error',
+          message: `Edge at index ${index} must be an object`,
+          path: `edges[${index}]`,
+        });
         return;
       }
       const e = edge as Record<string, unknown>;
@@ -552,17 +778,37 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
       checkUnknownFields(e, ALLOWED_CANVAS_FIELDS.edge, edgePath, issues);
 
       if (typeof e.id !== 'string' || !e.id) {
-        issues.push({ type: 'error', message: `Edge at index ${index} must have a string "id"`, path: `${edgePath}.id` });
+        issues.push({
+          type: 'error',
+          message: `Edge at index ${index} must have a string "id"`,
+          path: `${edgePath}.id`,
+        });
       }
       if (typeof e.fromNode !== 'string') {
-        issues.push({ type: 'error', message: `Edge "${edgeLabel}" must have a string "fromNode"`, path: `${edgePath}.fromNode` });
+        issues.push({
+          type: 'error',
+          message: `Edge "${edgeLabel}" must have a string "fromNode"`,
+          path: `${edgePath}.fromNode`,
+        });
       } else if (!nodeIds.has(e.fromNode)) {
-        issues.push({ type: 'error', message: `Edge "${edgeLabel}" references unknown node "${e.fromNode}"`, path: `${edgePath}.fromNode` });
+        issues.push({
+          type: 'error',
+          message: `Edge "${edgeLabel}" references unknown node "${e.fromNode}"`,
+          path: `${edgePath}.fromNode`,
+        });
       }
       if (typeof e.toNode !== 'string') {
-        issues.push({ type: 'error', message: `Edge "${edgeLabel}" must have a string "toNode"`, path: `${edgePath}.toNode` });
+        issues.push({
+          type: 'error',
+          message: `Edge "${edgeLabel}" must have a string "toNode"`,
+          path: `${edgePath}.toNode`,
+        });
       } else if (!nodeIds.has(e.toNode)) {
-        issues.push({ type: 'error', message: `Edge "${edgeLabel}" references unknown node "${e.toNode}"`, path: `${edgePath}.toNode` });
+        issues.push({
+          type: 'error',
+          message: `Edge "${edgeLabel}" references unknown node "${e.toNode}"`,
+          path: `${edgePath}.toNode`,
+        });
       }
 
       // Validate edge pv extension fields
@@ -574,13 +820,23 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
 
         // Check nested edge pv fields
         if (edgePv.animation && typeof edgePv.animation === 'object') {
-          checkUnknownFields(edgePv.animation as Record<string, unknown>, ALLOWED_CANVAS_FIELDS.edgePvAnimation, `${edgePath}.pv.animation`, issues);
+          checkUnknownFields(
+            edgePv.animation as Record<string, unknown>,
+            ALLOWED_CANVAS_FIELDS.edgePvAnimation,
+            `${edgePath}.pv.animation`,
+            issues
+          );
         }
 
         if (Array.isArray(edgePv.activatedBy)) {
           edgePv.activatedBy.forEach((trigger: unknown, triggerIndex: number) => {
             if (trigger && typeof trigger === 'object') {
-              checkUnknownFields(trigger as Record<string, unknown>, ALLOWED_CANVAS_FIELDS.edgePvActivatedBy, `${edgePath}.pv.activatedBy[${triggerIndex}]`, issues);
+              checkUnknownFields(
+                trigger as Record<string, unknown>,
+                ALLOWED_CANVAS_FIELDS.edgePvActivatedBy,
+                `${edgePath}.pv.activatedBy[${triggerIndex}]`,
+                issues
+              );
             }
           });
         }
@@ -603,9 +859,10 @@ function validateCanvas(canvas: unknown, filePath: string, library: LoadedLibrar
             if (libraryEdgeTypes.length > 0) {
               sources.push(`library.yaml edgeComponents: ${libraryEdgeTypes.join(', ')}`);
             }
-            const suggestion = sources.length > 0
-              ? `Available types from ${sources.join(' | ')}`
-              : 'Define edge types in canvas pv.edgeTypes or library.yaml edgeComponents';
+            const suggestion =
+              sources.length > 0
+                ? `Available types from ${sources.join(' | ')}`
+                : 'Define edge types in canvas pv.edgeTypes or library.yaml edgeComponents';
 
             issues.push({
               type: 'error',
@@ -641,7 +898,7 @@ function validateFile(filePath: string, library: LoadedLibrary | null): Validati
     const content = readFileSync(absolutePath, 'utf8');
     const canvas = JSON.parse(content);
     const issues = validateCanvas(canvas, relativePath, library);
-    const hasErrors = issues.some(i => i.type === 'error');
+    const hasErrors = issues.some((i) => i.type === 'error');
 
     return {
       file: relativePath,
@@ -663,7 +920,10 @@ export function createValidateCommand(): Command {
 
   command
     .description('Validate .canvas configuration files')
-    .argument('[files...]', 'Files or glob patterns to validate (defaults to .principal-views/*.canvas)')
+    .argument(
+      '[files...]',
+      'Files or glob patterns to validate (defaults to .principal-views/*.canvas)'
+    )
     .option('-q, --quiet', 'Only output errors')
     .option('--json', 'Output results as JSON')
     .action(async (files: string[], options) => {
@@ -695,7 +955,7 @@ export function createValidateCommand(): Command {
         let libraryResult: ValidationResult | null = null;
         if (library && Object.keys(library.raw).length > 0) {
           const libraryIssues = validateLibrary(library);
-          const libraryHasErrors = libraryIssues.some(i => i.type === 'error');
+          const libraryHasErrors = libraryIssues.some((i) => i.type === 'error');
           libraryResult = {
             file: relative(process.cwd(), library.path),
             isValid: !libraryHasErrors,
@@ -704,22 +964,30 @@ export function createValidateCommand(): Command {
         }
 
         // Validate all canvas files
-        const results: ValidationResult[] = matchedFiles.map(f => validateFile(f, library));
+        const results: ValidationResult[] = matchedFiles.map((f) => validateFile(f, library));
 
         // Combine results
         const allResults = libraryResult ? [libraryResult, ...results] : results;
-        const validCount = allResults.filter(r => r.isValid).length;
+        const validCount = allResults.filter((r) => r.isValid).length;
         const invalidCount = allResults.length - validCount;
 
         // Output results
         if (options.json) {
-          console.log(JSON.stringify({
-            files: allResults,
-            summary: { total: allResults.length, valid: validCount, invalid: invalidCount },
-          }, null, 2));
+          console.log(
+            JSON.stringify(
+              {
+                files: allResults,
+                summary: { total: allResults.length, valid: validCount, invalid: invalidCount },
+              },
+              null,
+              2
+            )
+          );
         } else {
           if (!options.quiet) {
-            const fileCount = libraryResult ? `${results.length} canvas file(s) + library` : `${results.length} canvas file(s)`;
+            const fileCount = libraryResult
+              ? `${results.length} canvas file(s) + library`
+              : `${results.length} canvas file(s)`;
             console.log(chalk.bold(`\nValidating ${fileCount}...\n`));
           }
 
@@ -727,16 +995,16 @@ export function createValidateCommand(): Command {
             if (result.isValid) {
               if (!options.quiet) {
                 console.log(chalk.green(`✓ ${result.file}`));
-                const warnings = result.issues.filter(i => i.type === 'warning');
+                const warnings = result.issues.filter((i) => i.type === 'warning');
                 if (warnings.length > 0) {
-                  warnings.forEach(w => {
+                  warnings.forEach((w) => {
                     console.log(chalk.yellow(`  ⚠ ${w.message}`));
                   });
                 }
               }
             } else {
               console.log(chalk.red(`✗ ${result.file}`));
-              result.issues.forEach(issue => {
+              result.issues.forEach((issue) => {
                 const icon = issue.type === 'error' ? '✗' : '⚠';
                 const color = issue.type === 'error' ? chalk.red : chalk.yellow;
                 console.log(color(`  ${icon} ${issue.message}`));
@@ -752,7 +1020,9 @@ export function createValidateCommand(): Command {
           if (invalidCount === 0) {
             console.log(chalk.green(`✓ All ${validCount} file(s) are valid`));
           } else {
-            console.log(chalk.red(`✗ ${invalidCount} of ${allResults.length} file(s) failed validation`));
+            console.log(
+              chalk.red(`✗ ${invalidCount} of ${allResults.length} file(s) failed validation`)
+            );
             process.exit(1);
           }
         }

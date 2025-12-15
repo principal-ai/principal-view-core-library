@@ -26,13 +26,13 @@ import { enhanceLogger } from '@principal-ai/visual-validation-logger';
 
 // Your existing logger
 const logger = winston.createLogger({
-  transports: [new winston.transports.Console()]
+  transports: [new winston.transports.Console()],
 });
 
 // Enhance it with VVF source capture
 enhanceLogger(logger, {
   projectRoot: __dirname,
-  captureSource: true
+  captureSource: true,
 });
 
 // Use as normal - source info is captured automatically
@@ -47,7 +47,7 @@ import { createLogger } from '@principal-ai/visual-validation-logger';
 
 const logger = createLogger({
   projectRoot: __dirname,
-  level: 'info'
+  level: 'info',
 });
 
 logger.info('Starting server...');
@@ -66,7 +66,7 @@ const processor = new PathBasedEventProcessor(graphConfig);
 // Create transport that sends logs to VVF
 const vvfTransport = createVVFTransport((logEntry) => {
   const events = processor.processLog(logEntry);
-  events.forEach(event => {
+  events.forEach((event) => {
     // Send events to your visualization
     eventEmitter.emit('graph-event', event);
   });
@@ -85,17 +85,19 @@ loggerInstance.addTransport(vvfTransport);
 Wraps an existing logger to capture source information.
 
 **Options:**
+
 - `projectRoot` - Project root directory for path normalization (default: `process.cwd()`)
 - `captureSource` - Enable source capture (default: `true`)
 - `level` - Minimum log level (default: `'info'`)
 - `samplingRate` - Sample 1 out of N logs (default: `1` = all logs)
 
 **Example:**
+
 ```typescript
 const logger = enhanceLogger(winston.createLogger(), {
   projectRoot: '/path/to/project',
   level: 'debug',
-  samplingRate: 1 // Capture all logs
+  samplingRate: 1, // Capture all logs
 });
 ```
 
@@ -104,10 +106,11 @@ const logger = enhanceLogger(winston.createLogger(), {
 Creates a standalone logger with source capture enabled.
 
 **Example:**
+
 ```typescript
 const logger = createLogger({
   projectRoot: __dirname,
-  level: 'info'
+  level: 'info',
 });
 
 logger.debug('Debug message');
@@ -121,6 +124,7 @@ logger.error('Error message');
 Creates a transport that forwards logs to a callback.
 
 **Example:**
+
 ```typescript
 const transport = createVVFTransport((logEntry) => {
   console.log('Log from:', logEntry.metadata.source?.file);
@@ -144,7 +148,7 @@ If automatic source capture fails, you can manually specify the source:
 logger.info('Lock acquired', {
   _vvfSource: 'lib/lock-manager.ts',
   _vvfLine: 42,
-  _vvfColumn: 10
+  _vvfColumn: 10,
 });
 ```
 
@@ -158,6 +162,7 @@ The logger uses `Error.prepareStackTrace` to capture the caller's location:
 4. Filters out `node_modules` and internal Node.js files
 
 **Performance:**
+
 - Source capture adds <10ms overhead per log
 - Uses sampling to reduce overhead in high-volume scenarios
 - Can be disabled with `captureSource: false`

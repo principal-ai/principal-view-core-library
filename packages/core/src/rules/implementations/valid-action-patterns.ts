@@ -31,7 +31,9 @@ export const validActionPatterns: GraphRule<ValidActionPatternsOptions> = {
   fixable: false,
   defaultOptions: DEFAULT_OPTIONS,
 
-  async check(context: GraphRuleContext<ValidActionPatternsOptions>): Promise<GraphRuleViolation[]> {
+  async check(
+    context: GraphRuleContext<ValidActionPatternsOptions>
+  ): Promise<GraphRuleViolation[]> {
     const violations: GraphRuleViolation[] = [];
     const { configuration, configPath, options } = context;
 
@@ -103,7 +105,9 @@ export const validActionPatterns: GraphRule<ValidActionPatternsOptions> = {
                     path: `${basePath}.metadata.${metaKey}`,
                     message: `Metadata references undefined capture group "$${groupName}"`,
                     impact: 'Metadata extraction will fail',
-                    suggestion: `Available capture groups: ${[...captureGroupNames].join(', ') || '(none)'}`,
+                    suggestion: `Available capture groups: ${
+                      [...captureGroupNames].join(', ') || '(none)'
+                    }`,
                     fixable: false,
                   });
                 }

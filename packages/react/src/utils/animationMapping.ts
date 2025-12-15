@@ -13,7 +13,7 @@ import type { LogLevel } from '@principal-ai/principal-view-core';
 export interface NodeAnimation {
   type: 'pulse' | 'flash' | 'shake' | 'entry';
   duration: number;
-  intensity?: number;  // 0-1 scale
+  intensity?: number; // 0-1 scale
   color?: string;
 }
 
@@ -43,7 +43,7 @@ export function logLevelToNodeAnimation(level: LogLevel): NodeAnimation {
         type: 'pulse',
         duration: 800,
         intensity: 0.3,
-        color: '#94a3b8' // slate-400
+        color: '#94a3b8', // slate-400
       };
 
     case 'info':
@@ -51,7 +51,7 @@ export function logLevelToNodeAnimation(level: LogLevel): NodeAnimation {
         type: 'pulse',
         duration: 1000,
         intensity: 0.5,
-        color: '#3b82f6' // blue-500
+        color: '#3b82f6', // blue-500
       };
 
     case 'warn':
@@ -59,7 +59,7 @@ export function logLevelToNodeAnimation(level: LogLevel): NodeAnimation {
         type: 'pulse',
         duration: 1200,
         intensity: 1.0,
-        color: '#f59e0b' // amber-500
+        color: '#f59e0b', // amber-500
       };
 
     case 'error':
@@ -67,7 +67,7 @@ export function logLevelToNodeAnimation(level: LogLevel): NodeAnimation {
         type: 'flash', // More dramatic animation for errors
         duration: 1500,
         intensity: 1.0,
-        color: '#ef4444' // red-500
+        color: '#ef4444', // red-500
       };
   }
 }
@@ -75,10 +75,7 @@ export function logLevelToNodeAnimation(level: LogLevel): NodeAnimation {
 /**
  * Map component action to node animation (Milestone 2)
  */
-export function actionToNodeAnimation(
-  _action: string,
-  state?: string
-): NodeAnimation {
+export function actionToNodeAnimation(_action: string, state?: string): NodeAnimation {
   // Default mapping - can be overridden by configuration
   switch (state) {
     case 'acquired':
@@ -88,7 +85,7 @@ export function actionToNodeAnimation(
         type: 'pulse',
         duration: 1000,
         intensity: 0.8,
-        color: '#22c55e' // green-500
+        color: '#22c55e', // green-500
       };
 
     case 'waiting':
@@ -97,7 +94,7 @@ export function actionToNodeAnimation(
         type: 'pulse',
         duration: 1500,
         intensity: 0.5,
-        color: '#eab308' // yellow-500
+        color: '#eab308', // yellow-500
       };
 
     case 'error':
@@ -106,7 +103,7 @@ export function actionToNodeAnimation(
         type: 'shake',
         duration: 600,
         intensity: 1.0,
-        color: '#ef4444' // red-500
+        color: '#ef4444', // red-500
       };
 
     case 'completed':
@@ -115,7 +112,7 @@ export function actionToNodeAnimation(
         type: 'flash',
         duration: 800,
         intensity: 0.7,
-        color: '#22c55e' // green-500
+        color: '#22c55e', // green-500
       };
 
     default:
@@ -124,7 +121,7 @@ export function actionToNodeAnimation(
         type: 'pulse',
         duration: 1000,
         intensity: 0.6,
-        color: '#3b82f6' // blue-500
+        color: '#3b82f6', // blue-500
       };
   }
 }
@@ -132,16 +129,15 @@ export function actionToNodeAnimation(
 /**
  * Get animation config for edge based on action (Milestone 2)
  */
-export function actionToEdgeAnimation(
-  _action: string,
-  edgeConfig?: EdgeAnimation
-): EdgeAnimation {
+export function actionToEdgeAnimation(_action: string, edgeConfig?: EdgeAnimation): EdgeAnimation {
   // Use edge config if provided, otherwise default
-  return edgeConfig || {
-    type: 'flow',
-    duration: 2000,
-    direction: 'forward'
-  };
+  return (
+    edgeConfig || {
+      type: 'flow',
+      duration: 2000,
+      direction: 'forward',
+    }
+  );
 }
 
 /**

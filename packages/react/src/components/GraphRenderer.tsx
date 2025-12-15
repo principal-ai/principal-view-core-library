@@ -1,4 +1,12 @@
-import React, { useMemo, useState, useEffect, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+} from 'react';
 import {
   ReactFlow,
   Background,
@@ -13,13 +21,25 @@ import {
   type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { GraphConfiguration, NodeState, EdgeState, Violation, GraphEvent, ExtendedCanvas, ComponentLibrary } from '@principal-ai/principal-view-core';
+import type {
+  GraphConfiguration,
+  NodeState,
+  EdgeState,
+  Violation,
+  GraphEvent,
+  ExtendedCanvas,
+  ComponentLibrary,
+} from '@principal-ai/principal-view-core';
 import { CanvasConverter } from '@principal-ai/principal-view-core';
 import { CustomNode } from '../nodes/CustomNode';
 import type { CustomNodeData } from '../nodes/CustomNode';
 import { CustomEdge } from '../edges/CustomEdge';
 import type { CustomEdgeData } from '../edges/CustomEdge';
-import { convertToXYFlowNodes, convertToXYFlowEdges, autoLayoutNodes } from '../utils/graphConverter';
+import {
+  convertToXYFlowNodes,
+  convertToXYFlowEdges,
+  autoLayoutNodes,
+} from '../utils/graphConverter';
 import { EdgeInfoPanel } from './EdgeInfoPanel';
 import { NodeInfoPanel } from './NodeInfoPanel';
 
@@ -34,11 +54,20 @@ export interface PendingChanges {
   /** Node position changes */
   positionChanges: NodePositionChange[];
   /** Node updates (type, data changes) */
-  nodeUpdates: Array<{ nodeId: string; updates: { type?: string; data?: Record<string, unknown> } }>;
+  nodeUpdates: Array<{
+    nodeId: string;
+    updates: { type?: string; data?: Record<string, unknown> };
+  }>;
   /** Deleted node IDs */
   deletedNodeIds: string[];
   /** New edges created (with optional handle info for connection points) */
-  createdEdges: Array<{ from: string; to: string; type: string; sourceHandle?: string; targetHandle?: string }>;
+  createdEdges: Array<{
+    from: string;
+    to: string;
+    type: string;
+    sourceHandle?: string;
+    targetHandle?: string;
+  }>;
   /** Deleted edges (with full connection info for config removal) */
   deletedEdges: Array<{ from: string; to: string; type: string }>;
   /** Whether there are any changes */
@@ -127,8 +156,19 @@ const edgeTypes = {
 
 // Animation state for nodes and edges
 interface AnimationState {
-  nodeAnimations: Record<string, { type: 'pulse' | 'flash' | 'shake' | 'entry'; duration: number; timestamp: number }>;
-  edgeAnimations: Record<string, { type: 'flow' | 'particle' | 'pulse' | 'glow'; duration: number; direction?: 'forward' | 'backward' | 'bidirectional'; timestamp: number }>;
+  nodeAnimations: Record<
+    string,
+    { type: 'pulse' | 'flash' | 'shake' | 'entry'; duration: number; timestamp: number }
+  >;
+  edgeAnimations: Record<
+    string,
+    {
+      type: 'flow' | 'particle' | 'pulse' | 'glow';
+      duration: number;
+      direction?: 'forward' | 'backward' | 'bidirectional';
+      timestamp: number;
+    }
+  >;
 }
 
 // Internal edit state tracking
@@ -136,7 +176,14 @@ interface EditState {
   positionChanges: Map<string, { x: number; y: number }>;
   nodeUpdates: Map<string, { type?: string; data?: Record<string, unknown> }>;
   deletedNodeIds: Set<string>;
-  createdEdges: Array<{ id: string; from: string; to: string; type: string; sourceHandle?: string; targetHandle?: string }>;
+  createdEdges: Array<{
+    id: string;
+    from: string;
+    to: string;
+    type: string;
+    sourceHandle?: string;
+    targetHandle?: string;
+  }>;
   deletedEdges: Array<{ id: string; from: string; to: string; type: string }>;
 }
 
@@ -217,14 +264,30 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   const [localEdges, setLocalEdges] = useState<EdgeState[]>(propEdges);
 
   // Track the prop values to detect external changes
-  const propNodesKeyRef = useRef(propNodes.map(n => n.id).sort().join(','));
-  const propEdgesKeyRef = useRef(propEdges.map(e => e.id).sort().join(','));
+  const propNodesKeyRef = useRef(
+    propNodes
+      .map((n) => n.id)
+      .sort()
+      .join(',')
+  );
+  const propEdgesKeyRef = useRef(
+    propEdges
+      .map((e) => e.id)
+      .sort()
+      .join(',')
+  );
 
   // Sync local state with props when props change (e.g., config reload)
   // This only happens when the structure changes, not during editing
   useEffect(() => {
-    const newNodesKey = propNodes.map(n => n.id).sort().join(',');
-    const newEdgesKey = propEdges.map(e => e.id).sort().join(',');
+    const newNodesKey = propNodes
+      .map((n) => n.id)
+      .sort()
+      .join(',');
+    const newEdgesKey = propEdges
+      .map((e) => e.id)
+      .sort()
+      .join(',');
 
     if (newNodesKey !== propNodesKeyRef.current || newEdgesKey !== propEdgesKeyRef.current) {
       propNodesKeyRef.current = newNodesKey;
@@ -245,20 +308,25 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   // Helper to check if there are pending changes
   const checkHasChanges = useCallback((state: EditState): boolean => {
-    return state.positionChanges.size > 0 ||
+    return (
+      state.positionChanges.size > 0 ||
       state.nodeUpdates.size > 0 ||
       state.deletedNodeIds.size > 0 ||
       state.createdEdges.length > 0 ||
-      state.deletedEdges.length > 0;
+      state.deletedEdges.length > 0
+    );
   }, []);
 
   // Helper to update edit state and notify parent
-  const updateEditState = useCallback((updater: (prev: EditState) => EditState) => {
-    const newState = updater(editStateRef.current);
-    editStateRef.current = newState;
-    onEditStateChange?.(newState);
-    onPendingChangesChange?.(checkHasChanges(newState));
-  }, [editStateRef, onEditStateChange, onPendingChangesChange, checkHasChanges]);
+  const updateEditState = useCallback(
+    (updater: (prev: EditState) => EditState) => {
+      const newState = updater(editStateRef.current);
+      editStateRef.current = newState;
+      onEditStateChange?.(newState);
+      onPendingChangesChange?.(checkHasChanges(newState));
+    },
+    [editStateRef, onEditStateChange, onPendingChangesChange, checkHasChanges]
+  );
 
   // ============================================
   // EVENT HANDLERS
@@ -287,180 +355,210 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   }, []);
 
   // Handle node update (internal - updates local state only)
-  const handleNodeUpdate = useCallback((nodeId: string, updates: { type?: string; data?: Record<string, unknown> }) => {
-    if (!editable) return;
+  const handleNodeUpdate = useCallback(
+    (nodeId: string, updates: { type?: string; data?: Record<string, unknown> }) => {
+      if (!editable) return;
 
-    // Update local nodes
-    setLocalNodes(prev => prev.map(node => {
-      if (node.id === nodeId) {
-        return {
-          ...node,
-          type: updates.type ?? node.type,
-          data: updates.data ? { ...node.data, ...updates.data } : node.data,
-        };
-      }
-      return node;
-    }));
+      // Update local nodes
+      setLocalNodes((prev) =>
+        prev.map((node) => {
+          if (node.id === nodeId) {
+            return {
+              ...node,
+              type: updates.type ?? node.type,
+              data: updates.data ? { ...node.data, ...updates.data } : node.data,
+            };
+          }
+          return node;
+        })
+      );
 
-    // Track the change
-    updateEditState(prev => {
-      const newUpdates = new Map(prev.nodeUpdates);
-      const existing = newUpdates.get(nodeId) || {};
-      newUpdates.set(nodeId, {
-        type: updates.type ?? existing.type,
-        data: updates.data ? { ...existing.data, ...updates.data } : existing.data,
+      // Track the change
+      updateEditState((prev) => {
+        const newUpdates = new Map(prev.nodeUpdates);
+        const existing = newUpdates.get(nodeId) || {};
+        newUpdates.set(nodeId, {
+          type: updates.type ?? existing.type,
+          data: updates.data ? { ...existing.data, ...updates.data } : existing.data,
+        });
+        return { ...prev, nodeUpdates: newUpdates };
       });
-      return { ...prev, nodeUpdates: newUpdates };
-    });
-  }, [editable, updateEditState]);
+    },
+    [editable, updateEditState]
+  );
 
   // Handle node delete (internal)
-  const handleNodeDelete = useCallback((nodeId: string) => {
-    if (!editable) return;
+  const handleNodeDelete = useCallback(
+    (nodeId: string) => {
+      if (!editable) return;
 
-    // Remove from local state
-    setLocalNodes(prev => prev.filter(n => n.id !== nodeId));
-    setLocalEdges(prev => prev.filter(e => e.from !== nodeId && e.to !== nodeId));
+      // Remove from local state
+      setLocalNodes((prev) => prev.filter((n) => n.id !== nodeId));
+      setLocalEdges((prev) => prev.filter((e) => e.from !== nodeId && e.to !== nodeId));
 
-    // Track the change
-    updateEditState(prev => {
-      const newDeletedNodes = new Set(prev.deletedNodeIds);
-      newDeletedNodes.add(nodeId);
-      // Remove any pending updates for this node
-      const newUpdates = new Map(prev.nodeUpdates);
-      newUpdates.delete(nodeId);
-      // Remove any position changes for this node
-      const newPositions = new Map(prev.positionChanges);
-      newPositions.delete(nodeId);
-      // Remove created edges that involve this node
-      const newCreatedEdges = prev.createdEdges.filter(e => e.from !== nodeId && e.to !== nodeId);
-      return {
-        ...prev,
-        deletedNodeIds: newDeletedNodes,
-        nodeUpdates: newUpdates,
-        positionChanges: newPositions,
-        createdEdges: newCreatedEdges,
-      };
-    });
+      // Track the change
+      updateEditState((prev) => {
+        const newDeletedNodes = new Set(prev.deletedNodeIds);
+        newDeletedNodes.add(nodeId);
+        // Remove any pending updates for this node
+        const newUpdates = new Map(prev.nodeUpdates);
+        newUpdates.delete(nodeId);
+        // Remove any position changes for this node
+        const newPositions = new Map(prev.positionChanges);
+        newPositions.delete(nodeId);
+        // Remove created edges that involve this node
+        const newCreatedEdges = prev.createdEdges.filter(
+          (e) => e.from !== nodeId && e.to !== nodeId
+        );
+        return {
+          ...prev,
+          deletedNodeIds: newDeletedNodes,
+          nodeUpdates: newUpdates,
+          positionChanges: newPositions,
+          createdEdges: newCreatedEdges,
+        };
+      });
 
-    setSelectedNodeId(null);
-  }, [editable, updateEditState]);
+      setSelectedNodeId(null);
+    },
+    [editable, updateEditState]
+  );
 
   // Handle edge delete (internal)
-  const handleEdgeDelete = useCallback((edgeId: string) => {
-    if (!editable) return;
+  const handleEdgeDelete = useCallback(
+    (edgeId: string) => {
+      if (!editable) return;
 
-    // Find the edge before removing it so we can track its full info
-    const edgeToDelete = localEdges.find(e => e.id === edgeId);
+      // Find the edge before removing it so we can track its full info
+      const edgeToDelete = localEdges.find((e) => e.id === edgeId);
 
-    // Remove from local state
-    setLocalEdges(prev => prev.filter(e => e.id !== edgeId));
+      // Remove from local state
+      setLocalEdges((prev) => prev.filter((e) => e.id !== edgeId));
 
-    // Track the change
-    updateEditState(prev => {
-      // Check if this was a newly created edge
-      const createdEdgeIndex = prev.createdEdges.findIndex(e => e.id === edgeId);
-      if (createdEdgeIndex >= 0) {
-        // Just remove it from created edges
-        const newCreatedEdges = [...prev.createdEdges];
-        newCreatedEdges.splice(createdEdgeIndex, 1);
-        return { ...prev, createdEdges: newCreatedEdges };
-      }
-      // Otherwise mark as deleted with full edge info
-      if (edgeToDelete) {
-        const newDeletedEdges = [...prev.deletedEdges, {
-          id: edgeId,
-          from: edgeToDelete.from,
-          to: edgeToDelete.to,
-          type: edgeToDelete.type
-        }];
-        return { ...prev, deletedEdges: newDeletedEdges };
-      }
-      return prev;
-    });
+      // Track the change
+      updateEditState((prev) => {
+        // Check if this was a newly created edge
+        const createdEdgeIndex = prev.createdEdges.findIndex((e) => e.id === edgeId);
+        if (createdEdgeIndex >= 0) {
+          // Just remove it from created edges
+          const newCreatedEdges = [...prev.createdEdges];
+          newCreatedEdges.splice(createdEdgeIndex, 1);
+          return { ...prev, createdEdges: newCreatedEdges };
+        }
+        // Otherwise mark as deleted with full edge info
+        if (edgeToDelete) {
+          const newDeletedEdges = [
+            ...prev.deletedEdges,
+            {
+              id: edgeId,
+              from: edgeToDelete.from,
+              to: edgeToDelete.to,
+              type: edgeToDelete.type,
+            },
+          ];
+          return { ...prev, deletedEdges: newDeletedEdges };
+        }
+        return prev;
+      });
 
-    setSelectedEdgeId(null);
-  }, [editable, updateEditState, localEdges]);
+      setSelectedEdgeId(null);
+    },
+    [editable, updateEditState, localEdges]
+  );
 
   // Handle new connection from drag
-  const handleConnect = useCallback((connection: Connection) => {
-    if (!editable || !connection.source || !connection.target) return;
+  const handleConnect = useCallback(
+    (connection: Connection) => {
+      if (!editable || !connection.source || !connection.target) return;
 
-    // Find source and target node types
-    const sourceNode = nodes.find(n => n.id === connection.source);
-    const targetNode = nodes.find(n => n.id === connection.target);
-    if (!sourceNode || !targetNode) return;
+      // Find source and target node types
+      const sourceNode = nodes.find((n) => n.id === connection.source);
+      const targetNode = nodes.find((n) => n.id === connection.target);
+      if (!sourceNode || !targetNode) return;
 
-    // Find valid edge types for this connection
-    const validTypes = configuration.allowedConnections
-      .filter(ac => ac.from === sourceNode.type && ac.to === targetNode.type)
-      .map(ac => ac.via);
+      // Find valid edge types for this connection
+      const validTypes = configuration.allowedConnections
+        .filter((ac) => ac.from === sourceNode.type && ac.to === targetNode.type)
+        .map((ac) => ac.via);
 
-    const uniqueTypes = [...new Set(validTypes)];
+      const uniqueTypes = [...new Set(validTypes)];
 
-    if (uniqueTypes.length === 0) {
-      console.warn(`No valid edge types for connection from ${sourceNode.type} to ${targetNode.type}`);
-      return;
-    }
+      if (uniqueTypes.length === 0) {
+        console.warn(
+          `No valid edge types for connection from ${sourceNode.type} to ${targetNode.type}`
+        );
+        return;
+      }
 
-    if (uniqueTypes.length === 1) {
-      // Create edge immediately with handle information
-      createEdge(
-        connection.source,
-        connection.target,
-        uniqueTypes[0],
-        connection.sourceHandle ?? undefined,
-        connection.targetHandle ?? undefined
-      );
-    } else {
-      // Show picker
-      setPendingConnection({
-        from: connection.source,
-        to: connection.target,
-        sourceHandle: connection.sourceHandle ?? undefined,
-        targetHandle: connection.targetHandle ?? undefined,
-        validTypes: uniqueTypes,
-      });
-    }
-  }, [editable, nodes, configuration.allowedConnections]);
+      if (uniqueTypes.length === 1) {
+        // Create edge immediately with handle information
+        createEdge(
+          connection.source,
+          connection.target,
+          uniqueTypes[0],
+          connection.sourceHandle ?? undefined,
+          connection.targetHandle ?? undefined
+        );
+      } else {
+        // Show picker
+        setPendingConnection({
+          from: connection.source,
+          to: connection.target,
+          sourceHandle: connection.sourceHandle ?? undefined,
+          targetHandle: connection.targetHandle ?? undefined,
+          validTypes: uniqueTypes,
+        });
+      }
+    },
+    [editable, nodes, configuration.allowedConnections]
+  );
 
   // Create edge helper
-  const createEdge = useCallback((from: string, to: string, type: string, sourceHandle?: string, targetHandle?: string) => {
-    const edgeId = `${from}-${to}-${type}-${Date.now()}`;
+  const createEdge = useCallback(
+    (from: string, to: string, type: string, sourceHandle?: string, targetHandle?: string) => {
+      const edgeId = `${from}-${to}-${type}-${Date.now()}`;
 
-    // Add to local state with handle information
-    const newEdge: EdgeState & { sourceHandle?: string; targetHandle?: string } = {
-      id: edgeId,
-      type,
-      from,
-      to,
-      data: {},
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      sourceHandle,
-      targetHandle,
-    };
-    setLocalEdges(prev => [...prev, newEdge]);
+      // Add to local state with handle information
+      const newEdge: EdgeState & { sourceHandle?: string; targetHandle?: string } = {
+        id: edgeId,
+        type,
+        from,
+        to,
+        data: {},
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        sourceHandle,
+        targetHandle,
+      };
+      setLocalEdges((prev) => [...prev, newEdge]);
 
-    // Track the change
-    updateEditState(prev => ({
-      ...prev,
-      createdEdges: [...prev.createdEdges, { id: edgeId, from, to, type, sourceHandle, targetHandle }],
-    }));
-  }, [updateEditState]);
+      // Track the change
+      updateEditState((prev) => ({
+        ...prev,
+        createdEdges: [
+          ...prev.createdEdges,
+          { id: edgeId, from, to, type, sourceHandle, targetHandle },
+        ],
+      }));
+    },
+    [updateEditState]
+  );
 
   // Handle edge type selection from picker
-  const handleEdgeTypeSelect = useCallback((type: string) => {
-    if (!pendingConnection) return;
-    createEdge(
-      pendingConnection.from,
-      pendingConnection.to,
-      type,
-      pendingConnection.sourceHandle,
-      pendingConnection.targetHandle
-    );
-    setPendingConnection(null);
-  }, [pendingConnection, createEdge]);
+  const handleEdgeTypeSelect = useCallback(
+    (type: string) => {
+      if (!pendingConnection) return;
+      createEdge(
+        pendingConnection.from,
+        pendingConnection.to,
+        type,
+        pendingConnection.sourceHandle,
+        pendingConnection.targetHandle
+      );
+      setPendingConnection(null);
+    },
+    [pendingConnection, createEdge]
+  );
 
   // Cancel edge type picker
   const handleCancelEdgeTypePicker = useCallback(() => {
@@ -476,84 +574,98 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   }, []);
 
   // Handle edge reconnection (dragging edge endpoint to new node)
-  const handleReconnect = useCallback((oldEdge: Edge, newConnection: Connection) => {
-    if (!editable || !newConnection.source || !newConnection.target) return;
+  const handleReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      if (!editable || !newConnection.source || !newConnection.target) return;
 
-    // Find the original edge in our local state
-    const originalEdge = localEdges.find(e => e.id === oldEdge.id);
-    if (!originalEdge) return;
+      // Find the original edge in our local state
+      const originalEdge = localEdges.find((e) => e.id === oldEdge.id);
+      if (!originalEdge) return;
 
-    // Find source and target node types for validation
-    const sourceNode = nodes.find(n => n.id === newConnection.source);
-    const targetNode = nodes.find(n => n.id === newConnection.target);
-    if (!sourceNode || !targetNode) return;
+      // Find source and target node types for validation
+      const sourceNode = nodes.find((n) => n.id === newConnection.source);
+      const targetNode = nodes.find((n) => n.id === newConnection.target);
+      if (!sourceNode || !targetNode) return;
 
-    // Check if the new connection is valid for this edge type
-    const isValidConnection = configuration.allowedConnections.some(
-      ac => ac.from === sourceNode.type && ac.to === targetNode.type && ac.via === originalEdge.type
-    );
+      // Check if the new connection is valid for this edge type
+      const isValidConnection = configuration.allowedConnections.some(
+        (ac) =>
+          ac.from === sourceNode.type && ac.to === targetNode.type && ac.via === originalEdge.type
+      );
 
-    if (!isValidConnection) {
-      console.warn(`Cannot reconnect: ${originalEdge.type} edge not allowed from ${sourceNode.type} to ${targetNode.type}`);
-      return;
-    }
-
-    // Mark as successful before updating
-    edgeReconnectSuccessful.current = true;
-
-    // Update local edges - manually update the edge to preserve its type and id
-    setLocalEdges(prev => prev.map(edge => {
-      if (edge.id === oldEdge.id) {
-        return {
-          ...edge,
-          from: newConnection.source!,
-          to: newConnection.target!,
-          sourceHandle: newConnection.sourceHandle ?? undefined,
-          targetHandle: newConnection.targetHandle ?? undefined,
-          updatedAt: Date.now(),
-        };
-      }
-      return edge;
-    }));
-
-    // Track the change - remove old edge and add new one
-    updateEditState(prev => {
-      // Check if this was a newly created edge
-      const createdEdgeIndex = prev.createdEdges.findIndex(e => e.id === oldEdge.id);
-
-      if (createdEdgeIndex >= 0) {
-        // Update the created edge entry
-        const newCreatedEdges = [...prev.createdEdges];
-        newCreatedEdges[createdEdgeIndex] = {
-          ...newCreatedEdges[createdEdgeIndex],
-          from: newConnection.source!,
-          to: newConnection.target!,
-          sourceHandle: newConnection.sourceHandle ?? undefined,
-          targetHandle: newConnection.targetHandle ?? undefined,
-        };
-        return { ...prev, createdEdges: newCreatedEdges };
+      if (!isValidConnection) {
+        console.warn(
+          `Cannot reconnect: ${originalEdge.type} edge not allowed from ${sourceNode.type} to ${targetNode.type}`
+        );
+        return;
       }
 
-      // For existing edges, track as delete + create
-      const newDeletedEdges = [...prev.deletedEdges, {
-        id: oldEdge.id,
-        from: originalEdge.from,
-        to: originalEdge.to,
-        type: originalEdge.type,
-      }];
+      // Mark as successful before updating
+      edgeReconnectSuccessful.current = true;
 
-      const newCreatedEdges = [...prev.createdEdges, {
-        id: oldEdge.id,
-        from: newConnection.source!,
-        to: newConnection.target!,
-        type: originalEdge.type,
-        sourceHandle: newConnection.sourceHandle ?? undefined,
-        targetHandle: newConnection.targetHandle ?? undefined,
-      }];
+      // Update local edges - manually update the edge to preserve its type and id
+      setLocalEdges((prev) =>
+        prev.map((edge) => {
+          if (edge.id === oldEdge.id) {
+            return {
+              ...edge,
+              from: newConnection.source!,
+              to: newConnection.target!,
+              sourceHandle: newConnection.sourceHandle ?? undefined,
+              targetHandle: newConnection.targetHandle ?? undefined,
+              updatedAt: Date.now(),
+            };
+          }
+          return edge;
+        })
+      );
 
-      return { ...prev, deletedEdges: newDeletedEdges, createdEdges: newCreatedEdges };
-    });
-  }, [editable, localEdges, nodes, configuration.allowedConnections, updateEditState]);
+      // Track the change - remove old edge and add new one
+      updateEditState((prev) => {
+        // Check if this was a newly created edge
+        const createdEdgeIndex = prev.createdEdges.findIndex((e) => e.id === oldEdge.id);
+
+        if (createdEdgeIndex >= 0) {
+          // Update the created edge entry
+          const newCreatedEdges = [...prev.createdEdges];
+          newCreatedEdges[createdEdgeIndex] = {
+            ...newCreatedEdges[createdEdgeIndex],
+            from: newConnection.source!,
+            to: newConnection.target!,
+            sourceHandle: newConnection.sourceHandle ?? undefined,
+            targetHandle: newConnection.targetHandle ?? undefined,
+          };
+          return { ...prev, createdEdges: newCreatedEdges };
+        }
+
+        // For existing edges, track as delete + create
+        const newDeletedEdges = [
+          ...prev.deletedEdges,
+          {
+            id: oldEdge.id,
+            from: originalEdge.from,
+            to: originalEdge.to,
+            type: originalEdge.type,
+          },
+        ];
+
+        const newCreatedEdges = [
+          ...prev.createdEdges,
+          {
+            id: oldEdge.id,
+            from: newConnection.source!,
+            to: newConnection.target!,
+            type: originalEdge.type,
+            sourceHandle: newConnection.sourceHandle ?? undefined,
+            targetHandle: newConnection.targetHandle ?? undefined,
+          },
+        ];
+
+        return { ...prev, deletedEdges: newDeletedEdges, createdEdges: newCreatedEdges };
+      });
+    },
+    [editable, localEdges, nodes, configuration.allowedConnections, updateEditState]
+  );
 
   // Called when reconnection ends (whether successful or not)
   const handleReconnectEnd = useCallback(() => {
@@ -569,7 +681,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   const selectedEdge = useMemo(() => {
     if (!selectedEdgeId) return null;
-    return edges.find(e => e.id === selectedEdgeId);
+    return edges.find((e) => e.id === selectedEdgeId);
   }, [selectedEdgeId, edges]);
 
   const selectedEdgeTypeDefinition = useMemo(() => {
@@ -579,7 +691,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   const selectedNode = useMemo(() => {
     if (!selectedNodeId) return null;
-    return nodes.find(n => n.id === selectedNodeId);
+    return nodes.find((n) => n.id === selectedNodeId);
   }, [selectedNodeId, nodes]);
 
   const selectedNodeTypeDefinition = useMemo(() => {
@@ -602,7 +714,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       const animation = edgeEvent.animation;
 
       if (animation && edgeId) {
-        setAnimationState(prev => ({
+        setAnimationState((prev) => ({
           ...prev,
           edgeAnimations: {
             ...prev.edgeAnimations,
@@ -617,7 +729,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
         const duration = animation.duration || 1000;
         setTimeout(() => {
-          setAnimationState(prev => {
+          setAnimationState((prev) => {
             const newEdgeAnimations = { ...prev.edgeAnimations };
             delete newEdgeAnimations[edgeId];
             return { ...prev, edgeAnimations: newEdgeAnimations };
@@ -635,9 +747,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
       if (nodeId && newState) {
         // Update the node's state
-        setLocalNodes(prev => prev.map(node =>
-          node.id === nodeId ? { ...node, state: newState } : node
-        ));
+        setLocalNodes((prev) =>
+          prev.map((node) => (node.id === nodeId ? { ...node, state: newState } : node))
+        );
 
         // Trigger animation based on state
         const stateToAnimation: Record<string, 'pulse' | 'flash' | 'shake'> = {
@@ -648,9 +760,10 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
         const animationType = stateToAnimation[newState];
         if (animationType) {
-          const duration = animationType === 'pulse' ? 1500 : animationType === 'flash' ? 1000 : 500;
+          const duration =
+            animationType === 'pulse' ? 1500 : animationType === 'flash' ? 1000 : 500;
 
-          setAnimationState(prev => ({
+          setAnimationState((prev) => ({
             ...prev,
             nodeAnimations: {
               ...prev.nodeAnimations,
@@ -660,7 +773,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
           if (animationType !== 'pulse') {
             setTimeout(() => {
-              setAnimationState(prev => {
+              setAnimationState((prev) => {
                 const newNodeAnimations = { ...prev.nodeAnimations };
                 delete newNodeAnimations[nodeId];
                 return { ...prev, nodeAnimations: newNodeAnimations };
@@ -678,7 +791,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       const nodeId = nodeEvent.nodeId;
 
       if (nodeId) {
-        setAnimationState(prev => ({
+        setAnimationState((prev) => ({
           ...prev,
           nodeAnimations: {
             ...prev.nodeAnimations,
@@ -687,7 +800,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         }));
 
         setTimeout(() => {
-          setAnimationState(prev => {
+          setAnimationState((prev) => {
             const newNodeAnimations = { ...prev.nodeAnimations };
             delete newNodeAnimations[nodeId];
             return { ...prev, nodeAnimations: newNodeAnimations };
@@ -708,7 +821,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     const layoutType = configuration.display?.layout || 'hierarchical';
     const positioned = autoLayoutNodes(converted, [], layoutType);
 
-    return positioned.map(node => {
+    return positioned.map((node) => {
       const animation = animationState.nodeAnimations[node.id];
       // Apply any pending position changes
       const pendingPosition = editStateRef.current.positionChanges.get(node.id);
@@ -718,17 +831,22 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         data: {
           ...node.data,
           editable,
-          ...(animation ? {
-            animationType: animation.type,
-            animationDuration: animation.duration,
-          } : {}),
+          ...(animation
+            ? {
+                animationType: animation.type,
+                animationDuration: animation.duration,
+              }
+            : {}),
         } as CustomNodeData,
       };
     });
   }, [nodes, configuration, violations, animationState.nodeAnimations, editable, editStateRef]);
 
   const baseNodesKey = useMemo(() => {
-    return nodes.map(n => n.id).sort().join(',');
+    return nodes
+      .map((n) => n.id)
+      .sort()
+      .join(',');
   }, [nodes]);
 
   // Local xyflow nodes state for dragging
@@ -756,43 +874,48 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   const xyflowNodes = editable ? xyflowLocalNodes : xyflowNodesBase;
 
   // Handle node changes (drag events)
-  const handleNodesChange = useCallback((changes: NodeChange[]) => {
-    if (!editable) return;
+  const handleNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      if (!editable) return;
 
-    setXyflowLocalNodes(nds => applyNodeChanges(changes, nds) as Node<CustomNodeData>[]);
+      setXyflowLocalNodes((nds) => applyNodeChanges(changes, nds) as Node<CustomNodeData>[]);
 
-    // Track position changes on drag end
-    const positionChanges = changes
-      .filter((change): change is NodeChange & {
-        type: 'position';
-        position: { x: number; y: number };
-        dragging: boolean
-      } =>
-        change.type === 'position' &&
-        'position' in change &&
-        change.position !== undefined &&
-        'dragging' in change &&
-        change.dragging === false
+      // Track position changes on drag end
+      const positionChanges = changes.filter(
+        (
+          change
+        ): change is NodeChange & {
+          type: 'position';
+          position: { x: number; y: number };
+          dragging: boolean;
+        } =>
+          change.type === 'position' &&
+          'position' in change &&
+          change.position !== undefined &&
+          'dragging' in change &&
+          change.dragging === false
       );
 
-    if (positionChanges.length > 0) {
-      updateEditState(prev => {
-        const newPositions = new Map(prev.positionChanges);
-        for (const change of positionChanges) {
-          newPositions.set(change.id, {
-            x: Math.round(change.position.x),
-            y: Math.round(change.position.y),
-          });
-        }
-        return { ...prev, positionChanges: newPositions };
-      });
-    }
-  }, [editable, updateEditState]);
+      if (positionChanges.length > 0) {
+        updateEditState((prev) => {
+          const newPositions = new Map(prev.positionChanges);
+          for (const change of positionChanges) {
+            newPositions.set(change.id, {
+              x: Math.round(change.position.x),
+              y: Math.round(change.position.y),
+            });
+          }
+          return { ...prev, positionChanges: newPositions };
+        });
+      }
+    },
+    [editable, updateEditState]
+  );
 
   const xyflowEdges = useMemo(() => {
     const converted = convertToXYFlowEdges(edges, configuration, violations);
 
-    return converted.map(edge => {
+    return converted.map((edge) => {
       const animation = animationState.edgeAnimations[edge.id];
       if (animation) {
         return {
@@ -867,7 +990,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
             zoomable
           />
         )}
-
       </ReactFlow>
 
       {selectedEdge && selectedEdgeTypeDefinition && (
@@ -914,7 +1036,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
             {pendingConnection.from} → {pendingConnection.to}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {pendingConnection.validTypes.map(type => {
+            {pendingConnection.validTypes.map((type) => {
               const typeDefinition = configuration.edgeTypes[type];
               return (
                 <button
@@ -962,7 +1084,10 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 /**
  * Convert canvas to legacy configuration format for internal use
  */
-function useCanvasToLegacy(canvas: ExtendedCanvas | undefined, library?: ComponentLibrary): {
+function useCanvasToLegacy(
+  canvas: ExtendedCanvas | undefined,
+  library?: ComponentLibrary
+): {
   configuration: GraphConfiguration;
   nodes: NodeState[];
   edges: EdgeState[];
@@ -1025,9 +1150,10 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined, library?: Compone
 
       if (!nodeTypes[nodeType]) {
         // Color priority: vv.fill > node.color > vv.states.idle.color
-        const fillColor = vv?.fill
-          || (typeof node.color === 'string' ? node.color : undefined)
-          || vv?.states?.idle?.color;
+        const fillColor =
+          vv?.fill ||
+          (typeof node.color === 'string' ? node.color : undefined) ||
+          vv?.states?.idle?.color;
 
         nodeTypes[nodeType] = {
           description: vv?.description || `${nodeType} node`,
@@ -1073,8 +1199,8 @@ function useCanvasToLegacy(canvas: ExtendedCanvas | undefined, library?: Compone
       }
 
       // Find node types for from/to
-      const fromNode = canvas.nodes?.find(n => n.id === edge.fromNode);
-      const toNode = canvas.nodes?.find(n => n.id === edge.toNode);
+      const fromNode = canvas.nodes?.find((n) => n.id === edge.fromNode);
+      const toNode = canvas.nodes?.find((n) => n.id === edge.toNode);
       const fromType = fromNode?.pv?.nodeType || edge.fromNode;
       const toType = toNode?.pv?.nodeType || edge.toNode;
 
@@ -1140,7 +1266,10 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
   // Validate we have required data
   if (!canvasData) {
     return (
-      <div className={className} style={{ width, height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div
+        className={className}
+        style={{ width, height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      >
         <p style={{ color: '#666' }}>No canvas data provided.</p>
       </div>
     );
@@ -1152,46 +1281,55 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
   const editStateRef = useRef<EditState>(createEmptyEditState());
 
   // Expose imperative handle
-  useImperativeHandle(ref, () => ({
-    getPendingChanges: (): PendingChanges => {
-      const state = editStateRef.current;
-      return {
-        positionChanges: Array.from(state.positionChanges.entries()).map(([nodeId, position]) => ({
-          nodeId,
-          position,
-        })),
-        nodeUpdates: Array.from(state.nodeUpdates.entries()).map(([nodeId, updates]) => ({
-          nodeId,
-          updates,
-        })),
-        deletedNodeIds: Array.from(state.deletedNodeIds),
-        createdEdges: state.createdEdges.map(e => ({
-          from: e.from,
-          to: e.to,
-          type: e.type,
-          sourceHandle: e.sourceHandle,
-          targetHandle: e.targetHandle,
-        })),
-        deletedEdges: state.deletedEdges.map(e => ({ from: e.from, to: e.to, type: e.type })),
-        hasChanges: state.positionChanges.size > 0 ||
+  useImperativeHandle(
+    ref,
+    () => ({
+      getPendingChanges: (): PendingChanges => {
+        const state = editStateRef.current;
+        return {
+          positionChanges: Array.from(state.positionChanges.entries()).map(
+            ([nodeId, position]) => ({
+              nodeId,
+              position,
+            })
+          ),
+          nodeUpdates: Array.from(state.nodeUpdates.entries()).map(([nodeId, updates]) => ({
+            nodeId,
+            updates,
+          })),
+          deletedNodeIds: Array.from(state.deletedNodeIds),
+          createdEdges: state.createdEdges.map((e) => ({
+            from: e.from,
+            to: e.to,
+            type: e.type,
+            sourceHandle: e.sourceHandle,
+            targetHandle: e.targetHandle,
+          })),
+          deletedEdges: state.deletedEdges.map((e) => ({ from: e.from, to: e.to, type: e.type })),
+          hasChanges:
+            state.positionChanges.size > 0 ||
+            state.nodeUpdates.size > 0 ||
+            state.deletedNodeIds.size > 0 ||
+            state.createdEdges.length > 0 ||
+            state.deletedEdges.length > 0,
+        };
+      },
+      resetEditState: () => {
+        editStateRef.current = createEmptyEditState();
+      },
+      hasUnsavedChanges: (): boolean => {
+        const state = editStateRef.current;
+        return (
+          state.positionChanges.size > 0 ||
           state.nodeUpdates.size > 0 ||
           state.deletedNodeIds.size > 0 ||
           state.createdEdges.length > 0 ||
-          state.deletedEdges.length > 0,
-      };
-    },
-    resetEditState: () => {
-      editStateRef.current = createEmptyEditState();
-    },
-    hasUnsavedChanges: (): boolean => {
-      const state = editStateRef.current;
-      return state.positionChanges.size > 0 ||
-        state.nodeUpdates.size > 0 ||
-        state.deletedNodeIds.size > 0 ||
-        state.createdEdges.length > 0 ||
-        state.deletedEdges.length > 0;
-    },
-  }), []);
+          state.deletedEdges.length > 0
+        );
+      },
+    }),
+    []
+  );
 
   // Extract only the props that inner component needs
   const {

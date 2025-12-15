@@ -64,10 +64,7 @@ export class ConfigurationLoader {
     const configPath = this.fsAdapter.join(baseDir, ConfigurationLoader.CONFIG_DIR);
     const files = this.fsAdapter.readDir(configPath);
 
-    return files
-      .filter(isYamlFile)
-      .map(getConfigNameFromFilename)
-      .sort();
+    return files.filter(isYamlFile).map(getConfigNameFromFilename).sort();
   }
 
   /**

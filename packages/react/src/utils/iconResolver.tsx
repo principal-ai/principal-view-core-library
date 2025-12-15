@@ -38,7 +38,11 @@ export function resolveIcon(icon?: string, size: number = 20, className?: string
   }
 
   // Fall back to rendering as text (emoji or unicode)
-  return <span className={className} style={{ fontSize: `${size}px` }}>{icon}</span>;
+  return (
+    <span className={className} style={{ fontSize: `${size}px` }}>
+      {icon}
+    </span>
+  );
 }
 
 /**

@@ -100,7 +100,10 @@ describe('ConfigurationLoader', () => {
 
     test('returns list of configuration names', () => {
       fsAdapter.createDir('/project/.principal-views');
-      fsAdapter.writeFile('/project/.principal-views/architecture.yaml', JSON.stringify(validConfig));
+      fsAdapter.writeFile(
+        '/project/.principal-views/architecture.yaml',
+        JSON.stringify(validConfig)
+      );
       fsAdapter.writeFile('/project/.principal-views/data-flow.yaml', JSON.stringify(validConfig));
       fsAdapter.writeFile('/project/.principal-views/deployment.yml', JSON.stringify(validConfig));
 
@@ -398,7 +401,10 @@ allowedConnections:
 
       fsAdapter.writeFile('/project/.principal-views/valid.yaml', validYaml);
       fsAdapter.writeFile('/project/.principal-views/invalid-yaml.yaml', 'invalid: yaml: content:');
-      fsAdapter.writeFile('/project/.principal-views/incomplete.yaml', 'metadata:\n  name: Incomplete\nnodeTypes: {}');
+      fsAdapter.writeFile(
+        '/project/.principal-views/incomplete.yaml',
+        'metadata:\n  name: Incomplete\nnodeTypes: {}'
+      );
 
       const result = loader.loadAll('/project');
 

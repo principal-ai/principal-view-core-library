@@ -37,6 +37,7 @@ vv validate --json             # Output as JSON
 ```
 
 **Validation checks:**
+
 - Required `vv` extension with name and version
 - All nodes have required fields (id, type, x, y, width, height)
 - Custom node types must have `vv.nodeType` and valid `vv.shape`
@@ -96,18 +97,22 @@ Canvas files follow the [JSON Canvas](https://jsoncanvas.org/) specification wit
 ### Node Types
 
 **Standard types** (no additional metadata required):
+
 - `text` - Text content
 - `group` - Container for other nodes
 - `file` - File reference
 - `link` - URL link
 
 **Custom types** require `vv` extension:
+
 ```json
 {
   "id": "node-1",
   "type": "custom",
-  "x": 0, "y": 0,
-  "width": 200, "height": 100,
+  "x": 0,
+  "y": 0,
+  "width": 200,
+  "height": 100,
   "vv": {
     "nodeType": "service",
     "shape": "rectangle"

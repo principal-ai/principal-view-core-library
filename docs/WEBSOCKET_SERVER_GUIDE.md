@@ -35,6 +35,7 @@ The EventRecorderService expects messages in this format:
 ### Incoming Messages (Client → Server)
 
 #### session_start
+
 Starts a new recording session.
 
 ```typescript
@@ -56,6 +57,7 @@ Starts a new recording session.
 ```
 
 #### session_end
+
 Ends the current recording session.
 
 ```typescript
@@ -72,6 +74,7 @@ Ends the current recording session.
 ```
 
 #### log
+
 Sends a single log entry.
 
 ```typescript
@@ -96,6 +99,7 @@ Sends a single log entry.
 ```
 
 #### log_batch
+
 Sends multiple log entries at once.
 
 ```typescript
@@ -113,6 +117,7 @@ Sends multiple log entries at once.
 ```
 
 #### ping
+
 Keepalive message.
 
 ```typescript
@@ -125,6 +130,7 @@ Keepalive message.
 ### Outgoing Messages (Server → Client)
 
 #### ack
+
 Acknowledgment for a request.
 
 ```typescript
@@ -139,6 +145,7 @@ Acknowledgment for a request.
 ```
 
 #### error
+
 Error response.
 
 ```typescript
@@ -154,6 +161,7 @@ Error response.
 ```
 
 #### pong
+
 Response to ping.
 
 ```typescript
@@ -225,14 +233,16 @@ export class LogRecorderServer {
               ws.send(JSON.stringify(response));
             }
           } catch (error) {
-            ws.send(JSON.stringify({
-              type: 'error',
-              timestamp: Date.now(),
-              payload: {
-                code: 'PARSE_ERROR',
-                message: 'Failed to parse message',
-              },
-            }));
+            ws.send(
+              JSON.stringify({
+                type: 'error',
+                timestamp: Date.now(),
+                payload: {
+                  code: 'PARSE_ERROR',
+                  message: 'Failed to parse message',
+                },
+              })
+            );
           }
         },
         close: (ws) => {
@@ -326,7 +336,7 @@ export function RecorderPanel() {
   return (
     <EventRecorderPanel
       sessions={sessions}
-      isRecording={sessions.some(s => s.status === 'recording')}
+      isRecording={sessions.some((s) => s.status === 'recording')}
       onPlaySession={(id, events) => {
         // Send events to graph renderer
       }}
@@ -374,11 +384,13 @@ export class LogRecorderServer {
             ws.send(JSON.stringify(response));
           }
         } catch (error) {
-          ws.send(JSON.stringify({
-            type: 'error',
-            timestamp: Date.now(),
-            payload: { code: 'PARSE_ERROR', message: 'Failed to parse message' },
-          }));
+          ws.send(
+            JSON.stringify({
+              type: 'error',
+              timestamp: Date.now(),
+              payload: { code: 'PARSE_ERROR', message: 'Failed to parse message' },
+            })
+          );
         }
       });
 

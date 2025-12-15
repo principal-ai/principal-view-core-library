@@ -96,10 +96,10 @@ interface SessionMetadata {
 
 The recorder can operate in different modes:
 
-| Mode | Description | Use Case |
-|------|-------------|----------|
-| `manual` | Start/stop controlled by user | Debugging, exploration |
-| `auto-test` | Auto-creates session per test | CI integration |
+| Mode         | Description                        | Use Case               |
+| ------------ | ---------------------------------- | ---------------------- |
+| `manual`     | Start/stop controlled by user      | Debugging, exploration |
+| `auto-test`  | Auto-creates session per test      | CI integration         |
 | `continuous` | Single session, continuous capture | Long-running processes |
 
 ```typescript
@@ -189,12 +189,12 @@ The log entry includes an `instanceId` field that specifies which node instance 
 ```typescript
 // In your application code
 logger.info('Connected to server', {
-  _vvfInstanceId: this.clientId  // "client-1"
+  _vvfInstanceId: this.clientId, // "client-1"
 });
 
 // Or using the EnhancedLogger directly
 logger.info('Connected to server', {
-  _vvfInstanceId: 'client-1'
+  _vvfInstanceId: 'client-1',
 });
 ```
 
@@ -426,9 +426,9 @@ ws.send({
     metadata: {
       testFile: 'tests/lock-manager.test.ts',
       testName: 'should acquire lock successfully',
-      testSuite: 'LockManager'
-    }
-  }
+      testSuite: 'LockManager',
+    },
+  },
 });
 
 // 2. Receive confirmation
@@ -442,8 +442,8 @@ ws.send({
     level: 'info',
     timestamp: Date.now(),
     source: { file: 'lib/lock-manager.ts', line: 42 },
-    data: { lockId: 'lock-abc', resource: 'repo-xyz' }
-  }
+    data: { lockId: 'lock-abc', resource: 'repo-xyz' },
+  },
 });
 
 ws.send({
@@ -453,8 +453,8 @@ ws.send({
     level: 'info',
     timestamp: Date.now() + 100,
     source: { file: 'lib/lock-manager.ts', line: 58 },
-    data: { lockId: 'lock-abc', duration: 100 }
-  }
+    data: { lockId: 'lock-abc', duration: 100 },
+  },
 });
 
 // 4. Test ends
@@ -462,8 +462,8 @@ ws.send({
   type: 'session:end',
   payload: {
     sessionId: 'sess-123',
-    result: 'pass'
-  }
+    result: 'pass',
+  },
 });
 ```
 
@@ -533,10 +533,10 @@ Logs are automatically associated with components based on source file:
 nodeTypes:
   lock-manager:
     shape: rectangle
-    color: "#f59e0b"
+    color: '#f59e0b'
     sources:
-      - "lib/lock-manager.ts"
-      - "lib/branch-aware-lock-manager.ts"
+      - 'lib/lock-manager.ts'
+      - 'lib/branch-aware-lock-manager.ts'
 ```
 
 When a log comes from `lib/lock-manager.ts`, it automatically triggers a node animation on the `lock-manager` component.
@@ -549,15 +549,15 @@ Specific log messages can trigger specific events:
 nodeTypes:
   lock-manager:
     sources:
-      - "lib/lock-manager.ts"
+      - 'lib/lock-manager.ts'
     actions:
-      - pattern: "Lock acquired"
+      - pattern: 'Lock acquired'
         event: lock_acquired
         state: acquired
-      - pattern: "Lock released"
+      - pattern: 'Lock released'
         event: lock_released
         state: idle
-      - pattern: "Lock contention"
+      - pattern: 'Lock contention'
         event: lock_contention
         state: waiting
 
@@ -578,7 +578,7 @@ const log: LogEntry = {
   message: 'Lock acquired',
   level: 'info',
   timestamp: Date.now(),
-  source: { file: 'lib/lock-manager.ts', line: 42 }
+  source: { file: 'lib/lock-manager.ts', line: 42 },
 };
 
 // 2. PathBasedEventProcessor processes
@@ -655,24 +655,28 @@ const handlePlaySession = (session: EventSession) => {
 ## Future Work
 
 ### Phase 1: Core Implementation (Current)
+
 - [ ] WebSocket server for log ingestion
 - [ ] SessionManager for organizing events
 - [ ] EventRecorderPanel UI
 - [ ] Integration with EventControllerPanel
 
 ### Phase 2: CI Integration
+
 - [ ] Export sessions to JSON files
 - [ ] CLI tool for recording test runs
 - [ ] GitHub Action for capturing recordings
 - [ ] PR comment with recording playback link
 
 ### Phase 3: Persistence
+
 - [ ] Save recordings to `.principal-views/recordings/` folder
 - [ ] Load recordings from disk
 - [ ] Recording file format specification
 - [ ] Compression for large recordings
 
 ### Phase 4: Advanced Features
+
 - [ ] Real-time streaming (live test visualization)
 - [ ] Recording comparison (diff two test runs)
 - [ ] Event filtering and search
@@ -694,16 +698,16 @@ interface RecorderConfig {
 
   /** WebSocket server options */
   server?: {
-    port: number;           // Default: 9876
-    host: string;           // Default: 'localhost'
-    path: string;           // Default: '/vvf/events'
+    port: number; // Default: 9876
+    host: string; // Default: 'localhost'
+    path: string; // Default: '/vvf/events'
   };
 
   /** Session options */
   sessions?: {
-    maxPerSession: number;  // Default: 10000
-    retention: number;      // Default: 3600000 (1 hour)
-    autoCleanup: boolean;   // Default: true
+    maxPerSession: number; // Default: 10000
+    retention: number; // Default: 3600000 (1 hour)
+    autoCleanup: boolean; // Default: true
   };
 
   /** Filtering options */
@@ -716,7 +720,7 @@ interface RecorderConfig {
   /** Processing options */
   processing?: {
     enableActionPatterns: boolean; // Default: true
-    debounceMs: number;            // Default: 0
+    debounceMs: number; // Default: 0
   };
 }
 ```
@@ -731,25 +735,25 @@ const recorderConfig: RecorderConfig = {
   server: {
     port: 9876,
     host: 'localhost',
-    path: '/vvf/events'
+    path: '/vvf/events',
   },
 
   sessions: {
     maxPerSession: 5000,
     retention: 1800000, // 30 minutes
-    autoCleanup: true
+    autoCleanup: true,
   },
 
   filters: {
     logLevels: ['info', 'warn', 'error'],
     sourcePatterns: ['src/**/*.ts', 'lib/**/*.ts'],
-    excludePatterns: ['node_modules/**', '**/*.test.ts']
+    excludePatterns: ['node_modules/**', '**/*.test.ts'],
   },
 
   processing: {
     enableActionPatterns: true,
-    debounceMs: 50
-  }
+    debounceMs: 50,
+  },
 };
 ```
 

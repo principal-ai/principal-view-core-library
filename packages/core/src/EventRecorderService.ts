@@ -256,7 +256,10 @@ export class EventRecorderService {
 
       default: {
         const exhaustiveCheck: never = message;
-        return this.createError('UNKNOWN_MESSAGE_TYPE', `Unknown message type: ${(exhaustiveCheck as ProtocolMessage).type}`);
+        return this.createError(
+          'UNKNOWN_MESSAGE_TYPE',
+          `Unknown message type: ${(exhaustiveCheck as ProtocolMessage).type}`
+        );
       }
     }
   }
@@ -264,10 +267,7 @@ export class EventRecorderService {
   /**
    * Handle session start message
    */
-  private handleSessionStart(
-    message: SessionStartMessage,
-    connectionId: string
-  ): OutgoingMessage {
+  private handleSessionStart(message: SessionStartMessage, connectionId: string): OutgoingMessage {
     try {
       const session = this.sessionManager.createSession({
         name: message.payload.name,
@@ -303,10 +303,7 @@ export class EventRecorderService {
   /**
    * Handle session end message
    */
-  private handleSessionEnd(
-    message: SessionEndMessage,
-    connectionId: string
-  ): OutgoingMessage {
+  private handleSessionEnd(message: SessionEndMessage, connectionId: string): OutgoingMessage {
     try {
       this.sessionManager.endSession(message.payload.sessionId, {
         result: message.payload.result,

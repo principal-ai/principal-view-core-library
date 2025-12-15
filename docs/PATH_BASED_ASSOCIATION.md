@@ -13,11 +13,13 @@
 ## The Core Idea
 
 ### Instead of Pattern Matching Content:
+
 ```
 ❌ Parse "Order 12345 created" → Extract order ID → Create node
 ```
 
 ### Associate Based on Source:
+
 ```
 ✅ Log from `services/order-service.ts` → order-service component
 ✅ Log from `lib/lock-manager.ts` → lock-manager component
@@ -33,6 +35,7 @@
 ### 1. **Matches Code Organization**
 
 Developers already organize code by component:
+
 ```
 services/
   ├── order-service.ts       → "order-service" component
@@ -45,6 +48,7 @@ Just map files → components in config!
 ### 2. **Captures ALL Activity**
 
 Don't need perfect log messages - you see everything:
+
 ```
 // All of these become visible for "order-service"
 logger.info('Processing order 123');
@@ -56,16 +60,17 @@ logger.error('Payment failed');
 ### 3. **Optional Refinement**
 
 Start broad (all logs), then add specific patterns for actions:
+
 ```yaml
 components:
   order-service:
     sources:
-      - "services/order-service.ts"  # All logs included
+      - 'services/order-service.ts' # All logs included
 
     # OPTIONAL: Extract specific actions
     actions:
-      - pattern: "Processing order {id}"
-        type: "order_processing"
+      - pattern: 'Processing order {id}'
+        type: 'order_processing'
 ```
 
 ---
@@ -78,41 +83,41 @@ components:
 
 ```yaml
 metadata:
-  name: "Order Processing System"
-  version: "1.0.0"
+  name: 'Order Processing System'
+  version: '1.0.0'
 
 # Map components to source paths
 components:
   order-service:
     type: service
     shape: rectangle
-    color: "#4A90E2"
+    color: '#4A90E2'
     sources:
-      - "services/order-service.ts"
-      - "services/order/**/*.ts"  # Glob pattern
+      - 'services/order-service.ts'
+      - 'services/order/**/*.ts' # Glob pattern
 
   payment-service:
     type: service
     shape: rectangle
-    color: "#10B981"
+    color: '#10B981'
     sources:
-      - "services/payment-service.ts"
+      - 'services/payment-service.ts'
 
   database:
     type: infrastructure
     shape: circle
-    color: "#7B68EE"
+    color: '#7B68EE'
     sources:
-      - "database/**/*.ts"
-      - "lib/db-client.ts"
+      - 'database/**/*.ts'
+      - 'lib/db-client.ts'
 
   lock-manager:
     type: service
     shape: diamond
-    color: "#F59E0B"
+    color: '#F59E0B'
     sources:
-      - "lib/lock-manager.ts"
-      - "lib/branch-aware-lock-manager.ts"
+      - 'lib/lock-manager.ts'
+      - 'lib/branch-aware-lock-manager.ts'
 ```
 
 **That's it!** Parser sees log from `lib/lock-manager.ts` → associates with "lock-manager" component.
@@ -127,11 +132,12 @@ components:
 // services/order-service.ts
 logger.info('Processing order', {
   orderId: 123,
-  source: __filename  // 'services/order-service.ts'
+  source: __filename, // 'services/order-service.ts'
 });
 ```
 
 Parser sees:
+
 - `source: "services/order-service.ts"`
 - Config says: `order-service.sources = ["services/order-service.ts"]`
 - → Associates log with `order-service` component
@@ -144,18 +150,21 @@ const logger = {
   info: (...args) => {
     const stack = new Error().stack;
     const source = extractCallerPath(stack);
-    console.log(JSON.stringify({
-      level: 'info',
-      message: args,
-      source: source  // Auto-captured!
-    }));
-  }
+    console.log(
+      JSON.stringify({
+        level: 'info',
+        message: args,
+        source: source, // Auto-captured!
+      })
+    );
+  },
 };
 ```
 
 ### 3. Process-Level Association
 
 For separate processes:
+
 ```bash
 # Run with component identifier
 VVF_COMPONENT=order-service node services/order-service.js
@@ -179,9 +188,9 @@ All logs → order-service component
 
 ```yaml
 metadata:
-  name: "Repository Traffic Controller"
-  version: "1.0.0"
-  description: "WebSocket collaboration server"
+  name: 'Repository Traffic Controller'
+  version: '1.0.0'
+  description: 'WebSocket collaboration server'
 
 # Define components and their source files
 components:
@@ -189,47 +198,47 @@ components:
   server:
     type: service
     shape: hexagon
-    color: "#4A90E2"
-    icon: "Server"
+    color: '#4A90E2'
+    icon: 'Server'
     sources:
-      - "server-control-tower.ts"
+      - 'server-control-tower.ts'
 
   # Lock management system
   lock-manager:
     type: service
     shape: diamond
-    color: "#F59E0B"
-    icon: "Lock"
+    color: '#F59E0B'
+    icon: 'Lock'
     sources:
-      - "lib/lock-manager.ts"
-      - "lib/branch-aware-lock-manager.ts"
+      - 'lib/lock-manager.ts'
+      - 'lib/branch-aware-lock-manager.ts'
 
   # Presence tracking
   presence:
     type: service
     shape: rectangle
-    color: "#10B981"
-    icon: "Users"
+    color: '#10B981'
+    icon: 'Users'
     sources:
-      - "lib/presence/**/*.ts"
+      - 'lib/presence/**/*.ts'
 
   # Authentication
   auth:
     type: service
     shape: rectangle
-    color: "#7B68EE"
-    icon: "Shield"
+    color: '#7B68EE'
+    icon: 'Shield'
     sources:
-      - "lib/adapters/JWTAuthAdapter.ts"
+      - 'lib/adapters/JWTAuthAdapter.ts'
 
   # API routes
   api:
     type: interface
     shape: rectangle
-    color: "#EC4899"
-    icon: "Globe"
+    color: '#EC4899'
+    icon: 'Globe'
     sources:
-      - "app/api/**/*.ts"
+      - 'app/api/**/*.ts'
 
 # OPTIONAL: Define how components connect
 connections:
@@ -252,16 +261,16 @@ connections:
 # OPTIONAL: Extract specific actions from logs
 actions:
   lock-manager:
-    - pattern: "Lock acquired"
+    - pattern: 'Lock acquired'
       event: lock_acquired
       state: acquired
 
-    - pattern: "Lock released"
+    - pattern: 'Lock released'
       event: lock_released
       state: released
 
   auth:
-    - pattern: "authenticated as {userId}"
+    - pattern: 'authenticated as {userId}'
       event: authenticated
       extract:
         userId: userId
@@ -270,12 +279,14 @@ actions:
 ### How It Works
 
 **Scenario 1: Basic association**
+
 ```javascript
 // lib/lock-manager.ts
 logger.info('Lock acquired: file.txt');
 ```
 
 Parser receives:
+
 ```json
 {
   "level": "info",
@@ -286,17 +297,20 @@ Parser receives:
 ```
 
 Parser logic:
+
 1. Check `source` field → `"lib/lock-manager.ts"`
 2. Match against config → `lock-manager.sources = ["lib/lock-manager.ts"]`
 3. Create activity event for `lock-manager` component
 
 **Scenario 2: With action extraction**
+
 ```javascript
 // lib/lock-manager.ts
 logger.info('Lock acquired: file.txt');
 ```
 
 Parser:
+
 1. Associates with `lock-manager` (from path)
 2. Checks action patterns for `lock-manager`
 3. Matches "Lock acquired" → Creates `lock_acquired` event with state
@@ -388,39 +402,48 @@ export interface Logger {
   error: (...args: unknown[]) => void;
 }
 
-const prefix = (level: string, args: unknown[]) =>
-  [new Date().toISOString(), `[${level}]`, ...args];
+const prefix = (level: string, args: unknown[]) => [
+  new Date().toISOString(),
+  `[${level}]`,
+  ...args,
+];
 
 export const logger: Logger = {
   info: (...args: unknown[]) => {
     const source = getCallerSource();
-    console.log(JSON.stringify({
-      timestamp: new Date().toISOString(),
-      level: 'info',
-      message: args,
-      source: source,  // AUTO-ADDED
-    }));
+    console.log(
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'info',
+        message: args,
+        source: source, // AUTO-ADDED
+      })
+    );
   },
 
   warn: (...args: unknown[]) => {
     const source = getCallerSource();
-    console.log(JSON.stringify({
-      timestamp: new Date().toISOString(),
-      level: 'warn',
-      message: args,
-      source: source,
-    }));
+    console.log(
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'warn',
+        message: args,
+        source: source,
+      })
+    );
   },
 
   error: (...args: unknown[]) => {
     const source = getCallerSource();
-    console.error(JSON.stringify({
-      timestamp: new Date().toISOString(),
-      level: 'error',
-      message: args,
-      source: source,
-      stack: new Error().stack,
-    }));
+    console.error(
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'error',
+        message: args,
+        source: source,
+        stack: new Error().stack,
+      })
+    );
   },
 };
 ```
@@ -438,7 +461,7 @@ interface ComponentConfig {
   type: string;
   shape: string;
   color: string;
-  sources: string[];  // File path patterns
+  sources: string[]; // File path patterns
   actions?: ActionPattern[];
 }
 
@@ -528,19 +551,12 @@ export class PathBasedParser {
   private matchGlob(path: string, pattern: string): boolean {
     // Convert glob to regex
     const regex = new RegExp(
-      '^' + pattern
-        .replace(/\*\*/g, '.*')
-        .replace(/\*/g, '[^/]*')
-        .replace(/\?/g, '.')
-      + '$'
+      '^' + pattern.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*').replace(/\?/g, '.') + '$'
     );
     return regex.test(path);
   }
 
-  private createActivityEvent(
-    componentName: string,
-    log: StructuredLog
-  ): GraphEvent {
+  private createActivityEvent(componentName: string, log: StructuredLog): GraphEvent {
     return {
       id: `evt-${Date.now()}-${componentName}`,
       type: 'component_activity',
@@ -555,19 +571,16 @@ export class PathBasedParser {
           lastLog: this.formatMessage(log.message),
           logLevel: log.level,
           source: log.source,
-        }
+        },
       },
       metadata: {
         source: 'path-based-parser',
         logLine: JSON.stringify(log),
-      }
+      },
     };
   }
 
-  private extractActionEvent(
-    componentName: string,
-    log: StructuredLog
-  ): GraphEvent | null {
+  private extractActionEvent(componentName: string, log: StructuredLog): GraphEvent | null {
     const component = this.config.components[componentName];
     if (!component.actions) {
       return null;
@@ -584,14 +597,16 @@ export class PathBasedParser {
           timestamp: new Date(log.timestamp).getTime(),
           category: action.state ? 'state' : 'system',
           operation: 'update',
-          payload: action.state ? {
-            nodeId: componentName,
-            newState: action.state,
-            data: match.extracted,
-          } : {
-            action: action.event,
-            data: match.extracted,
-          }
+          payload: action.state
+            ? {
+                nodeId: componentName,
+                newState: action.state,
+                data: match.extracted,
+              }
+            : {
+                action: action.event,
+                data: match.extracted,
+              },
         };
       }
     }
@@ -623,8 +638,9 @@ export class PathBasedParser {
     return {
       totalComponents: Object.keys(this.config.components).length,
       totalSources: this.pathIndex.size,
-      componentsWithActions: Object.values(this.config.components)
-        .filter(c => c.actions && c.actions.length > 0).length,
+      componentsWithActions: Object.values(this.config.components).filter(
+        (c) => c.actions && c.actions.length > 0
+      ).length,
     };
   }
 }
@@ -660,15 +676,16 @@ Components show activity with visual feedback:
         lastLog: 'Lock acquired: file.txt',
 
         // Visual indicators
-        activityIndicator: 'pulse',  // Pulse animation
-        activityColor: '#10B981',    // Green for info
-      }
-    }
-  ]
+        activityIndicator: 'pulse', // Pulse animation
+        activityColor: '#10B981', // Green for info
+      },
+    },
+  ];
 }
 ```
 
 **Visual Effects**:
+
 - **Pulse**: Node pulses when log received
 - **Color**: Border color based on log level (info=green, warn=yellow, error=red)
 - **Tooltip**: Hover shows recent logs
@@ -683,31 +700,31 @@ Components show activity with visual feedback:
 ```yaml
 # vvf-rtc.yaml
 metadata:
-  name: "Repository Traffic Controller"
-  version: "1.0.0"
+  name: 'Repository Traffic Controller'
+  version: '1.0.0'
 
 components:
   server:
     type: service
     shape: hexagon
-    color: "#4A90E2"
+    color: '#4A90E2'
     sources:
-      - "server-control-tower.ts"
+      - 'server-control-tower.ts'
 
   lock-manager:
     type: service
     shape: diamond
-    color: "#F59E0B"
+    color: '#F59E0B'
     sources:
-      - "lib/lock-manager.ts"
-      - "lib/branch-aware-lock-manager.ts"
+      - 'lib/lock-manager.ts'
+      - 'lib/branch-aware-lock-manager.ts'
 
   presence:
     type: service
     shape: rectangle
-    color: "#10B981"
+    color: '#10B981'
     sources:
-      - "lib/presence/**/*.ts"
+      - 'lib/presence/**/*.ts'
 ```
 
 ### Step 2: Enhance Logger (One File Change)
@@ -745,7 +762,7 @@ logger.info = (...args) => {
   };
 
   const events = parser.parse(log);
-  events.forEach(event => visualValidation.processEvent(event));
+  events.forEach((event) => visualValidation.processEvent(event));
 };
 ```
 
@@ -807,29 +824,33 @@ Show aggregate stats per component:
 **Key Simplification**: Associate logs with components by SOURCE PATH, not content parsing.
 
 **Configuration**:
+
 ```yaml
 components:
   my-service:
     sources:
-      - "services/my-service.ts"
+      - 'services/my-service.ts'
 ```
 
 **Parser Logic**:
+
 ```
 Log from "services/my-service.ts" → my-service component
 ```
 
 **Optional Enhancement**:
+
 ```yaml
 components:
   my-service:
-    sources: ["services/my-service.ts"]
+    sources: ['services/my-service.ts']
     actions:
-      - pattern: "Started"  # OPTIONAL
+      - pattern: 'Started' # OPTIONAL
         event: service_started
 ```
 
 **Benefits**:
+
 - ✅ Simple configuration
 - ✅ Automatic association
 - ✅ Captures all activity
@@ -837,6 +858,7 @@ components:
 - ✅ Optional refinement
 
 **Next Steps**:
+
 1. Extend logger to capture `source`
 2. Build `PathBasedParser`
 3. Test with repository-traffic-controller

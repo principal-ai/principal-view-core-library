@@ -23,7 +23,7 @@ export class SourceCapture {
 
     try {
       Error.prepareStackTrace = (_, stack) => stack;
-      const stack = (new Error().stack as unknown) as NodeJS.CallSite[];
+      const stack = new Error().stack as unknown as NodeJS.CallSite[];
 
       if (!stack || stack.length <= skipFrames) {
         return undefined;
@@ -54,7 +54,7 @@ export class SourceCapture {
         file: relativePath,
         line: frame.getLineNumber() || undefined,
         column: frame.getColumnNumber() || undefined,
-        functionName: frame.getFunctionName() || undefined
+        functionName: frame.getFunctionName() || undefined,
       };
     } catch (error) {
       // Source capture failed, return undefined
@@ -118,7 +118,7 @@ export class SourceCapture {
             file: relativePath,
             line: parseInt(lineNum, 10),
             column: parseInt(columnNum, 10),
-            functionName: functionName?.trim()
+            functionName: functionName?.trim(),
           });
         }
       }

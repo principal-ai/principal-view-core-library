@@ -31,7 +31,9 @@ export const libraryNodeTypeMatch: GraphRule<LibraryNodeTypeMatchOptions> = {
   fixable: false,
   defaultOptions: DEFAULT_OPTIONS,
 
-  async check(context: GraphRuleContext<LibraryNodeTypeMatchOptions>): Promise<GraphRuleViolation[]> {
+  async check(
+    context: GraphRuleContext<LibraryNodeTypeMatchOptions>
+  ): Promise<GraphRuleViolation[]> {
     const violations: GraphRuleViolation[] = [];
     const { configuration, library, configPath, libraryPath, options } = context;
 

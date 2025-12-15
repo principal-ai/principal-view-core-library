@@ -76,19 +76,10 @@ describe('PathMatcher', () => {
 
   describe('findMatches', () => {
     it('should return all matching patterns', () => {
-      const patterns = [
-        'lib/lock-manager.ts',
-        'lib/*.ts',
-        'lib/**/*.ts',
-        'src/**/*.ts'
-      ];
+      const patterns = ['lib/lock-manager.ts', 'lib/*.ts', 'lib/**/*.ts', 'src/**/*.ts'];
 
       const matches = PathMatcher.findMatches('lib/lock-manager.ts', patterns);
-      expect(matches).toEqual([
-        'lib/lock-manager.ts',
-        'lib/*.ts',
-        'lib/**/*.ts'
-      ]);
+      expect(matches).toEqual(['lib/lock-manager.ts', 'lib/*.ts', 'lib/**/*.ts']);
     });
 
     it('should return empty array when no patterns match', () => {

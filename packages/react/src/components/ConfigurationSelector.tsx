@@ -56,7 +56,7 @@ export const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
     onConfigChange(event.target.value);
   };
 
-  const selectedConfigData = configurations.find(c => c.name === selectedConfig);
+  const selectedConfigData = configurations.find((c) => c.name === selectedConfig);
 
   const defaultStyle: React.CSSProperties = {
     backgroundColor: 'white',
@@ -97,9 +97,7 @@ export const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
   if (configurations.length === 0) {
     return (
       <div className={className} style={defaultStyle}>
-        <div style={{ ...labelStyle, color: '#999' }}>
-          No configurations available
-        </div>
+        <div style={{ ...labelStyle, color: '#999' }}>No configurations available</div>
       </div>
     );
   }
@@ -125,7 +123,9 @@ export const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
         {configurations.map((config) => (
           <option key={config.name} value={config.name}>
             {config.config.metadata.name}
-            {showVersion && config.config.metadata.version && ` (v${config.config.metadata.version})`}
+            {showVersion &&
+              config.config.metadata.version &&
+              ` (v${config.config.metadata.version})`}
           </option>
         ))}
       </select>

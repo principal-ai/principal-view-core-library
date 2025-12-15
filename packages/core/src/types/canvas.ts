@@ -440,28 +440,36 @@ export interface ExtendedCanvas extends Canvas {
 /**
  * Type guard for text nodes
  */
-export function isTextNode(node: CanvasNode | ExtendedCanvasNode): node is CanvasTextNode | ExtendedCanvasTextNode {
+export function isTextNode(
+  node: CanvasNode | ExtendedCanvasNode
+): node is CanvasTextNode | ExtendedCanvasTextNode {
   return node.type === 'text';
 }
 
 /**
  * Type guard for file nodes
  */
-export function isFileNode(node: CanvasNode | ExtendedCanvasNode): node is CanvasFileNode | ExtendedCanvasFileNode {
+export function isFileNode(
+  node: CanvasNode | ExtendedCanvasNode
+): node is CanvasFileNode | ExtendedCanvasFileNode {
   return node.type === 'file';
 }
 
 /**
  * Type guard for link nodes
  */
-export function isLinkNode(node: CanvasNode | ExtendedCanvasNode): node is CanvasLinkNode | ExtendedCanvasLinkNode {
+export function isLinkNode(
+  node: CanvasNode | ExtendedCanvasNode
+): node is CanvasLinkNode | ExtendedCanvasLinkNode {
   return node.type === 'link';
 }
 
 /**
  * Type guard for group nodes
  */
-export function isGroupNode(node: CanvasNode | ExtendedCanvasNode): node is CanvasGroupNode | ExtendedCanvasGroupNode {
+export function isGroupNode(
+  node: CanvasNode | ExtendedCanvasNode
+): node is CanvasGroupNode | ExtendedCanvasGroupNode {
   return node.type === 'group';
 }
 

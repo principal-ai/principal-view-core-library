@@ -97,9 +97,9 @@ describe('SessionManager', () => {
 
     it('should return sessions sorted by start time (newest first)', async () => {
       manager.createSession({ name: 'First' });
-      await new Promise(resolve => setTimeout(resolve, 5));
+      await new Promise((resolve) => setTimeout(resolve, 5));
       manager.createSession({ name: 'Second' });
-      await new Promise(resolve => setTimeout(resolve, 5));
+      await new Promise((resolve) => setTimeout(resolve, 5));
       manager.createSession({ name: 'Third' });
 
       const sessions = manager.listSessions();

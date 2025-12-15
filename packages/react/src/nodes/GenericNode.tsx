@@ -29,9 +29,10 @@ export const GenericNode: React.FC<GenericNodeProps> = ({
   hasViolations,
 }) => {
   // Get color based on state or default
-  const color = state && typeDefinition.states?.[state]?.color
-    ? typeDefinition.states[state].color
-    : typeDefinition.color || '#888';
+  const color =
+    state && typeDefinition.states?.[state]?.color
+      ? typeDefinition.states[state].color
+      : typeDefinition.color || '#888';
 
   return (
     <div

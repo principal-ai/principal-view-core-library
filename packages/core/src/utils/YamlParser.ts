@@ -36,7 +36,9 @@ export function parseYaml(content: string, filename?: string): YamlParseResult {
     if (!data.metadata || !data.nodeTypes || !data.edgeTypes) {
       return {
         success: false,
-        error: `Invalid configuration structure${filename ? ` in ${filename}` : ''}: missing required fields (metadata, nodeTypes, or edgeTypes)`,
+        error: `Invalid configuration structure${
+          filename ? ` in ${filename}` : ''
+        }: missing required fields (metadata, nodeTypes, or edgeTypes)`,
       };
     }
 

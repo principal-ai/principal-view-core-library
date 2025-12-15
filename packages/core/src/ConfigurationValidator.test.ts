@@ -66,7 +66,7 @@ describe('ConfigurationValidator', () => {
 
     const result = ConfigurationValidator.validate(invalidConfig);
     expect(result.valid).toBe(false);
-    expect(result.errors.some(e => e.message.includes('nonexistent'))).toBe(true);
+    expect(result.errors.some((e) => e.message.includes('nonexistent'))).toBe(true);
   });
 
   test('catches missing edge type in connection rules', () => {
@@ -97,7 +97,7 @@ describe('ConfigurationValidator', () => {
 
     const result = ConfigurationValidator.validate(invalidConfig);
     expect(result.valid).toBe(false);
-    expect(result.errors.some(e => e.message.includes('nonexistent_edge'))).toBe(true);
+    expect(result.errors.some((e) => e.message.includes('nonexistent_edge'))).toBe(true);
   });
 
   test('catches missing metadata', () => {
@@ -113,7 +113,7 @@ describe('ConfigurationValidator', () => {
 
     const result = ConfigurationValidator.validate(invalidConfig);
     expect(result.valid).toBe(false);
-    expect(result.errors.some(e => e.path.includes('metadata'))).toBe(true);
+    expect(result.errors.some((e) => e.path.includes('metadata'))).toBe(true);
   });
 
   test('warns about undefined states in state transitions', () => {
@@ -149,7 +149,7 @@ describe('ConfigurationValidator', () => {
     };
 
     const result = ConfigurationValidator.validate(configWithBadStates);
-    expect(result.warnings.some(w => w.message.includes('nonexistent'))).toBe(true);
+    expect(result.warnings.some((w) => w.message.includes('nonexistent'))).toBe(true);
   });
 
   test('validateOrThrow throws on invalid config', () => {
@@ -158,7 +158,7 @@ describe('ConfigurationValidator', () => {
         name: 'Test',
         version: '1.0.0',
       },
-      nodeTypes: {},  // Empty!
+      nodeTypes: {}, // Empty!
       edgeTypes: {
         flow: { style: 'solid' },
       },

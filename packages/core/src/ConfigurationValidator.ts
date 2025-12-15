@@ -237,9 +237,7 @@ export class ConfigurationValidator {
 
     // Log warnings
     if (result.warnings.length > 0) {
-      console.warn(
-        `Configuration has ${result.warnings.length} warning(s):`
-      );
+      console.warn(`Configuration has ${result.warnings.length} warning(s):`);
       result.warnings.forEach((w) => {
         console.warn(`  - ${w.path}: ${w.message}${w.suggestion ? ` (${w.suggestion})` : ''}`);
       });

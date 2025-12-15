@@ -29,34 +29,40 @@ export const validColorFormat: GraphRule = {
       for (const [typeId, nodeType] of Object.entries(configuration.nodeTypes)) {
         // Check node color
         if (nodeType.color && !isValidColor(nodeType.color)) {
-          violations.push(createColorViolation(
-            configPath,
-            `nodeTypes.${typeId}.color`,
-            nodeType.color,
-            `node type "${typeId}"`
-          ));
+          violations.push(
+            createColorViolation(
+              configPath,
+              `nodeTypes.${typeId}.color`,
+              nodeType.color,
+              `node type "${typeId}"`
+            )
+          );
         }
 
         // Check node stroke color
         if (nodeType.stroke && !isValidColor(nodeType.stroke)) {
-          violations.push(createColorViolation(
-            configPath,
-            `nodeTypes.${typeId}.stroke`,
-            nodeType.stroke,
-            `node type "${typeId}" stroke`
-          ));
+          violations.push(
+            createColorViolation(
+              configPath,
+              `nodeTypes.${typeId}.stroke`,
+              nodeType.stroke,
+              `node type "${typeId}" stroke`
+            )
+          );
         }
 
         // Check state colors
         if (nodeType.states) {
           for (const [stateName, stateDef] of Object.entries(nodeType.states)) {
             if (stateDef.color && !isValidColor(stateDef.color)) {
-              violations.push(createColorViolation(
-                configPath,
-                `nodeTypes.${typeId}.states.${stateName}.color`,
-                stateDef.color,
-                `state "${stateName}" in node type "${typeId}"`
-              ));
+              violations.push(
+                createColorViolation(
+                  configPath,
+                  `nodeTypes.${typeId}.states.${stateName}.color`,
+                  stateDef.color,
+                  `state "${stateName}" in node type "${typeId}"`
+                )
+              );
             }
           }
         }
@@ -68,22 +74,26 @@ export const validColorFormat: GraphRule = {
       for (const [typeId, edgeType] of Object.entries(configuration.edgeTypes)) {
         // Check edge color
         if (edgeType.color && !isValidColor(edgeType.color)) {
-          violations.push(createColorViolation(
-            configPath,
-            `edgeTypes.${typeId}.color`,
-            edgeType.color,
-            `edge type "${typeId}"`
-          ));
+          violations.push(
+            createColorViolation(
+              configPath,
+              `edgeTypes.${typeId}.color`,
+              edgeType.color,
+              `edge type "${typeId}"`
+            )
+          );
         }
 
         // Check animation color
         if (edgeType.animation?.color && !isValidColor(edgeType.animation.color)) {
-          violations.push(createColorViolation(
-            configPath,
-            `edgeTypes.${typeId}.animation.color`,
-            edgeType.animation.color,
-            `animation in edge type "${typeId}"`
-          ));
+          violations.push(
+            createColorViolation(
+              configPath,
+              `edgeTypes.${typeId}.animation.color`,
+              edgeType.animation.color,
+              `animation in edge type "${typeId}"`
+            )
+          );
         }
       }
     }
@@ -96,12 +106,14 @@ export const validColorFormat: GraphRule = {
       for (const colorKey of themeColors) {
         const colorValue = theme[colorKey];
         if (colorValue && !isValidColor(colorValue)) {
-          violations.push(createColorViolation(
-            configPath,
-            `display.theme.${colorKey}`,
-            colorValue,
-            `theme ${colorKey} color`
-          ));
+          violations.push(
+            createColorViolation(
+              configPath,
+              `display.theme.${colorKey}`,
+              colorValue,
+              `theme ${colorKey} color`
+            )
+          );
         }
       }
     }

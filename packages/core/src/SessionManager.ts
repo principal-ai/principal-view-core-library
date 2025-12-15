@@ -260,8 +260,7 @@ export class SessionManager {
    * List all sessions, sorted by start time (newest first)
    */
   listSessions(): EventSession[] {
-    return Array.from(this.sessions.values())
-      .sort((a, b) => b.startedAt - a.startedAt);
+    return Array.from(this.sessions.values()).sort((a, b) => b.startedAt - a.startedAt);
   }
 
   /**
@@ -280,7 +279,9 @@ export class SessionManager {
 
     // Check max events limit
     if (session.events.length >= this.config.maxEventsPerSession) {
-      console.warn(`Session "${sessionId}" reached max events limit (${this.config.maxEventsPerSession})`);
+      console.warn(
+        `Session "${sessionId}" reached max events limit (${this.config.maxEventsPerSession})`
+      );
       return;
     }
 
@@ -446,7 +447,7 @@ export class SessionManager {
     newestSession: number | null;
   } {
     const sessions = this.listSessions();
-    const activeSessions = sessions.filter(s => s.status === 'recording').length;
+    const activeSessions = sessions.filter((s) => s.status === 'recording').length;
     const totalEvents = sessions.reduce((sum, s) => sum + s.events.length, 0);
 
     return {

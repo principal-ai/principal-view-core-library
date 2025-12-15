@@ -118,7 +118,9 @@ export const validNodeTypes: GraphRule = {
               suggestion: `Add a type field. Valid values: ${VALID_DATA_TYPES.join(', ')}`,
               fixable: false,
             });
-          } else if (!VALID_DATA_TYPES.includes(fieldDef.type as (typeof VALID_DATA_TYPES)[number])) {
+          } else if (
+            !VALID_DATA_TYPES.includes(fieldDef.type as (typeof VALID_DATA_TYPES)[number])
+          ) {
             violations.push({
               ruleId: 'valid-node-types',
               severity: 'error',

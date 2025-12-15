@@ -55,17 +55,17 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
       }}
     >
       {/* Header */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '12px',
-        paddingBottom: '8px',
-        borderBottom: `2px solid ${color}`,
-      }}>
-        <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
-          Edge Information
-        </div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '12px',
+          paddingBottom: '8px',
+          borderBottom: `2px solid ${color}`,
+        }}
+      >
+        <div style={{ fontWeight: 'bold', fontSize: '14px' }}>Edge Information</div>
         <button
           onClick={onClose}
           style={{
@@ -88,32 +88,44 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
 
       {/* Edge Type */}
       <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>
-          Type
-        </div>
-        <div style={{
-          fontSize: '12px',
-          padding: '4px 8px',
-          backgroundColor: color,
-          color: 'white',
-          borderRadius: '4px',
-          display: 'inline-block',
-        }}>
+        <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>Type</div>
+        <div
+          style={{
+            fontSize: '12px',
+            padding: '4px 8px',
+            backgroundColor: color,
+            color: 'white',
+            borderRadius: '4px',
+            display: 'inline-block',
+          }}
+        >
           {edge.type}
         </div>
       </div>
 
       {/* Connection Info */}
       <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>
-          Connection
-        </div>
+        <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>Connection</div>
         <div style={{ fontSize: '12px', color: '#333' }}>
-          <span style={{ fontFamily: 'monospace', backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '3px' }}>
+          <span
+            style={{
+              fontFamily: 'monospace',
+              backgroundColor: '#f0f0f0',
+              padding: '2px 6px',
+              borderRadius: '3px',
+            }}
+          >
             {sourceNodeId}
           </span>
           <span style={{ margin: '0 8px', color: '#888' }}>→</span>
-          <span style={{ fontFamily: 'monospace', backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '3px' }}>
+          <span
+            style={{
+              fontFamily: 'monospace',
+              backgroundColor: '#f0f0f0',
+              padding: '2px 6px',
+              borderRadius: '3px',
+            }}
+          >
             {targetNodeId}
           </span>
         </div>
@@ -127,9 +139,7 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
           </div>
           {displayFields.map(({ field, label, value }) => (
             <div key={field} style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>
-                {label}
-              </div>
+              <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>{label}</div>
               <div style={{ fontSize: '12px', color: '#333' }}>
                 {value !== undefined && value !== null
                   ? typeof value === 'object'
@@ -150,9 +160,7 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
           </div>
           {edgeDataEntries.map(([key, value]) => (
             <div key={key} style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>
-                {key}
-              </div>
+              <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>{key}</div>
               <div style={{ fontSize: '12px', color: '#333', wordBreak: 'break-word' }}>
                 {value !== undefined && value !== null
                   ? typeof value === 'object'
@@ -166,7 +174,15 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
       )}
 
       {/* Metadata */}
-      <div style={{ fontSize: '10px', color: '#999', marginTop: '12px', paddingTop: '8px', borderTop: '1px solid #eee' }}>
+      <div
+        style={{
+          fontSize: '10px',
+          color: '#999',
+          marginTop: '12px',
+          paddingTop: '8px',
+          borderTop: '1px solid #eee',
+        }}
+      >
         ID: {edge.id}
       </div>
 

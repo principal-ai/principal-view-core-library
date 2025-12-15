@@ -37,9 +37,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
   if (!typeDefinition) {
     return (
       <div style={{ padding: '10px', border: '2px solid red', borderRadius: '4px' }}>
-        <div style={{ fontSize: '12px', color: 'red' }}>
-          Error: Missing node type definition
-        </div>
+        <div style={{ fontSize: '12px', color: 'red' }}>Error: Missing node type definition</div>
       </div>
     );
   }
@@ -49,8 +47,11 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
   const nodeDataColor = nodeData.color as string | undefined;
   const baseColor = nodeDataColor || typeDefinition.color || '#888';
   // Check node's own states first (from pv.states), then fall back to type definition states
-  const nodeDataStates = nodeData.states as Record<string, { color?: string; label?: string; icon?: string }> | undefined;
-  const stateColor = state && (nodeDataStates?.[state]?.color || typeDefinition.states?.[state]?.color);
+  const nodeDataStates = nodeData.states as
+    | Record<string, { color?: string; label?: string; icon?: string }>
+    | undefined;
+  const stateColor =
+    state && (nodeDataStates?.[state]?.color || typeDefinition.states?.[state]?.color);
   const fillColor = stateColor || baseColor;
 
   // Get stroke color - priority: node data stroke > type definition stroke > fill color
@@ -64,9 +65,10 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
   const displayName = nodeProps.name;
 
   // Icon priority: node data override > state icon (node data states first) > type definition icon
-  const icon = (nodeData.icon as string)
-    || (state && (nodeDataStates?.[state]?.icon || typeDefinition.states?.[state]?.icon))
-    || typeDefinition.icon;
+  const icon =
+    (nodeData.icon as string) ||
+    (state && (nodeDataStates?.[state]?.icon || typeDefinition.states?.[state]?.icon)) ||
+    typeDefinition.icon;
 
   // Get animation class based on type
   const getAnimationClass = () => {
@@ -156,47 +158,53 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
   // Hexagon with gentle diagonals
   const hexagonClipPath = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
   const hexagonBorderWidth = 2;
-  const hexagonBorderStyle: React.CSSProperties = isHexagon ? {
-    position: 'relative',
-    clipPath: hexagonClipPath,
-    backgroundColor: hasViolations ? '#D0021B' : strokeColor,
-    width: typeDefinition.size?.width || 120,
-    height: typeDefinition.size?.height || 120,
-    boxShadow: selected ? `0 0 0 2px ${strokeColor}` : '0 2px 4px rgba(0,0,0,0.1)',
-    transition: 'all 0.2s ease',
-  } : {};
+  const hexagonBorderStyle: React.CSSProperties = isHexagon
+    ? {
+        position: 'relative',
+        clipPath: hexagonClipPath,
+        backgroundColor: hasViolations ? '#D0021B' : strokeColor,
+        width: typeDefinition.size?.width || 120,
+        height: typeDefinition.size?.height || 120,
+        boxShadow: selected ? `0 0 0 2px ${strokeColor}` : '0 2px 4px rgba(0,0,0,0.1)',
+        transition: 'all 0.2s ease',
+      }
+    : {};
 
   // Hexagon inner fill styles (white background inset from border)
-  const hexagonInnerStyle: React.CSSProperties = isHexagon ? {
-    position: 'absolute',
-    top: hexagonBorderWidth,
-    left: hexagonBorderWidth,
-    right: hexagonBorderWidth,
-    bottom: hexagonBorderWidth,
-    clipPath: hexagonClipPath,
-    backgroundColor: 'white',
-    color: '#000',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '12px',
-    fontWeight: 500,
-    gap: '4px',
-  } : {};
+  const hexagonInnerStyle: React.CSSProperties = isHexagon
+    ? {
+        position: 'absolute',
+        top: hexagonBorderWidth,
+        left: hexagonBorderWidth,
+        right: hexagonBorderWidth,
+        bottom: hexagonBorderWidth,
+        clipPath: hexagonClipPath,
+        backgroundColor: 'white',
+        color: '#000',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '12px',
+        fontWeight: 500,
+        gap: '4px',
+      }
+    : {};
 
   // Handle styles - larger and more visible in edit mode
-  const baseHandleStyle = editable ? {
-    background: color,
-    width: 12,
-    height: 12,
-    border: '2px solid white',
-    boxShadow: '0 0 0 1px ' + color,
-  } : {
-    background: color,
-    width: 8,
-    height: 8,
-  };
+  const baseHandleStyle = editable
+    ? {
+        background: color,
+        width: 12,
+        height: 12,
+        border: '2px solid white',
+        boxShadow: '0 0 0 1px ' + color,
+      }
+    : {
+        background: color,
+        width: 8,
+        height: 8,
+      };
 
   // Diamond handles need to be offset to reach the tips of the rotated shape
   // A 45° rotated square has tips at ~41% beyond the original edges
@@ -235,51 +243,42 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
   return (
     <>
       {/* Input handles - multiple connection points */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top"
-        style={getHandleStyle('top')}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left"
-        style={getHandleStyle('left')}
-      />
-      <Handle
-        type="target"
-        position={Position.Right}
-        id="right"
-        style={getHandleStyle('right')}
-      />
+      <Handle type="target" position={Position.Top} id="top" style={getHandleStyle('top')} />
+      <Handle type="target" position={Position.Left} id="left" style={getHandleStyle('left')} />
+      <Handle type="target" position={Position.Right} id="right" style={getHandleStyle('right')} />
 
       {/* Hexagon needs a wrapper for proper border rendering */}
       {isHexagon ? (
         <div style={hexagonBorderStyle} className={animationClass}>
           <div style={hexagonInnerStyle}>
-            {icon && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>{resolveIcon(icon, 20)}</div>}
-            <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>
-              {displayName}
-            </div>
+            {icon && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                {resolveIcon(icon, 20)}
+              </div>
+            )}
+            <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>{displayName}</div>
             {state && (
-              <div style={{
-                fontSize: '10px',
-                backgroundColor: color,
-                color: 'white',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                textAlign: 'center',
-              }}>
+              <div
+                style={{
+                  fontSize: '10px',
+                  backgroundColor: color,
+                  color: 'white',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  textAlign: 'center',
+                }}
+              >
                 {nodeDataStates?.[state]?.label || typeDefinition.states?.[state]?.label || state}
               </div>
             )}
             {hasViolations && (
-              <div style={{
-                fontSize: '10px',
-                color: '#D0021B',
-                fontWeight: 'bold',
-              }}>
+              <div
+                style={{
+                  fontSize: '10px',
+                  color: '#D0021B',
+                  fontWeight: 'bold',
+                }}
+              >
                 ⚠️
               </div>
             )}
@@ -289,28 +288,34 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
         <div style={getShapeStyles()} className={animationClass}>
           {/* Inner content (rotated back if diamond) */}
           <div style={isDiamond ? { transform: 'rotate(-45deg)' } : {}}>
-            {icon && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>{resolveIcon(icon, 20)}</div>}
-            <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>
-              {displayName}
-            </div>
+            {icon && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                {resolveIcon(icon, 20)}
+              </div>
+            )}
+            <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>{displayName}</div>
             {state && (
-              <div style={{
-                fontSize: '10px',
-                backgroundColor: color,
-                color: 'white',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                textAlign: 'center',
-              }}>
+              <div
+                style={{
+                  fontSize: '10px',
+                  backgroundColor: color,
+                  color: 'white',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  textAlign: 'center',
+                }}
+              >
                 {nodeDataStates?.[state]?.label || typeDefinition.states?.[state]?.label || state}
               </div>
             )}
             {hasViolations && (
-              <div style={{
-                fontSize: '10px',
-                color: '#D0021B',
-                fontWeight: 'bold',
-              }}>
+              <div
+                style={{
+                  fontSize: '10px',
+                  color: '#D0021B',
+                  fontWeight: 'bold',
+                }}
+              >
                 ⚠️
               </div>
             )}
@@ -325,12 +330,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
         id="bottom"
         style={getHandleStyle('bottom')}
       />
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="left-out"
-        style={getHandleStyle('left')}
-      />
+      <Handle type="source" position={Position.Left} id="left-out" style={getHandleStyle('left')} />
       <Handle
         type="source"
         position={Position.Right}

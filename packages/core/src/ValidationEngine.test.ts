@@ -304,9 +304,7 @@ describe('ValidationEngine', () => {
 
       const result = engine.validate(event, testState);
 
-      const unexpectedViolations = result.violations.filter(
-        (v) => v.type === 'unexpected_event'
-      );
+      const unexpectedViolations = result.violations.filter((v) => v.type === 'unexpected_event');
       expect(unexpectedViolations).toHaveLength(0);
     });
   });

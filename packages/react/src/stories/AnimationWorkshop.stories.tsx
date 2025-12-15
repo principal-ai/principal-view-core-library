@@ -576,24 +576,143 @@ export const AllAnimationsShowcase: Story = {
         <ReactFlow
           nodes={[
             // Row 1: Edge animations
-            { id: 'flow-1', type: 'custom', position: { x: 50, y: 50 }, data: { label: 'Flow', typeDefinition: processNodeType, data: { name: 'Flow Start' } } as CustomNodeData },
-            { id: 'flow-2', type: 'custom', position: { x: 200, y: 50 }, data: { label: 'Flow', typeDefinition: dataNodeType, data: { name: 'Flow End' } } as CustomNodeData },
+            {
+              id: 'flow-1',
+              type: 'custom',
+              position: { x: 50, y: 50 },
+              data: {
+                label: 'Flow',
+                typeDefinition: processNodeType,
+                data: { name: 'Flow Start' },
+              } as CustomNodeData,
+            },
+            {
+              id: 'flow-2',
+              type: 'custom',
+              position: { x: 200, y: 50 },
+              data: {
+                label: 'Flow',
+                typeDefinition: dataNodeType,
+                data: { name: 'Flow End' },
+              } as CustomNodeData,
+            },
 
-            { id: 'particle-1', type: 'custom', position: { x: 280, y: 50 }, data: { label: 'Particle', typeDefinition: processNodeType, data: { name: 'Particle Start' } } as CustomNodeData },
-            { id: 'particle-2', type: 'custom', position: { x: 430, y: 50 }, data: { label: 'Particle', typeDefinition: dataNodeType, data: { name: 'Particle End' } } as CustomNodeData },
+            {
+              id: 'particle-1',
+              type: 'custom',
+              position: { x: 280, y: 50 },
+              data: {
+                label: 'Particle',
+                typeDefinition: processNodeType,
+                data: { name: 'Particle Start' },
+              } as CustomNodeData,
+            },
+            {
+              id: 'particle-2',
+              type: 'custom',
+              position: { x: 430, y: 50 },
+              data: {
+                label: 'Particle',
+                typeDefinition: dataNodeType,
+                data: { name: 'Particle End' },
+              } as CustomNodeData,
+            },
 
-            { id: 'pulse-1', type: 'custom', position: { x: 510, y: 50 }, data: { label: 'Pulse', typeDefinition: processNodeType, data: { name: 'Pulse Start' } } as CustomNodeData },
-            { id: 'pulse-2', type: 'custom', position: { x: 660, y: 50 }, data: { label: 'Pulse', typeDefinition: dataNodeType, data: { name: 'Pulse End' } } as CustomNodeData },
+            {
+              id: 'pulse-1',
+              type: 'custom',
+              position: { x: 510, y: 50 },
+              data: {
+                label: 'Pulse',
+                typeDefinition: processNodeType,
+                data: { name: 'Pulse Start' },
+              } as CustomNodeData,
+            },
+            {
+              id: 'pulse-2',
+              type: 'custom',
+              position: { x: 660, y: 50 },
+              data: {
+                label: 'Pulse',
+                typeDefinition: dataNodeType,
+                data: { name: 'Pulse End' },
+              } as CustomNodeData,
+            },
 
             // Row 2: Node animations
-            { id: 'node-pulse', type: 'custom', position: { x: 100, y: 180 }, data: { label: 'Processing Pulse', typeDefinition: processNodeType, data: { name: 'Processing' }, animationType: 'pulse', animationDuration: 1500 } as CustomNodeData },
-            { id: 'node-flash', type: 'custom', position: { x: 300, y: 180 }, data: { label: 'Success Flash', typeDefinition: dataNodeType, data: { name: 'Success' }, animationType: 'flash', animationDuration: 1000 } as CustomNodeData },
-            { id: 'node-shake', type: 'custom', position: { x: 500, y: 180 }, data: { label: 'Error Shake', typeDefinition: processNodeType, data: { name: 'Error' }, animationType: 'shake', animationDuration: 500, hasViolations: true } as CustomNodeData },
+            {
+              id: 'node-pulse',
+              type: 'custom',
+              position: { x: 100, y: 180 },
+              data: {
+                label: 'Processing Pulse',
+                typeDefinition: processNodeType,
+                data: { name: 'Processing' },
+                animationType: 'pulse',
+                animationDuration: 1500,
+              } as CustomNodeData,
+            },
+            {
+              id: 'node-flash',
+              type: 'custom',
+              position: { x: 300, y: 180 },
+              data: {
+                label: 'Success Flash',
+                typeDefinition: dataNodeType,
+                data: { name: 'Success' },
+                animationType: 'flash',
+                animationDuration: 1000,
+              } as CustomNodeData,
+            },
+            {
+              id: 'node-shake',
+              type: 'custom',
+              position: { x: 500, y: 180 },
+              data: {
+                label: 'Error Shake',
+                typeDefinition: processNodeType,
+                data: { name: 'Error' },
+                animationType: 'shake',
+                animationDuration: 500,
+                hasViolations: true,
+              } as CustomNodeData,
+            },
           ]}
           edges={[
-            { id: 'e-flow', source: 'flow-1', target: 'flow-2', type: 'custom', data: { typeDefinition: edgeTypeDefinition, animationType: 'flow', animationDirection: 'forward', animationDuration: 1000 } as CustomEdgeData },
-            { id: 'e-particle', source: 'particle-1', target: 'particle-2', type: 'custom', data: { typeDefinition: edgeTypeDefinition, animationType: 'particle', animationDuration: 1200 } as CustomEdgeData },
-            { id: 'e-pulse', source: 'pulse-1', target: 'pulse-2', type: 'custom', data: { typeDefinition: edgeTypeDefinition, animationType: 'pulse', animationDuration: 1500 } as CustomEdgeData },
+            {
+              id: 'e-flow',
+              source: 'flow-1',
+              target: 'flow-2',
+              type: 'custom',
+              data: {
+                typeDefinition: edgeTypeDefinition,
+                animationType: 'flow',
+                animationDirection: 'forward',
+                animationDuration: 1000,
+              } as CustomEdgeData,
+            },
+            {
+              id: 'e-particle',
+              source: 'particle-1',
+              target: 'particle-2',
+              type: 'custom',
+              data: {
+                typeDefinition: edgeTypeDefinition,
+                animationType: 'particle',
+                animationDuration: 1200,
+              } as CustomEdgeData,
+            },
+            {
+              id: 'e-pulse',
+              source: 'pulse-1',
+              target: 'pulse-2',
+              type: 'custom',
+              data: {
+                typeDefinition: edgeTypeDefinition,
+                animationType: 'pulse',
+                animationDuration: 1500,
+              } as CustomEdgeData,
+            },
           ]}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}

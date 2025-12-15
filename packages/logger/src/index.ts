@@ -11,7 +11,7 @@ export {
   wrapConsoleLogger,
   createLogger,
   createVVFTransport,
-  getEnhancedLogger
+  getEnhancedLogger,
 } from './wrappers';
 
 export type {
@@ -21,7 +21,7 @@ export type {
   LogEntry,
   EnhancedLoggerOptions,
   LoggerEvent,
-  LogTransport
+  LogTransport,
 } from './types';
 
 // Transports

@@ -41,6 +41,7 @@
 **Context**: Team has a running system with established logging, monitoring, and deployment practices.
 
 **Requirements**:
+
 - ❗ **Cannot break existing code**
 - ❗ **Cannot require big refactoring**
 - ❗ **Must work with current logging (Winston, Pino, etc.)**
@@ -48,6 +49,7 @@
 - ❗ **Minimal deployment changes**
 
 **Example User**:
+
 ```
 "We have a Node.js microservices architecture with Winston logging,
 deployed on Kubernetes. We want to validate our order processing
@@ -55,6 +57,7 @@ workflow without touching the 50+ services already in production."
 ```
 
 **Key Questions**:
+
 1. How do they emit events without changing service code?
 2. Can they use existing log output?
 3. Can they deploy the visualization separately?
@@ -67,18 +70,21 @@ workflow without touching the 50+ services already in production."
 **Context**: Building a new system from scratch, can design with validation in mind.
 
 **Requirements**:
+
 - ✅ Can structure code around validation
 - ✅ Can use framework-provided logging
 - ✅ Can adopt recommended patterns
 - ❗ Still want lightweight, not heavyweight framework
 
 **Example User**:
+
 ```
 "We're building a new data pipeline. We want to validate
 each stage from the start. How should we structure our code?"
 ```
 
 **Key Questions**:
+
 1. What's the recommended architecture?
 2. Should they use GraphInstrumentationHelper directly?
 3. What's the simplest possible integration?
@@ -90,11 +96,13 @@ each stage from the start. How should we structure our code?"
 **Context**: Want to use framework in tests or local development only.
 
 **Requirements**:
+
 - ✅ Easy to toggle on/off
 - ✅ Not deployed to production
 - ✅ Visual debugging during development
 
 **Example User**:
+
 ```
 "Our integration tests are flaky. We want to visualize
 test execution to debug timing issues."
@@ -107,12 +115,14 @@ test execution to debug timing issues."
 **Context**: Want real-time visualization of production system state.
 
 **Requirements**:
+
 - ❗ Real-time streaming
 - ❗ Scalability concerns
 - ❗ Security (can't expose internal details)
 - ❗ Performance impact must be minimal
 
 **Example User**:
+
 ```
 "We want a live dashboard showing our microservices
 health and data flow for our ops team."
@@ -125,6 +135,7 @@ health and data flow for our ops team."
 ### 1. **Adapter Pattern Over Instrumentation**
 
 **❌ AVOID: Forcing instrumentation**
+
 ```typescript
 // Bad: Requires changing every service
 import { ValidationFramework } from 'vvf';
@@ -137,6 +148,7 @@ function processOrder(order) {
 ```
 
 **✅ PREFER: Adapter pattern**
+
 ```typescript
 // Good: Adapter consumes existing logs/events
 import { WinstonAdapter } from '@vvf/winston-adapter';
@@ -155,6 +167,7 @@ const adapter = new WinstonAdapter({
 ### 2. **Sidecar/Agent Pattern for Zero-Touch Integration**
 
 **Topology Option A: Sidecar Process**
+
 ```
 ┌─────────────────┐
 │   Your Service  │
@@ -170,6 +183,7 @@ const adapter = new WinstonAdapter({
 ```
 
 **Benefits**:
+
 - ✅ No code changes to services
 - ✅ Works with any language
 - ✅ Easy to disable (remove sidecar)
@@ -180,6 +194,7 @@ const adapter = new WinstonAdapter({
 ### 3. **Log Parsing Over Event Emission**
 
 **Level 1: Parse Existing Logs** (Zero Code Changes)
+
 ```typescript
 // Framework parses structured logs automatically
 // User logs: { level: 'info', message: 'Order created', orderId: 123 }
@@ -187,12 +202,14 @@ const adapter = new WinstonAdapter({
 ```
 
 **Level 2: Use Existing Logger** (Minimal Changes)
+
 ```typescript
 // Add transport to existing logger
 logger.add(new VVFTransport());
 ```
 
 **Level 3: Explicit Events** (Opt-in Enhancement)
+
 ```typescript
 // Optional: Explicit event emission for richer metadata
 emitGraphEvent('order_created', { orderId: 123, metadata: {...} });
@@ -211,20 +228,21 @@ emitGraphEvent('order_created', { orderId: 123, metadata: {...} });
 eventMappings:
   - logPattern: "Order (\\d+) created"
     graphEvent:
-      type: "order_created"
-      category: "node"
-      nodeId: "$1"
-      nodeType: "order"
+      type: 'order_created'
+      category: 'node'
+      nodeId: '$1'
+      nodeType: 'order'
 
   - logPattern: "Processing order (\\d+)"
     graphEvent:
-      type: "state_changed"
-      category: "state"
-      nodeId: "$1"
-      newState: "processing"
+      type: 'state_changed'
+      category: 'state'
+      nodeId: '$1'
+      newState: 'processing'
 ```
 
 **Benefits**:
+
 - ✅ Non-developers can configure mappings
 - ✅ No code changes needed
 - ✅ Easy to iterate
@@ -239,26 +257,31 @@ eventMappings:
 **Use Case**: Existing Node.js services with Winston/Pino
 
 **Architecture**:
+
 ```typescript
 // In existing service (one-time setup)
 import { VVFWinstonTransport } from '@vvf/winston-adapter';
 import logger from './logger'; // Existing logger
 
-logger.add(new VVFWinstonTransport({
-  endpoint: 'ws://vvf-server:8080/events',
-  mapping: './vvf-mapping.yaml'
-}));
+logger.add(
+  new VVFWinstonTransport({
+    endpoint: 'ws://vvf-server:8080/events',
+    mapping: './vvf-mapping.yaml',
+  })
+);
 
 // No other code changes needed!
 // Existing logs automatically become GraphEvents
 ```
 
 **Pros**:
+
 - ✅ Minimal code changes (one file)
 - ✅ Works with existing logging
 - ✅ Easy to disable (remove transport)
 
 **Cons**:
+
 - ⚠️ Requires Node.js
 - ⚠️ Limited to log-based events
 
@@ -269,31 +292,34 @@ logger.add(new VVFWinstonTransport({
 **Use Case**: Polyglot microservices (Go, Python, Java, etc.)
 
 **Architecture**:
+
 ```yaml
 # kubernetes deployment
 spec:
   containers:
-  - name: your-service
-    image: your-service:latest
-    # Service unchanged
+    - name: your-service
+      image: your-service:latest
+      # Service unchanged
 
-  - name: vvf-agent
-    image: vvf-agent:latest
-    env:
-    - name: VVF_SOURCE
-      value: "logs:stdout"
-    - name: VVF_CONFIG
-      value: "/config/vvf-mapping.yaml"
+    - name: vvf-agent
+      image: vvf-agent:latest
+      env:
+        - name: VVF_SOURCE
+          value: 'logs:stdout'
+        - name: VVF_CONFIG
+          value: '/config/vvf-mapping.yaml'
 ```
 
 **Agent reads logs from stdout, parses events, streams to visualization.**
 
 **Pros**:
+
 - ✅ Language-agnostic
 - ✅ Zero code changes
 - ✅ Easy to deploy/remove
 
 **Cons**:
+
 - ⚠️ Additional container per service
 - ⚠️ Log parsing may miss nuanced events
 
@@ -304,6 +330,7 @@ spec:
 **Use Case**: New services designed with validation
 
 **Architecture**:
+
 ```typescript
 // New service built with VVF
 import { GraphInstrumentationHelper } from '@vvf/core';
@@ -318,8 +345,7 @@ async function processOrder(order) {
     vvf.emitStateChange(order.id, 'validated');
 
     await chargePayment(order);
-    vvf.emitEdgeCreated(`${order.id}-payment`, 'payment',
-                        order.id, payment.id);
+    vvf.emitEdgeCreated(`${order.id}-payment`, 'payment', order.id, payment.id);
   } catch (error) {
     vvf.emitStateChange(order.id, 'error');
   }
@@ -327,11 +353,13 @@ async function processOrder(order) {
 ```
 
 **Pros**:
+
 - ✅ Rich event metadata
 - ✅ Full control over events
 - ✅ Type-safe
 
 **Cons**:
+
 - ⚠️ Invasive to codebase
 - ⚠️ Only for new code
 
@@ -342,6 +370,7 @@ async function processOrder(order) {
 **Use Case**: Existing event-driven architecture (Kafka, RabbitMQ)
 
 **Architecture**:
+
 ```
 Kafka/RabbitMQ
      │
@@ -355,11 +384,13 @@ Kafka/RabbitMQ
 ```
 
 **Pros**:
+
 - ✅ Works with existing event streams
 - ✅ Zero code changes
 - ✅ Centralized deployment
 
 **Cons**:
+
 - ⚠️ Requires event stream infrastructure
 
 ---
@@ -369,6 +400,7 @@ Kafka/RabbitMQ
 ### Node.js / TypeScript ✅ FIRST-CLASS
 
 **Integration Options**:
+
 1. Logger Transport (Winston, Pino, Bunyan)
 2. Direct API (GraphInstrumentationHelper)
 3. Express/Fastify middleware
@@ -381,6 +413,7 @@ Kafka/RabbitMQ
 ### Python 🟡 TIER 2
 
 **Integration Options**:
+
 1. Sidecar agent (parse logs)
 2. Python logging handler (future)
 3. FastAPI middleware (future)
@@ -392,6 +425,7 @@ Kafka/RabbitMQ
 ### Go 🟡 TIER 2
 
 **Integration Options**:
+
 1. Sidecar agent (parse logs)
 2. Go client library (future)
 3. Gin/Echo middleware (future)
@@ -403,6 +437,7 @@ Kafka/RabbitMQ
 ### Java / JVM 🟡 TIER 3
 
 **Integration Options**:
+
 1. Sidecar agent (parse logs)
 2. Logback appender (future)
 3. Spring Boot starter (future)
@@ -414,6 +449,7 @@ Kafka/RabbitMQ
 ### Rust, C++, etc. 🟡 TIER 3
 
 **Integration Options**:
+
 1. Sidecar agent only
 
 **Priority**: LOW (niche)
@@ -427,6 +463,7 @@ Kafka/RabbitMQ
 **Timeline**: 1 day
 
 **Steps**:
+
 1. Deploy VVF visualization server
 2. Deploy VVF sidecar agent next to one service
 3. Configure log parsing rules
@@ -441,6 +478,7 @@ Kafka/RabbitMQ
 **Timeline**: 1 week
 
 **Steps**:
+
 1. Deploy VVF visualization server
 2. Install `@vvf/winston-adapter` in one service
 3. Add transport to existing logger
@@ -456,6 +494,7 @@ Kafka/RabbitMQ
 **Timeline**: Ongoing
 
 **Steps**:
+
 1. Use GraphInstrumentationHelper directly
 2. Emit explicit events at key points
 3. Define validation rules
@@ -474,6 +513,7 @@ Kafka/RabbitMQ
 **Options**:
 
 **A. Monorepo with separate packages** ✅ RECOMMENDED
+
 ```
 @principal-ai/visual-validation-core
 @principal-ai/visual-validation-react
@@ -486,6 +526,7 @@ Kafka/RabbitMQ
 **Cons**: More packages to maintain
 
 **B. Everything in core**
+
 ```
 @principal-ai/visual-validation-core
   - includes all adapters
@@ -505,24 +546,26 @@ Kafka/RabbitMQ
 **Options**:
 
 **A. YAML/JSON config file** ✅ RECOMMENDED
+
 ```yaml
 mappings:
   - pattern: "Order (\\d+) created"
     event:
-      type: "order_created"
-      nodeId: "$1"
+      type: 'order_created'
+      nodeId: '$1'
 ```
 
 **Pros**: Non-developers can configure, language-agnostic
 **Cons**: Limited expressiveness
 
 **B. JavaScript/TypeScript functions**
+
 ```typescript
 mapping: (log) => {
   if (log.message.includes('Order created')) {
     return { type: 'order_created', nodeId: extractId(log) };
   }
-}
+};
 ```
 
 **Pros**: Full flexibility
@@ -539,6 +582,7 @@ mapping: (log) => {
 **Options**:
 
 **A. Separate visualization service** ✅ RECOMMENDED
+
 ```
 Services → Events → VVF Server → Browser
 ```
@@ -547,6 +591,7 @@ Services → Events → VVF Server → Browser
 **Cons**: Additional deployment
 
 **B. Embedded in application**
+
 ```
 Application includes VVF UI at /vvf
 ```
@@ -555,6 +600,7 @@ Application includes VVF UI at /vvf
 **Cons**: Doesn't scale to multi-service
 
 **C. Desktop application**
+
 ```
 Electron app connects to services
 ```
@@ -595,6 +641,7 @@ Electron app connects to services
 **Question**: How do we handle high event volumes without overwhelming the UI?
 
 **Options**:
+
 - Sample events (show 10% of high-frequency events)
 - Aggregate events (combine similar events)
 - Backpressure (slow down event emission)
@@ -609,6 +656,7 @@ Electron app connects to services
 **Question**: How do multiple teams/projects share one VVF deployment?
 
 **Considerations**:
+
 - Namespace isolation
 - RBAC/permissions
 - Data isolation
@@ -623,6 +671,7 @@ Electron app connects to services
 **Question**: Should we support replaying past event streams?
 
 **Use Cases**:
+
 - Debugging past incidents
 - Validating after-the-fact
 - Testing validation rules against history
@@ -636,6 +685,7 @@ Electron app connects to services
 **Question**: Which language should we prioritize after Node.js?
 
 **Candidates**:
+
 - Python (data pipelines)
 - Go (microservices)
 - Java (enterprise)
@@ -652,12 +702,14 @@ Electron app connects to services
 **Goal**: Make it easy to adopt in existing projects
 
 1. **Sidecar Agent** (2 weeks)
+
    - Log tailing
    - Configurable parsing
    - Event mapping from YAML
    - WebSocket streaming
 
 2. **Winston Adapter** (1 week)
+
    - Winston transport
    - Event transformation
    - Connection pooling
@@ -719,6 +771,7 @@ Electron app connects to services
 ### Example: E-Commerce Order Processing
 
 **Existing Setup**:
+
 - 5 microservices (Node.js, Python, Go)
 - Winston logging in Node services
 - JSON logs to stdout
@@ -728,25 +781,28 @@ Electron app connects to services
 **Integration Steps**:
 
 **Step 1**: Deploy VVF visualization server
+
 ```bash
 kubectl apply -f vvf-server.yaml
 ```
 
 **Step 2**: Add sidecar to one service
+
 ```yaml
 # orders-service deployment
 containers:
-- name: orders-service
-  image: orders:latest
+  - name: orders-service
+    image: orders:latest
 
-- name: vvf-agent
-  image: vvf-agent:latest
-  volumeMounts:
-  - name: config
-    mountPath: /config
+  - name: vvf-agent
+    image: vvf-agent:latest
+    volumeMounts:
+      - name: config
+        mountPath: /config
 ```
 
 **Step 3**: Configure event mapping
+
 ```yaml
 # vvf-mapping.yaml
 mappings:
@@ -754,7 +810,7 @@ mappings:
     event:
       type: order_created
       category: node
-      nodeId: "$1"
+      nodeId: '$1'
       nodeType: order
 ```
 

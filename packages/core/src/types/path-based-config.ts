@@ -46,7 +46,7 @@ export interface PathBasedNodeTypeDefinition {
   position?: { x: number; y: number };
 
   /** MILESTONE 1: Source path mapping */
-  sources?: string[];  // e.g., ["lib/lock-manager.ts", "lib/**/*.ts"]
+  sources?: string[]; // e.g., ["lib/lock-manager.ts", "lib/**/*.ts"]
 
   /** MILESTONE 2: Optional action patterns for refinement */
   actions?: ActionPattern[];
@@ -66,10 +66,10 @@ export interface ActionPattern {
   state?: string;
 
   /** Metadata template - extracts data from capture groups */
-  metadata?: Record<string, string>;  // e.g., { lockId: "$lockId" }
+  metadata?: Record<string, string>; // e.g., { lockId: "$lockId" }
 
   /** Whether this action should trigger edge animations */
-  triggerEdges?: string[];  // Edge IDs or patterns
+  triggerEdges?: string[]; // Edge IDs or patterns
 }
 
 /**
@@ -142,10 +142,10 @@ export interface PathBasedGraphConfiguration {
   }>;
 
   /** Optional validation rules */
-  validation?: any;  // Reuse from base types
+  validation?: any; // Reuse from base types
 
   /** Display preferences */
-  display?: any;  // Reuse from base types
+  display?: any; // Reuse from base types
 
   /** Path-based configuration options */
   pathBasedConfig?: PathBasedConfigOptions;
@@ -277,7 +277,4 @@ export interface EdgeAnimationEvent {
 /**
  * Union type of all path-based events
  */
-export type PathBasedEvent =
-  | ComponentActivityEvent
-  | ComponentActionEvent
-  | EdgeAnimationEvent;
+export type PathBasedEvent = ComponentActivityEvent | ComponentActionEvent | EdgeAnimationEvent;

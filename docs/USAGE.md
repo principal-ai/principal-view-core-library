@@ -37,27 +37,25 @@ import type { GraphConfiguration } from '@principal-ai/visual-validation-core';
 // Define your configuration
 const config: GraphConfiguration = {
   metadata: {
-    name: "My System",
-    version: "1.0.0"
+    name: 'My System',
+    version: '1.0.0',
   },
   nodeTypes: {
     process: {
       shape: 'rectangle',
       color: '#4A90E2',
       dataSchema: {
-        name: { type: 'string', required: true, displayInLabel: true }
-      }
-    }
+        name: { type: 'string', required: true, displayInLabel: true },
+      },
+    },
   },
   edgeTypes: {
     dataflow: {
       style: 'solid',
-      color: '#999999'
-    }
+      color: '#999999',
+    },
   },
-  allowedConnections: [
-    { from: 'process', to: 'process', via: 'dataflow' }
-  ]
+  allowedConnections: [{ from: 'process', to: 'process', via: 'dataflow' }],
 };
 
 function App() {
@@ -106,19 +104,19 @@ import { GraphRenderer } from '@principal-ai/visual-validation-react';
   className="my-graph"
   width={800}
   height={600}
-/>
+/>;
 ```
 
 **Props:**
 
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `configuration` | `GraphConfiguration` | Yes | Graph configuration defining types and rules |
-| `nodes` | `NodeState[]` | Yes | Array of nodes to display |
-| `edges` | `EdgeState[]` | Yes | Array of edges to display |
-| `className` | `string` | No | CSS class name |
-| `width` | `number \| string` | No | Width (default: `100%`) |
-| `height` | `number \| string` | No | Height (default: `100%`) |
+| Prop            | Type                 | Required | Description                                  |
+| --------------- | -------------------- | -------- | -------------------------------------------- |
+| `configuration` | `GraphConfiguration` | Yes      | Graph configuration defining types and rules |
+| `nodes`         | `NodeState[]`        | Yes      | Array of nodes to display                    |
+| `edges`         | `EdgeState[]`        | Yes      | Array of edges to display                    |
+| `className`     | `string`             | No       | CSS class name                               |
+| `width`         | `number \| string`   | No       | Width (default: `100%`)                      |
+| `height`        | `number \| string`   | No       | Height (default: `100%`)                     |
 
 ### EventLog
 
@@ -132,18 +130,18 @@ import { EventLog } from '@principal-ai/visual-validation-react';
   violations={violations}
   onEventClick={(event) => console.log('Clicked:', event)}
   maxHeight="400px"
-/>
+/>;
 ```
 
 **Props:**
 
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `events` | `GraphEvent[]` | Yes | Array of events to display |
-| `violations` | `Violation[]` | No | Violations to highlight |
-| `onEventClick` | `(event: GraphEvent) => void` | No | Callback when event is clicked |
-| `className` | `string` | No | CSS class name |
-| `maxHeight` | `number \| string` | No | Max height (default: `400px`) |
+| Prop           | Type                          | Required | Description                    |
+| -------------- | ----------------------------- | -------- | ------------------------------ |
+| `events`       | `GraphEvent[]`                | Yes      | Array of events to display     |
+| `violations`   | `Violation[]`                 | No       | Violations to highlight        |
+| `onEventClick` | `(event: GraphEvent) => void` | No       | Callback when event is clicked |
+| `className`    | `string`                      | No       | CSS class name                 |
+| `maxHeight`    | `number \| string`            | No       | Max height (default: `400px`)  |
 
 ### MetricsDashboard
 
@@ -152,18 +150,15 @@ Show metrics about your graph.
 ```typescript
 import { MetricsDashboard } from '@principal-ai/visual-validation-react';
 
-<MetricsDashboard
-  metrics={metrics}
-  className="metrics"
-/>
+<MetricsDashboard metrics={metrics} className="metrics" />;
 ```
 
 **Props:**
 
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `metrics` | `GraphMetrics` | Yes | Metrics object with node, edge, event, and validation stats |
-| `className` | `string` | No | CSS class name |
+| Prop        | Type           | Required | Description                                                 |
+| ----------- | -------------- | -------- | ----------------------------------------------------------- |
+| `metrics`   | `GraphMetrics` | Yes      | Metrics object with node, edge, event, and validation stats |
+| `className` | `string`       | No       | CSS class name                                              |
 
 ## Building a Complete Panel
 
@@ -171,16 +166,12 @@ Combine components to create a full visualization panel:
 
 ```typescript
 import React, { useState, useEffect } from 'react';
-import {
-  GraphRenderer,
-  EventLog,
-  MetricsDashboard
-} from '@principal-ai/visual-validation-react';
+import { GraphRenderer, EventLog, MetricsDashboard } from '@principal-ai/visual-validation-react';
 import { EventProcessor } from '@principal-ai/visual-validation-core';
 import type {
   GraphConfiguration,
   GraphEvent,
-  EventStream
+  EventStream,
 } from '@principal-ai/visual-validation-core';
 
 interface PanelProps {
@@ -201,7 +192,7 @@ function ValidationPanel({ configuration, eventStream }: PanelProps) {
   useEffect(() => {
     if (eventStream.initialState) {
       // Process initial nodes and edges
-      eventStream.initialState.nodes.forEach(node => {
+      eventStream.initialState.nodes.forEach((node) => {
         processor.processEvent({
           id: `init-node-${node.id}`,
           type: 'initial_node',
@@ -212,8 +203,8 @@ function ValidationPanel({ configuration, eventStream }: PanelProps) {
             operation: 'create',
             nodeId: node.id,
             nodeType: node.type,
-            data: node.data
-          }
+            data: node.data,
+          },
         });
       });
     }
@@ -224,9 +215,9 @@ function ValidationPanel({ configuration, eventStream }: PanelProps) {
     if (currentEventIndex < eventStream.events.length) {
       const event = eventStream.events[currentEventIndex];
       processor.processEvent(event);
-      setEvents(prev => [...prev, event]);
+      setEvents((prev) => [...prev, event]);
       setGraphState(processor.getGraphState());
-      setCurrentEventIndex(prev => prev + 1);
+      setCurrentEventIndex((prev) => prev + 1);
     }
   };
 
@@ -252,14 +243,14 @@ function ValidationPanel({ configuration, eventStream }: PanelProps) {
         acc[node.type] = (acc[node.type] || 0) + 1;
         return acc;
       }, {} as Record<string, number>),
-      byState: {}
+      byState: {},
     },
     edges: {
       total: graphState.edges.size,
       byType: Array.from(graphState.edges.values()).reduce((acc, edge) => {
         acc[edge.type] = (acc[edge.type] || 0) + 1;
         return acc;
-      }, {} as Record<string, number>)
+      }, {} as Record<string, number>),
     },
     events: {
       total: events.length,
@@ -271,38 +262,49 @@ function ValidationPanel({ configuration, eventStream }: PanelProps) {
         acc[evt.type] = (acc[evt.type] || 0) + 1;
         return acc;
       }, {} as Record<string, number>),
-      rate: events.length / Math.max(1, currentEventIndex)
+      rate: events.length / Math.max(1, currentEventIndex),
     },
     validation: {
       violations: validation.violations.length,
       warnings: validation.warnings.length,
       unexpectedEvents: validation.metrics.unexpectedEvents,
-      healthScore: 1 - (validation.violations.length / Math.max(1, events.length))
+      healthScore: 1 - validation.violations.length / Math.max(1, events.length),
     },
     performance: {
       renderTime: 0,
       eventProcessingTime: 0,
-      layoutTime: 0
-    }
+      layoutTime: 0,
+    },
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', height: '100vh', gap: '16px', padding: '16px' }}>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '2fr 1fr',
+        height: '100vh',
+        gap: '16px',
+        padding: '16px',
+      }}
+    >
       {/* Left column: Graph */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button onClick={() => setIsPlaying(!isPlaying)}>
-            {isPlaying ? 'Pause' : 'Play'}
-          </button>
-          <button onClick={processNextEvent} disabled={currentEventIndex >= eventStream.events.length}>
+          <button onClick={() => setIsPlaying(!isPlaying)}>{isPlaying ? 'Pause' : 'Play'}</button>
+          <button
+            onClick={processNextEvent}
+            disabled={currentEventIndex >= eventStream.events.length}
+          >
             Next Event
           </button>
-          <button onClick={() => {
-            processor.reset();
-            setEvents([]);
-            setCurrentEventIndex(0);
-            setGraphState(processor.getGraphState());
-          }}>
+          <button
+            onClick={() => {
+              processor.reset();
+              setEvents([]);
+              setCurrentEventIndex(0);
+              setGraphState(processor.getGraphState());
+            }}
+          >
             Reset
           </button>
           <span>
@@ -460,7 +462,7 @@ function FilteredEventLog({ events }: { events: GraphEvent[] }) {
   const [filter, setFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
-  const filteredEvents = events.filter(event => {
+  const filteredEvents = events.filter((event) => {
     if (filter && event.type !== filter) return false;
     if (categoryFilter && event.category !== categoryFilter) return false;
     return true;
@@ -492,12 +494,14 @@ import { GenericNode } from '@principal-ai/visual-validation-react';
 
 function CustomOrderNode({ data, nodeType }: { data: any; nodeType: any }) {
   return (
-    <div style={{
-      padding: '12px',
-      backgroundColor: nodeType.color,
-      borderRadius: '8px',
-      color: 'white'
-    }}>
+    <div
+      style={{
+        padding: '12px',
+        backgroundColor: nodeType.color,
+        borderRadius: '8px',
+        color: 'white',
+      }}
+    >
       <div style={{ fontWeight: 'bold' }}>Order {data.orderId}</div>
       <div>${data.amount}</div>
       <div>{data.items?.length} items</div>
@@ -527,18 +531,19 @@ function ValidationAlertsPanel({ processor }: { processor: EventProcessor }) {
 
   return (
     <div>
-      {validation.violations.map(violation => (
-        <div key={violation.id} style={{
-          padding: '8px',
-          margin: '4px',
-          backgroundColor: violation.severity === 'error' ? '#D0021B' : '#F5A623',
-          color: 'white',
-          borderRadius: '4px'
-        }}>
+      {validation.violations.map((violation) => (
+        <div
+          key={violation.id}
+          style={{
+            padding: '8px',
+            margin: '4px',
+            backgroundColor: violation.severity === 'error' ? '#D0021B' : '#F5A623',
+            color: 'white',
+            borderRadius: '4px',
+          }}
+        >
           <strong>{violation.type}</strong>: {violation.description}
-          {violation.context?.nodeId && (
-            <div>Node: {violation.context.nodeId}</div>
-          )}
+          {violation.context?.nodeId && <div>Node: {violation.context.nodeId}</div>}
         </div>
       ))}
     </div>

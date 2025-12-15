@@ -19,12 +19,8 @@ export interface GenericEdgeProps {
  * Generic edge renderer that adapts based on EdgeTypeDefinition
  * TODO: Implement different styles, animations, and labels
  */
-export const GenericEdge: React.FC<GenericEdgeProps> = ({
-  id,
-  typeDefinition,
-  hasViolations,
-}) => {
-  const color = hasViolations ? 'red' : (typeDefinition.color || '#888');
+export const GenericEdge: React.FC<GenericEdgeProps> = ({ id, typeDefinition, hasViolations }) => {
+  const color = hasViolations ? 'red' : typeDefinition.color || '#888';
 
   return (
     <div>

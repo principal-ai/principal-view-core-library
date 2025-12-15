@@ -133,7 +133,7 @@ export const ManyEvents: Story = {
       ...sampleEvents,
       ...Array.from({ length: 20 }, (_, i) => ({
         id: `evt-gen-${i}`,
-        timestamp: Date.now() - (i * 500),
+        timestamp: Date.now() - i * 500,
         type: 'node_updated',
         category: 'node' as const,
         operation: 'update' as const,

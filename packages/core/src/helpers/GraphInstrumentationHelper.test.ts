@@ -88,9 +88,14 @@ describe('GraphInstrumentationHelper', () => {
         capturedEvents.push(event);
       });
 
-      const event = helper.emitNodeCreated('user-1', 'user', { userId: 'alice' }, {
-        position: { x: 100, y: 200 },
-      });
+      const event = helper.emitNodeCreated(
+        'user-1',
+        'user',
+        { userId: 'alice' },
+        {
+          position: { x: 100, y: 200 },
+        }
+      );
 
       const payload = event.payload as any;
       expect(payload.position).toEqual({ x: 100, y: 200 });
@@ -132,9 +137,14 @@ describe('GraphInstrumentationHelper', () => {
         capturedEvents.push(event);
       });
 
-      const event = helper.emitNodeCreated('user-1', 'user', { userId: 'alice' }, {
-        expected: false,
-      });
+      const event = helper.emitNodeCreated(
+        'user-1',
+        'user',
+        { userId: 'alice' },
+        {
+          expected: false,
+        }
+      );
 
       expect(event.expected).toBe(false);
     });
@@ -324,13 +334,18 @@ describe('GraphInstrumentationHelper', () => {
         capturedEvents.push(event);
       });
 
-      const event = helper.emitNodeCreated('user-1', 'user', { userId: 'alice' }, {
-        metadata: {
-          source: 'test:line:42',
-          tags: ['important', 'user-creation'],
-          description: 'Creating test user',
-        },
-      });
+      const event = helper.emitNodeCreated(
+        'user-1',
+        'user',
+        { userId: 'alice' },
+        {
+          metadata: {
+            source: 'test:line:42',
+            tags: ['important', 'user-creation'],
+            description: 'Creating test user',
+          },
+        }
+      );
 
       expect(event.metadata?.source).toBe('test:line:42');
       expect(event.metadata?.tags).toEqual(['important', 'user-creation']);

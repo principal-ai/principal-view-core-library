@@ -157,7 +157,9 @@ export function createInitCommand(): Command {
 
         // Create canvas file
         if (existsSync(canvasFile) && !options.force) {
-          console.log(chalk.yellow(`Canvas file already exists: .principal-views/${options.name}.canvas`));
+          console.log(
+            chalk.yellow(`Canvas file already exists: .principal-views/${options.name}.canvas`)
+          );
         } else {
           writeFileSync(canvasFile, JSON.stringify(TEMPLATE_CANVAS, null, 2));
           console.log(chalk.green(`Created canvas file: .principal-views/${options.name}.canvas`));
@@ -206,13 +208,22 @@ edgeComponents: {}
                 if (existsSync(preCommitFile)) {
                   // Check if our hook is already in the file
                   const existingContent = readFileSync(preCommitFile, 'utf8');
-                  if (existingContent.includes('principal-view-cli lint') || existingContent.includes('privu lint')) {
-                    console.log(chalk.yellow(`Husky pre-commit hook already includes principal view linting`));
+                  if (
+                    existingContent.includes('principal-view-cli lint') ||
+                    existingContent.includes('privu lint')
+                  ) {
+                    console.log(
+                      chalk.yellow(`Husky pre-commit hook already includes principal view linting`)
+                    );
                   } else {
                     // Append our lint command to existing pre-commit
-                    const updatedContent = existingContent.trimEnd() + '\n\n# Run principal view linting\nnpx @principal-ai/principal-view-cli lint --quiet\n';
+                    const updatedContent =
+                      existingContent.trimEnd() +
+                      '\n\n# Run principal view linting\nnpx @principal-ai/principal-view-cli lint --quiet\n';
                     writeFileSync(preCommitFile, updatedContent);
-                    console.log(chalk.green(`Updated Husky pre-commit hook with principal view linting`));
+                    console.log(
+                      chalk.green(`Updated Husky pre-commit hook with principal view linting`)
+                    );
                     huskySetup = true;
                   }
                 } else {
@@ -252,8 +263,16 @@ edgeComponents: {}
                     console.log(chalk.green(`Installed Husky and created pre-commit hook`));
                     huskySetup = true;
                   } catch (installError) {
-                    console.log(chalk.yellow(`Could not install Husky automatically: ${(installError as Error).message}`));
-                    console.log(chalk.dim(`  You can install it manually: ${pm} add --dev husky && npx husky init`));
+                    console.log(
+                      chalk.yellow(
+                        `Could not install Husky automatically: ${(installError as Error).message}`
+                      )
+                    );
+                    console.log(
+                      chalk.dim(
+                        `  You can install it manually: ${pm} add --dev husky && npx husky init`
+                      )
+                    );
                   }
                 }
               }
@@ -265,8 +284,12 @@ edgeComponents: {}
         console.log(chalk.bold('Setup complete!'));
         console.log('');
         console.log(chalk.bold('Files created:'));
-        console.log(`  • ${chalk.cyan('.principal-views/library.yaml')} - Component library definitions`);
-        console.log(`  • ${chalk.cyan(`.principal-views/${options.name}.canvas`)} - Graph canvas file`);
+        console.log(
+          `  • ${chalk.cyan('.principal-views/library.yaml')} - Component library definitions`
+        );
+        console.log(
+          `  • ${chalk.cyan(`.principal-views/${options.name}.canvas`)} - Graph canvas file`
+        );
         if (options.lintConfig !== false) {
           console.log(`  • ${chalk.cyan('.privurc.yaml')} - Lint configuration`);
         }
@@ -277,7 +300,9 @@ edgeComponents: {}
         console.log('');
         console.log(chalk.bold('Next steps:'));
         console.log(`  1. Define components in ${chalk.cyan('.principal-views/library.yaml')}`);
-        console.log(`  2. Build your graph in ${chalk.cyan(`.principal-views/${options.name}.canvas`)}`);
+        console.log(
+          `  2. Build your graph in ${chalk.cyan(`.principal-views/${options.name}.canvas`)}`
+        );
         console.log(`  3. Run ${chalk.cyan('privu lint')} to validate your configuration`);
         if (huskySetup) {
           console.log(`  4. Commits will now automatically lint .principal-views files`);

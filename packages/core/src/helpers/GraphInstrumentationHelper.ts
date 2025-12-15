@@ -9,10 +9,7 @@ export class GraphInstrumentationHelper {
   private eventEmitter?: (event: GraphEvent) => void;
   private eventCounter = 0;
 
-  constructor(
-    configuration: GraphConfiguration,
-    eventEmitter?: (event: GraphEvent) => void
-  ) {
+  constructor(configuration: GraphConfiguration, eventEmitter?: (event: GraphEvent) => void) {
     this.configuration = configuration;
     this.eventEmitter = eventEmitter;
   }

@@ -18,7 +18,10 @@ export function createCreateCommand(): Command {
 
   command
     .description('Create a new canvas file in the .principal-views folder')
-    .requiredOption('-n, --name <name>', 'Name for the canvas file (e.g., "cache-sync-architecture")')
+    .requiredOption(
+      '-n, --name <name>',
+      'Name for the canvas file (e.g., "cache-sync-architecture")'
+    )
     .option('-f, --force', 'Overwrite existing file')
     .action(async (options) => {
       try {
@@ -33,7 +36,9 @@ export function createCreateCommand(): Command {
 
         // Check if canvas file already exists
         if (existsSync(canvasFile) && !options.force) {
-          console.error(chalk.red(`Error: Canvas file already exists: .principal-views/${options.name}.canvas`));
+          console.error(
+            chalk.red(`Error: Canvas file already exists: .principal-views/${options.name}.canvas`)
+          );
           console.log(chalk.yellow(`Use ${chalk.cyan('--force')} to overwrite`));
           process.exit(1);
         }
@@ -45,7 +50,9 @@ export function createCreateCommand(): Command {
         // Show next steps
         console.log('');
         console.log(chalk.bold('Next steps:'));
-        console.log(`  1. Open ${chalk.cyan(`.principal-views/${options.name}.canvas`)} in your editor`);
+        console.log(
+          `  1. Open ${chalk.cyan(`.principal-views/${options.name}.canvas`)} in your editor`
+        );
         console.log(`  2. Add nodes and edges to define your architecture`);
         console.log(`  3. Run ${chalk.cyan('privu validate')} to check your configuration`);
         console.log(`  4. Run ${chalk.cyan('privu doctor')} to verify source mappings`);

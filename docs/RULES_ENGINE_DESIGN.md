@@ -30,12 +30,12 @@ packages/core/src/rules/
 
 ### Core Components
 
-| Component | Responsibility |
-|-----------|----------------|
-| `GraphRulesEngine` | Central orchestrator - registers rules, builds context, executes validation |
-| `GraphRule` | Interface for all rules: id, check(), optional fix(), metadata |
-| `GraphRuleContext` | Encapsulates configuration, library, and file data for rule evaluation |
-| `GraphRuleViolation` | Detailed violation report with location, message, impact, fix hints |
+| Component            | Responsibility                                                              |
+| -------------------- | --------------------------------------------------------------------------- |
+| `GraphRulesEngine`   | Central orchestrator - registers rules, builds context, executes validation |
+| `GraphRule`          | Interface for all rules: id, check(), optional fix(), metadata              |
+| `GraphRuleContext`   | Encapsulates configuration, library, and file data for rule evaluation      |
+| `GraphRuleViolation` | Detailed violation report with location, message, impact, fix hints         |
 
 ### Dependency Flow
 
@@ -60,19 +60,19 @@ GraphRulesEngine
 ```typescript
 interface GraphRule {
   // Metadata
-  id: string;                         // Unique kebab-case identifier
-  name: string;                       // Human-readable name
-  description: string;                // Brief explanation
-  impact: string;                     // Business/user impact statement
+  id: string; // Unique kebab-case identifier
+  name: string; // Human-readable name
+  description: string; // Brief explanation
+  impact: string; // Business/user impact statement
 
   // Classification
-  severity: GraphRuleSeverity;        // "error" | "warning" | "info"
-  category: GraphRuleCategory;        // "schema" | "reference" | "structure" | "performance"
+  severity: GraphRuleSeverity; // "error" | "warning" | "info"
+  category: GraphRuleCategory; // "schema" | "reference" | "structure" | "performance"
 
   // Capability flags
-  enabled: boolean;                   // Default enabled state
-  fixable: boolean;                   // Can be auto-fixed
-  options?: RuleOptions;              // Default configuration options
+  enabled: boolean; // Default enabled state
+  fixable: boolean; // Can be auto-fixed
+  options?: RuleOptions; // Default configuration options
 
   // Execution
   check: (context: GraphRuleContext) => Promise<GraphRuleViolation[]>;
@@ -94,7 +94,7 @@ interface GraphRuleContext {
   // File information (for error reporting)
   configPath?: string;
   libraryPath?: string;
-  rawYaml?: string;                   // Original YAML for line number lookup
+  rawYaml?: string; // Original YAML for line number lookup
 
   // Configuration overrides
   ruleOptions?: Map<string, RuleOptions>;
@@ -105,22 +105,22 @@ interface GraphRuleContext {
 
 ```typescript
 interface GraphRuleViolation {
-  ruleId: string;                     // Rule that detected violation
+  ruleId: string; // Rule that detected violation
   severity: GraphRuleSeverity;
 
   // Location (all optional, depending on violation type)
-  file?: string;                      // Config or library file path
-  line?: number;                      // Line number in YAML
-  path?: string;                      // JSON path (e.g., "nodeTypes.service.shape")
+  file?: string; // Config or library file path
+  line?: number; // Line number in YAML
+  path?: string; // JSON path (e.g., "nodeTypes.service.shape")
 
   // Details
-  message: string;                    // Clear, actionable error message
-  impact: string;                     // Why this matters
-  suggestion?: string;                // How to fix
+  message: string; // Clear, actionable error message
+  impact: string; // Why this matters
+  suggestion?: string; // How to fix
 
   // Fix metadata
   fixable: boolean;
-  fixData?: Record<string, unknown>;  // Data needed for auto-fix
+  fixData?: Record<string, unknown>; // Data needed for auto-fix
 }
 ```
 
@@ -147,41 +147,41 @@ All rules default to **error** severity to enforce strict configuration quality.
 
 ### Schema Validation Rules
 
-| Rule ID | Description | Validates |
-|---------|-------------|-----------|
-| `no-unknown-fields` | Flag fields not defined in the schema | Typos, invalid fields at any level |
-| `required-metadata` | Configuration must have name and version | `metadata.name`, `metadata.version` |
-| `valid-node-types` | nodeTypes have required fields and valid values | `shape` required, valid shape/color/animation values |
-| `valid-edge-types` | edgeTypes have required fields and valid values | `style` required, valid style/color/animation values |
-| `valid-color-format` | Color values are valid hex codes | All color fields match `#RGB` or `#RRGGBB` |
+| Rule ID              | Description                                     | Validates                                            |
+| -------------------- | ----------------------------------------------- | ---------------------------------------------------- |
+| `no-unknown-fields`  | Flag fields not defined in the schema           | Typos, invalid fields at any level                   |
+| `required-metadata`  | Configuration must have name and version        | `metadata.name`, `metadata.version`                  |
+| `valid-node-types`   | nodeTypes have required fields and valid values | `shape` required, valid shape/color/animation values |
+| `valid-edge-types`   | edgeTypes have required fields and valid values | `style` required, valid style/color/animation values |
+| `valid-color-format` | Color values are valid hex codes                | All color fields match `#RGB` or `#RRGGBB`           |
 
 ### Reference Integrity Rules
 
-| Rule ID | Description | Validates |
-|---------|-------------|-----------|
-| `connection-type-references` | allowedConnections reference existing nodeTypes/edgeTypes | `from`, `to`, `via` fields |
-| `state-transition-references` | State transitions reference defined states | `validation.stateTransitions` entries |
+| Rule ID                       | Description                                               | Validates                             |
+| ----------------------------- | --------------------------------------------------------- | ------------------------------------- |
+| `connection-type-references`  | allowedConnections reference existing nodeTypes/edgeTypes | `from`, `to`, `via` fields            |
+| `state-transition-references` | State transitions reference defined states                | `validation.stateTransitions` entries |
 
 ### Structure Rules
 
-| Rule ID | Description | Validates |
-|---------|-------------|-----------|
-| `minimum-node-sources` | Each nodeType must have at least N sources (default: 1) | `nodeTypes.*.sources` array length |
-| `orphaned-node-types` | nodeTypes not used in any connection rule | Cross-reference with `allowedConnections` |
-| `orphaned-edge-types` | edgeTypes not used in any connection rule | Cross-reference with `allowedConnections` |
-| `unreachable-states` | States with no entry transitions | State graph reachability |
-| `dead-end-states` | States with no exit transitions (except terminal states) | State graph completeness |
+| Rule ID                | Description                                              | Validates                                 |
+| ---------------------- | -------------------------------------------------------- | ----------------------------------------- |
+| `minimum-node-sources` | Each nodeType must have at least N sources (default: 1)  | `nodeTypes.*.sources` array length        |
+| `orphaned-node-types`  | nodeTypes not used in any connection rule                | Cross-reference with `allowedConnections` |
+| `orphaned-edge-types`  | edgeTypes not used in any connection rule                | Cross-reference with `allowedConnections` |
+| `unreachable-states`   | States with no entry transitions                         | State graph reachability                  |
+| `dead-end-states`      | States with no exit transitions (except terminal states) | State graph completeness                  |
 
 ### Pattern Validation Rules
 
-| Rule ID | Description | Validates |
-|---------|-------------|-----------|
+| Rule ID                 | Description                                 | Validates                       |
+| ----------------------- | ------------------------------------------- | ------------------------------- |
 | `valid-action-patterns` | Action pattern regex is syntactically valid | `nodeTypes.*.actions[].pattern` |
 
 ### Library Consistency Rules
 
-| Rule ID | Description | Validates |
-|---------|-------------|-----------|
+| Rule ID                   | Description                                                    | Validates      |
+| ------------------------- | -------------------------------------------------------------- | -------------- |
 | `library-node-type-match` | nodeTypes match library nodeComponents (when library provided) | Type alignment |
 
 ---
@@ -209,10 +209,7 @@ class GraphRulesEngine {
   /**
    * Lint a configuration
    */
-  async lint(
-    configuration: GraphConfiguration,
-    options?: LintOptions
-  ): Promise<GraphLintResult> {
+  async lint(configuration: GraphConfiguration, options?: LintOptions): Promise<GraphLintResult> {
     const context = this.buildContext(configuration, options);
     const violations: GraphRuleViolation[] = [];
 
@@ -248,8 +245,8 @@ class GraphRulesEngine {
 ```typescript
 interface LintOptions {
   // Rule filtering
-  enabledRules?: string[];            // Only run these rules
-  disabledRules?: string[];           // Skip these rules
+  enabledRules?: string[]; // Only run these rules
+  disabledRules?: string[]; // Skip these rules
 
   // Severity overrides
   severityOverrides?: Map<string, GraphRuleSeverity>;
@@ -455,9 +452,10 @@ export const minimumNodeSources: GraphRule = {
           severity: 'error',
           file: configPath,
           path: `nodeTypes.${typeId}.sources`,
-          message: sourceCount === 0
-            ? `Node type "${typeId}" has no sources defined`
-            : `Node type "${typeId}" has ${sourceCount} source(s), minimum required is ${options.minimum}`,
+          message:
+            sourceCount === 0
+              ? `Node type "${typeId}" has no sources defined`
+              : `Node type "${typeId}" has ${sourceCount} source(s), minimum required is ${options.minimum}`,
           impact: 'This node type cannot be associated with log activity from source files',
           suggestion: `Add at least ${options.minimum} source path(s) to nodeTypes.${typeId}.sources`,
           fixable: false,
@@ -481,8 +479,29 @@ import { GraphRule, GraphRuleContext, GraphRuleViolation } from '../types';
 const ALLOWED_FIELDS = {
   root: ['metadata', 'nodeTypes', 'edgeTypes', 'allowedConnections', 'validation', 'display'],
   metadata: ['name', 'version', 'description'],
-  nodeType: ['shape', 'icon', 'color', 'stroke', 'size', 'dataSchema', 'states', 'layout', 'sources', 'actions'],
-  edgeType: ['style', 'color', 'width', 'directed', 'animated', 'label', 'animation', 'dataSchema', 'activatedBy'],
+  nodeType: [
+    'shape',
+    'icon',
+    'color',
+    'stroke',
+    'size',
+    'dataSchema',
+    'states',
+    'layout',
+    'sources',
+    'actions',
+  ],
+  edgeType: [
+    'style',
+    'color',
+    'width',
+    'directed',
+    'animated',
+    'label',
+    'animation',
+    'dataSchema',
+    'activatedBy',
+  ],
   connectionRule: ['from', 'to', 'via', 'constraints'],
   connectionConstraints: ['maxInstances', 'bidirectional', 'exclusive'],
   validation: ['stateTransitions', 'constraints', 'cardinality'],
@@ -515,30 +534,57 @@ export const noUnknownFields: GraphRule = {
 
     // Check metadata fields
     if (configuration.metadata) {
-      checkFields(configuration.metadata, ALLOWED_FIELDS.metadata, 'metadata', configPath, violations);
+      checkFields(
+        configuration.metadata,
+        ALLOWED_FIELDS.metadata,
+        'metadata',
+        configPath,
+        violations
+      );
     }
 
     // Check nodeTypes
     if (configuration.nodeTypes) {
       for (const [typeId, nodeType] of Object.entries(configuration.nodeTypes)) {
-        checkFields(nodeType, ALLOWED_FIELDS.nodeType, `nodeTypes.${typeId}`, configPath, violations);
+        checkFields(
+          nodeType,
+          ALLOWED_FIELDS.nodeType,
+          `nodeTypes.${typeId}`,
+          configPath,
+          violations
+        );
 
         // Check nested fields in nodeType
         if (nodeType.dataSchema) {
           for (const [fieldName, fieldDef] of Object.entries(nodeType.dataSchema)) {
-            checkFields(fieldDef, ALLOWED_FIELDS.dataSchemaField,
-              `nodeTypes.${typeId}.dataSchema.${fieldName}`, configPath, violations);
+            checkFields(
+              fieldDef,
+              ALLOWED_FIELDS.dataSchemaField,
+              `nodeTypes.${typeId}.dataSchema.${fieldName}`,
+              configPath,
+              violations
+            );
           }
         }
         if (nodeType.states) {
           for (const [stateName, stateDef] of Object.entries(nodeType.states)) {
-            checkFields(stateDef, ALLOWED_FIELDS.stateDefinition,
-              `nodeTypes.${typeId}.states.${stateName}`, configPath, violations);
+            checkFields(
+              stateDef,
+              ALLOWED_FIELDS.stateDefinition,
+              `nodeTypes.${typeId}.states.${stateName}`,
+              configPath,
+              violations
+            );
           }
         }
         if (nodeType.layout) {
-          checkFields(nodeType.layout, ALLOWED_FIELDS.layoutHints,
-            `nodeTypes.${typeId}.layout`, configPath, violations);
+          checkFields(
+            nodeType.layout,
+            ALLOWED_FIELDS.layoutHints,
+            `nodeTypes.${typeId}.layout`,
+            configPath,
+            violations
+          );
         }
       }
     }
@@ -546,20 +592,41 @@ export const noUnknownFields: GraphRule = {
     // Check edgeTypes
     if (configuration.edgeTypes) {
       for (const [typeId, edgeType] of Object.entries(configuration.edgeTypes)) {
-        checkFields(edgeType, ALLOWED_FIELDS.edgeType, `edgeTypes.${typeId}`, configPath, violations);
+        checkFields(
+          edgeType,
+          ALLOWED_FIELDS.edgeType,
+          `edgeTypes.${typeId}`,
+          configPath,
+          violations
+        );
 
         if (edgeType.label) {
-          checkFields(edgeType.label, ALLOWED_FIELDS.edgeLabel,
-            `edgeTypes.${typeId}.label`, configPath, violations);
+          checkFields(
+            edgeType.label,
+            ALLOWED_FIELDS.edgeLabel,
+            `edgeTypes.${typeId}.label`,
+            configPath,
+            violations
+          );
         }
         if (edgeType.animation) {
-          checkFields(edgeType.animation, ALLOWED_FIELDS.edgeAnimation,
-            `edgeTypes.${typeId}.animation`, configPath, violations);
+          checkFields(
+            edgeType.animation,
+            ALLOWED_FIELDS.edgeAnimation,
+            `edgeTypes.${typeId}.animation`,
+            configPath,
+            violations
+          );
         }
         if (edgeType.dataSchema) {
           for (const [fieldName, fieldDef] of Object.entries(edgeType.dataSchema)) {
-            checkFields(fieldDef, ALLOWED_FIELDS.dataSchemaField,
-              `edgeTypes.${typeId}.dataSchema.${fieldName}`, configPath, violations);
+            checkFields(
+              fieldDef,
+              ALLOWED_FIELDS.dataSchemaField,
+              `edgeTypes.${typeId}.dataSchema.${fieldName}`,
+              configPath,
+              violations
+            );
           }
         }
       }
@@ -568,30 +635,56 @@ export const noUnknownFields: GraphRule = {
     // Check allowedConnections
     if (configuration.allowedConnections) {
       configuration.allowedConnections.forEach((rule, index) => {
-        checkFields(rule, ALLOWED_FIELDS.connectionRule,
-          `allowedConnections[${index}]`, configPath, violations);
+        checkFields(
+          rule,
+          ALLOWED_FIELDS.connectionRule,
+          `allowedConnections[${index}]`,
+          configPath,
+          violations
+        );
         if (rule.constraints) {
-          checkFields(rule.constraints, ALLOWED_FIELDS.connectionConstraints,
-            `allowedConnections[${index}].constraints`, configPath, violations);
+          checkFields(
+            rule.constraints,
+            ALLOWED_FIELDS.connectionConstraints,
+            `allowedConnections[${index}].constraints`,
+            configPath,
+            violations
+          );
         }
       });
     }
 
     // Check validation
     if (configuration.validation) {
-      checkFields(configuration.validation, ALLOWED_FIELDS.validation, 'validation', configPath, violations);
+      checkFields(
+        configuration.validation,
+        ALLOWED_FIELDS.validation,
+        'validation',
+        configPath,
+        violations
+      );
     }
 
     // Check display
     if (configuration.display) {
       checkFields(configuration.display, ALLOWED_FIELDS.display, 'display', configPath, violations);
       if (configuration.display.theme) {
-        checkFields(configuration.display.theme, ALLOWED_FIELDS.displayTheme,
-          'display.theme', configPath, violations);
+        checkFields(
+          configuration.display.theme,
+          ALLOWED_FIELDS.displayTheme,
+          'display.theme',
+          configPath,
+          violations
+        );
       }
       if (configuration.display.animations) {
-        checkFields(configuration.display.animations, ALLOWED_FIELDS.displayAnimations,
-          'display.animations', configPath, violations);
+        checkFields(
+          configuration.display.animations,
+          ALLOWED_FIELDS.displayAnimations,
+          'display.animations',
+          configPath,
+          violations
+        );
       }
     }
 
@@ -811,10 +904,7 @@ The CLI will provide a JSON Schema for editor autocompletion:
       "description": "JSON Schema reference for editor support"
     },
     "extends": {
-      "oneOf": [
-        { "type": "string" },
-        { "type": "array", "items": { "type": "string" } }
-      ],
+      "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }],
       "description": "Extend from shared configuration(s)"
     },
     "root": {
@@ -829,7 +919,11 @@ The CLI will provide a JSON Schema for editor autocompletion:
     "include": {
       "type": "array",
       "items": { "type": "string" },
-      "default": [".principal-views/**/*.yaml", ".principal-views/**/*.yml", ".principal-views/**/*.json"],
+      "default": [
+        ".principal-views/**/*.yaml",
+        ".principal-views/**/*.yml",
+        ".principal-views/**/*.json"
+      ],
       "description": "Glob patterns for files to lint"
     },
     "exclude": {
@@ -852,10 +946,7 @@ The CLI will provide a JSON Schema for editor autocompletion:
   },
   "definitions": {
     "ruleSeverity": {
-      "oneOf": [
-        { "enum": ["off", "warn", "error"] },
-        { "enum": [0, 1, 2] }
-      ]
+      "oneOf": [{ "enum": ["off", "warn", "error"] }, { "enum": [0, 1, 2] }]
     },
     "ruleConfig": {
       "type": "object",
@@ -889,12 +980,12 @@ root: true
 library: .principal-views/library.yaml
 
 include:
-  - ".principal-views/**/*.yaml"
-  - "configs/**/*.yaml"
+  - '.principal-views/**/*.yaml'
+  - 'configs/**/*.yaml'
 
 exclude:
-  - "**/*.test.yaml"
-  - "**/fixtures/**"
+  - '**/*.test.yaml'
+  - '**/fixtures/**'
 
 rules:
   # Disable a rule
@@ -951,12 +1042,12 @@ rules:
 
 ### Rule-Specific Options
 
-| Rule ID | Options | Default |
-|---------|---------|---------|
-| `minimum-node-sources` | `minimum: number`, `excludeNodeTypes: string[]` | `{ minimum: 1, excludeNodeTypes: [] }` |
-| `dead-end-states` | `terminalStates: string[]` | `{ terminalStates: ["completed", "failed", "terminated"] }` |
-| `valid-action-patterns` | `strictMode: boolean` | `{ strictMode: false }` |
-| `library-node-type-match` | `allowExtra: boolean` | `{ allowExtra: false }` |
+| Rule ID                   | Options                                         | Default                                                     |
+| ------------------------- | ----------------------------------------------- | ----------------------------------------------------------- |
+| `minimum-node-sources`    | `minimum: number`, `excludeNodeTypes: string[]` | `{ minimum: 1, excludeNodeTypes: [] }`                      |
+| `dead-end-states`         | `terminalStates: string[]`                      | `{ terminalStates: ["completed", "failed", "terminated"] }` |
+| `valid-action-patterns`   | `strictMode: boolean`                           | `{ strictMode: false }`                                     |
+| `library-node-type-match` | `allowExtra: boolean`                           | `{ allowExtra: false }`                                     |
 
 ### CLI Validation
 
@@ -1000,13 +1091,13 @@ export function loadConfig(cwd?: string): Promise<VGCConfig | null>;
 
 The existing `ConfigurationValidator` class provides runtime validation. The rules engine complements it:
 
-| Aspect | ConfigurationValidator | Rules Engine |
-|--------|------------------------|--------------|
-| Purpose | Runtime validation before EventProcessor creation | Static analysis during development |
-| Timing | Called programmatically at runtime | CLI command or IDE integration |
-| Output | Single error string | Detailed violations with locations |
-| Scope | Basic schema checks | Comprehensive quality checks |
-| Fixability | None | Some rules support auto-fix |
+| Aspect     | ConfigurationValidator                            | Rules Engine                       |
+| ---------- | ------------------------------------------------- | ---------------------------------- |
+| Purpose    | Runtime validation before EventProcessor creation | Static analysis during development |
+| Timing     | Called programmatically at runtime                | CLI command or IDE integration     |
+| Output     | Single error string                               | Detailed violations with locations |
+| Scope      | Basic schema checks                               | Comprehensive quality checks       |
+| Fixability | None                                              | Some rules support auto-fix        |
 
 **Strategy**: Keep `ConfigurationValidator` for runtime, use Rules Engine for development-time linting. Consider migrating some checks to share logic.
 
@@ -1015,12 +1106,14 @@ The existing `ConfigurationValidator` class provides runtime validation. The rul
 ## Implementation Phases
 
 ### Phase 1: Core Infrastructure
+
 - [ ] Define types in `src/rules/types.ts`
 - [ ] Implement `GraphRulesEngine` class
 - [ ] Create rule registration system
 - [ ] Add basic test infrastructure
 
 ### Phase 2: Schema Rules (5 rules)
+
 - [ ] `no-unknown-fields`
 - [ ] `required-metadata`
 - [ ] `valid-node-types` (includes shape/animation validation)
@@ -1028,6 +1121,7 @@ The existing `ConfigurationValidator` class provides runtime validation. The rul
 - [ ] `valid-color-format`
 
 ### Phase 3: Reference & Structure Rules (7 rules)
+
 - [ ] `connection-type-references`
 - [ ] `state-transition-references`
 - [ ] `minimum-node-sources`
@@ -1037,10 +1131,12 @@ The existing `ConfigurationValidator` class provides runtime validation. The rul
 - [ ] `dead-end-states`
 
 ### Phase 4: Pattern & Library Rules (2 rules)
+
 - [ ] `valid-action-patterns`
 - [ ] `library-node-type-match`
 
 ### Phase 5: CLI Integration
+
 - [ ] Add `vgc lint` command
 - [ ] Implement formatters (pretty, json)
 - [ ] Add configuration file support

@@ -163,8 +163,12 @@ async function checkConfig(configPath: string, projectRoot: string): Promise<Doc
               type: 'warning',
               configFile: relativePath,
               nodeType: nodeTypeName,
-              message: `Config may be stale: "${newestFile}" was modified ${formatTimeDiff(timeDiff)} after the config`,
-              details: `Pattern: ${pattern} (matched ${matchedFiles.length} file${matchedFiles.length > 1 ? 's' : ''})`,
+              message: `Config may be stale: "${newestFile}" was modified ${formatTimeDiff(
+                timeDiff
+              )} after the config`,
+              details: `Pattern: ${pattern} (matched ${matchedFiles.length} file${
+                matchedFiles.length > 1 ? 's' : ''
+              })`,
             });
           }
         }
@@ -197,7 +201,9 @@ export function createDoctorCommand(): Command {
 
         if (!existsSync(vgcDir)) {
           if (options.json) {
-            console.log(JSON.stringify({ error: 'No .principal-views directory found', results: [] }));
+            console.log(
+              JSON.stringify({ error: 'No .principal-views directory found', results: [] })
+            );
           } else {
             console.log(chalk.yellow('No .principal-views directory found.'));
             console.log(chalk.dim('Run "privu init" to create a configuration.'));
@@ -214,7 +220,9 @@ export function createDoctorCommand(): Command {
 
         if (configFiles.length === 0) {
           if (options.json) {
-            console.log(JSON.stringify({ error: 'No config files found in .principal-views', results: [] }));
+            console.log(
+              JSON.stringify({ error: 'No config files found in .principal-views', results: [] })
+            );
           } else {
             console.log(chalk.yellow('No configuration files found in .principal-views/'));
           }
@@ -242,25 +250,25 @@ export function createDoctorCommand(): Command {
         // Filter issues based on options
         const filterIssues = (issues: StalenessIssue[]) => {
           if (options.errorsOnly) {
-            return issues.filter(i => i.type === 'error');
+            return issues.filter((i) => i.type === 'error');
           }
           if (options.quiet) {
-            return issues.filter(i => i.type === 'error' || i.type === 'warning');
+            return issues.filter((i) => i.type === 'error' || i.type === 'warning');
           }
           return issues;
         };
 
         // Count issues
-        const allIssues = results.flatMap(r => filterIssues(r.issues));
-        const errorCount = allIssues.filter(i => i.type === 'error').length;
-        const warningCount = allIssues.filter(i => i.type === 'warning').length;
+        const allIssues = results.flatMap((r) => filterIssues(r.issues));
+        const errorCount = allIssues.filter((i) => i.type === 'error').length;
+        const warningCount = allIssues.filter((i) => i.type === 'warning').length;
 
         // Output results
         if (options.json) {
           console.log(
             JSON.stringify(
               {
-                results: results.map(r => ({
+                results: results.map((r) => ({
                   ...r,
                   issues: filterIssues(r.issues),
                 })),
@@ -284,12 +292,14 @@ export function createDoctorCommand(): Command {
             const issues = filterIssues(result.issues);
 
             if (issues.length === 0 && !options.quiet && !options.errorsOnly) {
-              console.log(chalk.green(`✓ ${result.configFile}`) + chalk.dim(` (${result.configName})`));
+              console.log(
+                chalk.green(`✓ ${result.configFile}`) + chalk.dim(` (${result.configName})`)
+              );
               continue;
             }
 
             if (issues.length > 0) {
-              const hasErrors = issues.some(i => i.type === 'error');
+              const hasErrors = issues.some((i) => i.type === 'error');
               const icon = hasErrors ? chalk.red('✗') : chalk.yellow('⚠');
               console.log(`${icon} ${result.configFile}` + chalk.dim(` (${result.configName})`));
 

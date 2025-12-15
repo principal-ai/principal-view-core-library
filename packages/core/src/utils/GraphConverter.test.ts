@@ -24,7 +24,7 @@ describe('GraphConverter', () => {
         },
       },
       edgeTypes: {
-        'connection': {
+        connection: {
           style: 'solid',
           color: '#64748b',
           width: 2,

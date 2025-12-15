@@ -40,7 +40,7 @@ export class PathMatcher {
    * @returns Array of matching patterns
    */
   public static findMatches(path: string, patterns: string[]): string[] {
-    return patterns.filter(pattern => this.matches(path, pattern));
+    return patterns.filter((pattern) => this.matches(path, pattern));
   }
 
   /**
@@ -119,7 +119,7 @@ export class PathMatcher {
           }
           if (depth === 0) {
             const alternatives = pattern.substring(i + 1, k - 1).split(',');
-            regex += '(?:' + alternatives.map(alt => this.globToRegexString(alt)).join('|') + ')';
+            regex += '(?:' + alternatives.map((alt) => this.globToRegexString(alt)).join('|') + ')';
             i = k;
           } else {
             regex += '\\{';

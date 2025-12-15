@@ -12,16 +12,16 @@ import type { PrivuConfig, RuleSeverity, RuleConfig } from './types';
 /**
  * Valid config file names in resolution order
  */
-export const CONFIG_FILE_NAMES = [
-  '.privurc.yaml',
-  '.privurc.yml',
-  '.privurc.json',
-] as const;
+export const CONFIG_FILE_NAMES = ['.privurc.yaml', '.privurc.yml', '.privurc.json'] as const;
 
 /**
  * Default include patterns
  */
-export const DEFAULT_INCLUDE_PATTERNS = ['.principal-views/**/*.yaml', '.principal-views/**/*.yml', '.principal-views/**/*.json'];
+export const DEFAULT_INCLUDE_PATTERNS = [
+  '.principal-views/**/*.yaml',
+  '.principal-views/**/*.yml',
+  '.principal-views/**/*.json',
+];
 
 /**
  * Default exclude patterns
@@ -147,10 +147,7 @@ export function validatePrivuConfig(config: unknown): ConfigValidationResult {
   if (configObj.extends !== undefined) {
     if (
       typeof configObj.extends !== 'string' &&
-      !(
-        Array.isArray(configObj.extends) &&
-        configObj.extends.every((e) => typeof e === 'string')
-      )
+      !(Array.isArray(configObj.extends) && configObj.extends.every((e) => typeof e === 'string'))
     ) {
       errors.push({
         path: 'extends',

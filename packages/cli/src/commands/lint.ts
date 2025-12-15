@@ -27,11 +27,7 @@ import {
 /**
  * Config file names in resolution order
  */
-const CONFIG_FILE_NAMES = [
-  '.privurc.yaml',
-  '.privurc.yml',
-  '.privurc.json',
-];
+const CONFIG_FILE_NAMES = ['.privurc.yaml', '.privurc.yml', '.privurc.json'];
 
 /**
  * Find and load privurc config file
@@ -261,7 +257,10 @@ export function createLintCommand(): Command {
 
   command
     .description('Lint graph configuration files')
-    .argument('[files...]', 'Files or glob patterns to lint (defaults to .principal-views/**/*.yaml)')
+    .argument(
+      '[files...]',
+      'Files or glob patterns to lint (defaults to .principal-views/**/*.yaml)'
+    )
     .option('-c, --config <path>', 'Path to config file')
     .option('--library <path>', 'Path to component library file')
     .option('-q, --quiet', 'Only output errors')
@@ -326,7 +325,11 @@ export function createLintCommand(): Command {
         } else if (privuConfig.include && privuConfig.include.length > 0) {
           patterns = privuConfig.include;
         } else {
-          patterns = ['.principal-views/**/*.yaml', '.principal-views/**/*.yml', '.principal-views/**/*.json'];
+          patterns = [
+            '.principal-views/**/*.yaml',
+            '.principal-views/**/*.yml',
+            '.principal-views/**/*.json',
+          ];
         }
 
         // Find matching files
@@ -346,9 +349,16 @@ export function createLintCommand(): Command {
 
         if (configFiles.length === 0) {
           if (options.json) {
-            console.log(JSON.stringify({ files: [], summary: { totalFiles: 0, totalErrors: 0, totalWarnings: 0, totalFixable: 0 } }));
+            console.log(
+              JSON.stringify({
+                files: [],
+                summary: { totalFiles: 0, totalErrors: 0, totalWarnings: 0, totalFixable: 0 },
+              })
+            );
           } else {
-            console.log(chalk.yellow('No configuration files found matching the specified patterns.'));
+            console.log(
+              chalk.yellow('No configuration files found matching the specified patterns.')
+            );
             console.log(chalk.dim(`Patterns searched: ${patterns.join(', ')}`));
           }
           return;
@@ -379,14 +389,16 @@ export function createLintCommand(): Command {
           if (!loaded) {
             // File couldn't be loaded - report as error
             results.set(relativePath, {
-              violations: [{
-                ruleId: 'parse-error',
-                severity: 'error',
-                file: relativePath,
-                message: `Could not parse file: ${filePath}`,
-                impact: 'File cannot be validated',
-                fixable: false,
-              }],
+              violations: [
+                {
+                  ruleId: 'parse-error',
+                  severity: 'error',
+                  file: relativePath,
+                  message: `Could not parse file: ${filePath}`,
+                  impact: 'File cannot be validated',
+                  fixable: false,
+                },
+              ],
               errorCount: 1,
               warningCount: 0,
               fixableCount: 0,

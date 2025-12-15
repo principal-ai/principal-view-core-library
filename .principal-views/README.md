@@ -11,7 +11,9 @@ The Visual Validation Framework supports **multiple graph configurations** store
 This directory includes the following example configurations:
 
 ### `simple-service.yaml`
+
 A basic 3-component example demonstrating core concepts:
+
 - API layer
 - Business logic/service layer
 - Database layer
@@ -19,7 +21,9 @@ A basic 3-component example demonstrating core concepts:
 Perfect for learning the framework or setting up a simple service architecture.
 
 ### `microservices.yaml`
+
 Complex microservices architecture featuring:
+
 - API Gateway
 - Authentication service
 - User, Order, and Payment services
@@ -29,7 +33,9 @@ Complex microservices architecture featuring:
 Ideal for distributed systems and microservices monitoring.
 
 ### `data-pipeline.yaml`
+
 ETL (Extract, Transform, Load) pipeline configuration:
+
 - Data ingestion from multiple sources
 - Validation and transformation stages
 - Data enrichment and aggregation
@@ -39,7 +45,9 @@ ETL (Extract, Transform, Load) pipeline configuration:
 Designed for data engineering and pipeline visualization.
 
 ### `test-validation.yaml`
+
 Testing and validation graph:
+
 - Test runners with state transitions
 - Mock services
 - Assertion engine
@@ -58,9 +66,9 @@ Each configuration file must include:
 
 ```yaml
 metadata:
-  name: "Your Graph Name"
-  version: "1.0.0"
-  description: "Optional description"
+  name: 'Your Graph Name'
+  version: '1.0.0'
+  description: 'Optional description'
 
 nodeTypes:
   # Define your node types here
@@ -103,6 +111,7 @@ allowedConnections:
 To create a new configuration:
 
 1. **Create a new YAML file** in this directory:
+
    ```bash
    touch .principal-views/my-new-config.yaml
    ```
@@ -129,7 +138,10 @@ To create a new configuration:
 ### Using ConfigurationLoader
 
 ```typescript
-import { ConfigurationLoader, InMemoryFileSystemAdapter } from '@principal-ai/visual-validation-core';
+import {
+  ConfigurationLoader,
+  InMemoryFileSystemAdapter,
+} from '@principal-ai/visual-validation-core';
 import { NodeFileSystemAdapter } from '@principal-ai/repository-abstraction';
 
 // Create a file system adapter (Node.js)
@@ -177,18 +189,20 @@ function MyApp() {
 
   return (
     <div>
-      <select onChange={(e) => {
-        const config = configs.find(c => c.name === e.target.value);
-        setSelectedConfig(config);
-      }}>
-        {configs.map(c => (
-          <option key={c.name} value={c.name}>{c.config.metadata.name}</option>
+      <select
+        onChange={(e) => {
+          const config = configs.find((c) => c.name === e.target.value);
+          setSelectedConfig(config);
+        }}
+      >
+        {configs.map((c) => (
+          <option key={c.name} value={c.name}>
+            {c.config.metadata.name}
+          </option>
         ))}
       </select>
 
-      {selectedConfig && (
-        <GraphRenderer config={selectedConfig.config} />
-      )}
+      {selectedConfig && <GraphRenderer config={selectedConfig.config} />}
     </div>
   );
 }
@@ -197,6 +211,7 @@ function MyApp() {
 ## Best Practices
 
 1. **Separate Concerns**: Create different configs for different aspects of your system
+
    - `architecture.yaml` - System component architecture
    - `data-flow.yaml` - Data flow between components
    - `deployment.yaml` - Deployment topology
@@ -227,6 +242,7 @@ Check the errors array in `ConfigurationLoadResult` for validation issues.
 ## Documentation
 
 For complete documentation, see:
+
 - [Configuration Reference](../docs/CONFIGURATION_REFERENCE.md)
 - [Path-Based Association Guide](../docs/PATH_BASED_ASSOCIATION.md)
 - [Implementation Milestones](../docs/IMPLEMENTATION_MILESTONES.md)

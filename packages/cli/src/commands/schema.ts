@@ -17,11 +17,21 @@ with standard canvas tools like Obsidian.
 ${chalk.bold('Required Structure:')}
 ${chalk.dim('┌─────────────────────────────────────────────────┐')}
 ${chalk.dim('│')} {                                               ${chalk.dim('│')}
-${chalk.dim('│')}   ${chalk.green('"nodes"')}: [...],    ${chalk.dim('// Required: array of nodes')}  ${chalk.dim('│')}
-${chalk.dim('│')}   ${chalk.green('"edges"')}: [...],    ${chalk.dim('// Optional: array of edges')}  ${chalk.dim('│')}
-${chalk.dim('│')}   ${chalk.green('"pv"')}: {            ${chalk.dim('// Required: PV extension')}    ${chalk.dim('│')}
-${chalk.dim('│')}     ${chalk.yellow('"name"')}: "...",   ${chalk.dim('// Required: graph name')}      ${chalk.dim('│')}
-${chalk.dim('│')}     ${chalk.yellow('"version"')}: "..." ${chalk.dim('// Required: schema version')}  ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"nodes"')}: [...],    ${chalk.dim(
+    '// Required: array of nodes'
+  )}  ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"edges"')}: [...],    ${chalk.dim(
+    '// Optional: array of edges'
+  )}  ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"pv"')}: {            ${chalk.dim(
+    '// Required: PV extension'
+  )}    ${chalk.dim('│')}
+${chalk.dim('│')}     ${chalk.yellow('"name"')}: "...",   ${chalk.dim(
+    '// Required: graph name'
+  )}      ${chalk.dim('│')}
+${chalk.dim('│')}     ${chalk.yellow('"version"')}: "..." ${chalk.dim(
+    '// Required: schema version'
+  )}  ${chalk.dim('│')}
 ${chalk.dim('│')}   }                                             ${chalk.dim('│')}
 ${chalk.dim('│')} }                                               ${chalk.dim('│')}
 ${chalk.dim('└─────────────────────────────────────────────────┘')}
@@ -53,7 +63,9 @@ ${chalk.bold('Standard Node Types:')}
               Requires: ${chalk.dim('text')} (string)
 
   ${chalk.yellow('group')}     Visual container for other nodes
-              Optional: ${chalk.dim('label')}, ${chalk.dim('background')}, ${chalk.dim('backgroundStyle')}
+              Optional: ${chalk.dim('label')}, ${chalk.dim('background')}, ${chalk.dim(
+    'backgroundStyle'
+  )}
 
   ${chalk.yellow('file')}      Reference to external file
               Requires: ${chalk.dim('file')} (path string)
@@ -125,7 +137,9 @@ ${chalk.bold('Defining Edge Types (in canvas vv):')}
       "version": "1.0.0",
       ${chalk.yellow('"edgeTypes"')}: {
         "query": {
-          ${chalk.cyan('"style"')}: "solid",       ${chalk.dim('// solid, dashed, dotted, animated')}
+          ${chalk.cyan('"style"')}: "solid",       ${chalk.dim(
+    '// solid, dashed, dotted, animated'
+  )}
           ${chalk.cyan('"color"')}: "#64748b",     ${chalk.dim('// Hex color')}
           ${chalk.cyan('"width"')}: 2,             ${chalk.dim('// Line width in pixels')}
           ${chalk.cyan('"directed"')}: true,       ${chalk.dim('// Show arrow')}
@@ -180,7 +194,9 @@ ${chalk.bold('Node-Level pv (for custom types):')}
       ${chalk.yellow('"nodeType"')}: "service",        ${chalk.dim('// Required: Type identifier')}
       ${chalk.yellow('"shape"')}: "rectangle",         ${chalk.dim('// Required: Visual shape')}
       ${chalk.cyan('"fill"')}: "#3b82f6",             ${chalk.dim('// Optional: Fill color (hex)')}
-      ${chalk.cyan('"stroke"')}: "#1d4ed8",           ${chalk.dim('// Optional: Border color (hex)')}
+      ${chalk.cyan('"stroke"')}: "#1d4ed8",           ${chalk.dim(
+    '// Optional: Border color (hex)'
+  )}
       ${chalk.cyan('"icon"')}: "Server",              ${chalk.dim('// Optional: Lucide icon name')}
       ${chalk.cyan('"sources"')}: ["src/**/*.ts"],    ${chalk.dim('// Optional: Source patterns')}
       ${chalk.cyan('"states"')}: {                    ${chalk.dim('// Optional: State definitions')}

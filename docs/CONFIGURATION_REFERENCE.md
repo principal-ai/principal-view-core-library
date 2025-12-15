@@ -34,11 +34,17 @@ your-project/
 ```json
 {
   "nodes": [
-    { "id": "node-1", "type": "text", "x": 100, "y": 100, "width": 200, "height": 100, "text": "# My Component" }
+    {
+      "id": "node-1",
+      "type": "text",
+      "x": 100,
+      "y": 100,
+      "width": 200,
+      "height": 100,
+      "text": "# My Component"
+    }
   ],
-  "edges": [
-    { "id": "edge-1", "fromNode": "node-1", "toNode": "node-2" }
-  ],
+  "edges": [{ "id": "edge-1", "fromNode": "node-1", "toNode": "node-2" }],
   "vv": {
     "version": "1.0.0",
     "name": "My System",
@@ -59,26 +65,26 @@ The `vv` (Visual Validation) field contains all framework-specific extensions. S
 
 All nodes share these base properties:
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `id` | string | ✓ | Unique identifier |
-| `type` | string | ✓ | `text`, `file`, `link`, or `group` |
-| `x` | number | ✓ | X position (pixels) |
-| `y` | number | ✓ | Y position (pixels) |
-| `width` | number | ✓ | Width (pixels) |
-| `height` | number | ✓ | Height (pixels) |
-| `color` | string \| 1-6 | | Color (hex or preset) |
+| Property | Type          | Required | Description                        |
+| -------- | ------------- | -------- | ---------------------------------- |
+| `id`     | string        | ✓        | Unique identifier                  |
+| `type`   | string        | ✓        | `text`, `file`, `link`, or `group` |
+| `x`      | number        | ✓        | X position (pixels)                |
+| `y`      | number        | ✓        | Y position (pixels)                |
+| `width`  | number        | ✓        | Width (pixels)                     |
+| `height` | number        | ✓        | Height (pixels)                    |
+| `color`  | string \| 1-6 |          | Color (hex or preset)              |
 
 #### Color Presets
 
-| Preset | Color |
-|--------|-------|
-| 1 | Red (#ef4444) |
-| 2 | Orange (#f97316) |
-| 3 | Yellow (#eab308) |
-| 4 | Green (#22c55e) |
-| 5 | Cyan (#06b6d4) |
-| 6 | Purple (#8b5cf6) |
+| Preset | Color            |
+| ------ | ---------------- |
+| 1      | Red (#ef4444)    |
+| 2      | Orange (#f97316) |
+| 3      | Yellow (#eab308) |
+| 4      | Green (#22c55e)  |
+| 5      | Cyan (#06b6d4)   |
+| 6      | Purple (#8b5cf6) |
 
 ### Text Node
 
@@ -167,17 +173,17 @@ Edges connect nodes:
 }
 ```
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `id` | string | ✓ | Unique identifier |
-| `fromNode` | string | ✓ | Source node ID |
-| `toNode` | string | ✓ | Target node ID |
-| `fromSide` | string | | `top`, `right`, `bottom`, `left` |
-| `toSide` | string | | `top`, `right`, `bottom`, `left` |
-| `fromEnd` | string | | `none` or `arrow` (default: `none`) |
-| `toEnd` | string | | `none` or `arrow` (default: `arrow`) |
-| `color` | string | | Hex color |
-| `label` | string | | Edge label |
+| Property   | Type   | Required | Description                          |
+| ---------- | ------ | -------- | ------------------------------------ |
+| `id`       | string | ✓        | Unique identifier                    |
+| `fromNode` | string | ✓        | Source node ID                       |
+| `toNode`   | string | ✓        | Target node ID                       |
+| `fromSide` | string |          | `top`, `right`, `bottom`, `left`     |
+| `toSide`   | string |          | `top`, `right`, `bottom`, `left`     |
+| `fromEnd`  | string |          | `none` or `arrow` (default: `none`)  |
+| `toEnd`    | string |          | `none` or `arrow` (default: `arrow`) |
+| `color`    | string |          | Hex color                            |
+| `label`    | string |          | Edge label                           |
 
 ---
 
@@ -201,10 +207,7 @@ Add a `vv` object to any node for rich visualization:
     "nodeType": "lock-manager",
     "shape": "hexagon",
     "icon": "lock",
-    "sources": [
-      "lib/lock-manager.ts",
-      "lib/locks/**/*.ts"
-    ],
+    "sources": ["lib/lock-manager.ts", "lib/locks/**/*.ts"],
     "states": {
       "idle": { "color": "#94a3b8", "icon": "unlock" },
       "acquired": { "color": "#22c55e", "icon": "lock" },
@@ -230,16 +233,16 @@ Add a `vv` object to any node for rich visualization:
 
 #### Node Extension Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `nodeType` | string | Semantic type identifier |
-| `shape` | string | `circle`, `rectangle`, `hexagon`, `diamond`, `custom` |
-| `icon` | string | Lucide icon name |
-| `sources` | string[] | Glob patterns for log association |
-| `states` | object | State definitions with visual properties |
-| `actions` | object[] | Regex patterns for event extraction |
-| `dataSchema` | object | Typed data field definitions |
-| `layout` | object | Layout hints (`layer`, `cluster`) |
+| Property     | Type     | Description                                           |
+| ------------ | -------- | ----------------------------------------------------- |
+| `nodeType`   | string   | Semantic type identifier                              |
+| `shape`      | string   | `circle`, `rectangle`, `hexagon`, `diamond`, `custom` |
+| `icon`       | string   | Lucide icon name                                      |
+| `sources`    | string[] | Glob patterns for log association                     |
+| `states`     | object   | State definitions with visual properties              |
+| `actions`    | object[] | Regex patterns for event extraction                   |
+| `dataSchema` | object   | Typed data field definitions                          |
+| `layout`     | object   | Layout hints (`layer`, `cluster`)                     |
 
 ### Edge Extensions (`vv`)
 
@@ -269,13 +272,13 @@ Add a `vv` object to edges for animation and activation:
 
 #### Edge Extension Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `edgeType` | string | Type identifier (references `vv.edgeTypes`) |
-| `style` | string | `solid`, `dashed`, `dotted`, `animated` |
-| `width` | number | Line width in pixels |
-| `animation` | object | Default animation config |
-| `activatedBy` | object[] | Event-triggered animations |
+| Property      | Type     | Description                                 |
+| ------------- | -------- | ------------------------------------------- |
+| `edgeType`    | string   | Type identifier (references `vv.edgeTypes`) |
+| `style`       | string   | `solid`, `dashed`, `dotted`, `animated`     |
+| `width`       | number   | Line width in pixels                        |
+| `animation`   | object   | Default animation config                    |
+| `activatedBy` | object[] | Event-triggered animations                  |
 
 ### Canvas-Level Extensions (`vv`)
 
@@ -549,7 +552,7 @@ const canvas = JSON.parse(canvasJson);
 const { nodes, edges } = CanvasConverter.canvasToReactFlow(canvas);
 
 // Use in your React Flow component
-<ReactFlow nodes={nodes} edges={edges} />
+<ReactFlow nodes={nodes} edges={edges} />;
 ```
 
 ### 4. Round-Trip Editing
@@ -560,7 +563,7 @@ Changes in either Obsidian or your React app can be saved back:
 // Save React Flow state back to canvas
 const updatedCanvas = CanvasConverter.reactFlowToCanvas(nodes, edges, {
   name: 'My Architecture',
-  version: '1.0.0'
+  version: '1.0.0',
 });
 
 writeFileSync('.principal-views/architecture.canvas', JSON.stringify(updatedCanvas, null, 2));
@@ -596,7 +599,7 @@ import { writeFileSync } from 'fs';
 // Convert React Flow state back to canvas
 const canvas = CanvasConverter.reactFlowToCanvas(nodes, edges, {
   name: 'My Architecture',
-  version: '1.0.0'
+  version: '1.0.0',
 });
 
 // Save

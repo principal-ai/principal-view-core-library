@@ -13,6 +13,7 @@ The Visual Validation Framework uses an event-driven architecture to update grap
 ## Overview
 
 The event system allows you to:
+
 - **Create, update, and delete** nodes and edges dynamically
 - **Change node states** to reflect system behavior
 - **Animate edges** to show data flow
@@ -373,71 +374,75 @@ interface EventStream {
 const stream: EventStream = {
   configuration: {
     metadata: {
-      name: "Order Processing",
-      version: "1.0.0"
+      name: 'Order Processing',
+      version: '1.0.0',
     },
-    nodeTypes: { /* ... */ },
-    edgeTypes: { /* ... */ },
-    allowedConnections: [ /* ... */ ]
+    nodeTypes: {
+      /* ... */
+    },
+    edgeTypes: {
+      /* ... */
+    },
+    allowedConnections: [
+      /* ... */
+    ],
   },
 
   initialState: {
-    nodes: [
-      { id: "warehouse-1", type: "warehouse", data: { name: "Main Warehouse" } }
-    ],
-    edges: []
+    nodes: [{ id: 'warehouse-1', type: 'warehouse', data: { name: 'Main Warehouse' } }],
+    edges: [],
   },
 
   events: [
     {
-      id: "evt-1",
-      type: "customer_registered",
+      id: 'evt-1',
+      type: 'customer_registered',
       timestamp: 1000,
-      category: "node",
-      operation: "create",
+      category: 'node',
+      operation: 'create',
       payload: {
-        operation: "create",
-        nodeId: "customer-1",
-        nodeType: "customer",
-        data: { name: "Alice" }
-      }
+        operation: 'create',
+        nodeId: 'customer-1',
+        nodeType: 'customer',
+        data: { name: 'Alice' },
+      },
     },
     {
-      id: "evt-2",
-      type: "order_created",
+      id: 'evt-2',
+      type: 'order_created',
       timestamp: 2000,
-      category: "node",
-      operation: "create",
+      category: 'node',
+      operation: 'create',
       payload: {
-        operation: "create",
-        nodeId: "order-1",
-        nodeType: "order",
-        data: { amount: 99.99 }
-      }
+        operation: 'create',
+        nodeId: 'order-1',
+        nodeType: 'order',
+        data: { amount: 99.99 },
+      },
     },
     {
-      id: "evt-3",
-      type: "order_placed",
+      id: 'evt-3',
+      type: 'order_placed',
       timestamp: 2100,
-      category: "edge",
-      operation: "create",
+      category: 'edge',
+      operation: 'create',
       payload: {
-        operation: "create",
-        edgeId: "edge-1",
-        edgeType: "places_order",
-        from: "customer-1",
-        to: "order-1"
-      }
-    }
+        operation: 'create',
+        edgeId: 'edge-1',
+        edgeType: 'places_order',
+        from: 'customer-1',
+        to: 'order-1',
+      },
+    },
   ],
 
   expectedEvents: [
     {
-      type: "order_created",
-      constraints: { nodeType: "order" },
-      timing: { minTime: 0, maxTime: 5000 }
-    }
-  ]
+      type: 'order_created',
+      constraints: { nodeType: 'order' },
+      timing: { minTime: 0, maxTime: 5000 },
+    },
+  ],
 };
 ```
 
@@ -508,7 +513,7 @@ function MyVisualization({ configuration, eventStream }) {
 
   useEffect(() => {
     // Process events
-    eventStream.events.forEach(event => {
+    eventStream.events.forEach((event) => {
       processor.processEvent(event);
     });
 
@@ -535,62 +540,62 @@ function MyVisualization({ configuration, eventStream }) {
 const events = [
   // Customer creates order
   {
-    id: "1",
-    type: "order_created",
+    id: '1',
+    type: 'order_created',
     timestamp: Date.now(),
-    category: "node",
-    operation: "create",
+    category: 'node',
+    operation: 'create',
     payload: {
-      operation: "create",
-      nodeId: "order-123",
-      nodeType: "order",
-      data: { amount: 99.99, customerId: "customer-456" }
-    }
+      operation: 'create',
+      nodeId: 'order-123',
+      nodeType: 'order',
+      data: { amount: 99.99, customerId: 'customer-456' },
+    },
   },
 
   // Order state: pending → processing
   {
-    id: "2",
-    type: "order_processing",
+    id: '2',
+    type: 'order_processing',
     timestamp: Date.now() + 1000,
-    category: "state",
-    operation: "update",
+    category: 'state',
+    operation: 'update',
     payload: {
-      nodeId: "order-123",
-      previousState: "pending",
-      newState: "processing"
-    }
+      nodeId: 'order-123',
+      previousState: 'pending',
+      newState: 'processing',
+    },
   },
 
   // Warehouse picks order
   {
-    id: "3",
-    type: "order_picked",
+    id: '3',
+    type: 'order_picked',
     timestamp: Date.now() + 5000,
-    category: "edge",
-    operation: "create",
+    category: 'edge',
+    operation: 'create',
     payload: {
-      operation: "create",
-      edgeId: "fulfillment-1",
-      edgeType: "fulfills",
-      from: "order-123",
-      to: "warehouse-1"
-    }
+      operation: 'create',
+      edgeId: 'fulfillment-1',
+      edgeType: 'fulfills',
+      from: 'order-123',
+      to: 'warehouse-1',
+    },
   },
 
   // Order state: processing → shipped
   {
-    id: "4",
-    type: "order_shipped",
+    id: '4',
+    type: 'order_shipped',
     timestamp: Date.now() + 10000,
-    category: "state",
-    operation: "update",
+    category: 'state',
+    operation: 'update',
     payload: {
-      nodeId: "order-123",
-      previousState: "processing",
-      newState: "shipped"
-    }
-  }
+      nodeId: 'order-123',
+      previousState: 'processing',
+      newState: 'shipped',
+    },
+  },
 ];
 ```
 
@@ -619,70 +624,70 @@ gantt
 const pipelineEvents = [
   // Data enters source
   {
-    id: "1",
-    type: "data_received",
+    id: '1',
+    type: 'data_received',
     timestamp: Date.now(),
-    category: "node",
-    operation: "create",
+    category: 'node',
+    operation: 'create',
     payload: {
-      operation: "create",
-      nodeId: "batch-001",
-      nodeType: "data_batch",
-      data: { records: 1000 }
-    }
+      operation: 'create',
+      nodeId: 'batch-001',
+      nodeType: 'data_batch',
+      data: { records: 1000 },
+    },
   },
 
   // Animate flow to processor
   {
-    id: "2",
-    type: "data_flow",
+    id: '2',
+    type: 'data_flow',
     timestamp: Date.now() + 500,
-    category: "edge",
-    operation: "animate",
+    category: 'edge',
+    operation: 'animate',
     payload: {
-      operation: "animate",
-      edgeId: "pipe-1",
-      edgeType: "dataflow",
-      from: "source-1",
-      to: "processor-1",
-      animation: { duration: 1000, direction: "forward" }
-    }
+      operation: 'animate',
+      edgeId: 'pipe-1',
+      edgeType: 'dataflow',
+      from: 'source-1',
+      to: 'processor-1',
+      animation: { duration: 1000, direction: 'forward' },
+    },
   },
 
   // Update processing stats
   {
-    id: "3",
-    type: "processing_progress",
+    id: '3',
+    type: 'processing_progress',
     timestamp: Date.now() + 2000,
-    category: "data",
-    operation: "update",
+    category: 'data',
+    operation: 'update',
     payload: {
-      targetId: "processor-1",
-      targetType: "node",
+      targetId: 'processor-1',
+      targetType: 'node',
       updates: {
         processed: 500,
         total: 1000,
-        progress: 0.5
-      }
-    }
+        progress: 0.5,
+      },
+    },
   },
 
   // Complete and flow to sink
   {
-    id: "4",
-    type: "data_flow",
+    id: '4',
+    type: 'data_flow',
     timestamp: Date.now() + 4000,
-    category: "edge",
-    operation: "animate",
+    category: 'edge',
+    operation: 'animate',
     payload: {
-      operation: "animate",
-      edgeId: "pipe-2",
-      edgeType: "dataflow",
-      from: "processor-1",
-      to: "sink-1",
-      animation: { duration: 1000, direction: "forward" }
-    }
-  }
+      operation: 'animate',
+      edgeId: 'pipe-2',
+      edgeType: 'dataflow',
+      from: 'processor-1',
+      to: 'sink-1',
+      animation: { duration: 1000, direction: 'forward' },
+    },
+  },
 ];
 ```
 

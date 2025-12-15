@@ -39,11 +39,7 @@ bun add @principal-ai/visual-validation-react
 These are **building block components**. You compose them to build your panel application:
 
 ```typescript
-import {
-  GraphRenderer,
-  EventLog,
-  MetricsDashboard,
-} from '@principal-ai/visual-validation-react';
+import { GraphRenderer, EventLog, MetricsDashboard } from '@principal-ai/visual-validation-react';
 import { EventProcessor } from '@principal-ai/visual-validation-core';
 import type { GraphConfiguration } from '@principal-ai/visual-validation-core';
 
@@ -98,6 +94,7 @@ bun run storybook
 **Alpha** - Core placeholder implemented. Full visualization features coming soon.
 
 ### TODO
+
 - ✅ Integrate xyflow for graph visualization
 - ✅ Implement node renderers with shapes and states
 - ✅ Implement edge renderers with styles and animations

@@ -35,7 +35,9 @@ export const stateTransitionReferences: GraphRule = {
     }
 
     // Check each state transition rule
-    for (const [nodeTypeId, transitions] of Object.entries(configuration.validation.stateTransitions)) {
+    for (const [nodeTypeId, transitions] of Object.entries(
+      configuration.validation.stateTransitions
+    )) {
       const basePath = `validation.stateTransitions.${nodeTypeId}`;
 
       // Check if nodeType exists
@@ -47,7 +49,9 @@ export const stateTransitionReferences: GraphRule = {
           path: basePath,
           message: `State transitions defined for undefined nodeType "${nodeTypeId}"`,
           impact: 'These state transitions will never apply',
-          suggestion: `Available nodeTypes: ${Object.keys(configuration.nodeTypes ?? {}).join(', ') || '(none defined)'}`,
+          suggestion: `Available nodeTypes: ${
+            Object.keys(configuration.nodeTypes ?? {}).join(', ') || '(none defined)'
+          }`,
           fixable: false,
         });
         continue;

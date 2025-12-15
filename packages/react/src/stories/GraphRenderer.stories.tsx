@@ -537,12 +537,16 @@ const EditableTemplate = () => {
             Reset
           </button>
           {hasChanges && (
-            <span style={{ fontSize: 12, color: '#f5a623', fontStyle: 'italic' }}>Unsaved changes</span>
+            <span style={{ fontSize: 12, color: '#f5a623', fontStyle: 'italic' }}>
+              Unsaved changes
+            </span>
           )}
         </div>
         {lastSavedChanges && (
           <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 'bold', color: '#666' }}>Last saved changes:</div>
+            <div style={{ fontSize: 11, fontWeight: 'bold', color: '#666' }}>
+              Last saved changes:
+            </div>
             <pre
               style={{
                 marginTop: 4,
@@ -621,7 +625,8 @@ export const ServiceArchitectureEditable: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Service architecture canvas with editing enabled. Edit nodes, create edges, and track changes.',
+        story:
+          'Service architecture canvas with editing enabled. Edit nodes, create edges, and track changes.',
       },
     },
   },

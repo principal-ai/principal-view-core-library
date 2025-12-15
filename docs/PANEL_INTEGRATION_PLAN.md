@@ -25,6 +25,7 @@ bun add @xyflow/react framer-motion
 ### 1.2 Verify Package Compatibility
 
 Check that versions align:
+
 - React 19+ (already in starter)
 - TypeScript 5+ (already in starter)
 - Lucide React (already in starter)
@@ -55,14 +56,8 @@ src/panels/
 import React, { useState, useEffect } from 'react';
 import type { PanelComponentProps } from '@principal-ade/panel-framework-core';
 import { ThemeProvider, useTheme } from '@principal-ade/industry-theme';
-import {
-  GraphRenderer,
-  ConfigurationSelector
-} from '@principal-ai/visual-validation-react';
-import {
-  ConfigurationLoader,
-  type ConfigurationFile
-} from '@principal-ai/visual-validation-core';
+import { GraphRenderer, ConfigurationSelector } from '@principal-ai/visual-validation-react';
+import { ConfigurationLoader, type ConfigurationFile } from '@principal-ai/visual-validation-core';
 import { FileText, AlertCircle, Loader } from 'lucide-react';
 
 interface GraphPanelState {
@@ -77,7 +72,7 @@ interface GraphPanelState {
 export const VisualValidationGraphPanel: React.FC<PanelComponentProps> = ({
   context,
   actions,
-  events
+  events,
 }) => {
   const { theme } = useTheme();
   const [state, setState] = useState<GraphPanelState>({
@@ -86,7 +81,7 @@ export const VisualValidationGraphPanel: React.FC<PanelComponentProps> = ({
     nodes: [],
     edges: [],
     loading: true,
-    error: null
+    error: null,
   });
 
   // Load all configurations from .principal-views/ folder
@@ -104,7 +99,7 @@ export const VisualValidationGraphPanel: React.FC<PanelComponentProps> = ({
   }, [events]);
 
   const loadConfigurations = async () => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
+    setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
       // Check if fileTree slice is available
@@ -141,7 +136,7 @@ export const VisualValidationGraphPanel: React.FC<PanelComponentProps> = ({
         nodes,
         edges,
         loading: false,
-        error: null
+        error: null,
       });
     } catch (error) {
       setState({
@@ -150,27 +145,27 @@ export const VisualValidationGraphPanel: React.FC<PanelComponentProps> = ({
         nodes: [],
         edges: [],
         loading: false,
-        error: error.message
+        error: error.message,
       });
     }
   };
 
   const handleConfigChange = (configName: string) => {
-    const config = state.configurations.find(c => c.name === configName);
+    const config = state.configurations.find((c) => c.name === configName);
     if (config) {
       const { nodes, edges } = configToGraph(config.config);
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         selectedConfig: configName,
         nodes,
-        edges
+        edges,
       }));
     }
   };
 
   const handleNodeClick = (nodeId: string) => {
     // Open the source file associated with this node
-    const node = state.nodes.find(n => n.id === nodeId);
+    const node = state.nodes.find((n) => n.id === nodeId);
     if (node?.data?.sources?.[0]) {
       actions.openFile(node.data.sources[0]);
     }
@@ -178,37 +173,37 @@ export const VisualValidationGraphPanel: React.FC<PanelComponentProps> = ({
 
   if (state.loading) {
     return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        color: theme.colors.textMuted
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          color: theme.colors.textMuted,
+        }}
+      >
         <Loader size={24} className="animate-spin" />
-        <span style={{ marginLeft: theme.space[2] }}>
-          Loading configuration...
-        </span>
+        <span style={{ marginLeft: theme.space[2] }}>Loading configuration...</span>
       </div>
     );
   }
 
   if (state.error) {
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        padding: theme.space[4],
-        color: theme.colors.error
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          padding: theme.space[4],
+          color: theme.colors.error,
+        }}
+      >
         <AlertCircle size={48} />
         <h3 style={{ marginTop: theme.space[3] }}>Configuration Error</h3>
-        <p style={{ color: theme.colors.textMuted, marginTop: theme.space[2] }}>
-          {state.error}
-        </p>
+        <p style={{ color: theme.colors.textMuted, marginTop: theme.space[2] }}>{state.error}</p>
         <button
           onClick={loadConfiguration}
           style={{
@@ -218,7 +213,7 @@ export const VisualValidationGraphPanel: React.FC<PanelComponentProps> = ({
             color: theme.colors.background,
             border: 'none',
             borderRadius: theme.radii[1],
-            cursor: 'pointer'
+            cursor: 'pointer',
           }}
         >
           Retry
@@ -250,7 +245,7 @@ function parseYamlConfig(content: string): PathBasedGraphConfiguration {
   // Would use js-yaml or similar
 }
 
-function configToGraph(config: PathBasedGraphConfiguration): { nodes: any[], edges: any[] } {
+function configToGraph(config: PathBasedGraphConfiguration): { nodes: any[]; edges: any[] } {
   // Convert PathBasedGraphConfiguration to nodes/edges
   // Use existing converter utilities or create new ones
 }
@@ -309,12 +304,7 @@ export class ConfigLoader {
     // - .vvf.yaml
     // - .vvf.yml
 
-    const configNames = [
-      'vvf.config.yaml',
-      'vvf.config.yml',
-      '.vvf.yaml',
-      '.vvf.yml'
-    ];
+    const configNames = ['vvf.config.yaml', 'vvf.config.yml', '.vvf.yaml', '.vvf.yml'];
 
     // Iterate through file tree
     for (const name of configNames) {
@@ -391,11 +381,11 @@ export class GraphConverter {
           icon: nodeType.icon,
           color: nodeType.color,
           sources: nodeType.sources || [],
-          actions: nodeType.actions || []
+          actions: nodeType.actions || [],
         },
         state: 'idle',
         createdAt: Date.now(),
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       });
     });
 
@@ -407,10 +397,10 @@ export class GraphConverter {
         from: connection.from,
         to: connection.to,
         data: {
-          label: config.edgeTypes[connection.via]?.label || connection.via
+          label: config.edgeTypes[connection.via]?.label || connection.via,
         },
         createdAt: Date.now(),
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       });
     });
 
@@ -433,7 +423,7 @@ import type { PathBasedGraphConfiguration } from '@principal-ai/visual-validatio
 export const mockSimpleConfig: PathBasedGraphConfiguration = {
   metadata: {
     name: 'Example Service',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   nodeTypes: {
     'api-handler': {
@@ -441,31 +431,31 @@ export const mockSimpleConfig: PathBasedGraphConfiguration = {
       icon: 'server',
       color: '#3b82f6',
       dataSchema: {},
-      sources: ['src/api/**/*.ts']
+      sources: ['src/api/**/*.ts'],
     },
-    'database': {
+    database: {
       shape: 'hexagon',
       icon: 'database',
       color: '#8b5cf6',
       dataSchema: {},
-      sources: ['src/db/**/*.ts']
-    }
+      sources: ['src/db/**/*.ts'],
+    },
   },
   edgeTypes: {
-    'query': {
+    query: {
       style: 'solid',
       color: '#64748b',
       width: 2,
-      directed: true
-    }
+      directed: true,
+    },
   },
   allowedConnections: [
     {
       from: 'api-handler',
       to: 'database',
-      via: 'query'
-    }
-  ]
+      via: 'query',
+    },
+  ],
 };
 
 export const mockComplexConfig: PathBasedGraphConfiguration = {
@@ -596,18 +586,22 @@ const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose }) => {
   const { theme } = useTheme();
 
   return (
-    <div style={{
-      position: 'absolute',
-      top: 0,
-      right: 0,
-      width: '300px',
-      height: '100%',
-      backgroundColor: theme.colors.background,
-      borderLeft: `1px solid ${theme.colors.border}`,
-      padding: theme.space[4],
-      overflowY: 'auto'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: theme.space[4] }}>
+    <div
+      style={{
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        width: '300px',
+        height: '100%',
+        backgroundColor: theme.colors.background,
+        borderLeft: `1px solid ${theme.colors.border}`,
+        padding: theme.space[4],
+        overflowY: 'auto',
+      }}
+    >
+      <div
+        style={{ display: 'flex', justifyContent: 'space-between', marginBottom: theme.space[4] }}
+      >
         <h3>{node.data.label}</h3>
         <button onClick={onClose}>×</button>
       </div>
@@ -615,11 +609,9 @@ const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose }) => {
       <section>
         <h4>Source Files</h4>
         <ul>
-          {node.data.sources?.map(source => (
+          {node.data.sources?.map((source) => (
             <li key={source}>
-              <button onClick={() => actions.openFile(source)}>
-                {source}
-              </button>
+              <button onClick={() => actions.openFile(source)}>{source}</button>
             </li>
           ))}
         </ul>
@@ -629,7 +621,7 @@ const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose }) => {
         <section>
           <h4>Action Patterns</h4>
           <ul>
-            {node.data.actions.map(action => (
+            {node.data.actions.map((action) => (
               <li key={action.event}>
                 <code>{action.pattern}</code> → {action.event}
               </li>
@@ -649,25 +641,32 @@ const Legend: React.FC<{ nodeTypes: Record<string, any> }> = ({ nodeTypes }) => 
   const { theme } = useTheme();
 
   return (
-    <div style={{
-      position: 'absolute',
-      bottom: theme.space[4],
-      left: theme.space[4],
-      backgroundColor: theme.colors.background,
-      border: `1px solid ${theme.colors.border}`,
-      borderRadius: theme.radii[1],
-      padding: theme.space[3]
-    }}>
+    <div
+      style={{
+        position: 'absolute',
+        bottom: theme.space[4],
+        left: theme.space[4],
+        backgroundColor: theme.colors.background,
+        border: `1px solid ${theme.colors.border}`,
+        borderRadius: theme.radii[1],
+        padding: theme.space[3],
+      }}
+    >
       <h4 style={{ marginBottom: theme.space[2] }}>Components</h4>
       {Object.entries(nodeTypes).map(([id, nodeType]) => (
-        <div key={id} style={{ display: 'flex', alignItems: 'center', marginBottom: theme.space[1] }}>
-          <div style={{
-            width: '16px',
-            height: '16px',
-            backgroundColor: nodeType.color,
-            marginRight: theme.space[2],
-            borderRadius: nodeType.shape === 'circle' ? '50%' : '2px'
-          }} />
+        <div
+          key={id}
+          style={{ display: 'flex', alignItems: 'center', marginBottom: theme.space[1] }}
+        >
+          <div
+            style={{
+              width: '16px',
+              height: '16px',
+              backgroundColor: nodeType.color,
+              marginRight: theme.space[2],
+              borderRadius: nodeType.shape === 'circle' ? '50%' : '2px',
+            }}
+          />
           <span>{id}</span>
         </div>
       ))}
@@ -737,11 +736,7 @@ bun run build
   "name": "@principal-ai/visual-validation-panel",
   "version": "0.1.0",
   "description": "Panel extension for visualizing Visual Validation Framework configurations",
-  "keywords": [
-    "panel-extension",
-    "visual-validation",
-    "graph-visualization"
-  ],
+  "keywords": ["panel-extension", "visual-validation", "graph-visualization"],
   "peerDependencies": {
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0"
@@ -770,16 +765,19 @@ npm publish --access public
 ## Implementation Timeline
 
 ### Week 1: Core Integration
+
 - [ ] Day 1-2: Setup dependencies, create basic panel structure
 - [ ] Day 3-4: Implement config loading and YAML parsing
 - [ ] Day 5: Create graph converter utility
 
 ### Week 2: UI & Polish
+
 - [ ] Day 1-2: Implement node detail panel and legend
 - [ ] Day 3-4: Create comprehensive Storybook stories
 - [ ] Day 5: Add live reload and file watching
 
 ### Week 3: Testing & Publishing
+
 - [ ] Day 1-2: Test with real configurations
 - [ ] Day 3: Bug fixes and refinements
 - [ ] Day 4: Documentation

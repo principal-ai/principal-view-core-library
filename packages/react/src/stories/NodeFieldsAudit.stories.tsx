@@ -31,10 +31,10 @@ const allFieldsCanvas: ExtendedCanvas = {
       color: '#6366f1', // color field
       pv: {
         nodeType: 'fully-populated',
-        shape: 'rectangle',        // shape field
-        icon: 'Server',            // icon field
-        fill: '#6366f1',           // pv.fill (takes priority over node.color)
-        stroke: '#4f46e5',         // pv.stroke (border color)
+        shape: 'rectangle', // shape field
+        icon: 'Server', // icon field
+        fill: '#6366f1', // pv.fill (takes priority over node.color)
+        stroke: '#4f46e5', // pv.stroke (border color)
         dataSchema: {
           name: { type: 'string', displayInLabel: true },
           description: { type: 'string', displayInLabel: true },
@@ -492,9 +492,7 @@ const FieldReferenceTemplate = () => {
                 borderRadius: 4,
               }}
             >
-              <div style={{ fontSize: 10, color: '#f97316', marginBottom: 4 }}>
-                ICON
-              </div>
+              <div style={{ fontSize: 10, color: '#f97316', marginBottom: 4 }}>ICON</div>
               <span style={{ fontSize: 24 }}>S</span>
             </div>
 
@@ -521,9 +519,7 @@ const FieldReferenceTemplate = () => {
                 borderRadius: 4,
               }}
             >
-              <div style={{ fontSize: 10, color: '#3b82f6', marginBottom: 4 }}>
-                STATE BADGE
-              </div>
+              <div style={{ fontSize: 10, color: '#3b82f6', marginBottom: 4 }}>STATE BADGE</div>
               <span
                 style={{
                   backgroundColor: '#22c55e',
@@ -573,7 +569,14 @@ const FieldReferenceTemplate = () => {
             </thead>
             <tbody>
               <tr>
-                <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb', fontWeight: 'bold', color: '#f97316' }}>
+                <td
+                  style={{
+                    padding: 8,
+                    borderBottom: '1px solid #e5e7eb',
+                    fontWeight: 'bold',
+                    color: '#f97316',
+                  }}
+                >
                   icon
                 </td>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>
@@ -584,7 +587,14 @@ const FieldReferenceTemplate = () => {
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb', fontWeight: 'bold', color: '#22c55e' }}>
+                <td
+                  style={{
+                    padding: 8,
+                    borderBottom: '1px solid #e5e7eb',
+                    fontWeight: 'bold',
+                    color: '#22c55e',
+                  }}
+                >
                   label
                 </td>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>
@@ -595,7 +605,14 @@ const FieldReferenceTemplate = () => {
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb', fontWeight: 'bold', color: '#3b82f6' }}>
+                <td
+                  style={{
+                    padding: 8,
+                    borderBottom: '1px solid #e5e7eb',
+                    fontWeight: 'bold',
+                    color: '#3b82f6',
+                  }}
+                >
                   state
                 </td>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>
@@ -606,7 +623,14 @@ const FieldReferenceTemplate = () => {
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb', fontWeight: 'bold', color: '#6366f1' }}>
+                <td
+                  style={{
+                    padding: 8,
+                    borderBottom: '1px solid #e5e7eb',
+                    fontWeight: 'bold',
+                    color: '#6366f1',
+                  }}
+                >
                   color
                 </td>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>
@@ -617,7 +641,14 @@ const FieldReferenceTemplate = () => {
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb', fontWeight: 'bold', color: '#6366f1' }}>
+                <td
+                  style={{
+                    padding: 8,
+                    borderBottom: '1px solid #e5e7eb',
+                    fontWeight: 'bold',
+                    color: '#6366f1',
+                  }}
+                >
                   stroke
                 </td>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>
@@ -628,7 +659,14 @@ const FieldReferenceTemplate = () => {
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb', fontWeight: 'bold', color: '#6366f1' }}>
+                <td
+                  style={{
+                    padding: 8,
+                    borderBottom: '1px solid #e5e7eb',
+                    fontWeight: 'bold',
+                    color: '#6366f1',
+                  }}
+                >
                   shape
                 </td>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>
@@ -639,7 +677,14 @@ const FieldReferenceTemplate = () => {
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb', fontWeight: 'bold', color: '#6366f1' }}>
+                <td
+                  style={{
+                    padding: 8,
+                    borderBottom: '1px solid #e5e7eb',
+                    fontWeight: 'bold',
+                    color: '#6366f1',
+                  }}
+                >
                   size
                 </td>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>
@@ -650,15 +695,11 @@ const FieldReferenceTemplate = () => {
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: 8, fontWeight: 'bold', color: '#ef4444' }}>
-                  hasViolations
-                </td>
+                <td style={{ padding: 8, fontWeight: 'bold', color: '#ef4444' }}>hasViolations</td>
                 <td style={{ padding: 8 }}>
                   <code>computed</code>
                 </td>
-                <td style={{ padding: 8 }}>
-                  Shows warning indicator when true
-                </td>
+                <td style={{ padding: 8 }}>Shows warning indicator when true</td>
               </tr>
             </tbody>
           </table>
@@ -977,7 +1018,14 @@ const PopupReferenceTemplate = () => {
             <tbody>
               <tr>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>1</td>
-                <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb', fontWeight: 'bold', color: '#f97316' }}>
+                <td
+                  style={{
+                    padding: 8,
+                    borderBottom: '1px solid #e5e7eb',
+                    fontWeight: 'bold',
+                    color: '#f97316',
+                  }}
+                >
                   Icon
                 </td>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>Yes (picker)</td>
@@ -987,7 +1035,14 @@ const PopupReferenceTemplate = () => {
               </tr>
               <tr>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>2</td>
-                <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb', fontWeight: 'bold', color: '#22c55e' }}>
+                <td
+                  style={{
+                    padding: 8,
+                    borderBottom: '1px solid #e5e7eb',
+                    fontWeight: 'bold',
+                    color: '#22c55e',
+                  }}
+                >
                   Type
                 </td>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>Yes (dropdown)</td>
@@ -997,7 +1052,14 @@ const PopupReferenceTemplate = () => {
               </tr>
               <tr>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>3</td>
-                <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb', fontWeight: 'bold', color: '#3b82f6' }}>
+                <td
+                  style={{
+                    padding: 8,
+                    borderBottom: '1px solid #e5e7eb',
+                    fontWeight: 'bold',
+                    color: '#3b82f6',
+                  }}
+                >
                   State
                 </td>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>No</td>
@@ -1007,7 +1069,14 @@ const PopupReferenceTemplate = () => {
               </tr>
               <tr>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>4</td>
-                <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb', fontWeight: 'bold', color: '#8b5cf6' }}>
+                <td
+                  style={{
+                    padding: 8,
+                    borderBottom: '1px solid #e5e7eb',
+                    fontWeight: 'bold',
+                    color: '#8b5cf6',
+                  }}
+                >
                   Name
                 </td>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>Yes (inline)</td>
@@ -1017,7 +1086,14 @@ const PopupReferenceTemplate = () => {
               </tr>
               <tr>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>5</td>
-                <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb', fontWeight: 'bold', color: '#06b6d4' }}>
+                <td
+                  style={{
+                    padding: 8,
+                    borderBottom: '1px solid #e5e7eb',
+                    fontWeight: 'bold',
+                    color: '#06b6d4',
+                  }}
+                >
                   Properties
                 </td>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>No</td>
@@ -1027,7 +1103,14 @@ const PopupReferenceTemplate = () => {
               </tr>
               <tr>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>6</td>
-                <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb', fontWeight: 'bold', color: '#64748b' }}>
+                <td
+                  style={{
+                    padding: 8,
+                    borderBottom: '1px solid #e5e7eb',
+                    fontWeight: 'bold',
+                    color: '#64748b',
+                  }}
+                >
                   ID
                 </td>
                 <td style={{ padding: 8, borderBottom: '1px solid #e5e7eb' }}>No</td>

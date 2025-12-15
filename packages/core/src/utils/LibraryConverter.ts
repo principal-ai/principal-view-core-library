@@ -5,7 +5,11 @@
  * Used when adding components from the library to a canvas.
  */
 
-import type { LibraryNodeComponent, LibraryEdgeComponent, ComponentLibrary } from '../types/library';
+import type {
+  LibraryNodeComponent,
+  LibraryEdgeComponent,
+  ComponentLibrary,
+} from '../types/library';
 import type {
   ExtendedCanvasTextNode,
   ExtendedCanvasEdge,
@@ -233,7 +237,11 @@ export class LibraryConverter {
    * @param toNodeType - Target node type key
    * @returns Array of allowed edge type keys
    */
-  static getAllowedEdgeTypes(library: ComponentLibrary, fromNodeType: string, toNodeType: string): string[] {
+  static getAllowedEdgeTypes(
+    library: ComponentLibrary,
+    fromNodeType: string,
+    toNodeType: string
+  ): string[] {
     if (!library.connectionRules) {
       // If no rules defined, allow any edge type
       return Object.keys(library.edgeComponents);

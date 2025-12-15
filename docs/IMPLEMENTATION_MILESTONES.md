@@ -23,12 +23,13 @@ The path-based association approach maps components to source file paths, allowi
 **Purpose**: Automatically capture log source information via stack trace analysis.
 
 **Implementation**:
+
 ```typescript
 interface LogMetadata {
   timestamp: number;
   level: 'debug' | 'info' | 'warn' | 'error';
   source?: {
-    file: string;      // Relative path: "lib/lock-manager.ts"
+    file: string; // Relative path: "lib/lock-manager.ts"
     line?: number;
     column?: number;
   };
@@ -45,7 +46,7 @@ class EnhancedLogger {
     const metadata: LogMetadata = {
       timestamp: Date.now(),
       level,
-      source: this.captureSource()
+      source: this.captureSource(),
     };
 
     this.emit({ message, metadata, args });
@@ -54,6 +55,7 @@ class EnhancedLogger {
 ```
 
 **Features**:
+
 - Drop-in wrapper for existing loggers (winston, bunyan, pino)
 - Automatic source path capture via stack trace
 - Normalized relative paths (handles both `/Users/x/project/lib/foo.ts` → `lib/foo.ts`)
@@ -64,24 +66,26 @@ class EnhancedLogger {
 **Purpose**: Define component-to-source mappings in graph configuration.
 
 **Schema Extension**:
+
 ```yaml
 components:
   lock-manager:
     type: resource
     label: Lock Manager
     sources:
-      - "lib/lock-manager.ts"
-      - "lib/branch-aware-lock-manager.ts"  # Multiple files per component
+      - 'lib/lock-manager.ts'
+      - 'lib/branch-aware-lock-manager.ts' # Multiple files per component
 
   github-api:
     type: external-service
     label: GitHub API
     sources:
-      - "lib/github-api-client.ts"
-      - "services/github/*.ts"  # Glob patterns supported
+      - 'lib/github-api-client.ts'
+      - 'services/github/*.ts' # Glob patterns supported
 ```
 
 **Validation**:
+
 - Ensure all source paths are valid (warn on missing files)
 - Detect overlapping paths (one log shouldn't match multiple components)
 - Support glob patterns for directory-level mapping
@@ -91,6 +95,7 @@ components:
 **Purpose**: Associate logs with components and generate component activity events.
 
 **Core Algorithm**:
+
 ```typescript
 class PathBasedEventProcessor {
   private componentSourceMap: Map<string, string[]>; // componentId → source paths
@@ -116,13 +121,13 @@ class PathBasedEventProcessor {
       timestamp: metadata.timestamp,
       level: metadata.level,
       message,
-      source: metadata.source
+      source: metadata.source,
     };
   }
 
   private findComponentByPath(logPath: string): string | null {
     for (const [componentId, sourcePaths] of this.componentSourceMap) {
-      if (sourcePaths.some(pattern => this.matchesPattern(logPath, pattern))) {
+      if (sourcePaths.some((pattern) => this.matchesPattern(logPath, pattern))) {
         return componentId;
       }
     }
@@ -132,10 +137,11 @@ class PathBasedEventProcessor {
 ```
 
 **Event Output**:
+
 ```typescript
 interface ComponentActivityEvent {
   type: 'component-activity';
-  componentId: string;      // "lock-manager"
+  componentId: string; // "lock-manager"
   timestamp: number;
   level: 'debug' | 'info' | 'warn' | 'error';
   message: string;
@@ -151,19 +157,21 @@ interface ComponentActivityEvent {
 **Purpose**: Render component activity events as visual pulses.
 
 **Animation Mapping**:
+
 - `debug` logs → subtle pulse (0.3 opacity, 800ms duration)
 - `info` logs → standard pulse (0.5 opacity, 1000ms duration)
 - `warn` logs → amber pulse (1.0 opacity, 1200ms duration)
 - `error` logs → red flash (1.0 opacity, 1500ms duration, shake animation)
 
 **React Integration**:
+
 ```typescript
 function GraphRenderer({ config, events }: Props) {
   const handleComponentActivity = (event: ComponentActivityEvent) => {
     const animation = {
       type: mapLogLevelToAnimation(event.level),
       duration: mapLogLevelToDuration(event.level),
-      timestamp: event.timestamp
+      timestamp: event.timestamp,
     };
 
     updateNodeAnimation(event.componentId, animation);
@@ -176,10 +184,13 @@ function GraphRenderer({ config, events }: Props) {
 **Scenario**: Integrate with `repository-traffic-controller` project.
 
 **Step 1**: Wrap existing logger
+
 ```typescript
 // lib/logger.ts (existing)
 import winston from 'winston';
-export const logger = winston.createLogger({ /* config */ });
+export const logger = winston.createLogger({
+  /* config */
+});
 
 // Add VVF integration (single import)
 import { enhanceLogger } from '@vvf/logger';
@@ -187,21 +198,23 @@ enhanceLogger(logger, { projectRoot: __dirname });
 ```
 
 **Step 2**: Define component sources in configuration
+
 ```yaml
 # vvf.config.yaml
 components:
   lock-manager:
     type: resource
     label: Lock Manager
-    sources: ["lib/lock-manager.ts"]
+    sources: ['lib/lock-manager.ts']
 
   github-api:
     type: external-service
     label: GitHub API
-    sources: ["lib/github-api-client.ts"]
+    sources: ['lib/github-api-client.ts']
 ```
 
 **Step 3**: Run visualization
+
 ```bash
 vvf watch --config vvf.config.yaml
 ```
@@ -231,13 +244,14 @@ vvf watch --config vvf.config.yaml
 **Purpose**: Define optional patterns to extract specific state changes from logs.
 
 **Configuration Extension**:
+
 ```yaml
 components:
   lock-manager:
     type: resource
     label: Lock Manager
     sources:
-      - "lib/lock-manager.ts"
+      - 'lib/lock-manager.ts'
 
     # OPTIONAL: Extract specific actions from matched logs
     actions:
@@ -245,22 +259,23 @@ components:
         event: lock_acquired
         state: acquired
         metadata:
-          lockId: "$lockId"  # Capture group extraction
+          lockId: '$lockId' # Capture group extraction
 
       - pattern: "Lock released for (?<lockId>\\S+)"
         event: lock_released
         state: idle
         metadata:
-          lockId: "$lockId"
+          lockId: '$lockId'
 
-      - pattern: "Lock acquisition failed: (?<reason>.*)"
+      - pattern: 'Lock acquisition failed: (?<reason>.*)'
         event: lock_failed
         state: error
         metadata:
-          reason: "$reason"
+          reason: '$reason'
 ```
 
 **Schema Fields**:
+
 - `pattern`: Regex to match log message (with named capture groups)
 - `event`: Event type to emit when pattern matches
 - `state`: Component state to transition to (optional)
@@ -271,6 +286,7 @@ components:
 **Purpose**: Parse matched logs to extract structured events.
 
 **Enhanced Processing**:
+
 ```typescript
 class ActionPatternProcessor {
   processLog(log: LogEntry, componentId: string, config: ComponentConfig): GraphEvent {
@@ -286,7 +302,7 @@ class ActionPatternProcessor {
             state: action.state,
             timestamp: log.metadata.timestamp,
             metadata: this.extractMetadata(match, action.metadata),
-            source: log.metadata.source
+            source: log.metadata.source,
           };
         }
       }
@@ -299,11 +315,14 @@ class ActionPatternProcessor {
       timestamp: log.metadata.timestamp,
       level: log.metadata.level,
       message: log.message,
-      source: log.metadata.source
+      source: log.metadata.source,
     };
   }
 
-  private extractMetadata(match: RegExpMatchArray, template: Record<string, string>): Record<string, any> {
+  private extractMetadata(
+    match: RegExpMatchArray,
+    template: Record<string, string>
+  ): Record<string, any> {
     const metadata: Record<string, any> = {};
     for (const [key, value] of Object.entries(template)) {
       if (value.startsWith('$') && match.groups) {
@@ -316,14 +335,15 @@ class ActionPatternProcessor {
 ```
 
 **Event Output**:
+
 ```typescript
 interface ComponentActionEvent {
   type: 'component-action';
   componentId: string;
-  action: string;           // "lock_acquired"
-  state?: string;           // "acquired"
+  action: string; // "lock_acquired"
+  state?: string; // "acquired"
   timestamp: number;
-  metadata?: Record<string, any>;  // { lockId: "branch-123" }
+  metadata?: Record<string, any>; // { lockId: "branch-123" }
   source: {
     file: string;
     line?: number;
@@ -336,6 +356,7 @@ interface ComponentActionEvent {
 **Purpose**: Trigger edge animations based on interaction patterns.
 
 **Configuration**:
+
 ```yaml
 edges:
   - from: lock-manager
@@ -361,6 +382,7 @@ connections:
 ```
 
 **Processor Logic**:
+
 ```typescript
 class EdgeActivationProcessor {
   processAction(event: ComponentActionEvent): EdgeAnimationEvent[] {
@@ -377,7 +399,7 @@ class EdgeActivationProcessor {
               animation: trigger.animation,
               direction: trigger.direction,
               duration: trigger.duration,
-              timestamp: event.timestamp
+              timestamp: event.timestamp,
             });
           }
         }
@@ -394,12 +416,13 @@ class EdgeActivationProcessor {
 **Purpose**: Update component visual state based on extracted state transitions.
 
 **Visual State Mapping**:
+
 ```typescript
 const stateVisualMap = {
   idle: { color: '#94a3b8', border: 'solid' },
   acquired: { color: '#22c55e', border: 'solid', glow: true },
   waiting: { color: '#eab308', border: 'dashed', pulse: true },
-  error: { color: '#ef4444', border: 'solid', shake: true }
+  error: { color: '#ef4444', border: 'solid', shake: true },
 };
 
 function GraphRenderer({ config, events }: Props) {
@@ -407,7 +430,7 @@ function GraphRenderer({ config, events }: Props) {
     if (event.state) {
       updateNodeState(event.componentId, {
         visual: stateVisualMap[event.state],
-        metadata: event.metadata
+        metadata: event.metadata,
       });
     }
   };
@@ -419,15 +442,16 @@ function GraphRenderer({ config, events }: Props) {
 **Scenario**: Enhanced RTC visualization with state tracking.
 
 **Configuration**:
+
 ```yaml
 components:
   lock-manager:
-    sources: ["lib/lock-manager.ts"]
+    sources: ['lib/lock-manager.ts']
     actions:
       - pattern: "Lock acquired for (?<lockId>\\S+)"
         event: lock_acquired
         state: acquired
-      - pattern: "Lock released"
+      - pattern: 'Lock released'
         event: lock_released
         state: idle
 
@@ -442,6 +466,7 @@ edges:
 ```
 
 **Result**:
+
 - Generic activity: Logs create pulses (Milestone 1)
 - Specific actions: "Lock acquired" → green glow + state transition
 - Edge activation: lock_acquired triggers flow animation on incoming edge
@@ -463,6 +488,7 @@ edges:
 ## Implementation Timeline
 
 ### Milestone 1: Core Path-Based Association
+
 **Duration**: 2-3 weeks
 **Dependencies**: None
 **Output**: Fully functional basic visualization with activity tracking
@@ -472,6 +498,7 @@ edges:
 **Week 3**: Default animations + integration testing
 
 ### Milestone 2: Action Pattern Refinement
+
 **Duration**: 1-2 weeks
 **Dependencies**: Milestone 1 complete
 **Output**: Advanced visualization with state tracking and edge activation
@@ -499,18 +526,21 @@ Users can adopt the framework incrementally:
 ### Milestone 1 Tests
 
 **Unit Tests**:
+
 - Source path extraction from stack traces
 - Glob pattern matching for source paths
 - Component-path mapping lookup
 - Event generation from logs
 
 **Integration Tests**:
+
 - Winston logger wrapper
 - Bunyan logger wrapper
 - Pino logger wrapper
 - End-to-end: log → event → visualization
 
 **Performance Tests**:
+
 - 10,000 logs/sec throughput
 - Source capture overhead <10ms
 - Memory usage <50MB for 100k events
@@ -518,18 +548,21 @@ Users can adopt the framework incrementally:
 ### Milestone 2 Tests
 
 **Unit Tests**:
+
 - Regex pattern matching
 - Capture group extraction
 - State transition logic
 - Edge activation triggers
 
 **Integration Tests**:
+
 - Pattern-based event extraction
 - State-based visual updates
 - Edge animation coordination
 - Fallback to activity events
 
 **Validation Tests**:
+
 - Invalid regex patterns rejected
 - Missing capture groups handled gracefully
 - Overlapping patterns warn user
@@ -539,12 +572,14 @@ Users can adopt the framework incrementally:
 ## Documentation Deliverables
 
 ### Milestone 1
+
 - [ ] Quick Start: Path-based integration guide
 - [ ] Configuration Reference: Source mapping schema
 - [ ] Logger Integration: Wrapper setup for winston/bunyan/pino
 - [ ] Troubleshooting: Source path issues, glob patterns
 
 ### Milestone 2
+
 - [ ] Pattern Authoring Guide: Writing effective action patterns
 - [ ] State Visualization: Customizing visual states
 - [ ] Edge Activation: Trigger patterns and animations
@@ -557,20 +592,25 @@ Users can adopt the framework incrementally:
 ### Milestone 1 Risks
 
 **Risk**: Source path extraction fails on some JavaScript runtimes
+
 - **Mitigation**: Manual source annotation fallback: `logger.log('message', { _vvfSource: 'lib/foo.ts' })`
 
 **Risk**: Performance overhead unacceptable for high-volume logging
+
 - **Mitigation**: Sampling mode (capture 1/N logs), async processing queue
 
 **Risk**: Glob patterns don't match expected files
+
 - **Mitigation**: Validation tool: `vvf validate-config --check-sources`
 
 ### Milestone 2 Risks
 
 **Risk**: Regex patterns too complex, users make mistakes
+
 - **Mitigation**: Pattern testing tool: `vvf test-pattern "Lock acquired.*" --sample-logs logs.txt`
 
 **Risk**: Pattern changes break existing configurations
+
 - **Mitigation**: Configuration versioning, migration scripts
 
 ---
@@ -578,12 +618,14 @@ Users can adopt the framework incrementally:
 ## Success Metrics
 
 ### Milestone 1
+
 - **Adoption**: 3+ projects integrated using path-based approach
 - **Performance**: <10ms overhead per log, 10k logs/sec sustained
 - **Accuracy**: 95%+ source path capture rate
 - **User Experience**: <5 minutes from install to first visualization
 
 ### Milestone 2
+
 - **Coverage**: 80%+ of critical paths have action patterns
 - **Accuracy**: 90%+ pattern match rate (vs manual review)
 - **User Experience**: <15 minutes to add first action pattern

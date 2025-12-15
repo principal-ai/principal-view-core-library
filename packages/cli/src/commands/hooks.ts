@@ -101,7 +101,9 @@ function initializeHusky(repoPath: string): void {
 
       console.log('✅ Husky installed and initialized');
     } catch (error) {
-      throw new Error(`Failed to initialize husky: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to initialize husky: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 }
@@ -301,7 +303,9 @@ export function createHooksCommand(): Command {
           console.log(chalk.bold('\nPrincipal View Hooks Status\n'));
           console.log(`Repository: ${repoPath}`);
           console.log(`Husky: ${chalk.green('installed')}`);
-          console.log(`PV Hooks: ${hasHook ? chalk.green('configured') : chalk.yellow('not configured')}`);
+          console.log(
+            `PV Hooks: ${hasHook ? chalk.green('configured') : chalk.yellow('not configured')}`
+          );
 
           if (hasHook) {
             console.log('\nUse --remove to remove or --check to verify');

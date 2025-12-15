@@ -15,13 +15,15 @@ const GraphWithInitialStates: React.FC<{
 
   useEffect(() => {
     if (initialStates) {
-      const stateEvents: GraphEvent[] = Object.entries(initialStates).map(([nodeId, newState], idx) => ({
-        id: `init-state-${idx}`,
-        type: 'state_changed',
-        timestamp: Date.now(),
-        category: 'state' as const,
-        payload: { nodeId, newState },
-      }));
+      const stateEvents: GraphEvent[] = Object.entries(initialStates).map(
+        ([nodeId, newState], idx) => ({
+          id: `init-state-${idx}`,
+          type: 'state_changed',
+          timestamp: Date.now(),
+          category: 'state' as const,
+          payload: { nodeId, newState },
+        })
+      );
       setEvents(stateEvents);
     }
   }, []);

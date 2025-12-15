@@ -9,7 +9,9 @@ This is a monorepo containing two packages:
 ### 📦 Packages
 
 #### `@principal-ai/visual-validation-core`
+
 Core logic library - **framework-agnostic**
+
 - Type definitions for graph configurations, events, and validation
 - Event processing engine
 - Validation engine with rule checking
@@ -19,7 +21,9 @@ Core logic library - **framework-agnostic**
 **Zero UI dependencies** - can be used in Node.js, tests, or any JavaScript environment.
 
 #### `@principal-ai/visual-validation-react`
+
 React UI **component library** (building blocks)
+
 - `GraphRenderer` - Graph visualization component
 - `EventLog` - Event log component
 - `MetricsDashboard` - Metrics display component
@@ -117,39 +121,41 @@ The framework uses a `.principal-views/` folder for storing multiple graph confi
 ### Quick Start: Create a Configuration
 
 1. **Create the `.principal-views/` folder**:
+
    ```bash
    mkdir .principal-views
    ```
 
 2. **Create a configuration file** (`.principal-views/my-system.yaml`):
+
    ```yaml
    metadata:
-     name: "My System"
-     version: "1.0.0"
-     description: "System architecture visualization"
+     name: 'My System'
+     version: '1.0.0'
+     description: 'System architecture visualization'
 
    nodeTypes:
      server:
        shape: hexagon
-       color: "#9C27B0"
+       color: '#9C27B0'
        dataSchema:
          name: { type: string, required: true }
        sources:
-         - "src/server/**/*.ts"
+         - 'src/server/**/*.ts'
 
      user:
        shape: circle
-       color: "#4CAF50"
+       color: '#4CAF50'
        dataSchema:
          name: { type: string, required: true }
        sources:
-         - "src/client/**/*.ts"
+         - 'src/client/**/*.ts'
 
    edgeTypes:
      connection:
        style: solid
        directed: true
-       color: "#666"
+       color: '#666'
 
    allowedConnections:
      - from: user
@@ -183,9 +189,7 @@ const config: GraphConfiguration = {
   edgeTypes: {
     connection: { style: 'solid', directed: true },
   },
-  allowedConnections: [
-    { from: 'user', to: 'server', via: 'connection' },
-  ],
+  allowedConnections: [{ from: 'user', to: 'server', via: 'connection' }],
 };
 
 // Create event processor
@@ -212,10 +216,7 @@ import {
   EventLog,
   MetricsDashboard,
 } from '@principal-ai/visual-validation-react';
-import {
-  ConfigurationLoader,
-  EventProcessor
-} from '@principal-ai/visual-validation-core';
+import { ConfigurationLoader, EventProcessor } from '@principal-ai/visual-validation-core';
 import { NodeFileSystemAdapter } from '@principal-ai/repository-abstraction';
 import { useState, useEffect } from 'react';
 
@@ -238,14 +239,14 @@ function MyPanel() {
   }, []);
 
   const handleConfigChange = (configName) => {
-    const config = configs.find(c => c.name === configName);
+    const config = configs.find((c) => c.name === configName);
     if (config) {
       setSelectedConfig(configName);
       setProcessor(new EventProcessor(config.config));
     }
   };
 
-  const config = configs.find(c => c.name === selectedConfig);
+  const config = configs.find((c) => c.name === selectedConfig);
   const state = processor?.getGraphState();
   const events = processor?.getEventHistory();
 
@@ -328,6 +329,7 @@ For full design details, see [GENERIC_GRAPH_PANEL_DESIGN.md](../control-tower-co
 **Beta** - Core logic and graph visualization complete with test coverage.
 
 ### Completed
+
 - ✅ Monorepo structure
 - ✅ Type definitions
 - ✅ EventProcessor with tests
@@ -348,6 +350,7 @@ For full design details, see [GENERIC_GRAPH_PANEL_DESIGN.md](../control-tower-co
 - ✅ **Action pattern matching & edge activation (Milestone 2)**
 
 ### TODO
+
 - 🔲 Complete event log panel with filtering and search
 - 🔲 Complete metrics dashboard with visual charts
 - 🔲 Add timeline/replay controls

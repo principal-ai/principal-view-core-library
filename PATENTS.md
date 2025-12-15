@@ -13,6 +13,7 @@ This software implements novel technology for which provisional patent applicati
 A system and method for associating runtime logs and events with architectural components based on source file paths rather than content parsing, enabling automatic component-based monitoring and visualization of distributed systems.
 
 **Technology Coverage**:
+
 - Source-path-based log-to-component association using glob pattern matching
 - Automatic extraction of caller source paths from stack traces
 - Instance ID resolution for multi-instance component differentiation
@@ -20,6 +21,7 @@ A system and method for associating runtime logs and events with architectural c
 - Configuration-driven component mapping via `.principal-views/` folder
 
 **Applicable Components**:
+
 - Path-based event processor (packages/core/src/PathBasedEventProcessor.ts)
 - Enhanced logger with automatic source capture (packages/logger/)
 - Component source mapping configuration system
@@ -37,6 +39,7 @@ A system and method for associating runtime logs and events with architectural c
 A session-based event recording and playback system for capturing test execution behavior and visually validating distributed system interactions through graph-based replay.
 
 **Technology Coverage**:
+
 - Session-based event recording with auto-creation per test case
 - WebSocket protocol for streaming log ingestion during test execution
 - Multi-mode recording (manual, auto-test, continuous)
@@ -45,6 +48,7 @@ A session-based event recording and playback system for capturing test execution
 - Configuration-driven graph validation rules engine
 
 **Applicable Components**:
+
 - Event recording system (docs/EVENT_RECORDING_SYSTEM.md implementation)
 - Session manager for organizing test-based event streams
 - WebSocket server for real-time log ingestion
@@ -60,6 +64,7 @@ A session-based event recording and playback system for capturing test execution
 **Expected Filing**: Q1 2025
 
 **Technology Coverage**:
+
 - Pluggable rules engine for validating graph configuration quality
 - Schema validation, reference integrity, and structural analysis
 - Auto-fix capabilities for certain rule violations
@@ -67,6 +72,7 @@ A session-based event recording and playback system for capturing test execution
 - Multi-configuration support via `.principal-views/` folder system
 
 **Applicable Components**:
+
 - GraphRulesEngine and rule implementations
 - Configuration loader with FileSystemAdapter pattern
 - Configuration selector for multi-view switching

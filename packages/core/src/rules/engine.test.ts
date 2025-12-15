@@ -122,9 +122,7 @@ describe('GraphRulesEngine', () => {
           style: 'solid',
         },
       },
-      allowedConnections: [
-        { from: 'service', to: 'service', via: 'calls' },
-      ],
+      allowedConnections: [{ from: 'service', to: 'service', via: 'calls' }],
     };
 
     it('should return no violations for valid config', async () => {
@@ -258,9 +256,7 @@ describe('GraphRulesEngine', () => {
 
       const result = await engine.lint(invalidConfig);
       expect(result.errorCount).toBeGreaterThan(0);
-      expect(result.violations.length).toBe(
-        result.errorCount + result.warningCount
-      );
+      expect(result.violations.length).toBe(result.errorCount + result.warningCount);
     });
 
     it('should handle rule execution errors gracefully', async () => {

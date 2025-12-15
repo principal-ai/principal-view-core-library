@@ -72,7 +72,9 @@ export class LibraryLoader {
       const content = this.fsAdapter.readFile(filePath);
       const isJson = filePath.endsWith('.json');
 
-      const library = isJson ? this.parseJson(content, filePath) : this.parseYaml(content, filePath);
+      const library = isJson
+        ? this.parseJson(content, filePath)
+        : this.parseYaml(content, filePath);
 
       const validationError = this.validate(library, filePath);
       if (validationError) {
@@ -111,7 +113,9 @@ export class LibraryLoader {
       return false;
     }
 
-    return DEFAULT_LIBRARY_FILES.some((fileName) => this.fsAdapter.exists(this.fsAdapter.join(configPath, fileName)));
+    return DEFAULT_LIBRARY_FILES.some((fileName) =>
+      this.fsAdapter.exists(this.fsAdapter.join(configPath, fileName))
+    );
   }
 
   /**

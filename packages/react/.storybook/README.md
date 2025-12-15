@@ -5,11 +5,13 @@ This directory contains the Storybook configuration for the Visual Validation Re
 ## Running Storybook
 
 From the monorepo root:
+
 ```bash
 bun run storybook
 ```
 
 Or from the react package:
+
 ```bash
 cd packages/react
 bun run storybook
@@ -20,6 +22,7 @@ Storybook will start on http://localhost:6006
 ## Building Storybook
 
 To build a static version:
+
 ```bash
 bun run build-storybook
 ```
@@ -29,6 +32,7 @@ bun run build-storybook
 Stories are located in `src/stories/`. Each component should have a corresponding `.stories.tsx` file.
 
 Example story structure:
+
 ```tsx
 import type { Meta, StoryObj } from '@storybook/react';
 import { YourComponent } from '../components/YourComponent';

@@ -7,7 +7,7 @@ describe('PathBasedEventProcessor', () => {
   const sampleConfig: PathBasedGraphConfiguration = {
     metadata: {
       name: 'Test System',
-      version: '1.0.0'
+      version: '1.0.0',
     },
     nodeTypes: {
       'lock-manager': {
@@ -15,25 +15,25 @@ describe('PathBasedEventProcessor', () => {
         icon: 'lock',
         color: '#3b82f6',
         dataSchema: {},
-        sources: ['lib/lock-manager.ts', 'lib/branch-aware-lock-manager.ts']
+        sources: ['lib/lock-manager.ts', 'lib/branch-aware-lock-manager.ts'],
       },
       'github-api': {
         shape: 'hexagon',
         icon: 'github',
         color: '#22c55e',
         dataSchema: {},
-        sources: ['lib/github-api-client.ts', 'services/github/*.ts']
+        sources: ['lib/github-api-client.ts', 'services/github/*.ts'],
       },
       'request-handler': {
         shape: 'rectangle',
         icon: 'server',
         color: '#f59e0b',
         dataSchema: {},
-        sources: ['app/**/*.ts']
-      }
+        sources: ['app/**/*.ts'],
+      },
     },
     edgeTypes: {},
-    allowedConnections: []
+    allowedConnections: [],
   };
 
   describe('Milestone 1: Basic path-based association', () => {
@@ -47,9 +47,9 @@ describe('PathBasedEventProcessor', () => {
           level: 'info',
           source: {
             file: 'lib/lock-manager.ts',
-            line: 42
-          }
-        }
+            line: 42,
+          },
+        },
       };
 
       const events = processor.processLog(log);
@@ -72,9 +72,9 @@ describe('PathBasedEventProcessor', () => {
           level: 'debug',
           source: {
             file: 'services/github/client.ts',
-            line: 10
-          }
-        }
+            line: 10,
+          },
+        },
       };
 
       const events = processor.processLog(log);
@@ -94,9 +94,9 @@ describe('PathBasedEventProcessor', () => {
           level: 'info',
           source: {
             file: 'app/handlers/webhook.ts',
-            line: 5
-          }
-        }
+            line: 5,
+          },
+        },
       };
 
       const events = processor.processLog(log);
@@ -113,8 +113,8 @@ describe('PathBasedEventProcessor', () => {
         message: 'No source info',
         metadata: {
           timestamp: Date.now(),
-          level: 'info'
-        }
+          level: 'info',
+        },
       };
 
       const events = processor.processLog(log);
@@ -131,9 +131,9 @@ describe('PathBasedEventProcessor', () => {
           level: 'info',
           source: {
             file: 'test/foo.ts',
-            line: 1
-          }
-        }
+            line: 1,
+          },
+        },
       };
 
       const events = processor.processLog(log);
@@ -153,9 +153,9 @@ describe('PathBasedEventProcessor', () => {
             level,
             source: {
               file: 'lib/lock-manager.ts',
-              line: 1
-            }
-          }
+              line: 1,
+            },
+          },
         };
 
         const events = processor.processLog(log);
@@ -174,25 +174,25 @@ describe('PathBasedEventProcessor', () => {
           metadata: {
             timestamp: Date.now(),
             level: 'info',
-            source: { file: 'lib/lock-manager.ts' }
-          }
+            source: { file: 'lib/lock-manager.ts' },
+          },
         },
         {
           message: 'Log 2',
           metadata: {
             timestamp: Date.now(),
             level: 'info',
-            source: { file: 'lib/github-api-client.ts' }
-          }
+            source: { file: 'lib/github-api-client.ts' },
+          },
         },
         {
           message: 'Log 3',
           metadata: {
             timestamp: Date.now(),
             level: 'warn',
-            source: { file: 'app/main.ts' }
-          }
-        }
+            source: { file: 'app/main.ts' },
+          },
+        },
       ];
 
       const events = processor.processLogs(logs);
@@ -207,7 +207,7 @@ describe('PathBasedEventProcessor', () => {
     const configWithActions: PathBasedGraphConfiguration = {
       ...sampleConfig,
       pathBasedConfig: {
-        enableActionPatterns: true
+        enableActionPatterns: true,
       },
       nodeTypes: {
         ...sampleConfig.nodeTypes,
@@ -219,17 +219,17 @@ describe('PathBasedEventProcessor', () => {
               event: 'lock_acquired',
               state: 'acquired',
               metadata: {
-                lockId: '$lockId'
-              }
+                lockId: '$lockId',
+              },
             },
             {
               pattern: 'Lock released',
               event: 'lock_released',
-              state: 'idle'
-            }
-          ]
-        }
-      }
+              state: 'idle',
+            },
+          ],
+        },
+      },
     };
 
     it('should match action pattern and extract metadata', () => {
@@ -242,9 +242,9 @@ describe('PathBasedEventProcessor', () => {
           level: 'info',
           source: {
             file: 'lib/lock-manager.ts',
-            line: 42
-          }
-        }
+            line: 42,
+          },
+        },
       };
 
       const events = processor.processLog(log);
@@ -268,9 +268,9 @@ describe('PathBasedEventProcessor', () => {
           level: 'info',
           source: {
             file: 'lib/lock-manager.ts',
-            line: 42
-          }
-        }
+            line: 42,
+          },
+        },
       };
 
       const events = processor.processLog(log);
@@ -289,9 +289,9 @@ describe('PathBasedEventProcessor', () => {
           level: 'info',
           source: {
             file: 'lib/lock-manager.ts',
-            line: 50
-          }
-        }
+            line: 50,
+          },
+        },
       };
 
       const events = processor.processLog(log);
@@ -308,7 +308,7 @@ describe('PathBasedEventProcessor', () => {
     const configWithEdges: PathBasedGraphConfiguration = {
       ...sampleConfig,
       pathBasedConfig: {
-        enableActionPatterns: true
+        enableActionPatterns: true,
       },
       nodeTypes: {
         ...sampleConfig.nodeTypes,
@@ -318,10 +318,10 @@ describe('PathBasedEventProcessor', () => {
             {
               pattern: 'Lock acquired',
               event: 'lock_acquired',
-              state: 'acquired'
-            }
-          ]
-        }
+              state: 'acquired',
+            },
+          ],
+        },
       },
       edgeTypes: {
         'lock-request': {
@@ -331,11 +331,11 @@ describe('PathBasedEventProcessor', () => {
               action: 'lock_acquired',
               animation: 'flow',
               direction: 'forward',
-              duration: 2000
-            }
-          ]
-        }
-      }
+              duration: 2000,
+            },
+          ],
+        },
+      },
     };
 
     it('should trigger edge animation when action matches', () => {
@@ -348,9 +348,9 @@ describe('PathBasedEventProcessor', () => {
           level: 'info',
           source: {
             file: 'lib/lock-manager.ts',
-            line: 42
-          }
-        }
+            line: 42,
+          },
+        },
       };
 
       const events = processor.processLog(log);
@@ -358,10 +358,10 @@ describe('PathBasedEventProcessor', () => {
       // Should have both component action and edge animation
       expect(events.length).toBeGreaterThanOrEqual(1);
 
-      const actionEvent = events.find(e => e.type === 'component-action');
+      const actionEvent = events.find((e) => e.type === 'component-action');
       expect(actionEvent).toBeDefined();
 
-      const edgeEvent = events.find(e => e.type === 'edge-animation') as any;
+      const edgeEvent = events.find((e) => e.type === 'edge-animation') as any;
       expect(edgeEvent).toBeDefined();
       expect(edgeEvent?.edgeId).toBe('lock-request');
       expect(edgeEvent?.animation).toBe('flow');
@@ -377,14 +377,14 @@ describe('PathBasedEventProcessor', () => {
           'comp-a': {
             shape: 'rectangle',
             dataSchema: {},
-            sources: ['lib/*.ts']
+            sources: ['lib/*.ts'],
           },
           'comp-b': {
             shape: 'circle',
             dataSchema: {},
-            sources: ['lib/*.ts'] // Same pattern!
-          }
-        }
+            sources: ['lib/*.ts'], // Same pattern!
+          },
+        },
       };
 
       const processor = new PathBasedEventProcessor(configWithOverlap);
@@ -403,19 +403,19 @@ describe('PathBasedEventProcessor', () => {
             ...sampleConfig.nodeTypes['lock-manager'],
             actions: [
               {
-                pattern: '[invalid(regex',  // Invalid regex
-                event: 'test'
-              }
-            ]
-          }
-        }
+                pattern: '[invalid(regex', // Invalid regex
+                event: 'test',
+              },
+            ],
+          },
+        },
       };
 
       const processor = new PathBasedEventProcessor(configWithBadRegex);
       const issues = processor.validate();
 
       expect(issues.length).toBeGreaterThan(0);
-      expect(issues.some(i => i.type === 'error')).toBe(true);
+      expect(issues.some((i) => i.type === 'error')).toBe(true);
     });
   });
 
@@ -441,10 +441,10 @@ describe('PathBasedEventProcessor', () => {
           level: 'info',
           source: {
             file: 'lib/lock-manager.ts',
-            line: 42
+            line: 42,
           },
-          instanceId: 'client-1'
-        }
+          instanceId: 'client-1',
+        },
       };
 
       const events = processor.processLog(log);
@@ -466,10 +466,10 @@ describe('PathBasedEventProcessor', () => {
           level: 'info',
           source: {
             file: 'lib/lock-manager.ts',
-            line: 42
-          }
+            line: 42,
+          },
           // No instanceId
-        }
+        },
       };
 
       const events = processor.processLog(log);
@@ -483,7 +483,7 @@ describe('PathBasedEventProcessor', () => {
       const configWithActions: PathBasedGraphConfiguration = {
         ...sampleConfig,
         pathBasedConfig: {
-          enableActionPatterns: true
+          enableActionPatterns: true,
         },
         nodeTypes: {
           ...sampleConfig.nodeTypes,
@@ -493,11 +493,11 @@ describe('PathBasedEventProcessor', () => {
               {
                 pattern: 'Lock acquired',
                 event: 'lock_acquired',
-                state: 'acquired'
-              }
-            ]
-          }
-        }
+                state: 'acquired',
+              },
+            ],
+          },
+        },
       };
 
       const processor = new PathBasedEventProcessor(configWithActions);
@@ -509,10 +509,10 @@ describe('PathBasedEventProcessor', () => {
           level: 'info',
           source: {
             file: 'lib/lock-manager.ts',
-            line: 42
+            line: 42,
           },
-          instanceId: 'lock-manager-primary'
-        }
+          instanceId: 'lock-manager-primary',
+        },
       };
 
       const events = processor.processLog(log);
@@ -534,8 +534,8 @@ describe('PathBasedEventProcessor', () => {
             timestamp: Date.now(),
             level: 'info',
             source: { file: 'lib/lock-manager.ts' },
-            instanceId: 'client-1'
-          }
+            instanceId: 'client-1',
+          },
         },
         {
           message: 'Log from client 2',
@@ -543,17 +543,17 @@ describe('PathBasedEventProcessor', () => {
             timestamp: Date.now(),
             level: 'info',
             source: { file: 'lib/lock-manager.ts' },
-            instanceId: 'client-2'
-          }
+            instanceId: 'client-2',
+          },
         },
         {
           message: 'Log without instance',
           metadata: {
             timestamp: Date.now(),
             level: 'info',
-            source: { file: 'lib/lock-manager.ts' }
-          }
-        }
+            source: { file: 'lib/lock-manager.ts' },
+          },
+        },
       ];
 
       const events = processor.processLogs(logs);

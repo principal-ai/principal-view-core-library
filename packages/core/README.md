@@ -58,9 +58,7 @@ const config: GraphConfiguration = {
       directed: true,
     },
   },
-  allowedConnections: [
-    { from: 'user', to: 'server', via: 'connection' },
-  ],
+  allowedConnections: [{ from: 'user', to: 'server', via: 'connection' }],
   validation: {
     stateTransitions: {
       user: [

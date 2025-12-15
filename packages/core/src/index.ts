@@ -13,7 +13,10 @@ export type { ProcessingResult } from './EventProcessor';
 export { ValidationEngine } from './ValidationEngine';
 
 export { ConfigurationValidator } from './ConfigurationValidator';
-export type { ConfigurationValidationError, ConfigurationValidationResult } from './ConfigurationValidator';
+export type {
+  ConfigurationValidationError,
+  ConfigurationValidationResult,
+} from './ConfigurationValidator';
 
 // Export helpers
 export { GraphInstrumentationHelper } from './helpers/GraphInstrumentationHelper';

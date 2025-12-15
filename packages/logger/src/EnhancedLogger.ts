@@ -5,7 +5,7 @@ import {
   LogMetadata,
   EnhancedLoggerOptions,
   LoggerEvent,
-  LogTransport
+  LogTransport,
 } from './types';
 
 /**
@@ -22,7 +22,7 @@ export class EnhancedLogger {
       projectRoot: options.projectRoot || process.cwd(),
       captureSource: options.captureSource ?? true,
       level: options.level || 'info',
-      samplingRate: options.samplingRate || 1 // Default: capture all logs
+      samplingRate: options.samplingRate || 1, // Default: capture all logs
     };
 
     this.sourceCapture = new SourceCapture(this.options.projectRoot);
@@ -39,7 +39,7 @@ export class EnhancedLogger {
    * Remove a transport
    */
   public removeTransport(transport: LogTransport): void {
-    this.transports = this.transports.filter(t => t !== transport);
+    this.transports = this.transports.filter((t) => t !== transport);
   }
 
   /**
@@ -85,15 +85,13 @@ export class EnhancedLogger {
     }
 
     // Capture source location (skip 2 frames: Error + this log method)
-    const source = this.options.captureSource
-      ? this.sourceCapture.capture(2)
-      : undefined;
+    const source = this.options.captureSource ? this.sourceCapture.capture(2) : undefined;
 
     // Extract metadata from args if present
     const metadata: LogMetadata = {
       timestamp: Date.now(),
       level,
-      source
+      source,
     };
 
     // If last arg is an object with VVF metadata fields, extract them
@@ -106,7 +104,7 @@ export class EnhancedLogger {
         metadata.source = {
           file: lastArg._vvfSource,
           line: lastArg._vvfLine,
-          column: lastArg._vvfColumn
+          column: lastArg._vvfColumn,
         };
         hasVvfMetadata = true;
       }
@@ -126,7 +124,7 @@ export class EnhancedLogger {
     const entry: LogEntry = {
       message,
       metadata,
-      args
+      args,
     };
 
     // Emit to all transports

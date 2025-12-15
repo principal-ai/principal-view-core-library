@@ -12,7 +12,13 @@
  * the type definition gets embedded into the node's `pv` field.
  */
 
-import type { PVNodeShape, PVEdgeStyle, PVAnimationType, PVActionPattern, PVNodeState } from './canvas';
+import type {
+  PVNodeShape,
+  PVEdgeStyle,
+  PVAnimationType,
+  PVActionPattern,
+  PVNodeState,
+} from './canvas';
 
 // ============================================================================
 // Library Component Types

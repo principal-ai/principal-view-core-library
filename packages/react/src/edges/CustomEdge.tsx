@@ -36,7 +36,7 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
     data: edgeData,
     animationType,
     animationDuration = 1000,
-    animationDirection = 'forward'
+    animationDirection = 'forward',
   } = edgeProps || ({} as CustomEdgeData);
 
   const [particlePosition, setParticlePosition] = useState(0);
@@ -64,7 +64,7 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
 
   // Color priority: violations > edge data color > type definition color > default
   const edgeColor = edgeData?.color as string | undefined;
-  const color = hasViolations ? '#D0021B' : (edgeColor || typeDefinition.color || '#888');
+  const color = hasViolations ? '#D0021B' : edgeColor || typeDefinition.color || '#888';
   const width = typeDefinition.width || 2;
 
   // Get Bezier path
@@ -127,7 +127,8 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
   const getParticleTransform = () => {
     if (!pathRef.current) {
       // Fallback to linear interpolation if path ref not available yet
-      const progress = animationDirection === 'backward' ? 1 - particlePosition / 100 : particlePosition / 100;
+      const progress =
+        animationDirection === 'backward' ? 1 - particlePosition / 100 : particlePosition / 100;
       const x = sourceX + (targetX - sourceX) * progress;
       const y = sourceY + (targetY - sourceY) * progress;
       return { x, y };
@@ -135,7 +136,8 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
 
     // Use actual path to get point along the curve
     const pathLength = pathRef.current.getTotalLength();
-    const progress = animationDirection === 'backward' ? 1 - particlePosition / 100 : particlePosition / 100;
+    const progress =
+      animationDirection === 'backward' ? 1 - particlePosition / 100 : particlePosition / 100;
     const distance = pathLength * progress;
     const point = pathRef.current.getPointAtLength(distance);
 

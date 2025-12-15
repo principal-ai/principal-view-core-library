@@ -147,12 +147,17 @@ export const validEdgeTypes: GraphRule = {
             path: `${basePath}.label`,
             message: `Edge type "${typeId}" label must be an object`,
             impact: 'Edge label configuration is invalid',
-            suggestion: 'Provide label as { field?: string, position?: "start" | "middle" | "end" }',
+            suggestion:
+              'Provide label as { field?: string, position?: "start" | "middle" | "end" }',
             fixable: false,
           });
         } else {
           if (edgeType.label.position !== undefined) {
-            if (!VALID_LABEL_POSITIONS.includes(edgeType.label.position as (typeof VALID_LABEL_POSITIONS)[number])) {
+            if (
+              !VALID_LABEL_POSITIONS.includes(
+                edgeType.label.position as (typeof VALID_LABEL_POSITIONS)[number]
+              )
+            ) {
               violations.push({
                 ruleId: 'valid-edge-types',
                 severity: 'error',
@@ -178,7 +183,8 @@ export const validEdgeTypes: GraphRule = {
             path: `${basePath}.animation`,
             message: `Edge type "${typeId}" animation must be an object`,
             impact: 'Edge animation configuration is invalid',
-            suggestion: 'Provide animation as { type: "flow" | "pulse" | "particle" | "glow", duration?: number }',
+            suggestion:
+              'Provide animation as { type: "flow" | "pulse" | "particle" | "glow", duration?: number }',
             fixable: false,
           });
         } else {
@@ -194,7 +200,11 @@ export const validEdgeTypes: GraphRule = {
               suggestion: `Add a type field. Valid values: ${VALID_ANIMATION_TYPES.join(', ')}`,
               fixable: false,
             });
-          } else if (!VALID_ANIMATION_TYPES.includes(edgeType.animation.type as (typeof VALID_ANIMATION_TYPES)[number])) {
+          } else if (
+            !VALID_ANIMATION_TYPES.includes(
+              edgeType.animation.type as (typeof VALID_ANIMATION_TYPES)[number]
+            )
+          ) {
             violations.push({
               ruleId: 'valid-edge-types',
               severity: 'error',
@@ -208,7 +218,10 @@ export const validEdgeTypes: GraphRule = {
           }
 
           // Check animation duration
-          if (edgeType.animation.duration !== undefined && typeof edgeType.animation.duration !== 'number') {
+          if (
+            edgeType.animation.duration !== undefined &&
+            typeof edgeType.animation.duration !== 'number'
+          ) {
             violations.push({
               ruleId: 'valid-edge-types',
               severity: 'error',
@@ -237,7 +250,9 @@ export const validEdgeTypes: GraphRule = {
               suggestion: `Add a type field. Valid values: ${VALID_DATA_TYPES.join(', ')}`,
               fixable: false,
             });
-          } else if (!VALID_DATA_TYPES.includes(fieldDef.type as (typeof VALID_DATA_TYPES)[number])) {
+          } else if (
+            !VALID_DATA_TYPES.includes(fieldDef.type as (typeof VALID_DATA_TYPES)[number])
+          ) {
             violations.push({
               ruleId: 'valid-edge-types',
               severity: 'error',

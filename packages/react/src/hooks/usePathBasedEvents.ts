@@ -10,14 +10,14 @@ import type {
   ComponentActivityEvent,
   ComponentActionEvent,
   EdgeAnimationEvent,
-  PathBasedEvent
+  PathBasedEvent,
 } from '@principal-ai/principal-view-core';
 import {
   logLevelToNodeAnimation,
   actionToNodeAnimation,
   actionToEdgeAnimation,
   type NodeAnimation,
-  type EdgeAnimation
+  type EdgeAnimation,
 } from '../utils/animationMapping';
 
 /**
@@ -52,53 +52,62 @@ export function usePathBasedEvents({
   events,
   callbacks,
   onEventProcessed,
-  minLogLevel = 'info'
+  minLogLevel = 'info',
 }: UsePathBasedEventsOptions): void {
   const { onNodeAnimation, onEdgeAnimation } = callbacks;
 
   // Process component activity events (Milestone 1)
-  const processActivityEvent = useCallback((event: ComponentActivityEvent) => {
-    // Map log level to animation
-    const animation = logLevelToNodeAnimation(event.level);
+  const processActivityEvent = useCallback(
+    (event: ComponentActivityEvent) => {
+      // Map log level to animation
+      const animation = logLevelToNodeAnimation(event.level);
 
-    // Trigger node animation
-    onNodeAnimation(event.componentId, {
-      ...animation,
-      timestamp: event.timestamp
-    });
+      // Trigger node animation
+      onNodeAnimation(event.componentId, {
+        ...animation,
+        timestamp: event.timestamp,
+      });
 
-    onEventProcessed?.(event);
-  }, [onNodeAnimation, onEventProcessed]);
+      onEventProcessed?.(event);
+    },
+    [onNodeAnimation, onEventProcessed]
+  );
 
   // Process component action events (Milestone 2)
-  const processActionEvent = useCallback((event: ComponentActionEvent) => {
-    // Map action/state to animation
-    const animation = actionToNodeAnimation(event.action, event.state);
+  const processActionEvent = useCallback(
+    (event: ComponentActionEvent) => {
+      // Map action/state to animation
+      const animation = actionToNodeAnimation(event.action, event.state);
 
-    // Trigger node animation
-    onNodeAnimation(event.componentId, {
-      ...animation,
-      timestamp: event.timestamp
-    });
+      // Trigger node animation
+      onNodeAnimation(event.componentId, {
+        ...animation,
+        timestamp: event.timestamp,
+      });
 
-    onEventProcessed?.(event);
-  }, [onNodeAnimation, onEventProcessed]);
+      onEventProcessed?.(event);
+    },
+    [onNodeAnimation, onEventProcessed]
+  );
 
   // Process edge animation events (Milestone 2)
-  const processEdgeAnimationEvent = useCallback((event: EdgeAnimationEvent) => {
-    const animation = actionToEdgeAnimation(event.triggeredBy?.action || 'unknown', {
-      type: event.animation,
-      duration: event.duration,
-      direction: event.direction
-    });
+  const processEdgeAnimationEvent = useCallback(
+    (event: EdgeAnimationEvent) => {
+      const animation = actionToEdgeAnimation(event.triggeredBy?.action || 'unknown', {
+        type: event.animation,
+        duration: event.duration,
+        direction: event.direction,
+      });
 
-    onEdgeAnimation(event.edgeId, {
-      ...animation,
-      timestamp: event.timestamp
-    });
+      onEdgeAnimation(event.edgeId, {
+        ...animation,
+        timestamp: event.timestamp,
+      });
 
-    onEventProcessed?.(event);
-  }, [onEdgeAnimation, onEventProcessed]);
+      onEventProcessed?.(event);
+    },
+    [onEdgeAnimation, onEventProcessed]
+  );
 
   // Process events when they change
   useEffect(() => {
@@ -149,7 +158,7 @@ export function processBatchEvents(
           const animation = logLevelToNodeAnimation(event.level);
           callbacks.onNodeAnimation(event.componentId, {
             ...animation,
-            timestamp: event.timestamp
+            timestamp: event.timestamp,
           });
         }
         break;
@@ -159,7 +168,7 @@ export function processBatchEvents(
           const animation = actionToNodeAnimation(event.action, event.state);
           callbacks.onNodeAnimation(event.componentId, {
             ...animation,
-            timestamp: event.timestamp
+            timestamp: event.timestamp,
           });
         }
         break;
@@ -169,11 +178,11 @@ export function processBatchEvents(
           const animation = actionToEdgeAnimation(event.triggeredBy?.action || 'unknown', {
             type: event.animation,
             duration: event.duration,
-            direction: event.direction
+            direction: event.direction,
           });
           callbacks.onEdgeAnimation(event.edgeId, {
             ...animation,
-            timestamp: event.timestamp
+            timestamp: event.timestamp,
           });
         }
         break;

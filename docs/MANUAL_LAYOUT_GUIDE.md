@@ -82,9 +82,33 @@ Create a `.canvas` file with explicit coordinates:
 ```json
 {
   "nodes": [
-    { "id": "input",   "x": 100, "y": 200, "width": 120, "height": 80, "type": "text", "text": "# Input" },
-    { "id": "process", "x": 300, "y": 200, "width": 150, "height": 80, "type": "text", "text": "# Process" },
-    { "id": "output",  "x": 530, "y": 200, "width": 120, "height": 80, "type": "text", "text": "# Output" }
+    {
+      "id": "input",
+      "x": 100,
+      "y": 200,
+      "width": 120,
+      "height": 80,
+      "type": "text",
+      "text": "# Input"
+    },
+    {
+      "id": "process",
+      "x": 300,
+      "y": 200,
+      "width": 150,
+      "height": 80,
+      "type": "text",
+      "text": "# Process"
+    },
+    {
+      "id": "output",
+      "x": 530,
+      "y": 200,
+      "width": 120,
+      "height": 80,
+      "type": "text",
+      "text": "# Output"
+    }
   ]
 }
 ```
@@ -100,9 +124,33 @@ Create a `.canvas` file with explicit coordinates:
 ```json
 {
   "nodes": [
-    { "id": "api",        "x": 300, "y": 100, "width": 180, "height": 80, "type": "text", "text": "# API Layer" },
-    { "id": "service",    "x": 300, "y": 250, "width": 180, "height": 80, "type": "text", "text": "# Service" },
-    { "id": "database",   "x": 300, "y": 400, "width": 180, "height": 80, "type": "text", "text": "# Database" }
+    {
+      "id": "api",
+      "x": 300,
+      "y": 100,
+      "width": 180,
+      "height": 80,
+      "type": "text",
+      "text": "# API Layer"
+    },
+    {
+      "id": "service",
+      "x": 300,
+      "y": 250,
+      "width": 180,
+      "height": 80,
+      "type": "text",
+      "text": "# Service"
+    },
+    {
+      "id": "database",
+      "x": 300,
+      "y": 400,
+      "width": 180,
+      "height": 80,
+      "type": "text",
+      "text": "# Database"
+    }
   ]
 }
 ```
@@ -128,11 +176,51 @@ Create a `.canvas` file with explicit coordinates:
 ```json
 {
   "nodes": [
-    { "id": "hub",     "x": 350, "y": 250, "width": 140, "height": 100, "type": "text", "text": "# Hub" },
-    { "id": "spoke-1", "x": 150, "y": 100, "width": 100, "height": 60, "type": "text", "text": "# Spoke 1" },
-    { "id": "spoke-2", "x": 550, "y": 100, "width": 100, "height": 60, "type": "text", "text": "# Spoke 2" },
-    { "id": "spoke-3", "x": 150, "y": 400, "width": 100, "height": 60, "type": "text", "text": "# Spoke 3" },
-    { "id": "spoke-4", "x": 550, "y": 400, "width": 100, "height": 60, "type": "text", "text": "# Spoke 4" }
+    {
+      "id": "hub",
+      "x": 350,
+      "y": 250,
+      "width": 140,
+      "height": 100,
+      "type": "text",
+      "text": "# Hub"
+    },
+    {
+      "id": "spoke-1",
+      "x": 150,
+      "y": 100,
+      "width": 100,
+      "height": 60,
+      "type": "text",
+      "text": "# Spoke 1"
+    },
+    {
+      "id": "spoke-2",
+      "x": 550,
+      "y": 100,
+      "width": 100,
+      "height": 60,
+      "type": "text",
+      "text": "# Spoke 2"
+    },
+    {
+      "id": "spoke-3",
+      "x": 150,
+      "y": 400,
+      "width": 100,
+      "height": 60,
+      "type": "text",
+      "text": "# Spoke 3"
+    },
+    {
+      "id": "spoke-4",
+      "x": 550,
+      "y": 400,
+      "width": 100,
+      "height": 60,
+      "type": "text",
+      "text": "# Spoke 4"
+    }
   ]
 }
 ```
@@ -338,11 +426,41 @@ Available sides: `top`, `right`, `bottom`, `left`
     }
   ],
   "edges": [
-    { "id": "e1", "fromNode": "client", "toNode": "transport", "fromSide": "right", "toSide": "left" },
-    { "id": "e2", "fromNode": "transport", "toNode": "server", "fromSide": "right", "toSide": "left" },
-    { "id": "e3", "fromNode": "server", "toNode": "room-manager", "fromSide": "right", "toSide": "left" },
-    { "id": "e4", "fromNode": "server", "toNode": "lock-manager", "fromSide": "right", "toSide": "left" },
-    { "id": "e5", "fromNode": "server", "toNode": "presence", "fromSide": "right", "toSide": "left" }
+    {
+      "id": "e1",
+      "fromNode": "client",
+      "toNode": "transport",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "e2",
+      "fromNode": "transport",
+      "toNode": "server",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "e3",
+      "fromNode": "server",
+      "toNode": "room-manager",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "e4",
+      "fromNode": "server",
+      "toNode": "lock-manager",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "e5",
+      "fromNode": "server",
+      "toNode": "presence",
+      "fromSide": "right",
+      "toSide": "left"
+    }
   ],
   "vv": {
     "version": "1.0.0",
@@ -358,12 +476,12 @@ Available sides: `top`, `right`, `bottom`, `left`
 
 ## Spacing Guidelines
 
-| Element | Minimum Spacing |
-|---------|-----------------|
-| Horizontal gap | 50-80px |
-| Vertical gap | 40-60px |
-| Node width | 100-200px |
-| Node height | 60-120px |
+| Element        | Minimum Spacing |
+| -------------- | --------------- |
+| Horizontal gap | 50-80px         |
+| Vertical gap   | 40-60px         |
+| Node width     | 100-200px       |
+| Node height    | 60-120px        |
 
 ## Tips
 
@@ -394,13 +512,16 @@ console.log(nodes[0].position); // { x: 100, y: 100 }
 ## Troubleshooting
 
 **Nodes overlap:**
+
 - Increase spacing between nodes
 - Check node dimensions (`width`, `height`)
 
 **Edges cross unexpectedly:**
+
 - Use `fromSide`/`toSide` to control connection points
 - Reposition nodes to minimize crossings
 
 **Layout looks different in React Flow:**
+
 - Ensure `vv.display.layout` is set to `"manual"`
 - Verify coordinates are positive numbers

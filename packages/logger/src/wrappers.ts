@@ -51,7 +51,7 @@ export function enhanceLogger<T extends Record<string, any>>(
     info: logger.info?.bind(logger),
     warn: logger.warn?.bind(logger),
     error: logger.error?.bind(logger),
-    log: logger.log?.bind(logger)
+    log: logger.log?.bind(logger),
   };
 
   // Add transport that forwards to original logger
@@ -71,7 +71,7 @@ export function enhanceLogger<T extends Record<string, any>>(
   // Intercept logger methods
   const methodsToWrap = ['debug', 'info', 'warn', 'error'] as const;
 
-  methodsToWrap.forEach(method => {
+  methodsToWrap.forEach((method) => {
     if (logger[method]) {
       (logger as any)[method] = function (...args: any[]) {
         // Call enhanced logger (captures source)
@@ -117,9 +117,7 @@ export function createLogger(options: EnhancedLoggerOptions = {}): EnhancedLogge
 /**
  * Create a transport that sends logs to Visual Validation Framework
  */
-export function createVVFTransport(
-  onLog: (entry: LogEntry) => void | Promise<void>
-) {
+export function createVVFTransport(onLog: (entry: LogEntry) => void | Promise<void>) {
   return ({ entry }: { type: 'log'; entry: LogEntry }) => {
     onLog(entry);
   };

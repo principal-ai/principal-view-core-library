@@ -170,7 +170,9 @@ export class ValidationEngine {
         id: `state-transition-${event.id}`,
         severity: 'error',
         type: 'state',
-        description: `Invalid state transition for '${node.type}': ${currentState} -> ${newState}. Valid transitions: ${validTransition.to.join(', ')}`,
+        description: `Invalid state transition for '${
+          node.type
+        }': ${currentState} -> ${newState}. Valid transitions: ${validTransition.to.join(', ')}`,
         event,
         context: {
           nodeId: payload.nodeId,

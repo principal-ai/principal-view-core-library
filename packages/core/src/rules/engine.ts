@@ -112,7 +112,9 @@ export class GraphRulesEngine {
         violations.push({
           ruleId,
           severity: 'error',
-          message: `Rule "${ruleId}" threw an error: ${error instanceof Error ? error.message : String(error)}`,
+          message: `Rule "${ruleId}" threw an error: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
           impact: 'Rule could not complete validation',
           fixable: false,
         });

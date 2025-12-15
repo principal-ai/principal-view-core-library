@@ -67,7 +67,13 @@ export const noUnknownFields: GraphRule = {
     const { configuration, configPath } = context;
 
     // Check root level fields
-    checkFields(configuration as unknown as Record<string, unknown>, ALLOWED_FIELDS.root, '', configPath, violations);
+    checkFields(
+      configuration as unknown as Record<string, unknown>,
+      ALLOWED_FIELDS.root,
+      '',
+      configPath,
+      violations
+    );
 
     // Check metadata fields
     if (configuration.metadata) {
@@ -84,7 +90,13 @@ export const noUnknownFields: GraphRule = {
     if (configuration.nodeTypes) {
       for (const [typeId, nodeType] of Object.entries(configuration.nodeTypes)) {
         const basePath = `nodeTypes.${typeId}`;
-        checkFields(nodeType as unknown as Record<string, unknown>, ALLOWED_FIELDS.nodeType, basePath, configPath, violations);
+        checkFields(
+          nodeType as unknown as Record<string, unknown>,
+          ALLOWED_FIELDS.nodeType,
+          basePath,
+          configPath,
+          violations
+        );
 
         // Check nested fields in nodeType
         if (nodeType.dataSchema) {
@@ -153,7 +165,13 @@ export const noUnknownFields: GraphRule = {
     if (configuration.edgeTypes) {
       for (const [typeId, edgeType] of Object.entries(configuration.edgeTypes)) {
         const basePath = `edgeTypes.${typeId}`;
-        checkFields(edgeType as unknown as Record<string, unknown>, ALLOWED_FIELDS.edgeType, basePath, configPath, violations);
+        checkFields(
+          edgeType as unknown as Record<string, unknown>,
+          ALLOWED_FIELDS.edgeType,
+          basePath,
+          configPath,
+          violations
+        );
 
         if (edgeType.label && typeof edgeType.label === 'object') {
           checkFields(
@@ -193,7 +211,13 @@ export const noUnknownFields: GraphRule = {
     if (configuration.allowedConnections) {
       configuration.allowedConnections.forEach((rule, index) => {
         const basePath = `allowedConnections[${index}]`;
-        checkFields(rule as unknown as Record<string, unknown>, ALLOWED_FIELDS.connectionRule, basePath, configPath, violations);
+        checkFields(
+          rule as unknown as Record<string, unknown>,
+          ALLOWED_FIELDS.connectionRule,
+          basePath,
+          configPath,
+          violations
+        );
 
         if (rule.constraints) {
           checkFields(
@@ -219,7 +243,9 @@ export const noUnknownFields: GraphRule = {
 
       // Check state transitions
       if (configuration.validation.stateTransitions) {
-        for (const [nodeType, transitions] of Object.entries(configuration.validation.stateTransitions)) {
+        for (const [nodeType, transitions] of Object.entries(
+          configuration.validation.stateTransitions
+        )) {
           if (Array.isArray(transitions)) {
             transitions.forEach((transition, index) => {
               checkFields(
@@ -235,7 +261,10 @@ export const noUnknownFields: GraphRule = {
       }
 
       // Check constraints
-      if (configuration.validation.constraints && Array.isArray(configuration.validation.constraints)) {
+      if (
+        configuration.validation.constraints &&
+        Array.isArray(configuration.validation.constraints)
+      ) {
         configuration.validation.constraints.forEach((constraint, index) => {
           checkFields(
             constraint as Record<string, unknown>,

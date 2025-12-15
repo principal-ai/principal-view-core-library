@@ -30,7 +30,12 @@ export type {
 
 // Export components
 export { GraphRenderer } from './components/GraphRenderer';
-export type { GraphRendererProps, GraphRendererHandle, NodePositionChange, PendingChanges } from './components/GraphRenderer';
+export type {
+  GraphRendererProps,
+  GraphRendererHandle,
+  NodePositionChange,
+  PendingChanges,
+} from './components/GraphRenderer';
 
 export { EventLog } from './components/EventLog';
 export type { EventLogProps } from './components/EventLog';
@@ -61,7 +66,11 @@ export { CustomEdge } from './edges/CustomEdge';
 export type { CustomEdgeData } from './edges/CustomEdge';
 
 // Export utilities
-export { convertToXYFlowNodes, convertToXYFlowEdges, autoLayoutNodes } from './utils/graphConverter';
+export {
+  convertToXYFlowNodes,
+  convertToXYFlowEdges,
+  autoLayoutNodes,
+} from './utils/graphConverter';
 export type { EdgeStateWithHandles } from './utils/graphConverter';
 export { Icon, resolveIcon } from './utils/iconResolver';
 export type { IconProps } from './utils/iconResolver';

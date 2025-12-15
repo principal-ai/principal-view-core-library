@@ -699,58 +699,64 @@ const ShapeComparisonTemplate = () => {
     <div style={{ padding: 20 }}>
       <h2 style={{ marginBottom: 20, fontFamily: 'system-ui' }}>Node Shape Comparison</h2>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 20, marginBottom: 30 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(5, 1fr)',
+          gap: 20,
+          marginBottom: 30,
+        }}
+      >
         <div style={{ textAlign: 'center' }}>
           <h4 style={{ marginBottom: 10, fontFamily: 'system-ui' }}>Rectangle</h4>
           <code style={{ fontSize: 11 }}>shape: 'rectangle'</code>
-          <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>
-            borderRadius: 8px
-          </div>
+          <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>borderRadius: 8px</div>
         </div>
         <div style={{ textAlign: 'center' }}>
           <h4 style={{ marginBottom: 10, fontFamily: 'system-ui' }}>Circle</h4>
           <code style={{ fontSize: 11 }}>shape: 'circle'</code>
-          <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>
-            borderRadius: 50%
-          </div>
+          <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>borderRadius: 50%</div>
         </div>
         <div style={{ textAlign: 'center' }}>
           <h4 style={{ marginBottom: 10, fontFamily: 'system-ui' }}>Hexagon</h4>
           <code style={{ fontSize: 11 }}>shape: 'hexagon'</code>
-          <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>
-            CSS clip-path polygon
-          </div>
+          <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>CSS clip-path polygon</div>
         </div>
         <div style={{ textAlign: 'center' }}>
           <h4 style={{ marginBottom: 10, fontFamily: 'system-ui' }}>Diamond</h4>
           <code style={{ fontSize: 11 }}>shape: 'diamond'</code>
-          <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>
-            rotate(45deg)
-          </div>
+          <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>rotate(45deg)</div>
         </div>
         <div style={{ textAlign: 'center' }}>
           <h4 style={{ marginBottom: 10, fontFamily: 'system-ui' }}>Custom</h4>
           <code style={{ fontSize: 11 }}>shape: 'custom'</code>
-          <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>
-            Falls back to rectangle
-          </div>
+          <div style={{ marginTop: 10, fontSize: 12, color: '#666' }}>Falls back to rectangle</div>
         </div>
       </div>
 
-      <GraphRenderer
-        canvas={allShapesCanvas}
-        width={1100}
-        height={280}
-      />
+      <GraphRenderer canvas={allShapesCanvas} width={1100} height={280} />
 
       <div style={{ marginTop: 30, padding: 16, backgroundColor: '#f5f5f5', borderRadius: 8 }}>
         <h4 style={{ marginBottom: 10, fontFamily: 'system-ui' }}>Implementation Notes</h4>
         <ul style={{ fontSize: 13, lineHeight: 1.8, margin: 0, paddingLeft: 20 }}>
-          <li><strong>Rectangle</strong>: Standard box with 8px border radius</li>
-          <li><strong>Circle</strong>: Forces equal width/height, 50% border radius</li>
-          <li><strong>Hexagon</strong>: Flat-top style using <code>clipPath: polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%)</code></li>
-          <li><strong>Diamond</strong>: Fixed square rotated 45°, inner content rotated -45° to keep text upright</li>
-          <li><strong>Custom</strong>: Currently renders as rectangle (placeholder for future custom shapes)</li>
+          <li>
+            <strong>Rectangle</strong>: Standard box with 8px border radius
+          </li>
+          <li>
+            <strong>Circle</strong>: Forces equal width/height, 50% border radius
+          </li>
+          <li>
+            <strong>Hexagon</strong>: Flat-top style using{' '}
+            <code>clipPath: polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%)</code>
+          </li>
+          <li>
+            <strong>Diamond</strong>: Fixed square rotated 45°, inner content rotated -45° to keep
+            text upright
+          </li>
+          <li>
+            <strong>Custom</strong>: Currently renders as rectangle (placeholder for future custom
+            shapes)
+          </li>
         </ul>
       </div>
     </div>

@@ -1,5 +1,10 @@
 import { MarkerType, type Node, type Edge } from '@xyflow/react';
-import type { NodeState, EdgeState, GraphConfiguration, Violation } from '@principal-ai/principal-view-core';
+import type {
+  NodeState,
+  EdgeState,
+  GraphConfiguration,
+  Violation,
+} from '@principal-ai/principal-view-core';
 import type { CustomNodeData } from '../nodes/CustomNode';
 import type { CustomEdgeData } from '../edges/CustomEdge';
 
@@ -19,7 +24,7 @@ export function convertToXYFlowNodes(
       console.warn(`Node type "${node.type}" not found in configuration for node "${node.id}"`);
     }
 
-    const hasViolations = violations.some(v => v.context?.nodeId === node.id);
+    const hasViolations = violations.some((v) => v.context?.nodeId === node.id);
 
     return {
       id: node.id,
@@ -58,18 +63,21 @@ export function convertToXYFlowEdges(
       console.warn(`Edge type "${edge.type}" not found in configuration for edge "${edge.id}"`);
     }
 
-    const hasViolations = violations.some(v => v.context?.edgeId === edge.id);
+    const hasViolations = violations.some((v) => v.context?.edgeId === edge.id);
     const edgeWithHandles = edge as EdgeStateWithHandles;
 
     // Add arrow marker if edge type is directed
     // Color priority: edge data color > type definition color > default
     const edgeColor = edge.data?.color as string | undefined;
-    const markerEnd = typeDefinition?.directed !== false ? {
-      type: MarkerType.ArrowClosed,
-      color: edgeColor || typeDefinition?.color || '#888',
-      width: 20,
-      height: 20,
-    } : undefined;
+    const markerEnd =
+      typeDefinition?.directed !== false
+        ? {
+            type: MarkerType.ArrowClosed,
+            color: edgeColor || typeDefinition?.color || '#888',
+            width: 20,
+            height: 20,
+          }
+        : undefined;
 
     return {
       id: edge.id,
@@ -98,7 +106,7 @@ export function autoLayoutNodes<T extends Record<string, unknown>>(
   layoutType: 'hierarchical' | 'force-directed' | 'circular' | 'manual' = 'hierarchical'
 ): Node<T>[] {
   // Skip if all nodes have positions
-  const hasPositions = nodes.every(n => n.position.x !== 0 || n.position.y !== 0);
+  const hasPositions = nodes.every((n) => n.position.x !== 0 || n.position.y !== 0);
   if (hasPositions || layoutType === 'manual') {
     return nodes;
   }
@@ -120,17 +128,20 @@ export function autoLayoutNodes<T extends Record<string, unknown>>(
 /**
  * Simple hierarchical layout algorithm
  */
-function applyHierarchicalLayout<T extends Record<string, unknown>>(nodes: Node<T>[], edges: Edge[]): Node<T>[] {
+function applyHierarchicalLayout<T extends Record<string, unknown>>(
+  nodes: Node<T>[],
+  edges: Edge[]
+): Node<T>[] {
   // Build adjacency list
   const adjacency = new Map<string, string[]>();
   const inDegree = new Map<string, number>();
 
-  nodes.forEach(node => {
+  nodes.forEach((node) => {
     adjacency.set(node.id, []);
     inDegree.set(node.id, 0);
   });
 
-  edges.forEach(edge => {
+  edges.forEach((edge) => {
     const targets = adjacency.get(edge.source) || [];
     targets.push(edge.target);
     adjacency.set(edge.source, targets);
@@ -160,7 +171,7 @@ function applyHierarchicalLayout<T extends Record<string, unknown>>(nodes: Node<
       visited.add(nodeId);
 
       const neighbors = adjacency.get(nodeId) || [];
-      neighbors.forEach(neighbor => {
+      neighbors.forEach((neighbor) => {
         const degree = inDegree.get(neighbor)! - 1;
         inDegree.set(neighbor, degree);
         if (degree === 0 && !visited.has(neighbor)) {
@@ -175,7 +186,7 @@ function applyHierarchicalLayout<T extends Record<string, unknown>>(nodes: Node<
   }
 
   // Handle any remaining nodes (cycles or disconnected)
-  const remainingNodes = nodes.filter(n => !visited.has(n.id)).map(n => n.id);
+  const remainingNodes = nodes.filter((n) => !visited.has(n.id)).map((n) => n.id);
   if (remainingNodes.length > 0) {
     layers.push(remainingNodes);
   }
@@ -184,8 +195,8 @@ function applyHierarchicalLayout<T extends Record<string, unknown>>(nodes: Node<
   const LAYER_HEIGHT = 150;
   const NODE_WIDTH = 200;
 
-  return nodes.map(node => {
-    const layerIndex = layers.findIndex(layer => layer.includes(node.id));
+  return nodes.map((node) => {
+    const layerIndex = layers.findIndex((layer) => layer.includes(node.id));
     const layer = layers[layerIndex] || [];
     const positionInLayer = layer.indexOf(node.id);
     const layerWidth = layer.length * NODE_WIDTH;
@@ -193,7 +204,7 @@ function applyHierarchicalLayout<T extends Record<string, unknown>>(nodes: Node<
     return {
       ...node,
       position: {
-        x: (positionInLayer * NODE_WIDTH) + (NODE_WIDTH / 2) - (layerWidth / 2),
+        x: positionInLayer * NODE_WIDTH + NODE_WIDTH / 2 - layerWidth / 2,
         y: layerIndex * LAYER_HEIGHT,
       },
     };

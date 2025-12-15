@@ -54,6 +54,7 @@ graph TB
 ```
 
 The canvas visualization will animate:
+
 - **Connection lifecycle**: clients connecting, authenticating, disconnecting
 - **Presence states**: online/away/offline transitions with grace periods
 - **Room membership**: joins, leaves, user presence per room
@@ -109,13 +110,13 @@ To drive canvas animations, Control Tower must emit structured log events. These
  */
 interface CanvasLogEvent {
   // Required fields
-  id: string;                    // Unique event ID (uuid or nanoid)
-  timestamp: number;             // Unix timestamp in milliseconds
-  source: 'server' | 'client';   // Which side emitted the event
+  id: string; // Unique event ID (uuid or nanoid)
+  timestamp: number; // Unix timestamp in milliseconds
+  source: 'server' | 'client'; // Which side emitted the event
 
   // Event classification
   tier: 'connection' | 'presence' | 'room' | 'lock' | 'message';
-  event: string;                 // Maps to ServerEvents/ClientEvents names
+  event: string; // Maps to ServerEvents/ClientEvents names
 
   // Entity identifiers (include all relevant IDs)
   entities: {
@@ -138,11 +139,16 @@ interface CanvasLogEvent {
 
   // Animation hints (optional, can be derived from event type)
   animation?: {
-    type: 'node_create' | 'node_update' | 'node_delete' |
-          'edge_create' | 'edge_animate' | 'edge_delete' |
-          'state_change';
-    targets: string[];           // Node/edge IDs affected
-    duration?: number;           // Animation duration in ms
+    type:
+      | 'node_create'
+      | 'node_update'
+      | 'node_delete'
+      | 'edge_create'
+      | 'edge_animate'
+      | 'edge_delete'
+      | 'state_change';
+    targets: string[]; // Node/edge IDs affected
+    duration?: number; // Animation duration in ms
   };
 }
 ```
@@ -425,8 +431,8 @@ export class CanvasLogger {
         payload: { connectedAt: client.connectedAt },
         animation: {
           type: 'node_create',
-          targets: [`client-${client.id}`]
-        }
+          targets: [`client-${client.id}`],
+        },
       });
     });
 
@@ -442,8 +448,8 @@ export class CanvasLogger {
         payload: { metadata },
         animation: {
           type: 'state_change',
-          targets: [`client-${clientId}`]
-        }
+          targets: [`client-${clientId}`],
+        },
       });
     });
 
@@ -459,8 +465,8 @@ export class CanvasLogger {
         payload: { reason },
         animation: {
           type: 'node_delete',
-          targets: [`client-${clientId}`]
-        }
+          targets: [`client-${clientId}`],
+        },
       });
     });
 
@@ -477,8 +483,8 @@ export class CanvasLogger {
         payload: {},
         animation: {
           type: 'edge_create',
-          targets: [`user-${userId}`, `device-${deviceId}`]
-        }
+          targets: [`user-${userId}`, `device-${deviceId}`],
+        },
       });
     });
 
@@ -494,8 +500,8 @@ export class CanvasLogger {
         payload: {},
         animation: {
           type: 'state_change',
-          targets: [`user-${userId}`]
-        }
+          targets: [`user-${userId}`],
+        },
       });
     });
 
@@ -513,8 +519,8 @@ export class CanvasLogger {
         payload: {},
         animation: {
           type: 'edge_create',
-          targets: [`user-${userId}`, `room-${roomId}`]
-        }
+          targets: [`user-${userId}`, `room-${roomId}`],
+        },
       });
     });
 
@@ -532,8 +538,8 @@ export class CanvasLogger {
         animation: {
           type: 'edge_animate',
           targets: [`user-${userId}`, `room-${roomId}`],
-          duration: 500
-        }
+          duration: 500,
+        },
       });
     });
 
@@ -551,8 +557,8 @@ export class CanvasLogger {
         payload: { path: lock.path, lockType: lock.type },
         animation: {
           type: 'node_create',
-          targets: [`lock-${lock.id}`]
-        }
+          targets: [`lock-${lock.id}`],
+        },
       });
     });
 
@@ -568,8 +574,8 @@ export class CanvasLogger {
         payload: {},
         animation: {
           type: 'node_delete',
-          targets: [`lock-${lockId}`]
-        }
+          targets: [`lock-${lockId}`],
+        },
       });
     });
   }
@@ -590,8 +596,8 @@ export class CanvasLogger {
         payload: { url },
         animation: {
           type: 'state_change',
-          targets: [`client-${clientId}`]
-        }
+          targets: [`client-${clientId}`],
+        },
       });
     });
 
@@ -608,8 +614,8 @@ export class CanvasLogger {
         animation: {
           type: 'state_change',
           targets: [`client-${clientId}`],
-          duration: delay
-        }
+          duration: delay,
+        },
       });
     });
 
@@ -625,8 +631,8 @@ export class CanvasLogger {
         payload: { userCount: state.users.size },
         animation: {
           type: 'edge_create',
-          targets: [`client-${clientId}`, `room-${roomId}`]
-        }
+          targets: [`client-${clientId}`, `room-${roomId}`],
+        },
       });
     });
   }
@@ -668,7 +674,7 @@ export class CanvasLogger {
       const fs = await import('fs/promises');
       await fs.appendFile(
         this.config.filePath,
-        this.eventBuffer.map(e => JSON.stringify(e)).join('\n') + '\n'
+        this.eventBuffer.map((e) => JSON.stringify(e)).join('\n') + '\n'
       );
       this.eventBuffer = [];
     }
@@ -1075,12 +1081,12 @@ const logger = new CanvasLogger({
   enabled: true,
   output: 'stream',
   onEvent: (event) => canvasEvents.push(event),
-  includeAnimationHints: true
+  includeAnimationHints: true,
 });
 
 // Create server with mock transport
 const transport = new MockTransportAdapter({ simulateLatency: 50 });
-const server = new BaseServer({ transport, /* ... */ });
+const server = new BaseServer({ transport /* ... */ });
 
 // Attach logger
 logger.attachToServer(server);
@@ -1089,7 +1095,7 @@ logger.attachToServer(server);
 await transport.simulateConnection('device-1', {
   authenticated: true,
   userId: 'alice',
-  metadata: { deviceType: 'desktop' }
+  metadata: { deviceType: 'desktop' },
 });
 
 await transport.simulateClientMessage('device-1', 'join_room', { roomId: 'repo-1' });
@@ -1098,8 +1104,10 @@ await transport.simulateClientMessage('device-1', 'join_room', { roomId: 'repo-1
 
 // Export events for canvas playback
 const canvasStream = {
-  configuration: { /* canvas config */ },
-  events: canvasEvents.map(e => toGraphEvent(e))
+  configuration: {
+    /* canvas config */
+  },
+  events: canvasEvents.map((e) => toGraphEvent(e)),
 };
 ```
 
@@ -1121,14 +1129,14 @@ const logger = new CanvasLogger({
   output: 'stream',
   onEvent: (event) => {
     // Broadcast to all connected canvas viewers
-    canvasWss.clients.forEach(client => {
+    canvasWss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify(event));
       }
     });
   },
   tiers: ['connection', 'presence', 'room'], // Filter out noisy message events
-  includeAnimationHints: true
+  includeAnimationHints: true,
 });
 
 // Attach to production server
