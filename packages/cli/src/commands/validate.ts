@@ -619,6 +619,32 @@ function validateCanvas(
         });
       }
 
+      // Validate required fields for standard canvas types
+      if (nodeType === 'text' && (typeof n.text !== 'string' || !n.text)) {
+        issues.push({
+          type: 'error',
+          message: `Node "${nodeLabel}" has type "text" but is missing required "text" field`,
+          path: `${nodePath}.text`,
+          suggestion: 'Add a "text" field with markdown content, or change the node type',
+        });
+      }
+      if (nodeType === 'file' && (typeof n.file !== 'string' || !n.file)) {
+        issues.push({
+          type: 'error',
+          message: `Node "${nodeLabel}" has type "file" but is missing required "file" field`,
+          path: `${nodePath}.file`,
+          suggestion: 'Add a "file" field with a file path, or change the node type',
+        });
+      }
+      if (nodeType === 'link' && (typeof n.url !== 'string' || !n.url)) {
+        issues.push({
+          type: 'error',
+          message: `Node "${nodeLabel}" has type "link" but is missing required "url" field`,
+          path: `${nodePath}.url`,
+          suggestion: 'Add a "url" field with a URL, or change the node type',
+        });
+      }
+
       // Validate node type - must be standard canvas type OR have pv metadata
       const isStandardType = STANDARD_CANVAS_TYPES.includes(
         nodeType as (typeof STANDARD_CANVAS_TYPES)[number]
