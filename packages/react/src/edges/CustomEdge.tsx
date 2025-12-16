@@ -7,6 +7,7 @@ export interface CustomEdgeData extends Record<string, unknown> {
   typeDefinition: EdgeTypeDefinition;
   hasViolations?: boolean;
   data?: Record<string, unknown>;
+  edgeType?: string;
   // Animation control
   animationType?: 'flow' | 'particle' | 'pulse' | 'glow' | null;
   animationDuration?: number;
@@ -34,12 +35,14 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
     typeDefinition,
     hasViolations,
     data: edgeData,
+    edgeType,
     animationType,
     animationDuration = 1000,
     animationDirection = 'forward',
   } = edgeProps || ({} as CustomEdgeData);
 
   const [particlePosition, setParticlePosition] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
   const pathRef = useRef<SVGPathElement>(null);
 
   // Particle animation effect
@@ -147,7 +150,11 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
   const particlePos = animationType === 'particle' ? getParticleTransform() : null;
 
   return (
-    <>
+    <g
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{ cursor: 'pointer' }}
+    >
       {/* Hidden path for particle position calculation */}
       <path
         ref={pathRef}
@@ -164,7 +171,7 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
         fill="none"
         stroke="transparent"
         strokeWidth={Math.max(width + 10, 20)}
-        style={{ cursor: 'pointer' }}
+        style={{ pointerEvents: 'stroke' }}
       />
 
       <BaseEdge
@@ -275,6 +282,30 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
         </EdgeLabelRenderer>
       )}
 
+      {/* Hover tooltip showing edge type */}
+      {isHovered && (
+        <EdgeLabelRenderer>
+          <div
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -100%) translate(${labelX}px,${labelY - 12}px)`,
+              backgroundColor: 'rgba(0, 0, 0, 0.85)',
+              color: 'white',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: 500,
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+              zIndex: 1000,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            }}
+          >
+            {edgeType || 'edge'}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+
       {/* CSS animations for all edge animation types */}
       <style>{`
         /* Flow animation - forward direction */
@@ -343,6 +374,6 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
           }
         }
       `}</style>
-    </>
+    </g>
   );
 };

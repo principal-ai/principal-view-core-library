@@ -53,6 +53,23 @@ export interface EdgeStateWithHandles extends EdgeState {
 }
 
 /**
+ * Map canvas side to source handle ID
+ * Source handles use '-out' suffix
+ */
+function sideToSourceHandle(side?: string): string | undefined {
+  if (!side) return undefined;
+  return `${side}-out`;
+}
+
+/**
+ * Map canvas side to target handle ID
+ * Target handles use the side name directly
+ */
+function sideToTargetHandle(side?: string): string | undefined {
+  return side;
+}
+
+/**
  * Convert our EdgeState to xyflow Edge format
  */
 export function convertToXYFlowEdges(
@@ -71,6 +88,12 @@ export function convertToXYFlowEdges(
     const hasViolations = violations.some((v) => v.context?.edgeId === edge.id);
     const edgeWithHandles = edge as EdgeStateWithHandles;
 
+    // Get handle IDs from edge data (fromSide/toSide) or explicit handles
+    const fromSide = edge.data?.fromSide as string | undefined;
+    const toSide = edge.data?.toSide as string | undefined;
+    const sourceHandle = edgeWithHandles.sourceHandle || sideToSourceHandle(fromSide);
+    const targetHandle = edgeWithHandles.targetHandle || sideToTargetHandle(toSide);
+
     // Add arrow marker if edge type is directed
     // Color priority: edge data color > type definition color > default
     const edgeColor = edge.data?.color as string | undefined;
@@ -88,8 +111,8 @@ export function convertToXYFlowEdges(
       id: edge.id,
       source: edge.from,
       target: edge.to,
-      sourceHandle: edgeWithHandles.sourceHandle,
-      targetHandle: edgeWithHandles.targetHandle,
+      sourceHandle,
+      targetHandle,
       type: 'custom',
       animated: typeDefinition?.style === 'animated',
       markerEnd,
@@ -97,6 +120,7 @@ export function convertToXYFlowEdges(
         typeDefinition,
         hasViolations,
         data: edge.data,
+        edgeType: edge.type,
       },
     };
   });

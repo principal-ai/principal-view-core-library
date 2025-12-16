@@ -245,8 +245,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
 
   return (
     <>
-      {/* Input handles - multiple connection points */}
+      {/* Input handles - all 4 sides for incoming connections */}
       <Handle type="target" position={Position.Top} id="top" style={getHandleStyle('top')} />
+      <Handle type="target" position={Position.Bottom} id="bottom" style={getHandleStyle('bottom')} />
       <Handle type="target" position={Position.Left} id="left" style={getHandleStyle('left')} />
       <Handle type="target" position={Position.Right} id="right" style={getHandleStyle('right')} />
 
@@ -349,11 +350,12 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
         </div>
       )}
 
-      {/* Output handles - multiple connection points */}
+      {/* Output handles - all 4 sides for outgoing connections */}
+      <Handle type="source" position={Position.Top} id="top-out" style={getHandleStyle('top')} />
       <Handle
         type="source"
         position={Position.Bottom}
-        id="bottom"
+        id="bottom-out"
         style={getHandleStyle('bottom')}
       />
       <Handle type="source" position={Position.Left} id="left-out" style={getHandleStyle('left')} />
