@@ -911,6 +911,39 @@ function validateCanvas(
         });
       }
 
+      // Validate fromSide and toSide are present and valid
+      const VALID_SIDES = ['top', 'right', 'bottom', 'left'] as const;
+      if (typeof e.fromSide !== 'string') {
+        issues.push({
+          type: 'error',
+          message: `Edge "${edgeLabel}" must have a "fromSide" field`,
+          path: `${edgePath}.fromSide`,
+          suggestion: `Specify which side of the source node the edge starts from: ${VALID_SIDES.join(', ')}`,
+        });
+      } else if (!VALID_SIDES.includes(e.fromSide as (typeof VALID_SIDES)[number])) {
+        issues.push({
+          type: 'error',
+          message: `Edge "${edgeLabel}" has invalid fromSide "${e.fromSide}"`,
+          path: `${edgePath}.fromSide`,
+          suggestion: `Valid values: ${VALID_SIDES.join(', ')}`,
+        });
+      }
+      if (typeof e.toSide !== 'string') {
+        issues.push({
+          type: 'error',
+          message: `Edge "${edgeLabel}" must have a "toSide" field`,
+          path: `${edgePath}.toSide`,
+          suggestion: `Specify which side of the target node the edge connects to: ${VALID_SIDES.join(', ')}`,
+        });
+      } else if (!VALID_SIDES.includes(e.toSide as (typeof VALID_SIDES)[number])) {
+        issues.push({
+          type: 'error',
+          message: `Edge "${edgeLabel}" has invalid toSide "${e.toSide}"`,
+          path: `${edgePath}.toSide`,
+          suggestion: `Valid values: ${VALID_SIDES.join(', ')}`,
+        });
+      }
+
       // Validate edge pv extension fields
       if (e.pv && typeof e.pv === 'object') {
         const edgePv = e.pv as Record<string, unknown>;

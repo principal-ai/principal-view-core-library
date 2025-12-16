@@ -112,10 +112,10 @@ ${chalk.bold('Required Fields:')}
   ${chalk.green('id')}          ${chalk.dim('string')}   Unique identifier
   ${chalk.green('fromNode')}    ${chalk.dim('string')}   Source node ID
   ${chalk.green('toNode')}      ${chalk.dim('string')}   Target node ID
-
-${chalk.bold('Optional Fields:')}
   ${chalk.green('fromSide')}    ${chalk.dim('string')}   Side of source: top, right, bottom, left
   ${chalk.green('toSide')}      ${chalk.dim('string')}   Side of target: top, right, bottom, left
+
+${chalk.bold('Optional Fields:')}
   ${chalk.green('fromEnd')}     ${chalk.dim('string')}   Source endpoint: none, arrow
   ${chalk.green('toEnd')}       ${chalk.dim('string')}   Target endpoint: none, arrow (default)
   ${chalk.green('color')}       ${chalk.dim('string')}   Edge color (hex or preset)
@@ -125,6 +125,7 @@ ${chalk.bold('PV Edge Extension:')}
   ${chalk.dim('{')}
     ${chalk.green('"id"')}: "edge-1",
     ${chalk.green('"fromNode"')}: "api", ${chalk.green('"toNode"')}: "db",
+    ${chalk.green('"fromSide"')}: "right", ${chalk.green('"toSide"')}: "left",
     ${chalk.green('"pv"')}: {
       ${chalk.yellow('"edgeType"')}: "query"  ${chalk.dim('// Must be defined in vv.edgeTypes')}
     }
@@ -308,6 +309,8 @@ ${chalk.dim('─'.repeat(50))}
       "id": "api-to-db",
       "fromNode": "api",
       "toNode": "db",
+      "fromSide": "right",
+      "toSide": "left",
       "pv": { "edgeType": "query" }
     }
   ],
