@@ -260,12 +260,18 @@ export class CanvasConverter {
     if (canvas.nodes) {
       for (const node of canvas.nodes) {
         const pv = node.pv;
-        // Get name based on node type
+        // Get name and description based on node type
+        // For text nodes: line 1 = name, rest = description
         let nodeName: string;
+        let nodeDescription: string | undefined;
         switch (node.type) {
-          case 'text':
-            nodeName = node.text.split('\n')[0].replace(/^#+ /, '').substring(0, 50);
+          case 'text': {
+            const lines = node.text.split('\n');
+            nodeName = lines[0].replace(/^#+ /, '').substring(0, 50);
+            // Description is everything after the first line, trimmed
+            nodeDescription = lines.slice(1).join('\n').trim() || undefined;
             break;
+          }
           case 'file':
             nodeName = node.file.split('/').pop() || node.file;
             break;
@@ -282,7 +288,7 @@ export class CanvasConverter {
           type: pv?.nodeType || node.type,
           name: nodeName,
           data: {
-            description: pv?.description,
+            description: nodeDescription,
             shape: pv?.shape || 'rectangle',
             icon: pv?.icon,
             // Color priority: pv.fill > node.color
@@ -381,7 +387,6 @@ export class CanvasConverter {
       if (node.data.nodeType || node.data.shape || node.data.sources?.length) {
         canvasNode.pv = {
           nodeType: node.data.nodeType || node.id,
-          description: node.data.description || `${node.data.nodeType || node.id} node`,
           shape: node.data.shape as PVNodeShape | undefined,
           icon: node.data.icon,
           states: node.data.states,
@@ -389,6 +394,14 @@ export class CanvasConverter {
           actions: node.data.actions,
           dataSchema: node.data.dataSchema,
         };
+      }
+
+      // For text nodes, combine name and description into text field
+      // Format: "# Name\n\nDescription" or just "# Name" if no description
+      if (node.data.canvasType === 'text' || !node.data.canvasType) {
+        const name = node.data.name || node.data.label || node.id;
+        const description = node.data.description;
+        (canvasNode as any).text = description ? `# ${name}\n\n${description}` : `# ${name}`;
       }
 
       canvas.nodes!.push(canvasNode);

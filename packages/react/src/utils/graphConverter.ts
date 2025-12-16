@@ -31,7 +31,7 @@ export function convertToXYFlowNodes(
       type: 'custom',
       position: node.position || { x: 0, y: 0 },
       data: {
-        name: (node.data.name as string) || node.id,
+        name: node.name || node.id,
         typeDefinition,
         state: node.state,
         hasViolations,

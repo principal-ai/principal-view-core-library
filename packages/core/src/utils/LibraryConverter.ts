@@ -83,7 +83,6 @@ export class LibraryConverter {
     // Build the PV extension from the library component
     const pv: PVNodeExtension = {
       nodeType: componentKey,
-      description: component.description,
       shape: component.shape,
       icon: component.icon,
       states: component.states,
@@ -93,11 +92,17 @@ export class LibraryConverter {
       layout: component.layout,
     };
 
+    // Build the text content: line 1 = name, rest = description (if provided)
+    const nodeName = label || component.defaultLabel || componentKey;
+    const nodeText = component.description
+      ? `# ${nodeName}\n\n${component.description}`
+      : `# ${nodeName}`;
+
     // Build the canvas node
     const node: ExtendedCanvasTextNode = {
       id,
       type: 'text',
-      text: label || component.defaultLabel || componentKey,
+      text: nodeText,
       x,
       y,
       width: component.size?.width || 120,

@@ -215,8 +215,6 @@ export interface PVEdgeActivation {
 export interface PVNodeExtension {
   /** Custom node type identifier */
   nodeType: string;
-  /** Description of this node (required) */
-  description: string;
   /** Visual shape */
   shape?: PVNodeShape;
   /** Icon identifier (Lucide icons) */

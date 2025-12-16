@@ -1155,8 +1155,18 @@ function useCanvasToLegacy(
           (typeof node.color === 'string' ? node.color : undefined) ||
           vv?.states?.idle?.color;
 
+        // Derive description from text content (everything after line 1) for text nodes
+        let nodeDescription = `${nodeType} node`;
+        if (node.type === 'text' && 'text' in node) {
+          const lines = node.text.split('\n');
+          const descFromText = lines.slice(1).join('\n').trim();
+          if (descFromText) {
+            nodeDescription = descFromText;
+          }
+        }
+
         nodeTypes[nodeType] = {
-          description: vv?.description || `${nodeType} node`,
+          description: nodeDescription,
           shape: vv?.shape || 'rectangle',
           icon: vv?.icon,
           color: fillColor,
