@@ -31,6 +31,7 @@ import type {
   ComponentLibrary,
 } from '@principal-ai/principal-view-core';
 import { CanvasConverter } from '@principal-ai/principal-view-core';
+import { useTheme } from '@principal-ade/industry-theme';
 import { CustomNode } from '../nodes/CustomNode';
 import type { CustomNodeData } from '../nodes/CustomNode';
 import { CustomEdge } from '../edges/CustomEdge';
@@ -233,6 +234,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   editStateRef,
 }) => {
   const { fitView } = useReactFlow();
+  const { theme } = useTheme();
 
   // Track active animations
   const [animationState, setAnimationState] = useState<AnimationState>({
@@ -977,13 +979,13 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         panOnDrag
         selectionOnDrag={false}
       >
-        {showBackground && <Background color="#e5e5e5" gap={16} size={1} />}
+        {showBackground && <Background color={theme.colors.border} gap={16} size={1} />}
         {showControls && <Controls showZoom showFitView showInteractive />}
         {showMinimap && (
           <MiniMap
             nodeColor={(node) => {
               const nodeData = node.data as CustomNodeData;
-              return nodeData?.typeDefinition?.color || '#888';
+              return nodeData?.typeDefinition?.color || theme.colors.secondary;
             }}
             nodeBorderRadius={2}
             pannable
@@ -1021,18 +1023,20 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            backgroundColor: 'white',
+            backgroundColor: theme.colors.background,
+            color: theme.colors.text,
             borderRadius: '8px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             padding: '16px',
             minWidth: '200px',
             zIndex: 1000,
+            border: `1px solid ${theme.colors.border}`,
           }}
         >
           <div style={{ fontWeight: 'bold', marginBottom: '12px', fontSize: '14px' }}>
             Select Edge Type
           </div>
-          <div style={{ fontSize: '12px', color: '#666', marginBottom: '12px' }}>
+          <div style={{ fontSize: '12px', color: theme.colors.textSecondary, marginBottom: '12px' }}>
             {pendingConnection.from} → {pendingConnection.to}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1044,8 +1048,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
                   onClick={() => handleEdgeTypeSelect(type)}
                   style={{
                     padding: '8px 12px',
-                    backgroundColor: typeDefinition?.color || '#888',
-                    color: 'white',
+                    backgroundColor: typeDefinition?.color || theme.colors.secondary,
+                    color: theme.colors.background,
                     border: 'none',
                     borderRadius: '4px',
                     cursor: 'pointer',
@@ -1065,9 +1069,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
               marginTop: '12px',
               width: '100%',
               padding: '8px 12px',
-              backgroundColor: '#f0f0f0',
-              color: '#666',
-              border: 'none',
+              backgroundColor: theme.colors.surface,
+              color: theme.colors.textSecondary,
+              border: `1px solid ${theme.colors.border}`,
               borderRadius: '4px',
               cursor: 'pointer',
               fontSize: '12px',
@@ -1269,28 +1273,15 @@ function useCanvasToLegacy(
  */
 export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>((props, ref) => {
   const { canvas, library, className, width = '100%', height = '100%' } = props;
+  const { theme } = useTheme();
 
   // Convert canvas to internal format (merging library types if provided)
   const canvasData = useCanvasToLegacy(canvas, library);
 
-  // Validate we have required data
-  if (!canvasData) {
-    return (
-      <div
-        className={className}
-        style={{ width, height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      >
-        <p style={{ color: '#666' }}>No canvas data provided.</p>
-      </div>
-    );
-  }
-
-  const { configuration, nodes, edges } = canvasData;
-
-  // Internal edit state ref
+  // Internal edit state ref - must be before any conditional returns
   const editStateRef = useRef<EditState>(createEmptyEditState());
 
-  // Expose imperative handle
+  // Expose imperative handle - must be before any conditional returns
   useImperativeHandle(
     ref,
     () => ({
@@ -1340,6 +1331,28 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     }),
     []
   );
+
+  // Validate we have required data
+  if (!canvasData) {
+    return (
+      <div
+        className={className}
+        style={{
+          width,
+          height,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: theme.colors.background,
+          color: theme.colors.textSecondary,
+        }}
+      >
+        <p>No canvas data provided.</p>
+      </div>
+    );
+  }
+
+  const { configuration, nodes, edges } = canvasData;
 
   // Extract only the props that inner component needs
   const {

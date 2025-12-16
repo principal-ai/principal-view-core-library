@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
 import type { ExtendedCanvas, GraphEvent } from '@principal-ai/principal-view-core';
+import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 
 // Helper component that sets initial node states via events
 const GraphWithInitialStates: React.FC<{
@@ -46,6 +47,13 @@ const meta = {
     layout: 'centered',
   },
   tags: ['autodocs'],
+  decorators: [
+    (Story) => (
+      <ThemeProvider theme={defaultEditorTheme}>
+        <Story />
+      </ThemeProvider>
+    ),
+  ],
 } satisfies Meta<typeof GraphRenderer>;
 
 export default meta;
@@ -427,7 +435,7 @@ const iconPriorityCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'icon-type-demo',
         shape: 'rectangle',
-        icon: 'settings',
+        icon: 'Settings',
       },
     },
     // 2. State icon (when in a state)
@@ -443,9 +451,9 @@ const iconPriorityCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'icon-state-demo',
         shape: 'rectangle',
-        icon: 'settings', // Type icon - should be overridden
+        icon: 'Settings', // Type icon - should be overridden
         states: {
-          complete: { label: 'Complete', color: '#00FF00', icon: 'check' },
+          complete: { label: 'Complete', color: '#00FF00', icon: 'Check' },
         },
       },
     },

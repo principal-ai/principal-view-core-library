@@ -88,11 +88,14 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
 
   const animationClass = getAnimationClass();
 
+  // Check if this is a group node
+  const isGroup = nodeData.canvasType === 'group';
+
   // Shape-specific styles
   const getShapeStyles = () => {
     const baseStyles = {
       padding: '12px 16px',
-      backgroundColor: 'white',
+      backgroundColor: isGroup ? 'rgba(255, 255, 255, 0.7)' : 'white',
       color: '#000',
       border: `2px solid ${hasViolations ? '#D0021B' : strokeColor}`,
       fontSize: '12px',
@@ -102,7 +105,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
       display: 'flex',
       flexDirection: 'column' as const,
       alignItems: 'center',
-      justifyContent: 'center',
+      justifyContent: isGroup ? 'flex-start' : 'center',
       gap: '4px',
       boxShadow: selected ? `0 0 0 2px ${strokeColor}` : '0 2px 4px rgba(0,0,0,0.1)',
       transition: 'all 0.2s ease',
@@ -287,13 +290,36 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
       ) : (
         <div style={getShapeStyles()} className={animationClass}>
           {/* Inner content (rotated back if diamond) */}
-          <div style={isDiamond ? { transform: 'rotate(-45deg)' } : {}}>
-            {icon && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                {resolveIcon(icon, 20)}
+          <div
+            style={{
+              ...(isDiamond ? { transform: 'rotate(-45deg)' } : {}),
+              ...(isGroup ? { width: '100%' } : {}),
+            }}
+          >
+            {/* Groups: icon and text inline, centered */}
+            {isGroup ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  width: '100%',
+                }}
+              >
+                {icon && resolveIcon(icon, 18)}
+                <div style={{ wordBreak: 'break-word' }}>{displayName}</div>
               </div>
+            ) : (
+              <>
+                {icon && (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    {resolveIcon(icon, 20)}
+                  </div>
+                )}
+                <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>{displayName}</div>
+              </>
             )}
-            <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>{displayName}</div>
             {state && (
               <div
                 style={{

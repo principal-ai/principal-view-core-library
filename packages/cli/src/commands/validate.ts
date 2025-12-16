@@ -90,6 +90,9 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
           issues
         );
 
+        // Validate icon name format (must be PascalCase for Lucide icons)
+        validateIconName(comp.icon, `nodeComponents.${compId}.icon`, issues);
+
         // Check nested fields
         if (comp.size && typeof comp.size === 'object') {
           checkUnknownFields(
@@ -111,6 +114,9 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
                 `nodeComponents.${compId}.states.${stateId}`,
                 issues
               );
+              // Validate state icon name format
+              const state = stateDef as Record<string, unknown>;
+              validateIconName(state.icon, `nodeComponents.${compId}.states.${stateId}.icon`, issues);
             }
           }
         }
@@ -225,6 +231,65 @@ const STANDARD_CANVAS_TYPES = ['text', 'group', 'file', 'link'] as const;
  * Valid node shapes for pv.shape
  */
 const VALID_NODE_SHAPES = ['circle', 'rectangle', 'hexagon', 'diamond', 'custom'] as const;
+
+// ============================================================================
+// Icon Validation
+// ============================================================================
+
+/**
+ * Convert kebab-case to PascalCase
+ * e.g., "file-text" -> "FileText", "alert-circle" -> "AlertCircle"
+ */
+function kebabToPascalCase(str: string): string {
+  return str
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join('');
+}
+
+/**
+ * Check if a string looks like kebab-case (has hyphens and lowercase)
+ */
+function isKebabCase(str: string): boolean {
+  return str.includes('-') && str === str.toLowerCase();
+}
+
+/**
+ * Validate an icon name and return issues if invalid
+ * Icons should be in PascalCase (e.g., "FileText", "Database", "AlertCircle")
+ */
+function validateIconName(
+  iconValue: unknown,
+  path: string,
+  issues: ValidationIssue[]
+): void {
+  if (typeof iconValue !== 'string' || !iconValue) {
+    return; // No icon specified, that's fine
+  }
+
+  // Check if it looks like kebab-case
+  if (isKebabCase(iconValue)) {
+    const suggested = kebabToPascalCase(iconValue);
+    issues.push({
+      type: 'error',
+      message: `Invalid icon name "${iconValue}" - icons must be in PascalCase`,
+      path,
+      suggestion: `Use "${suggested}" instead of "${iconValue}"`,
+    });
+    return;
+  }
+
+  // Check if first character is lowercase (common mistake)
+  if (iconValue[0] === iconValue[0].toLowerCase() && iconValue[0] !== iconValue[0].toUpperCase()) {
+    const suggested = iconValue.charAt(0).toUpperCase() + iconValue.slice(1);
+    issues.push({
+      type: 'error',
+      message: `Invalid icon name "${iconValue}" - icons must start with uppercase`,
+      path,
+      suggestion: `Use "${suggested}" instead of "${iconValue}"`,
+    });
+  }
+}
 
 // ============================================================================
 // Allowed Fields Definitions
@@ -501,6 +566,9 @@ function validateCanvas(
             `pv.nodeTypes.${typeId}`,
             issues
           );
+          // Validate icon name format
+          const nodeType = typeDef as Record<string, unknown>;
+          validateIconName(nodeType.icon, `pv.nodeTypes.${typeId}.icon`, issues);
         }
       }
     }
@@ -693,6 +761,9 @@ function validateCanvas(
         // Check unknown fields in node pv extension
         checkUnknownFields(nodePv, ALLOWED_CANVAS_FIELDS.nodePv, `${nodePath}.pv`, issues);
 
+        // Validate icon name format (must be PascalCase for Lucide icons)
+        validateIconName(nodePv.icon, `${nodePath}.pv.icon`, issues);
+
         // Check nested pv fields
         if (nodePv.states && typeof nodePv.states === 'object') {
           for (const [stateId, stateDef] of Object.entries(
@@ -705,6 +776,9 @@ function validateCanvas(
                 `${nodePath}.pv.states.${stateId}`,
                 issues
               );
+              // Validate state icon name format
+              const state = stateDef as Record<string, unknown>;
+              validateIconName(state.icon, `${nodePath}.pv.states.${stateId}.icon`, issues);
             }
           }
         }

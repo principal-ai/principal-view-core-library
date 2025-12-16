@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { GraphRenderer } from '../components/GraphRenderer';
 import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
 import React from 'react';
+import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 
 const meta: Meta<typeof GraphRenderer> = {
   title: 'Multi-Config/Configuration Switcher',
@@ -11,6 +12,13 @@ const meta: Meta<typeof GraphRenderer> = {
     layout: 'fullscreen',
   },
   tags: ['autodocs'],
+  decorators: [
+    (Story) => (
+      <ThemeProvider theme={defaultEditorTheme}>
+        <Story />
+      </ThemeProvider>
+    ),
+  ],
 };
 
 export default meta;

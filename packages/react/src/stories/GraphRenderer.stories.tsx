@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
 import type { GraphRendererHandle, PendingChanges } from '../components/GraphRenderer';
 import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
+import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 
 const meta = {
   title: 'Components/GraphRenderer',
@@ -11,6 +12,13 @@ const meta = {
     layout: 'centered',
   },
   tags: ['autodocs'],
+  decorators: [
+    (Story) => (
+      <ThemeProvider theme={defaultEditorTheme}>
+        <Story />
+      </ThemeProvider>
+    ),
+  ],
 } satisfies Meta<typeof GraphRenderer>;
 
 export default meta;
@@ -283,11 +291,11 @@ const serviceArchitectureCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'client',
         shape: 'circle',
-        icon: 'user',
+        icon: 'User',
         states: {
-          idle: { color: '#94a3b8', icon: 'user' },
-          connected: { color: '#22c55e', icon: 'user-check' },
-          error: { color: '#ef4444', icon: 'user-x' },
+          idle: { color: '#94a3b8', icon: 'User' },
+          connected: { color: '#22c55e', icon: 'UserCheck' },
+          error: { color: '#ef4444', icon: 'UserX' },
         },
       },
     },
@@ -303,7 +311,7 @@ const serviceArchitectureCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'api-server',
         shape: 'rectangle',
-        icon: 'server',
+        icon: 'Server',
         states: {
           idle: { color: '#94a3b8' },
           processing: { color: '#3b82f6' },
@@ -323,7 +331,7 @@ const serviceArchitectureCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'database',
         shape: 'hexagon',
-        icon: 'database',
+        icon: 'Database',
       },
     },
     {
@@ -338,7 +346,7 @@ const serviceArchitectureCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'cache',
         shape: 'diamond',
-        icon: 'zap',
+        icon: 'Zap',
       },
     },
   ],

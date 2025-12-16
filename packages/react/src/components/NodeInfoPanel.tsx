@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { NodeState, NodeTypeDefinition } from '@principal-ai/principal-view-core';
+import { useTheme } from '@principal-ade/industry-theme';
 import { resolveIcon } from '../utils/iconResolver';
 
 // Common icons for the icon selector
@@ -76,7 +77,10 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
   onDelete,
   onUpdate,
 }) => {
-  const color = typeDefinition?.color || '#888';
+  const { theme } = useTheme();
+
+  // Color priority: node data color > type definition color > theme primary
+  const nodeColor = (node.data?.color as string) || typeDefinition?.color || theme.colors.primary;
   const canEdit = Boolean(onUpdate);
 
   // Local state for UI
@@ -104,10 +108,28 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
 
   // Always show basic node data if no schema is defined
   const hasSchemaFields = displayFields.length > 0;
+  // Internal fields that should not be displayed in the popup
+  const internalFields = [
+    'icon',
+    'name',
+    'description',
+    'sources',
+    'color',
+    'stroke',
+    'width',
+    'height',
+    'canvasType',
+    'text',
+    'file',
+    'url',
+    'shape',
+    'states',
+    'actions',
+    'nodeType',
+  ];
+
   const nodeDataEntries = node.data
-    ? Object.entries(node.data).filter(
-        ([key]) => !['icon', 'name', 'description', 'sources'].includes(key)
-      )
+    ? Object.entries(node.data).filter(([key]) => !internalFields.includes(key))
     : [];
 
   // Get sources from node data
@@ -134,13 +156,15 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
         position: 'absolute',
         top: '60px',
         right: '20px',
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.background,
+        color: theme.colors.text,
         borderRadius: '8px',
         boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
         padding: '16px',
         minWidth: '250px',
         maxWidth: '350px',
         zIndex: 1000,
+        border: `1px solid ${theme.colors.border}`,
       }}
     >
       {/* Header - shows node name */}
@@ -151,10 +175,12 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
           alignItems: 'center',
           marginBottom: '12px',
           paddingBottom: '8px',
-          borderBottom: `2px solid ${color}`,
+          borderBottom: `2px solid ${nodeColor}`,
         }}
       >
-        <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{node.data?.name || node.id}</div>
+        <div style={{ fontWeight: 'bold', fontSize: '14px', color: nodeColor }}>
+          {node.name || node.id}
+        </div>
         <button
           onClick={onClose}
           style={{
@@ -162,7 +188,7 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
             background: 'none',
             cursor: 'pointer',
             fontSize: '18px',
-            color: '#666',
+            color: theme.colors.textSecondary,
             padding: '0',
             width: '24px',
             height: '24px',
@@ -178,22 +204,19 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
       {/* Description - first field under header */}
       {node.data?.description && (
         <div style={{ marginBottom: '12px' }}>
-          <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>Description</div>
-          <div
-            style={{
-              fontSize: '12px',
-              color: '#333',
-            }}
-          >
-            {String(node.data.description)}
+          <div style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '4px' }}>
+            Description
           </div>
+          <div style={{ fontSize: '12px' }}>{String(node.data.description)}</div>
         </div>
       )}
 
       {/* Sources - shown after description */}
       {sources.length > 0 && (
         <div style={{ marginBottom: '12px' }}>
-          <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>Sources</div>
+          <div style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '4px' }}>
+            Sources
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
             {sources.map((source, index) => (
               <span
@@ -201,9 +224,9 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                 style={{
                   fontSize: '11px',
                   padding: '2px 8px',
-                  backgroundColor: '#f0f0f0',
+                  backgroundColor: theme.colors.muted,
                   borderRadius: '4px',
-                  color: '#555',
+                  color: theme.colors.textSecondary,
                 }}
               >
                 {source}
@@ -219,12 +242,12 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
         style={{
           width: '100%',
           padding: '8px',
-          backgroundColor: '#f5f5f5',
-          border: '1px solid #ddd',
+          backgroundColor: theme.colors.surface,
+          border: `1px solid ${theme.colors.border}`,
           borderRadius: '4px',
           cursor: 'pointer',
           fontSize: '12px',
-          color: '#666',
+          color: theme.colors.textSecondary,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -248,7 +271,9 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
         <>
           {/* Icon Selector */}
           <div style={{ marginBottom: '12px' }}>
-            <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>Icon</div>
+            <div style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '4px' }}>
+              Icon
+            </div>
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => canEdit && setShowIconPicker(!showIconPicker)}
@@ -258,13 +283,16 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                   alignItems: 'center',
                   gap: '8px',
                   padding: '6px 10px',
-                  backgroundColor: '#f5f5f5',
-                  border: canEdit ? '1px dashed #ccc' : '1px solid #eee',
+                  backgroundColor: theme.colors.surface,
+                  border: canEdit
+                    ? `1px dashed ${theme.colors.border}`
+                    : `1px solid ${theme.colors.border}`,
                   borderRadius: '4px',
                   cursor: canEdit ? 'pointer' : 'default',
                   fontSize: '12px',
                   width: '100%',
                   justifyContent: 'flex-start',
+                  color: theme.colors.text,
                 }}
               >
                 <span style={{ display: 'flex', alignItems: 'center' }}>
@@ -272,7 +300,9 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                 </span>
                 <span>{currentIcon || 'No icon'}</span>
                 {canEdit && (
-                  <span style={{ marginLeft: 'auto', color: '#999', fontSize: '10px' }}>✎</span>
+                  <span style={{ marginLeft: 'auto', color: theme.colors.textMuted, fontSize: '10px' }}>
+                    ✎
+                  </span>
                 )}
               </button>
 
@@ -285,8 +315,8 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                     left: 0,
                     right: 0,
                     marginTop: '4px',
-                    backgroundColor: 'white',
-                    border: '1px solid #ddd',
+                    backgroundColor: theme.colors.background,
+                    border: `1px solid ${theme.colors.border}`,
                     borderRadius: '4px',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                     padding: '8px',
@@ -310,13 +340,17 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                         style={{
                           padding: '6px',
                           border:
-                            currentIcon === iconName ? `2px solid ${color}` : '1px solid #eee',
+                            currentIcon === iconName
+                              ? `2px solid ${nodeColor}`
+                              : `1px solid ${theme.colors.border}`,
                           borderRadius: '4px',
-                          backgroundColor: currentIcon === iconName ? '#f0f7ff' : 'white',
+                          backgroundColor:
+                            currentIcon === iconName ? theme.colors.highlight : theme.colors.background,
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
+                          color: theme.colors.text,
                         }}
                       >
                         {resolveIcon(iconName, 16)}
@@ -330,7 +364,9 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
 
           {/* Node Type - Editable if availableNodeTypes provided */}
           <div style={{ marginBottom: '12px' }}>
-            <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>Type</div>
+            <div style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '4px' }}>
+              Type
+            </div>
             {canEdit && availableNodeTypes && Object.keys(availableNodeTypes).length > 1 ? (
               <select
                 value={node.type}
@@ -339,8 +375,9 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                   fontSize: '12px',
                   padding: '4px 8px',
                   borderRadius: '4px',
-                  border: '1px solid #ccc',
-                  backgroundColor: 'white',
+                  border: `1px solid ${theme.colors.border}`,
+                  backgroundColor: theme.colors.background,
+                  color: theme.colors.text,
                   cursor: 'pointer',
                   width: '100%',
                 }}
@@ -356,8 +393,8 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                 style={{
                   fontSize: '12px',
                   padding: '4px 8px',
-                  backgroundColor: color,
-                  color: 'white',
+                  backgroundColor: nodeColor,
+                  color: theme.colors.background,
                   borderRadius: '4px',
                   display: 'inline-block',
                 }}
@@ -370,13 +407,16 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
           {/* Node State */}
           {node.state && (
             <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>State</div>
+              <div style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '4px' }}>
+                State
+              </div>
               <div
                 style={{
                   fontSize: '12px',
                   padding: '4px 8px',
-                  backgroundColor: typeDefinition?.states?.[node.state]?.color || '#888',
-                  color: 'white',
+                  backgroundColor:
+                    typeDefinition?.states?.[node.state]?.color || theme.colors.secondary,
+                  color: theme.colors.background,
                   borderRadius: '4px',
                   display: 'inline-block',
                 }}
@@ -390,7 +430,12 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
           {hasSchemaFields && displayFields.filter((f) => f.field !== nameField).length > 0 && (
             <div style={{ marginBottom: '12px' }}>
               <div
-                style={{ fontSize: '10px', color: '#666', marginBottom: '8px', fontWeight: 'bold' }}
+                style={{
+                  fontSize: '10px',
+                  color: theme.colors.textSecondary,
+                  marginBottom: '8px',
+                  fontWeight: 'bold',
+                }}
               >
                 Properties
               </div>
@@ -398,10 +443,16 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                 .filter((f) => f.field !== nameField)
                 .map(({ field, label, value }) => (
                   <div key={field} style={{ marginBottom: '8px' }}>
-                    <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>
+                    <div
+                      style={{
+                        fontSize: '10px',
+                        color: theme.colors.textSecondary,
+                        marginBottom: '2px',
+                      }}
+                    >
                       {label}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#333' }}>
+                    <div style={{ fontSize: '12px' }}>
                       {value !== undefined && value !== null
                         ? typeof value === 'object'
                           ? JSON.stringify(value, null, 2)
@@ -417,14 +468,27 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
           {!hasSchemaFields && nodeDataEntries.length > 0 && (
             <div style={{ marginBottom: '12px' }}>
               <div
-                style={{ fontSize: '10px', color: '#666', marginBottom: '8px', fontWeight: 'bold' }}
+                style={{
+                  fontSize: '10px',
+                  color: theme.colors.textSecondary,
+                  marginBottom: '8px',
+                  fontWeight: 'bold',
+                }}
               >
                 Data
               </div>
               {nodeDataEntries.map(([key, value]) => (
                 <div key={key} style={{ marginBottom: '8px' }}>
-                  <div style={{ fontSize: '10px', color: '#666', marginBottom: '2px' }}>{key}</div>
-                  <div style={{ fontSize: '12px', color: '#333', wordBreak: 'break-word' }}>
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      color: theme.colors.textSecondary,
+                      marginBottom: '2px',
+                    }}
+                  >
+                    {key}
+                  </div>
+                  <div style={{ fontSize: '12px', wordBreak: 'break-word' }}>
                     {value !== undefined && value !== null
                       ? typeof value === 'object'
                         ? JSON.stringify(value, null, 2)
@@ -440,10 +504,10 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
           <div
             style={{
               fontSize: '10px',
-              color: '#999',
+              color: theme.colors.textMuted,
               marginTop: '12px',
               paddingTop: '8px',
-              borderTop: '1px solid #eee',
+              borderTop: `1px solid ${theme.colors.border}`,
             }}
           >
             ID: {node.id}
@@ -462,8 +526,8 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
             marginTop: '12px',
             width: '100%',
             padding: '8px 12px',
-            backgroundColor: '#dc3545',
-            color: 'white',
+            backgroundColor: theme.colors.error,
+            color: theme.colors.background,
             border: 'none',
             borderRadius: '4px',
             cursor: 'pointer',

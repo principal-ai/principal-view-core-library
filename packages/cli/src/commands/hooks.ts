@@ -130,7 +130,7 @@ function addVVHook(repoPath: string): void {
 
   if (existsSync(hookPath)) {
     // Append to existing hook
-    let existingContent = readFileSync(hookPath, 'utf8');
+    const existingContent = readFileSync(hookPath, 'utf8');
 
     // Check if already has PV hook
     if (existingContent.includes(VV_HOOK_MARKER)) {

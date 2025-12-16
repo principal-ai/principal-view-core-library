@@ -281,6 +281,10 @@ export class CanvasConverter {
           case 'group':
             nodeName = node.label || 'Group';
             break;
+          default:
+            // For custom types, use pv.nodeType or fall back to node id
+            nodeName = pv?.nodeType || (node as { id: string }).id;
+            break;
         }
 
         nodes.push({

@@ -2,6 +2,7 @@ import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
 import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
+import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 
 const meta = {
   title: 'Audit/NodeShapes',
@@ -10,6 +11,13 @@ const meta = {
     layout: 'centered',
   },
   tags: ['autodocs'],
+  decorators: [
+    (Story) => (
+      <ThemeProvider theme={defaultEditorTheme}>
+        <Story />
+      </ThemeProvider>
+    ),
+  ],
 } satisfies Meta<typeof GraphRenderer>;
 
 export default meta;
@@ -33,7 +41,7 @@ const allShapesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'rectangle-demo',
         shape: 'rectangle',
-        icon: 'square',
+        icon: 'Square',
       },
     },
     {
@@ -48,7 +56,7 @@ const allShapesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'circle-demo',
         shape: 'circle',
-        icon: 'circle',
+        icon: 'Circle',
       },
     },
     {
@@ -63,7 +71,7 @@ const allShapesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'hexagon-demo',
         shape: 'hexagon',
-        icon: 'hexagon',
+        icon: 'Hexagon',
         size: { width: 120, height: 120 },
       },
     },
@@ -79,7 +87,7 @@ const allShapesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'diamond-demo',
         shape: 'diamond',
-        icon: 'diamond',
+        icon: 'Diamond',
         size: { width: 70, height: 70 },
       },
     },
@@ -95,7 +103,7 @@ const allShapesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'custom-demo',
         shape: 'custom',
-        icon: 'settings',
+        icon: 'Settings',
       },
     },
   ],
@@ -364,7 +372,7 @@ const shapesWithIconsCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'server',
         shape: 'rectangle',
-        icon: 'server',
+        icon: 'Server',
       },
     },
     {
@@ -379,7 +387,7 @@ const shapesWithIconsCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'user',
         shape: 'circle',
-        icon: 'user',
+        icon: 'User',
       },
     },
     {
@@ -394,7 +402,7 @@ const shapesWithIconsCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'database',
         shape: 'hexagon',
-        icon: 'database',
+        icon: 'Database',
       },
     },
     {
@@ -409,7 +417,7 @@ const shapesWithIconsCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'cache',
         shape: 'diamond',
-        icon: 'zap',
+        icon: 'Zap',
       },
     },
   ],
@@ -459,11 +467,11 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'process',
         shape: 'rectangle',
-        icon: 'box',
+        icon: 'Box',
         states: {
-          idle: { color: '#94a3b8', icon: 'box' },
-          active: { color: '#3b82f6', icon: 'play' },
-          error: { color: '#ef4444', icon: 'alert-circle' },
+          idle: { color: '#94a3b8', icon: 'Box' },
+          active: { color: '#3b82f6', icon: 'Play' },
+          error: { color: '#ef4444', icon: 'AlertCircle' },
         },
       },
     },
@@ -479,11 +487,11 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'agent',
         shape: 'circle',
-        icon: 'user',
+        icon: 'User',
         states: {
-          idle: { color: '#94a3b8', icon: 'user' },
-          active: { color: '#22c55e', icon: 'user-check' },
-          error: { color: '#ef4444', icon: 'user-x' },
+          idle: { color: '#94a3b8', icon: 'User' },
+          active: { color: '#22c55e', icon: 'UserCheck' },
+          error: { color: '#ef4444', icon: 'UserX' },
         },
       },
     },
@@ -499,11 +507,11 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'storage',
         shape: 'hexagon',
-        icon: 'database',
+        icon: 'Database',
         states: {
-          idle: { color: '#94a3b8', icon: 'database' },
-          active: { color: '#22c55e', icon: 'hard-drive' },
-          error: { color: '#ef4444', icon: 'database' },
+          idle: { color: '#94a3b8', icon: 'Database' },
+          active: { color: '#22c55e', icon: 'HardDrive' },
+          error: { color: '#ef4444', icon: 'Database' },
         },
       },
     },
@@ -519,11 +527,11 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'decision',
         shape: 'diamond',
-        icon: 'git-branch',
+        icon: 'GitBranch',
         states: {
-          idle: { color: '#94a3b8', icon: 'git-branch' },
-          active: { color: '#f97316', icon: 'git-commit' },
-          error: { color: '#ef4444', icon: 'git-branch' },
+          idle: { color: '#94a3b8', icon: 'GitBranch' },
+          active: { color: '#f97316', icon: 'GitCommit' },
+          error: { color: '#ef4444', icon: 'GitBranch' },
         },
       },
     },
@@ -541,7 +549,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'process-active',
         shape: 'rectangle',
-        icon: 'play',
+        icon: 'Play',
         color: '#3b82f6',
       },
     },
@@ -557,7 +565,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'agent-active',
         shape: 'circle',
-        icon: 'user-check',
+        icon: 'UserCheck',
         color: '#22c55e',
       },
     },
@@ -573,7 +581,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'storage-active',
         shape: 'hexagon',
-        icon: 'hard-drive',
+        icon: 'HardDrive',
         color: '#22c55e',
       },
     },
@@ -589,7 +597,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'decision-active',
         shape: 'diamond',
-        icon: 'git-commit',
+        icon: 'GitCommit',
         color: '#f97316',
       },
     },
@@ -607,7 +615,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'process-error',
         shape: 'rectangle',
-        icon: 'alert-circle',
+        icon: 'AlertCircle',
         color: '#ef4444',
       },
     },
@@ -623,7 +631,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'agent-error',
         shape: 'circle',
-        icon: 'user-x',
+        icon: 'UserX',
         color: '#ef4444',
       },
     },
@@ -639,7 +647,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'storage-error',
         shape: 'hexagon',
-        icon: 'database',
+        icon: 'Database',
         color: '#ef4444',
       },
     },
@@ -655,7 +663,7 @@ const shapesWithStatesCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'decision-error',
         shape: 'diamond',
-        icon: 'git-branch',
+        icon: 'GitBranch',
         color: '#ef4444',
       },
     },

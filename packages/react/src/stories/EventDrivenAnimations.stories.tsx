@@ -3,6 +3,7 @@ import { GraphRenderer } from '../components/GraphRenderer';
 import type { GraphEvent, ExtendedCanvas } from '@principal-ai/principal-view-core';
 import { useState, useEffect } from 'react';
 import React from 'react';
+import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 
 const meta = {
   title: 'Workshop/Event-Driven Animations',
@@ -11,6 +12,13 @@ const meta = {
     layout: 'fullscreen',
   },
   tags: ['autodocs'],
+  decorators: [
+    (Story) => (
+      <ThemeProvider theme={defaultEditorTheme}>
+        <Story />
+      </ThemeProvider>
+    ),
+  ],
 } satisfies Meta<typeof GraphRenderer>;
 
 export default meta;

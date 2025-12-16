@@ -26,10 +26,15 @@ export function convertToXYFlowNodes(
 
     const hasViolations = violations.some((v) => v.context?.nodeId === node.id);
 
+    // Groups should render behind other nodes and edges
+    const isGroup = node.data?.canvasType === 'group';
+
     return {
       id: node.id,
       type: 'custom',
       position: node.position || { x: 0, y: 0 },
+      // Groups have lower zIndex to render behind edges
+      zIndex: isGroup ? -1 : undefined,
       data: {
         name: node.name || node.id,
         typeDefinition,
