@@ -70,7 +70,9 @@ export {
   convertToXYFlowNodes,
   convertToXYFlowEdges,
   autoLayoutNodes,
+  hasCycleBetweenNodes,
+  computeOptimalEdgeSides,
 } from './utils/graphConverter';
-export type { EdgeStateWithHandles } from './utils/graphConverter';
+export type { EdgeStateWithHandles, CanvasSide } from './utils/graphConverter';
 export { Icon, resolveIcon } from './utils/iconResolver';
 export type { IconProps } from './utils/iconResolver';

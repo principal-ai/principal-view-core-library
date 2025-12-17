@@ -258,3 +258,75 @@ function applyCircularLayout<T extends Record<string, unknown>>(nodes: Node<T>[]
     };
   });
 }
+
+/**
+ * Check if there is a cycle between two nodes (i.e., a path from target back to source).
+ * Returns true if adding an edge from `from` to `to` would complete a cycle.
+ */
+export function hasCycleBetweenNodes(
+  from: string,
+  to: string,
+  edges: Array<{ from: string; to: string }>
+): boolean {
+  // Check if there's already a path from `to` back to `from`
+  // using BFS/DFS from `to` node
+  const visited = new Set<string>();
+  const queue = [to];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (current === from) {
+      return true; // Found a path back, there would be a cycle
+    }
+    if (visited.has(current)) {
+      continue;
+    }
+    visited.add(current);
+
+    // Find all outgoing edges from current node
+    for (const edge of edges) {
+      if (edge.from === current && !visited.has(edge.to)) {
+        queue.push(edge.to);
+      }
+    }
+  }
+
+  return false;
+}
+
+export type CanvasSide = 'top' | 'right' | 'bottom' | 'left';
+
+/**
+ * Compute optimal edge sides based on relative node positions.
+ * Returns the best fromSide and toSide for connecting two nodes.
+ */
+export function computeOptimalEdgeSides(
+  fromPosition: { x: number; y: number },
+  toPosition: { x: number; y: number }
+): { fromSide: CanvasSide; toSide: CanvasSide } {
+  const dx = toPosition.x - fromPosition.x;
+  const dy = toPosition.y - fromPosition.y;
+
+  // Determine primary direction based on which axis has larger delta
+  const isHorizontalDominant = Math.abs(dx) > Math.abs(dy);
+
+  if (isHorizontalDominant) {
+    // Horizontal connection
+    if (dx > 0) {
+      // Target is to the right of source
+      return { fromSide: 'right', toSide: 'left' };
+    } else {
+      // Target is to the left of source
+      return { fromSide: 'left', toSide: 'right' };
+    }
+  } else {
+    // Vertical connection
+    if (dy > 0) {
+      // Target is below source
+      return { fromSide: 'bottom', toSide: 'top' };
+    } else {
+      // Target is above source
+      return { fromSide: 'top', toSide: 'bottom' };
+    }
+  }
+}
