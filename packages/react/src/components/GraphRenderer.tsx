@@ -345,15 +345,15 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   // EVENT HANDLERS
   // ============================================
 
-  // Handle edge click
+  // Handle edge click (toggle selection)
   const onEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
-    setSelectedEdgeId(edge.id);
+    setSelectedEdgeId((prev) => (prev === edge.id ? null : edge.id));
     setSelectedNodeId(null);
   }, []);
 
-  // Handle node click
+  // Handle node click (toggle selection)
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
-    setSelectedNodeId(node.id);
+    setSelectedNodeId((prev) => (prev === node.id ? null : node.id));
     setSelectedEdgeId(null);
   }, []);
 
