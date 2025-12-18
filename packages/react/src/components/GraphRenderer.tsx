@@ -362,6 +362,27 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     setSelectedEdgeId(null);
   }, []);
 
+  // Handle edge side updates from EdgeInfoPanel
+  const handleUpdateEdgeSides = useCallback(
+    (edgeId: string, fromSide: string, toSide: string) => {
+      setLocalEdges((currentEdges) =>
+        currentEdges.map((edge) =>
+          edge.id === edgeId
+            ? {
+                ...edge,
+                data: {
+                  ...edge.data,
+                  fromSide,
+                  toSide,
+                },
+              }
+            : edge
+        )
+      );
+    },
+    []
+  );
+
   // Handle close node info panel
   const onCloseNodeInfoPanel = useCallback(() => {
     setSelectedNodeId(null);
@@ -1032,9 +1053,11 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         onNodeClick={onNodeClick}
         proOptions={{ hideAttribution: true }}
         nodesDraggable={editable}
-        elementsSelectable={editable}
+        elementsSelectable={true}
         nodesConnectable={editable}
         edgesReconnectable={editable}
+        reconnectRadius={100}
+        elevateEdgesOnSelect={true}
         onNodesChange={handleNodesChange}
         onConnect={handleConnect}
         onReconnectStart={handleReconnectStart}
@@ -1066,6 +1089,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           targetNodeId={selectedEdge.to}
           onClose={onCloseEdgeInfoPanel}
           onDelete={editable ? handleEdgeDelete : undefined}
+          onUpdateSides={editable ? handleUpdateEdgeSides : undefined}
         />
       )}
 

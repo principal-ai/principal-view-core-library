@@ -10,11 +10,15 @@ export interface EdgeInfoPanelProps {
   onClose: () => void;
   /** Optional callback to delete the edge. If not provided, delete button is hidden. */
   onDelete?: (edgeId: string) => void;
+  /** Optional callback to update edge sides. If not provided, side selectors are disabled. */
+  onUpdateSides?: (edgeId: string, fromSide: string, toSide: string) => void;
 }
 
 /**
  * Panel that displays information about a selected edge
  */
+const SIDE_OPTIONS = ['top', 'right', 'bottom', 'left'] as const;
+
 export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
   edge,
   typeDefinition,
@@ -22,24 +26,10 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
   targetNodeId,
   onClose,
   onDelete,
+  onUpdateSides,
 }) => {
   const { theme } = useTheme();
   const edgeColor = typeDefinition.color || theme.colors.primary;
-
-  // Get fields to display based on dataSchema
-  const displayFields = typeDefinition.dataSchema
-    ? Object.entries(typeDefinition.dataSchema)
-        .filter(([, schema]) => schema.displayInInfo)
-        .map(([field, schema]) => ({
-          field,
-          label: schema.label || field,
-          value: edge.data?.[field],
-        }))
-    : [];
-
-  // Always show basic edge data if no schema is defined
-  const hasSchemaFields = displayFields.length > 0;
-  const edgeDataEntries = edge.data ? Object.entries(edge.data) : [];
 
   return (
     <div
@@ -139,65 +129,85 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
         </div>
       </div>
 
-      {/* Display schema-defined fields */}
-      {hasSchemaFields && (
-        <div style={{ marginBottom: '12px' }}>
-          <div
-            style={{
-              fontSize: '10px',
-              color: theme.colors.textSecondary,
-              marginBottom: '8px',
-              fontWeight: 'bold',
-            }}
-          >
-            Properties
-          </div>
-          {displayFields.map(({ field, label, value }) => (
-            <div key={field} style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '2px' }}>
-                {label}
-              </div>
-              <div style={{ fontSize: '12px' }}>
-                {value !== undefined && value !== null
-                  ? typeof value === 'object'
-                    ? JSON.stringify(value, null, 2)
-                    : String(value)
-                  : '-'}
-              </div>
-            </div>
-          ))}
+      {/* Connection Sides */}
+      <div style={{ marginBottom: '12px' }}>
+        <div style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '8px' }}>
+          Connection Sides
         </div>
-      )}
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '10px', color: theme.colors.textMuted, marginBottom: '4px' }}>
+              From Side
+            </div>
+            <select
+              value={(edge.data?.fromSide as string) || 'right'}
+              onChange={(e) => {
+                if (onUpdateSides) {
+                  onUpdateSides(
+                    edge.id,
+                    e.target.value,
+                    (edge.data?.toSide as string) || 'left'
+                  );
+                }
+              }}
+              disabled={!onUpdateSides}
+              style={{
+                width: '100%',
+                padding: '6px 8px',
+                fontSize: '12px',
+                borderRadius: '4px',
+                border: `1px solid ${theme.colors.border}`,
+                backgroundColor: theme.colors.background,
+                color: theme.colors.text,
+                cursor: onUpdateSides ? 'pointer' : 'not-allowed',
+                opacity: onUpdateSides ? 1 : 0.6,
+              }}
+            >
+              {SIDE_OPTIONS.map((side) => (
+                <option key={side} value={side}>
+                  {side}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '10px', color: theme.colors.textMuted, marginBottom: '4px' }}>
+              To Side
+            </div>
+            <select
+              value={(edge.data?.toSide as string) || 'left'}
+              onChange={(e) => {
+                if (onUpdateSides) {
+                  onUpdateSides(
+                    edge.id,
+                    (edge.data?.fromSide as string) || 'right',
+                    e.target.value
+                  );
+                }
+              }}
+              disabled={!onUpdateSides}
+              style={{
+                width: '100%',
+                padding: '6px 8px',
+                fontSize: '12px',
+                borderRadius: '4px',
+                border: `1px solid ${theme.colors.border}`,
+                backgroundColor: theme.colors.background,
+                color: theme.colors.text,
+                cursor: onUpdateSides ? 'pointer' : 'not-allowed',
+                opacity: onUpdateSides ? 1 : 0.6,
+              }}
+            >
+              {SIDE_OPTIONS.map((side) => (
+                <option key={side} value={side}>
+                  {side}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
 
-      {/* Show all edge data if no schema is defined */}
-      {!hasSchemaFields && edgeDataEntries.length > 0 && (
-        <div style={{ marginBottom: '12px' }}>
-          <div
-            style={{
-              fontSize: '10px',
-              color: theme.colors.textSecondary,
-              marginBottom: '8px',
-              fontWeight: 'bold',
-            }}
-          >
-            Data
-          </div>
-          {edgeDataEntries.map(([key, value]) => (
-            <div key={key} style={{ marginBottom: '8px' }}>
-              <div style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '2px' }}>
-                {key}
-              </div>
-              <div style={{ fontSize: '12px', wordBreak: 'break-word' }}>
-                {value !== undefined && value !== null
-                  ? typeof value === 'object'
-                    ? JSON.stringify(value, null, 2)
-                    : String(value)
-                  : '-'}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Metadata */}
       <div
