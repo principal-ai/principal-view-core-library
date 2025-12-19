@@ -944,6 +944,28 @@ function validateCanvas(
         });
       }
 
+      // Validate pv extension is present with edgeType
+      if (!e.pv || typeof e.pv !== 'object') {
+        issues.push({
+          type: 'error',
+          message: `Edge "${edgeLabel}" must have a "pv" extension with edgeType`,
+          path: `${edgePath}.pv`,
+          suggestion: 'Add: "pv": { "edgeType": "your-edge-type" }',
+        });
+      } else {
+        const edgePv = e.pv as Record<string, unknown>;
+        if (typeof edgePv.edgeType !== 'string' || !edgePv.edgeType) {
+          issues.push({
+            type: 'error',
+            message: `Edge "${edgeLabel}" must have a "pv.edgeType" field`,
+            path: `${edgePath}.pv.edgeType`,
+            suggestion: allDefinedEdgeTypes.length > 0
+              ? `Available types: ${allDefinedEdgeTypes.join(', ')}`
+              : 'Define edge types in canvas pv.edgeTypes or library.yaml edgeComponents',
+          });
+        }
+      }
+
       // Validate edge pv extension fields
       if (e.pv && typeof e.pv === 'object') {
         const edgePv = e.pv as Record<string, unknown>;
