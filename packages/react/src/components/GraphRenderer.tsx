@@ -45,6 +45,7 @@ import {
 } from '../utils/graphConverter';
 import { EdgeInfoPanel } from './EdgeInfoPanel';
 import { NodeInfoPanel } from './NodeInfoPanel';
+import { SelectionSidebar } from './SelectionSidebar';
 
 /** Position change event for tracking node movements */
 export interface NodePositionChange {
@@ -52,10 +53,18 @@ export interface NodePositionChange {
   position: { x: number; y: number };
 }
 
+/** Dimension change event for tracking node resizing */
+export interface NodeDimensionChange {
+  nodeId: string;
+  dimensions: { width: number; height: number };
+}
+
 /** All pending changes that can be saved */
 export interface PendingChanges {
   /** Node position changes */
   positionChanges: NodePositionChange[];
+  /** Node dimension changes (from resizing) */
+  dimensionChanges: NodeDimensionChange[];
   /** Node updates (type, data changes) */
   nodeUpdates: Array<{
     nodeId: string;
@@ -184,6 +193,7 @@ interface AnimationState {
 // Internal edit state tracking
 interface EditState {
   positionChanges: Map<string, { x: number; y: number }>;
+  dimensionChanges: Map<string, { width: number; height: number }>;
   nodeUpdates: Map<string, { type?: string; data?: Record<string, unknown> }>;
   deletedNodeIds: Set<string>;
   createdEdges: Array<{
@@ -199,6 +209,7 @@ interface EditState {
 
 const createEmptyEditState = (): EditState => ({
   positionChanges: new Map(),
+  dimensionChanges: new Map(),
   nodeUpdates: new Map(),
   deletedNodeIds: new Set(),
   createdEdges: [],
@@ -253,11 +264,11 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     edgeAnimations: {},
   });
 
-  // Track selected edge for info panel
-  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  // Track selected edges for info panel (supports multi-select)
+  const [selectedEdgeIds, setSelectedEdgeIds] = useState<Set<string>>(new Set());
 
-  // Track selected node for info panel
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  // Track selected nodes for info panel (supports multi-select)
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
 
   // Track pending connection for edge type picker
   const [pendingConnection, setPendingConnection] = useState<{
@@ -323,6 +334,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   const checkHasChanges = useCallback((state: EditState): boolean => {
     return (
       state.positionChanges.size > 0 ||
+      state.dimensionChanges.size > 0 ||
       state.nodeUpdates.size > 0 ||
       state.deletedNodeIds.size > 0 ||
       state.createdEdges.length > 0 ||
@@ -345,21 +357,65 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   // EVENT HANDLERS
   // ============================================
 
-  // Handle edge click (toggle selection)
-  const onEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
-    setSelectedEdgeId((prev) => (prev === edge.id ? null : edge.id));
-    setSelectedNodeId(null);
-  }, []);
+  // Handle edge click (toggle selection, supports Shift for multi-select)
+  const onEdgeClick = useCallback(
+    (event: React.MouseEvent, edge: Edge) => {
+      if (event.shiftKey && editable) {
+        // Shift+click: toggle edge in selection
+        setSelectedEdgeIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(edge.id)) {
+            next.delete(edge.id);
+          } else {
+            next.add(edge.id);
+          }
+          return next;
+        });
+      } else {
+        // Regular click: single select (replace selection)
+        setSelectedEdgeIds((prev) => {
+          if (prev.size === 1 && prev.has(edge.id)) {
+            return new Set(); // Deselect if clicking same edge
+          }
+          return new Set([edge.id]);
+        });
+        setSelectedNodeIds(new Set());
+      }
+    },
+    [editable]
+  );
 
-  // Handle node click (toggle selection)
-  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
-    setSelectedNodeId((prev) => (prev === node.id ? null : node.id));
-    setSelectedEdgeId(null);
-  }, []);
+  // Handle node click (toggle selection, supports Shift for multi-select)
+  const onNodeClick = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      if (event.shiftKey && editable) {
+        // Shift+click: toggle node in selection
+        setSelectedNodeIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(node.id)) {
+            next.delete(node.id);
+          } else {
+            next.add(node.id);
+          }
+          return next;
+        });
+      } else {
+        // Regular click: single select (replace selection)
+        setSelectedNodeIds((prev) => {
+          if (prev.size === 1 && prev.has(node.id)) {
+            return new Set(); // Deselect if clicking same node
+          }
+          return new Set([node.id]);
+        });
+        setSelectedEdgeIds(new Set());
+      }
+    },
+    [editable]
+  );
 
   // Handle close edge info panel
   const onCloseEdgeInfoPanel = useCallback(() => {
-    setSelectedEdgeId(null);
+    setSelectedEdgeIds(new Set());
   }, []);
 
   // Handle edge side updates from EdgeInfoPanel
@@ -385,8 +441,25 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   // Handle close node info panel
   const onCloseNodeInfoPanel = useCallback(() => {
-    setSelectedNodeId(null);
+    setSelectedNodeIds(new Set());
   }, []);
+
+  // Handle pane click (clear selection when clicking empty space)
+  const onPaneClick = useCallback(() => {
+    setSelectedNodeIds(new Set());
+    setSelectedEdgeIds(new Set());
+  }, []);
+
+  // Handle selection change from ReactFlow (box selection)
+  const handleSelectionChange = useCallback(
+    ({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[]; edges: Edge[] }) => {
+      if (editable) {
+        setSelectedNodeIds(new Set(selectedNodes.map((n) => n.id)));
+        setSelectedEdgeIds(new Set(selectedEdges.map((e) => e.id)));
+      }
+    },
+    [editable]
+  );
 
   // Handle node update (internal - updates local state only)
   const handleNodeUpdate = useCallback(
@@ -440,6 +513,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         // Remove any position changes for this node
         const newPositions = new Map(prev.positionChanges);
         newPositions.delete(nodeId);
+        // Remove any dimension changes for this node
+        const newDimensions = new Map(prev.dimensionChanges);
+        newDimensions.delete(nodeId);
         // Remove created edges that involve this node
         const newCreatedEdges = prev.createdEdges.filter(
           (e) => e.from !== nodeId && e.to !== nodeId
@@ -449,11 +525,12 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           deletedNodeIds: newDeletedNodes,
           nodeUpdates: newUpdates,
           positionChanges: newPositions,
+          dimensionChanges: newDimensions,
           createdEdges: newCreatedEdges,
         };
       });
 
-      setSelectedNodeId(null);
+      setSelectedNodeIds(new Set());
     },
     [editable, updateEditState]
   );
@@ -495,7 +572,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         return prev;
       });
 
-      setSelectedEdgeId(null);
+      setSelectedEdgeIds(new Set());
     },
     [editable, updateEditState, localEdges]
   );
@@ -713,6 +790,12 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   // SELECTED ITEMS
   // ============================================
 
+  // Get first selected edge (for single-selection info panel)
+  const selectedEdgeId = useMemo(() => {
+    if (selectedEdgeIds.size === 0) return null;
+    return selectedEdgeIds.values().next().value;
+  }, [selectedEdgeIds]);
+
   const selectedEdge = useMemo(() => {
     if (!selectedEdgeId) return null;
     return edges.find((e) => e.id === selectedEdgeId);
@@ -722,6 +805,12 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     if (!selectedEdge) return null;
     return configuration.edgeTypes[selectedEdge.type];
   }, [selectedEdge, configuration.edgeTypes]);
+
+  // Get first selected node (for single-selection info panel)
+  const selectedNodeId = useMemo(() => {
+    if (selectedNodeIds.size === 0) return null;
+    return selectedNodeIds.values().next().value;
+  }, [selectedNodeIds]);
 
   const selectedNode = useMemo(() => {
     if (!selectedNodeId) return null;
@@ -907,7 +996,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   const xyflowNodes = editable ? xyflowLocalNodes : xyflowNodesBase;
 
-  // Handle node changes (drag events)
+  // Handle node changes (drag and resize events)
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
       if (!editable) return;
@@ -929,6 +1018,37 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           'dragging' in change &&
           change.dragging === false
       );
+
+      // Track dimension changes (from NodeResizer)
+      const dimensionChanges = changes.filter(
+        (
+          change
+        ): change is NodeChange & {
+          type: 'dimensions';
+          dimensions: { width: number; height: number };
+          resizing: boolean;
+        } =>
+          change.type === 'dimensions' &&
+          'dimensions' in change &&
+          change.dimensions !== undefined &&
+          'resizing' in change &&
+          change.resizing === false
+      );
+
+      if (dimensionChanges.length > 0) {
+        updateEditState((prev) => {
+          const newDimensions = new Map(prev.dimensionChanges);
+          for (const change of dimensionChanges) {
+            if (change.dimensions) {
+              newDimensions.set(change.id, {
+                width: Math.round(change.dimensions.width),
+                height: Math.round(change.dimensions.height),
+              });
+            }
+          }
+          return { ...prev, dimensionChanges: newDimensions };
+        });
+      }
 
       if (positionChanges.length > 0) {
         updateEditState((prev) => {
@@ -1063,8 +1183,12 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         onReconnectStart={handleReconnectStart}
         onReconnect={handleReconnect}
         onReconnectEnd={handleReconnectEnd}
-        panOnDrag
-        selectionOnDrag={false}
+        onPaneClick={onPaneClick}
+        onSelectionChange={handleSelectionChange}
+        panOnDrag={!editable}
+        selectionOnDrag={editable}
+        selectionKeyCode={null}
+        multiSelectionKeyCode="Shift"
       >
         {showBackground && <Background color={theme.colors.border} gap={16} size={1} />}
         {showControls && <Controls showZoom showFitView showInteractive />}
@@ -1081,7 +1205,18 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         )}
       </ReactFlow>
 
-      {selectedEdge && selectedEdgeTypeDefinition && (
+      {/* Multi-selection sidebar - shown when 2+ nodes are selected */}
+      {selectedNodeIds.size >= 2 && (
+        <SelectionSidebar
+          selectedNodeIds={selectedNodeIds}
+          nodes={nodes}
+          nodeTypeDefinitions={configuration.nodeTypes}
+          onClose={onCloseNodeInfoPanel}
+        />
+      )}
+
+      {/* Single edge info panel - hidden when multiple edges selected */}
+      {selectedEdgeIds.size === 1 && selectedEdge && selectedEdgeTypeDefinition && (
         <EdgeInfoPanel
           edge={selectedEdge}
           typeDefinition={selectedEdgeTypeDefinition}
@@ -1093,7 +1228,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         />
       )}
 
-      {selectedNode && selectedNodeTypeDefinition && (
+      {/* Single node info panel - hidden when multiple nodes selected */}
+      {selectedNodeIds.size === 1 && selectedNode && selectedNodeTypeDefinition && (
         <NodeInfoPanel
           node={selectedNode}
           typeDefinition={selectedNodeTypeDefinition}
@@ -1382,6 +1518,12 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
               position,
             })
           ),
+          dimensionChanges: Array.from(state.dimensionChanges.entries()).map(
+            ([nodeId, dimensions]) => ({
+              nodeId,
+              dimensions,
+            })
+          ),
           nodeUpdates: Array.from(state.nodeUpdates.entries()).map(([nodeId, updates]) => ({
             nodeId,
             updates,
@@ -1397,6 +1539,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           deletedEdges: state.deletedEdges.map((e) => ({ from: e.from, to: e.to, type: e.type })),
           hasChanges:
             state.positionChanges.size > 0 ||
+            state.dimensionChanges.size > 0 ||
             state.nodeUpdates.size > 0 ||
             state.deletedNodeIds.size > 0 ||
             state.createdEdges.length > 0 ||
@@ -1410,6 +1553,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
         const state = editStateRef.current;
         return (
           state.positionChanges.size > 0 ||
+          state.dimensionChanges.size > 0 ||
           state.nodeUpdates.size > 0 ||
           state.deletedNodeIds.size > 0 ||
           state.createdEdges.length > 0 ||

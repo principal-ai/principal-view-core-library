@@ -1,5 +1,5 @@
 import React from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { NodeTypeDefinition } from '@principal-ai/principal-view-core';
 import { resolveIcon } from '../utils/iconResolver';
@@ -100,6 +100,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
       border: `2px solid ${hasViolations ? '#D0021B' : strokeColor}`,
       fontSize: '12px',
       fontWeight: 500,
+      // Use 100% width/height to fill the node container (for resizing support)
+      width: '100%',
+      height: '100%',
       minWidth: typeDefinition.size?.width || 80,
       minHeight: typeDefinition.size?.height || 40,
       display: 'flex',
@@ -108,8 +111,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
       justifyContent: isGroup ? 'flex-start' : 'center',
       gap: '4px',
       boxShadow: selected ? `0 0 0 2px ${strokeColor}` : '0 2px 4px rgba(0,0,0,0.1)',
-      transition: 'all 0.2s ease',
+      transition: 'box-shadow 0.2s ease',
       animationDuration: animationType ? `${animationDuration}ms` : undefined,
+      boxSizing: 'border-box' as const,
     };
 
     switch (typeDefinition.shape) {
@@ -117,8 +121,6 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
         return {
           ...baseStyles,
           borderRadius: '50%',
-          width: typeDefinition.size?.width || 80,
-          height: typeDefinition.size?.height || 80,
           padding: '8px',
         };
       case 'hexagon':
@@ -136,13 +138,12 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
           boxShadow: 'none', // Shadow handled by wrapper
         };
       case 'diamond':
-        // Rotated square - fixed dimensions for proper diamond shape
-        const diamondSize = typeDefinition.size?.width || 70;
+        // Rotated square - use 100% to fill container
         return {
           ...baseStyles,
           transform: 'rotate(45deg)',
-          width: diamondSize,
-          height: diamondSize,
+          width: '100%',
+          height: '100%',
           padding: '8px',
         };
       case 'rectangle':
@@ -156,6 +157,14 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
 
   const isDiamond = typeDefinition.shape === 'diamond';
   const isHexagon = typeDefinition.shape === 'hexagon';
+  const isCircle = typeDefinition.shape === 'circle';
+
+  // Determine if aspect ratio should be locked (circles and diamonds should maintain square aspect)
+  const keepAspectRatio = isCircle || isDiamond;
+
+  // Minimum dimensions for resizing
+  const minWidth = typeDefinition.size?.width || 80;
+  const minHeight = typeDefinition.size?.height || (isCircle ? minWidth : 40);
 
   // Hexagon border wrapper styles (outer shape that acts as border)
   // Hexagon with gentle diagonals
@@ -166,10 +175,14 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
         position: 'relative',
         clipPath: hexagonClipPath,
         backgroundColor: hasViolations ? '#D0021B' : strokeColor,
-        width: typeDefinition.size?.width || 120,
-        height: typeDefinition.size?.height || 120,
+        // Use 100% to fill container for resizing support
+        width: '100%',
+        height: '100%',
+        minWidth: typeDefinition.size?.width || 120,
+        minHeight: typeDefinition.size?.height || 120,
         boxShadow: selected ? `0 0 0 2px ${strokeColor}` : '0 2px 4px rgba(0,0,0,0.1)',
-        transition: 'all 0.2s ease',
+        transition: 'box-shadow 0.2s ease',
+        boxSizing: 'border-box',
       }
     : {};
 
@@ -245,6 +258,25 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
 
   return (
     <>
+      {/* Node Resizer - only shown in edit mode */}
+      {editable && (
+        <NodeResizer
+          color={strokeColor}
+          isVisible={selected}
+          minWidth={minWidth}
+          minHeight={minHeight}
+          keepAspectRatio={keepAspectRatio}
+          handleStyle={{
+            width: 8,
+            height: 8,
+            borderRadius: 2,
+          }}
+          lineStyle={{
+            borderWidth: 1,
+          }}
+        />
+      )}
+
       {/* Input handles - all 4 sides for incoming connections */}
       <Handle type="target" position={Position.Top} id="top" style={getHandleStyle('top')} />
       <Handle type="target" position={Position.Bottom} id="bottom" style={getHandleStyle('bottom')} />
