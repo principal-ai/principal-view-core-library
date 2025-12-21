@@ -295,9 +295,11 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
             width: 8,
             height: 8,
             borderRadius: 2,
+            zIndex: 20,
           }}
           lineStyle={{
             borderWidth: 1,
+            zIndex: 20,
           }}
         />
       )}
