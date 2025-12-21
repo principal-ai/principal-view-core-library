@@ -35,6 +35,9 @@ export function convertToXYFlowNodes(
       position: node.position || { x: 0, y: 0 },
       // Groups have lower zIndex to render behind edges
       zIndex: isGroup ? -1 : undefined,
+      // Apply persisted dimensions if available
+      ...(node.width !== undefined ? { width: node.width } : {}),
+      ...(node.height !== undefined ? { height: node.height } : {}),
       data: {
         name: node.name || node.id,
         typeDefinition,

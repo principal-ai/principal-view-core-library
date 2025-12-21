@@ -317,6 +317,10 @@ export interface NodeState {
   data: Record<string, any>;
   state?: string;
   position?: { x: number; y: number };
+  /** Node width (persisted from resize operations) */
+  width?: number;
+  /** Node height (persisted from resize operations) */
+  height?: number;
   createdAt: number;
   updatedAt: number;
 }
