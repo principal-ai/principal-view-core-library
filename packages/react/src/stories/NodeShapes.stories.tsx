@@ -131,8 +131,8 @@ export const AllShapes: Story = {
 This story displays all 5 available node shapes:
 - **Rectangle** - Default shape with rounded corners (borderRadius: 8px)
 - **Circle** - Circular nodes (borderRadius: 50%)
-- **Hexagon** - Flat-top style with points on left/right sides
-- **Diamond** - Rotated 45° square with counter-rotated content
+- **Hexagon** - Flat-top style using clip-path polygon
+- **Diamond** - Diamond shape using clip-path polygon (works with any aspect ratio)
 - **Custom** - Placeholder that falls back to rectangle styling
         `,
       },
@@ -755,11 +755,12 @@ const ShapeComparisonTemplate = () => {
           </li>
           <li>
             <strong>Hexagon</strong>: Flat-top style using{' '}
-            <code>clipPath: polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%)</code>
+            <code>clipPath: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)</code>
           </li>
           <li>
-            <strong>Diamond</strong>: Fixed square rotated 45°, inner content rotated -45° to keep
-            text upright
+            <strong>Diamond</strong>: Uses{' '}
+            <code>clipPath: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)</code> - works with any
+            aspect ratio
           </li>
           <li>
             <strong>Custom</strong>: Currently renders as rectangle (placeholder for future custom
@@ -777,6 +778,430 @@ export const ShapeComparison: Story = {
     docs: {
       description: {
         story: 'Interactive comparison view with implementation details for each shape.',
+      },
+    },
+  },
+};
+
+/**
+ * Canvas showing shapes with wide aspect ratios (width > height)
+ */
+const wideShapesCanvas: ExtendedCanvas = {
+  nodes: [
+    {
+      id: 'rect-wide',
+      type: 'text',
+      x: 50,
+      y: 80,
+      width: 280,
+      height: 60,
+      text: 'Wide Rectangle (280x60)',
+      color: 6,
+      pv: {
+        nodeType: 'rect-wide',
+        shape: 'rectangle',
+        icon: 'RectangleHorizontal',
+      },
+    },
+    {
+      id: 'circle-wide',
+      type: 'text',
+      x: 380,
+      y: 80,
+      width: 280,
+      height: 60,
+      text: 'Wide Circle (280x60)',
+      color: 5,
+      pv: {
+        nodeType: 'circle-wide',
+        shape: 'circle',
+        icon: 'Circle',
+      },
+    },
+    {
+      id: 'hex-wide',
+      type: 'text',
+      x: 50,
+      y: 180,
+      width: 280,
+      height: 60,
+      text: 'Wide Hexagon (280x60)',
+      color: 4,
+      pv: {
+        nodeType: 'hex-wide',
+        shape: 'hexagon',
+        icon: 'Hexagon',
+      },
+    },
+    {
+      id: 'diamond-wide',
+      type: 'text',
+      x: 380,
+      y: 180,
+      width: 280,
+      height: 60,
+      text: 'Wide Diamond (280x60)',
+      color: 2,
+      pv: {
+        nodeType: 'diamond-wide',
+        shape: 'diamond',
+        icon: 'Diamond',
+      },
+    },
+    // Extra wide versions
+    {
+      id: 'rect-extra-wide',
+      type: 'text',
+      x: 50,
+      y: 280,
+      width: 400,
+      height: 50,
+      text: 'Extra Wide Rectangle (400x50)',
+      color: 6,
+      pv: {
+        nodeType: 'rect-extra-wide',
+        shape: 'rectangle',
+        icon: 'RectangleHorizontal',
+      },
+    },
+    {
+      id: 'hex-extra-wide',
+      type: 'text',
+      x: 50,
+      y: 360,
+      width: 400,
+      height: 50,
+      text: 'Extra Wide Hexagon (400x50)',
+      color: 4,
+      pv: {
+        nodeType: 'hex-extra-wide',
+        shape: 'hexagon',
+        icon: 'Hexagon',
+      },
+    },
+  ],
+  edges: [],
+  pv: {
+    version: '1.0.0',
+    name: 'Wide Shapes Audit',
+    description: 'Node shapes with wide aspect ratios',
+    edgeTypes: {},
+  },
+};
+
+export const WideShapes: Story = {
+  args: {
+    canvas: wideShapesCanvas,
+    width: 750,
+    height: 480,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Wide Aspect Ratio Shapes**
+
+Tests how each shape handles wide aspect ratios (width >> height):
+- **Row 1**: Wide shapes at 280x60
+- **Row 2**: Wide shapes at 280x60
+- **Row 3-4**: Extra wide shapes at 400x50
+
+Use this to audit:
+- How circle handles non-square dimensions (should it force square or stretch?)
+- How hexagon clip-path scales horizontally
+- How diamond rotation works with rectangular dimensions
+        `,
+      },
+    },
+  },
+};
+
+/**
+ * Canvas showing shapes with tall aspect ratios (height > width)
+ */
+const tallShapesCanvas: ExtendedCanvas = {
+  nodes: [
+    {
+      id: 'rect-tall',
+      type: 'text',
+      x: 50,
+      y: 50,
+      width: 80,
+      height: 200,
+      text: 'Tall Rect',
+      color: 6,
+      pv: {
+        nodeType: 'rect-tall',
+        shape: 'rectangle',
+        icon: 'RectangleVertical',
+      },
+    },
+    {
+      id: 'circle-tall',
+      type: 'text',
+      x: 180,
+      y: 50,
+      width: 80,
+      height: 200,
+      text: 'Tall Circle',
+      color: 5,
+      pv: {
+        nodeType: 'circle-tall',
+        shape: 'circle',
+        icon: 'Circle',
+      },
+    },
+    {
+      id: 'hex-tall',
+      type: 'text',
+      x: 310,
+      y: 50,
+      width: 80,
+      height: 200,
+      text: 'Tall Hex',
+      color: 4,
+      pv: {
+        nodeType: 'hex-tall',
+        shape: 'hexagon',
+        icon: 'Hexagon',
+      },
+    },
+    {
+      id: 'diamond-tall',
+      type: 'text',
+      x: 440,
+      y: 50,
+      width: 80,
+      height: 200,
+      text: 'Tall',
+      color: 2,
+      pv: {
+        nodeType: 'diamond-tall',
+        shape: 'diamond',
+        icon: 'Diamond',
+      },
+    },
+    // Extra tall versions
+    {
+      id: 'rect-extra-tall',
+      type: 'text',
+      x: 570,
+      y: 50,
+      width: 60,
+      height: 280,
+      text: 'Extra Tall',
+      color: 6,
+      pv: {
+        nodeType: 'rect-extra-tall',
+        shape: 'rectangle',
+        icon: 'RectangleVertical',
+      },
+    },
+    {
+      id: 'hex-extra-tall',
+      type: 'text',
+      x: 680,
+      y: 50,
+      width: 60,
+      height: 280,
+      text: 'Extra Tall',
+      color: 4,
+      pv: {
+        nodeType: 'hex-extra-tall',
+        shape: 'hexagon',
+        icon: 'Hexagon',
+      },
+    },
+  ],
+  edges: [],
+  pv: {
+    version: '1.0.0',
+    name: 'Tall Shapes Audit',
+    description: 'Node shapes with tall aspect ratios',
+    edgeTypes: {},
+  },
+};
+
+export const TallShapes: Story = {
+  args: {
+    canvas: tallShapesCanvas,
+    width: 800,
+    height: 400,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Tall Aspect Ratio Shapes**
+
+Tests how each shape handles tall aspect ratios (height >> width):
+- **Columns 1-4**: Tall shapes at 80x200
+- **Columns 5-6**: Extra tall shapes at 60x280
+
+Use this to audit:
+- How circle handles non-square dimensions
+- How hexagon clip-path scales vertically
+- How diamond rotation works with tall rectangular dimensions
+- Text/icon placement in narrow vertical spaces
+        `,
+      },
+    },
+  },
+};
+
+/**
+ * Canvas showing extreme aspect ratios for stress testing
+ */
+const extremeAspectRatiosCanvas: ExtendedCanvas = {
+  nodes: [
+    // Very wide row
+    {
+      id: 'rect-very-wide',
+      type: 'text',
+      x: 50,
+      y: 50,
+      width: 500,
+      height: 40,
+      text: 'Very Wide Rectangle (500x40) - Testing extreme horizontal stretch',
+      color: 6,
+      pv: {
+        nodeType: 'rect-very-wide',
+        shape: 'rectangle',
+      },
+    },
+    {
+      id: 'hex-very-wide',
+      type: 'text',
+      x: 50,
+      y: 120,
+      width: 500,
+      height: 40,
+      text: 'Very Wide Hexagon (500x40) - Testing clip-path at extremes',
+      color: 4,
+      pv: {
+        nodeType: 'hex-very-wide',
+        shape: 'hexagon',
+      },
+    },
+    // Very tall column
+    {
+      id: 'rect-very-tall',
+      type: 'text',
+      x: 600,
+      y: 50,
+      width: 50,
+      height: 300,
+      text: 'Very Tall',
+      color: 6,
+      pv: {
+        nodeType: 'rect-very-tall',
+        shape: 'rectangle',
+      },
+    },
+    {
+      id: 'hex-very-tall',
+      type: 'text',
+      x: 700,
+      y: 50,
+      width: 50,
+      height: 300,
+      text: 'Very Tall',
+      color: 4,
+      pv: {
+        nodeType: 'hex-very-tall',
+        shape: 'hexagon',
+      },
+    },
+    // Circle and diamond with extreme ratios (should these enforce square?)
+    {
+      id: 'circle-extreme-wide',
+      type: 'text',
+      x: 50,
+      y: 200,
+      width: 200,
+      height: 40,
+      text: 'Circle Wide?',
+      color: 5,
+      pv: {
+        nodeType: 'circle-extreme-wide',
+        shape: 'circle',
+      },
+    },
+    {
+      id: 'diamond-extreme-wide',
+      type: 'text',
+      x: 300,
+      y: 200,
+      width: 200,
+      height: 40,
+      text: 'Diamond Wide?',
+      color: 2,
+      pv: {
+        nodeType: 'diamond-extreme-wide',
+        shape: 'diamond',
+      },
+    },
+    {
+      id: 'circle-extreme-tall',
+      type: 'text',
+      x: 50,
+      y: 280,
+      width: 50,
+      height: 120,
+      text: 'Tall?',
+      color: 5,
+      pv: {
+        nodeType: 'circle-extreme-tall',
+        shape: 'circle',
+      },
+    },
+    {
+      id: 'diamond-extreme-tall',
+      type: 'text',
+      x: 150,
+      y: 280,
+      width: 50,
+      height: 120,
+      text: 'Tall?',
+      color: 2,
+      pv: {
+        nodeType: 'diamond-extreme-tall',
+        shape: 'diamond',
+      },
+    },
+  ],
+  edges: [],
+  pv: {
+    version: '1.0.0',
+    name: 'Extreme Aspect Ratios',
+    description: 'Stress testing node shapes with extreme dimensions',
+    edgeTypes: {},
+  },
+};
+
+export const ExtremeAspectRatios: Story = {
+  args: {
+    canvas: extremeAspectRatiosCanvas,
+    width: 800,
+    height: 450,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Extreme Aspect Ratios (Stress Test)**
+
+Tests shapes at extreme aspect ratios to identify edge cases:
+- **500x40**: Very wide shapes
+- **50x300**: Very tall shapes
+- Circle with non-square dimensions (should it enforce square or stretch?)
+
+Key questions to answer:
+1. Does circle force equal width/height or stretch?
+2. Does hexagon clip-path degrade gracefully at extremes?
+3. Does diamond clip-path work correctly at extremes?
+4. Is text readable in narrow/short shapes?
+        `,
       },
     },
   },

@@ -138,13 +138,18 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
           boxShadow: 'none', // Shadow handled by wrapper
         };
       case 'diamond':
-        // Rotated square - use 100% to fill container
+        // Diamond uses wrapper approach for proper border - styles returned here are for inner fill
+        // The outer border wrapper is rendered separately in the JSX
         return {
           ...baseStyles,
-          transform: 'rotate(45deg)',
+          border: 'none', // Border handled by wrapper
+          clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
           width: '100%',
           height: '100%',
-          padding: '8px',
+          minWidth: 'unset',
+          minHeight: 'unset',
+          padding: '8px 16px',
+          boxShadow: 'none', // Shadow handled by wrapper
         };
       case 'rectangle':
       default:
@@ -159,8 +164,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
   const isHexagon = typeDefinition.shape === 'hexagon';
   const isCircle = typeDefinition.shape === 'circle';
 
-  // Determine if aspect ratio should be locked (circles and diamonds should maintain square aspect)
-  const keepAspectRatio = isCircle || isDiamond;
+  // Determine if aspect ratio should be locked (circles should maintain square aspect)
+  const keepAspectRatio = isCircle;
 
   // Minimum dimensions for resizing
   const minWidth = typeDefinition.size?.width || 80;
@@ -207,6 +212,47 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
       }
     : {};
 
+  // Diamond clip-path
+  const diamondClipPath = 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)';
+  const diamondBorderWidth = 2;
+
+  // Diamond border wrapper styles (outer shape that acts as border)
+  const diamondBorderStyle: React.CSSProperties = isDiamond
+    ? {
+        position: 'relative',
+        clipPath: diamondClipPath,
+        backgroundColor: hasViolations ? '#D0021B' : strokeColor,
+        width: '100%',
+        height: '100%',
+        minWidth: typeDefinition.size?.width || 80,
+        minHeight: typeDefinition.size?.height || 80,
+        boxShadow: selected ? `0 0 0 2px ${strokeColor}` : '0 2px 4px rgba(0,0,0,0.1)',
+        transition: 'box-shadow 0.2s ease',
+        boxSizing: 'border-box',
+      }
+    : {};
+
+  // Diamond inner fill styles (white background inset from border)
+  const diamondInnerStyle: React.CSSProperties = isDiamond
+    ? {
+        position: 'absolute',
+        top: diamondBorderWidth,
+        left: diamondBorderWidth,
+        right: diamondBorderWidth,
+        bottom: diamondBorderWidth,
+        clipPath: diamondClipPath,
+        backgroundColor: 'white',
+        color: '#000',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '12px',
+        fontWeight: 500,
+        gap: '4px',
+      }
+    : {};
+
   // Handle styles - larger and more visible in edit mode
   const baseHandleStyle = editable
     ? {
@@ -222,34 +268,13 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
         height: 8,
       };
 
-  // Diamond handles need to be offset to reach the tips of the rotated shape
-  // A 45° rotated square has tips at ~41% beyond the original edges
-  const diamondOffset = isDiamond ? '21%' : '0';
-
-  const getHandleStyle = (position: 'top' | 'bottom' | 'left' | 'right') => {
+  const getHandleStyle = (_position: 'top' | 'bottom' | 'left' | 'right') => {
     if (!isDiamond && !isHexagon) return baseHandleStyle;
 
     const offsetStyle: React.CSSProperties = { ...baseHandleStyle };
 
-    if (isDiamond) {
-      switch (position) {
-        case 'top':
-          offsetStyle.top = `-${diamondOffset}`;
-          break;
-        case 'bottom':
-          offsetStyle.bottom = `-${diamondOffset}`;
-          break;
-        case 'left':
-          offsetStyle.left = `-${diamondOffset}`;
-          break;
-        case 'right':
-          offsetStyle.right = `-${diamondOffset}`;
-          break;
-      }
-    }
-
-    if (isHexagon) {
-      // Bring handles above the hexagon layers
+    // Bring handles above the clip-path layers for hexagon and diamond
+    if (isHexagon || isDiamond) {
       offsetStyle.zIndex = 10;
     }
 
@@ -283,7 +308,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
       <Handle type="target" position={Position.Left} id="left" style={getHandleStyle('left')} />
       <Handle type="target" position={Position.Right} id="right" style={getHandleStyle('right')} />
 
-      {/* Hexagon needs a wrapper for proper border rendering */}
+      {/* Hexagon and Diamond need a wrapper for proper border rendering */}
       {isHexagon ? (
         <div style={hexagonBorderStyle} className={animationClass}>
           <div style={hexagonInnerStyle}>
@@ -320,12 +345,47 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
             )}
           </div>
         </div>
+      ) : isDiamond ? (
+        <div style={diamondBorderStyle} className={animationClass}>
+          <div style={diamondInnerStyle}>
+            {icon && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                {resolveIcon(icon, 20)}
+              </div>
+            )}
+            <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>{displayName}</div>
+            {state && (
+              <div
+                style={{
+                  fontSize: '10px',
+                  backgroundColor: color,
+                  color: 'white',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  textAlign: 'center',
+                }}
+              >
+                {nodeDataStates?.[state]?.label || typeDefinition.states?.[state]?.label || state}
+              </div>
+            )}
+            {hasViolations && (
+              <div
+                style={{
+                  fontSize: '10px',
+                  color: '#D0021B',
+                  fontWeight: 'bold',
+                }}
+              >
+                ⚠️
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
         <div style={getShapeStyles()} className={animationClass}>
-          {/* Inner content (rotated back if diamond) */}
+          {/* Inner content */}
           <div
             style={{
-              ...(isDiamond ? { transform: 'rotate(-45deg)' } : {}),
               ...(isGroup ? { width: '100%' } : {}),
             }}
           >
@@ -469,22 +529,6 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
           }
         }
 
-        /* Special handling for diamond shape with shake */
-        .node-shake[style*="rotate(45deg)"] {
-          animation: node-shake-diamond ease-in-out;
-        }
-
-        @keyframes node-shake-diamond {
-          0%, 100% {
-            transform: rotate(45deg) translateX(0);
-          }
-          10%, 30%, 50%, 70%, 90% {
-            transform: rotate(45deg) translateX(-4px);
-          }
-          20%, 40%, 60%, 80% {
-            transform: rotate(45deg) translateX(4px);
-          }
-        }
       `}</style>
     </>
   );
