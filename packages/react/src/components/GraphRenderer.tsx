@@ -1185,9 +1185,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         onReconnectEnd={handleReconnectEnd}
         onPaneClick={onPaneClick}
         onSelectionChange={handleSelectionChange}
-        panOnDrag={!editable}
-        selectionOnDrag={editable}
-        selectionKeyCode={null}
+        panOnDrag={true}
+        selectionOnDrag={false}
+        selectionKeyCode={editable ? 'Shift' : null}
         multiSelectionKeyCode="Shift"
       >
         {showBackground && <Background color={theme.colors.border} gap={16} size={1} />}
