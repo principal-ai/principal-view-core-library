@@ -310,6 +310,9 @@ export class CanvasConverter {
             ...(node.type === 'link' ? { url: node.url } : {}),
           },
           position: { x: node.x, y: node.y },
+          // Persist node dimensions at top level for xyflow
+          width: node.width,
+          height: node.height,
           // Don't set a default state - only show state labels when explicitly set via events
           state: undefined,
           createdAt: now,
