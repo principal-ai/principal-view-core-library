@@ -148,6 +148,12 @@ interface GraphRendererBaseProps {
    * Use this to enable/disable save buttons in the parent component.
    */
   onPendingChangesChange?: (hasChanges: boolean) => void;
+
+  /**
+   * Callback when a source is clicked in the node info panel.
+   * Receives the node ID and the source path that was clicked.
+   */
+  onSourceClick?: (nodeId: string, source: string) => void;
 }
 
 /** GraphRenderer props - canvas format only */
@@ -233,6 +239,7 @@ interface GraphRendererInnerProps {
   onPendingChangesChange?: (hasChanges: boolean) => void;
   onEditStateChange?: (editState: EditState) => void;
   editStateRef: React.MutableRefObject<EditState>;
+  onSourceClick?: (nodeId: string, source: string) => void;
 }
 
 /**
@@ -254,6 +261,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   onPendingChangesChange,
   onEditStateChange,
   editStateRef,
+  onSourceClick,
 }) => {
   const { fitView } = useReactFlow();
   const { theme } = useTheme();
@@ -1237,6 +1245,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           onClose={onCloseNodeInfoPanel}
           onDelete={editable ? handleNodeDelete : undefined}
           onUpdate={editable ? handleNodeUpdate : undefined}
+          onSourceClick={onSourceClick}
         />
       )}
 
@@ -1598,6 +1607,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     editable,
     autoUpdateEdgeSides,
     onPendingChangesChange,
+    onSourceClick,
   } = props;
 
   return (
@@ -1618,6 +1628,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           autoUpdateEdgeSides={autoUpdateEdgeSides}
           onPendingChangesChange={onPendingChangesChange}
           editStateRef={editStateRef}
+          onSourceClick={onSourceClick}
         />
       </ReactFlowProvider>
     </div>

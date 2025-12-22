@@ -64,6 +64,8 @@ export interface NodeInfoPanelProps {
   onDelete?: (nodeId: string) => void;
   /** Optional callback to update the node. If not provided, edit fields are disabled. */
   onUpdate?: (nodeId: string, updates: { type?: string; data?: Record<string, unknown> }) => void;
+  /** Optional callback when a source is clicked. Receives the node ID and source path. */
+  onSourceClick?: (nodeId: string, source: string) => void;
 }
 
 /**
@@ -76,6 +78,7 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
   onClose,
   onDelete,
   onUpdate,
+  onSourceClick,
 }) => {
   const { theme } = useTheme();
 
@@ -218,20 +221,47 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
             Sources
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-            {sources.map((source, index) => (
-              <span
-                key={index}
-                style={{
-                  fontSize: '11px',
-                  padding: '2px 8px',
-                  backgroundColor: theme.colors.muted,
-                  borderRadius: '4px',
-                  color: theme.colors.textSecondary,
-                }}
-              >
-                {source}
-              </span>
-            ))}
+            {sources.map((source, index) =>
+              onSourceClick ? (
+                <button
+                  key={index}
+                  onClick={() => onSourceClick(node.id, source)}
+                  style={{
+                    fontSize: '11px',
+                    padding: '2px 8px',
+                    backgroundColor: theme.colors.muted,
+                    borderRadius: '4px',
+                    color: theme.colors.textSecondary,
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.15s, color 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.primary;
+                    e.currentTarget.style.color = theme.colors.background;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = theme.colors.muted;
+                    e.currentTarget.style.color = theme.colors.textSecondary;
+                  }}
+                >
+                  {source}
+                </button>
+              ) : (
+                <span
+                  key={index}
+                  style={{
+                    fontSize: '11px',
+                    padding: '2px 8px',
+                    backgroundColor: theme.colors.muted,
+                    borderRadius: '4px',
+                    color: theme.colors.textSecondary,
+                  }}
+                >
+                  {source}
+                </span>
+              )
+            )}
           </div>
         </div>
       )}
