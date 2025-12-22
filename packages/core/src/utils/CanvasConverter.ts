@@ -147,13 +147,13 @@ export class CanvasConverter {
     let nodeName: string;
     switch (node.type) {
       case 'text':
-        nodeName = node.text.split('\n')[0].replace(/^#+ /, '').substring(0, 50);
+        nodeName = node.text?.split('\n')[0].replace(/^#+ /, '').substring(0, 50) || 'Text';
         break;
       case 'file':
-        nodeName = node.file.split('/').pop() || node.file;
+        nodeName = node.file?.split('/').pop() || node.file || 'File';
         break;
       case 'link':
-        nodeName = node.url;
+        nodeName = node.url || 'Link';
         break;
       case 'group':
         nodeName = node.label || 'Group';
@@ -266,17 +266,17 @@ export class CanvasConverter {
         let nodeDescription: string | undefined;
         switch (node.type) {
           case 'text': {
-            const lines = node.text.split('\n');
-            nodeName = lines[0].replace(/^#+ /, '').substring(0, 50);
+            const lines = node.text?.split('\n') || [];
+            nodeName = lines[0]?.replace(/^#+ /, '').substring(0, 50) || 'Text';
             // Description is everything after the first line, trimmed
             nodeDescription = lines.slice(1).join('\n').trim() || undefined;
             break;
           }
           case 'file':
-            nodeName = node.file.split('/').pop() || node.file;
+            nodeName = node.file?.split('/').pop() || node.file || 'File';
             break;
           case 'link':
-            nodeName = node.url;
+            nodeName = node.url || 'Link';
             break;
           case 'group':
             nodeName = node.label || 'Group';
