@@ -13,6 +13,9 @@
  * 3. Round-trip editing without data loss
  */
 
+import type { CanvasScope, CanvasAuditConfig } from './canvas-scope';
+import type { ResourceMatch } from './resource-match';
+
 // ============================================================================
 // JSON Canvas Spec Types (1.0)
 // https://jsoncanvas.org/spec/1.0/
@@ -210,11 +213,79 @@ export interface PVEdgeActivation {
 }
 
 /**
+ * OTEL node classification
+ *
+ * Used to categorize nodes in architectural diagrams showing OTEL concepts.
+ */
+export type PVOtelKind = 'type' | 'service' | 'instance';
+
+/**
+ * OTEL category for type nodes
+ */
+export type PVOtelCategory =
+  | 'log'
+  | 'resource'
+  | 'span'
+  | 'scope'
+  | 'match'
+  | 'audit'
+  | 'config'
+  | 'router'
+  | 'collector';
+
+/**
+ * OTEL-specific node extension
+ *
+ * Used to mark nodes as representing OTEL concepts in architectural diagrams.
+ */
+export interface PVOtelExtension {
+  /**
+   * Kind of OTEL node
+   * - `type`: Represents a TypeScript type/interface (e.g., OtelLog, ResourceMatch)
+   * - `service`: Represents a runtime service (e.g., LogRouter, AuditCollector)
+   * - `instance`: Represents an actual runtime instance (e.g., a specific pod)
+   */
+  kind: PVOtelKind;
+
+  /**
+   * Category within OTEL domain
+   */
+  category?: PVOtelCategory;
+
+  /**
+   * Whether this is part of the new OTEL integration (vs legacy path-based)
+   */
+  isNew?: boolean;
+}
+
+/**
  * Principal View node extensions
  */
 export interface PVNodeExtension {
   /** Custom node type identifier */
   nodeType: string;
+
+  /**
+   * Display name for this node
+   *
+   * Preferred over parsing the `text` field. Use this for the node label.
+   */
+  name?: string;
+
+  /**
+   * Description of what this node represents
+   *
+   * Shown in tooltips or detail panels.
+   */
+  description?: string;
+
+  /**
+   * OTEL-specific metadata
+   *
+   * Used when this node represents an OTEL concept (type, service, or instance).
+   */
+  otel?: PVOtelExtension;
+
   /** Visual shape */
   shape?: PVNodeShape;
   /** Icon identifier (Lucide icons) */
@@ -227,6 +298,23 @@ export interface PVNodeExtension {
   states?: Record<string, PVNodeState>;
   /** Source file patterns for log association */
   sources?: string[];
+
+  /**
+   * Resource-based matching for OTEL logs
+   *
+   * When specified, logs with matching OTEL resource attributes
+   * will be routed to this node. Takes priority over sources.
+   *
+   * @example
+   * ```typescript
+   * resourceMatch: {
+   *   'service.name': 'checkout-api',
+   *   'deployment.environment': 'production'
+   * }
+   * ```
+   */
+  resourceMatch?: ResourceMatch;
+
   /** Action patterns for event extraction */
   actions?: PVActionPattern[];
   /** Data schema for typed fields */
@@ -365,6 +453,30 @@ export interface PVCanvasExtension {
   pathConfig?: PVPathConfig;
   /** Display configuration */
   display?: PVDisplayConfig;
+
+  /**
+   * Canvas scope for log filtering
+   *
+   * Only logs matching this scope will be considered for node routing.
+   * If not specified, all logs are in scope.
+   *
+   * @example
+   * ```typescript
+   * scope: {
+   *   'deployment.environment': 'production',
+   *   'service.namespace': 'checkout'
+   * }
+   * ```
+   */
+  scope?: CanvasScope;
+
+  /**
+   * Audit configuration for log coverage tracking
+   *
+   * When enabled, tracks which logs are routed vs orphaned,
+   * detects silent nodes, and generates coverage reports.
+   */
+  audit?: CanvasAuditConfig;
 }
 
 // ============================================================================

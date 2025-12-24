@@ -4,7 +4,10 @@
  * These types extend the core GraphConfiguration to support:
  * - Path-based log association (Milestone 1)
  * - Action pattern refinement (Milestone 2)
+ * - Resource-based log association (OTEL integration)
  */
+
+import type { ResourceMatch } from './resource-match';
 
 /**
  * Log levels (matches logger package)
@@ -47,6 +50,22 @@ export interface PathBasedNodeTypeDefinition {
 
   /** MILESTONE 1: Source path mapping */
   sources?: string[]; // e.g., ["lib/lock-manager.ts", "lib/**/*.ts"]
+
+  /**
+   * Resource-based matching for OTEL logs
+   *
+   * When specified, logs with matching OTEL resource attributes
+   * will be routed to this node type. Takes priority over sources.
+   *
+   * @example
+   * ```typescript
+   * resourceMatch: {
+   *   'service.name': 'checkout-api',
+   *   'deployment.environment': 'production'
+   * }
+   * ```
+   */
+  resourceMatch?: ResourceMatch;
 
   /** MILESTONE 2: Optional action patterns for refinement */
   actions?: ActionPattern[];

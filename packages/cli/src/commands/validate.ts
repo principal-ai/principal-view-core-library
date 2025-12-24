@@ -4,7 +4,7 @@
 
 import { Command } from 'commander';
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve, relative, dirname } from 'node:path';
+import { resolve, relative } from 'node:path';
 import chalk from 'chalk';
 import { globby } from 'globby';
 import yaml from 'js-yaml';
@@ -300,7 +300,7 @@ function validateIconName(
  */
 const ALLOWED_CANVAS_FIELDS = {
   root: ['nodes', 'edges', 'pv'],
-  pv: ['version', 'name', 'description', 'nodeTypes', 'edgeTypes', 'pathConfig', 'display'],
+  pv: ['version', 'name', 'description', 'nodeTypes', 'edgeTypes', 'pathConfig', 'display', 'scope', 'audit'],
   pvPathConfig: [
     'projectRoot',
     'captureSource',
@@ -334,17 +334,21 @@ const ALLOWED_CANVAS_FIELDS = {
   // Node pv extension
   nodePv: [
     'nodeType',
+    'name',
     'description',
+    'otel',
     'shape',
     'icon',
     'fill',
     'stroke',
     'states',
     'sources',
+    'resourceMatch',
     'actions',
     'dataSchema',
     'layout',
   ],
+  nodePvOtel: ['kind', 'category', 'isNew'],
   nodePvState: ['color', 'icon', 'label'],
   nodePvAction: ['pattern', 'event', 'state', 'metadata', 'triggerEdges'],
   nodePvDataSchemaField: ['type', 'required', 'displayInLabel'],
@@ -382,6 +386,7 @@ const ALLOWED_LIBRARY_FIELDS = {
     'size',
     'states',
     'sources',
+    'resourceMatch',
     'actions',
     'dataSchema',
     'layout',
@@ -803,6 +808,15 @@ function validateCanvas(
             nodePv.layout as Record<string, unknown>,
             ALLOWED_CANVAS_FIELDS.nodePvLayout,
             `${nodePath}.pv.layout`,
+            issues
+          );
+        }
+
+        if (nodePv.otel && typeof nodePv.otel === 'object') {
+          checkUnknownFields(
+            nodePv.otel as Record<string, unknown>,
+            ALLOWED_CANVAS_FIELDS.nodePvOtel,
+            `${nodePath}.pv.otel`,
             issues
           );
         }

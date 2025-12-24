@@ -388,3 +388,12 @@ export * from './path-based-config';
 // ============================================================================
 
 export * from './library';
+
+// ============================================================================
+// OpenTelemetry and Resource Matching Types
+// ============================================================================
+
+export * from './otel';
+export * from './resource-match';
+export * from './canvas-scope';
+export * from './audit';

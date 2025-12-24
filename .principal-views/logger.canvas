@@ -1,0 +1,165 @@
+{
+  "nodes": [
+    {
+      "id": "enhanced-logger",
+      "type": "text",
+      "text": "EnhancedLogger",
+      "x": 80,
+      "y": 0,
+      "width": 140,
+      "height": 50,
+      "pv": {
+        "nodeType": "service",
+        "shape": "hexagon",
+        "icon": "FileText",
+        "fill": "#9B59B6"
+      }
+    },
+    {
+      "id": "source-capture",
+      "type": "text",
+      "text": "SourceCapture",
+      "x": 260,
+      "y": 0,
+      "width": 140,
+      "height": 50,
+      "pv": {
+        "nodeType": "service",
+        "shape": "hexagon",
+        "icon": "Target",
+        "fill": "#9B59B6"
+      }
+    },
+    {
+      "id": "ws-transport",
+      "type": "text",
+      "text": "WebSocketTransport",
+      "x": 0,
+      "y": 100,
+      "width": 140,
+      "height": 50,
+      "pv": {
+        "nodeType": "transport",
+        "shape": "diamond",
+        "icon": "Radio",
+        "fill": "#FF6B35"
+      }
+    },
+    {
+      "id": "recorder-transport",
+      "type": "text",
+      "text": "RecorderTransport",
+      "x": 180,
+      "y": 100,
+      "width": 140,
+      "height": 50,
+      "pv": {
+        "nodeType": "transport",
+        "shape": "diamond",
+        "icon": "HardDrive",
+        "fill": "#FF6B35"
+      }
+    },
+    {
+      "id": "buffered-transport",
+      "type": "text",
+      "text": "BufferedRecorderTransport",
+      "x": 360,
+      "y": 100,
+      "width": 140,
+      "height": 50,
+      "pv": {
+        "nodeType": "transport",
+        "shape": "diamond",
+        "icon": "Layers",
+        "fill": "#FF6B35"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "logger-to-source",
+      "fromNode": "enhanced-logger",
+      "toNode": "source-capture",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "uses",
+      "pv": {
+        "edgeType": "uses",
+        "style": "solid"
+      }
+    },
+    {
+      "id": "logger-to-ws",
+      "fromNode": "enhanced-logger",
+      "toNode": "ws-transport",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "label": "sends",
+      "pv": {
+        "edgeType": "sends",
+        "style": "dashed"
+      }
+    },
+    {
+      "id": "logger-to-recorder",
+      "fromNode": "enhanced-logger",
+      "toNode": "recorder-transport",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "label": "sends",
+      "pv": {
+        "edgeType": "sends",
+        "style": "dashed"
+      }
+    },
+    {
+      "id": "logger-to-buffered",
+      "fromNode": "enhanced-logger",
+      "toNode": "buffered-transport",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "label": "sends",
+      "pv": {
+        "edgeType": "sends",
+        "style": "dashed"
+      }
+    }
+  ],
+  "pv": {
+    "version": "1.0.0",
+    "name": "Logger Package",
+    "description": "Enhanced logging with automatic source capture",
+    "nodeTypes": {
+      "service": {
+        "description": "Core logging service",
+        "color": "#9B59B6",
+        "icon": "FileText",
+        "shape": "hexagon"
+      },
+      "transport": {
+        "description": "Log transport backend",
+        "color": "#FF6B35",
+        "icon": "Radio",
+        "shape": "diamond"
+      }
+    },
+    "edgeTypes": {
+      "uses": {
+        "label": "Uses",
+        "style": "solid",
+        "color": "#9B59B6",
+        "directed": true
+      },
+      "sends": {
+        "label": "Sends logs",
+        "style": "dashed",
+        "color": "#FF6B35",
+        "directed": true
+      }
+    },
+    "display": {
+      "layout": "manual"
+    }
+  }
+}

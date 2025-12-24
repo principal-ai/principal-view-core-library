@@ -3,7 +3,7 @@
  */
 
 import { Command } from 'commander';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
 import chalk from 'chalk';
 import { globby } from 'globby';

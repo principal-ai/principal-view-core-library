@@ -25,7 +25,7 @@
     "test:coverage": "bun test --coverage"
   },
   "dependencies": {
-    "@principal-ai/principal-view-core": "workspace:*"
+    "@principal-ai/principal-view-core": "^0.5.15"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

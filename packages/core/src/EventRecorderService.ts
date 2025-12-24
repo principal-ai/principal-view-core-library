@@ -341,7 +341,7 @@ export class EventRecorderService {
   /**
    * Handle single log message
    */
-  private handleLog(message: LogMessage, connectionId: string): OutgoingMessage | null {
+  private handleLog(message: LogMessage, _connectionId: string): OutgoingMessage | null {
     if (!this.isRecording) {
       return null; // Silently ignore logs when not recording
     }
@@ -375,7 +375,7 @@ export class EventRecorderService {
   /**
    * Handle batch log message
    */
-  private handleLogBatch(message: LogBatchMessage, connectionId: string): OutgoingMessage | null {
+  private handleLogBatch(message: LogBatchMessage, _connectionId: string): OutgoingMessage | null {
     if (!this.isRecording) {
       return null;
     }

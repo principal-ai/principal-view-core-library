@@ -1,6 +1,6 @@
 import { describe, expect, test, beforeEach } from 'bun:test';
 import { ConfigurationLoader } from './ConfigurationLoader';
-import type { ConfigurationFile, ConfigurationLoadResult } from './ConfigurationLoader';
+// Types imported for documentation - they're part of the public API
 import { InMemoryFileSystemAdapter } from '@principal-ai/repository-abstraction';
 import type { PathBasedGraphConfiguration } from './types/path-based-config';
 

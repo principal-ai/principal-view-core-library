@@ -7,14 +7,7 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync, chmodSync } from 'n
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
 import chalk from 'chalk';
-import type { ExtendedCanvas, ComponentLibrary } from '@principal-ai/principal-view-core';
-
-const TEMPLATE_LIBRARY: ComponentLibrary = {
-  version: '1.0.0',
-  name: 'Component Library',
-  nodeComponents: {},
-  edgeComponents: {},
-};
+import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
 
 const TEMPLATE_CANVAS: ExtendedCanvas = {
   nodes: [],
@@ -79,18 +72,6 @@ rules:
 const HUSKY_PRE_COMMIT = `# Run principal view linting on staged .principal-views files
 npx @principal-ai/principal-view-cli lint --quiet
 `;
-
-/**
- * Check if a command exists in PATH
- */
-function commandExists(cmd: string): boolean {
-  try {
-    execSync(`which ${cmd}`, { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Check if we're in a git repository

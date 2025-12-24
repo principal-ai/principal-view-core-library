@@ -129,7 +129,14 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
     'states',
     'actions',
     'nodeType',
+    'otel',
+    'resourceMatch',
   ];
+
+  // Extract OTEL metadata
+  const otelInfo = node.data?.otel as
+    | { kind?: string; category?: string; isNew?: boolean }
+    | undefined;
 
   const nodeDataEntries = node.data
     ? Object.entries(node.data).filter(([key]) => !internalFields.includes(key))
@@ -261,6 +268,66 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                   {source}
                 </span>
               )
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* OTEL Info - shown after sources */}
+      {otelInfo && (
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '4px' }}>
+            OpenTelemetry
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+            {/* Kind badge */}
+            {otelInfo.kind && (
+              <span
+                style={{
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  textTransform: 'uppercase',
+                  color: 'white',
+                  backgroundColor:
+                    otelInfo.kind === 'type'
+                      ? '#4A90E2'
+                      : otelInfo.kind === 'service'
+                        ? '#7ED321'
+                        : otelInfo.kind === 'instance'
+                          ? '#9B59B6'
+                          : '#888',
+                }}
+              >
+                {otelInfo.kind}
+              </span>
+            )}
+            {/* Category */}
+            {otelInfo.category && (
+              <span
+                style={{
+                  fontSize: '11px',
+                  color: theme.colors.textSecondary,
+                }}
+              >
+                {otelInfo.category}
+              </span>
+            )}
+            {/* NEW badge */}
+            {otelInfo.isNew && (
+              <span
+                style={{
+                  fontSize: '9px',
+                  fontWeight: 600,
+                  padding: '2px 6px',
+                  borderRadius: '3px',
+                  backgroundColor: '#F5A623',
+                  color: 'white',
+                }}
+              >
+                NEW
+              </span>
             )}
           </div>
         </div>

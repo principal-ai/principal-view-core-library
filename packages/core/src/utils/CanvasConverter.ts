@@ -287,12 +287,17 @@ export class CanvasConverter {
             break;
         }
 
+        // pv.name takes priority over parsed name from text
+        const finalName = pv?.name || nodeName;
+        // pv.description takes priority over parsed description from text
+        const finalDescription = pv?.description || nodeDescription;
+
         nodes.push({
           id: node.id,
           type: pv?.nodeType || node.type,
-          name: nodeName,
+          name: finalName,
           data: {
-            description: nodeDescription,
+            description: finalDescription,
             shape: pv?.shape || 'rectangle',
             icon: pv?.icon,
             // Color priority: pv.fill > node.color
@@ -304,6 +309,10 @@ export class CanvasConverter {
             sources: pv?.sources || [],
             actions: pv?.actions || [],
             states: pv?.states,
+            // OTEL metadata for visualization
+            otel: pv?.otel,
+            // Resource matching for log association
+            resourceMatch: pv?.resourceMatch,
             canvasType: node.type,
             ...(node.type === 'text' ? { text: node.text } : {}),
             ...(node.type === 'file' ? { file: node.file } : {}),

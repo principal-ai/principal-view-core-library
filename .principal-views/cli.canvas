@@ -1,0 +1,142 @@
+{
+  "nodes": [
+    {
+      "id": "cli-init",
+      "type": "text",
+      "text": "init",
+      "x": 0,
+      "y": 0,
+      "width": 100,
+      "height": 50,
+      "pv": {
+        "nodeType": "command",
+        "shape": "rectangle",
+        "icon": "Play",
+        "fill": "#F5A623"
+      }
+    },
+    {
+      "id": "cli-create",
+      "type": "text",
+      "text": "create",
+      "x": 140,
+      "y": 0,
+      "width": 100,
+      "height": 50,
+      "pv": {
+        "nodeType": "command",
+        "shape": "rectangle",
+        "icon": "FilePlus",
+        "fill": "#F5A623"
+      }
+    },
+    {
+      "id": "cli-validate",
+      "type": "text",
+      "text": "validate",
+      "x": 280,
+      "y": 0,
+      "width": 100,
+      "height": 50,
+      "pv": {
+        "nodeType": "command",
+        "shape": "rectangle",
+        "icon": "CheckCircle",
+        "fill": "#F5A623"
+      }
+    },
+    {
+      "id": "cli-lint",
+      "type": "text",
+      "text": "lint",
+      "x": 0,
+      "y": 80,
+      "width": 100,
+      "height": 50,
+      "pv": {
+        "nodeType": "command",
+        "shape": "rectangle",
+        "icon": "Search",
+        "fill": "#F5A623"
+      }
+    },
+    {
+      "id": "cli-list",
+      "type": "text",
+      "text": "list",
+      "x": 140,
+      "y": 80,
+      "width": 100,
+      "height": 50,
+      "pv": {
+        "nodeType": "command",
+        "shape": "rectangle",
+        "icon": "List",
+        "fill": "#F5A623"
+      }
+    },
+    {
+      "id": "cli-schema",
+      "type": "text",
+      "text": "schema",
+      "x": 280,
+      "y": 80,
+      "width": 100,
+      "height": 50,
+      "pv": {
+        "nodeType": "command",
+        "shape": "rectangle",
+        "icon": "FileCode",
+        "fill": "#F5A623"
+      }
+    },
+    {
+      "id": "cli-doctor",
+      "type": "text",
+      "text": "doctor",
+      "x": 0,
+      "y": 160,
+      "width": 100,
+      "height": 50,
+      "pv": {
+        "nodeType": "command",
+        "shape": "rectangle",
+        "icon": "Stethoscope",
+        "fill": "#F5A623"
+      }
+    },
+    {
+      "id": "cli-hooks",
+      "type": "text",
+      "text": "hooks",
+      "x": 140,
+      "y": 160,
+      "width": 100,
+      "height": 50,
+      "pv": {
+        "nodeType": "command",
+        "shape": "rectangle",
+        "icon": "GitCommit",
+        "fill": "#F5A623"
+      }
+    }
+  ],
+  "edges": [],
+  "pv": {
+    "version": "1.0.0",
+    "name": "CLI Package",
+    "description": "Command-line tools for validation and management",
+    "nodeTypes": {
+      "command": {
+        "description": "CLI command",
+        "color": "#F5A623",
+        "icon": "Terminal",
+        "shape": "rectangle"
+      }
+    },
+    "edgeTypes": {},
+    "display": {
+      "layout": "manual"
+    }
+  }
+}

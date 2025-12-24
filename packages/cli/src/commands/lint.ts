@@ -35,6 +35,7 @@ const CONFIG_FILE_NAMES = ['.privurc.yaml', '.privurc.yml', '.privurc.json'];
 function findConfig(startDir: string): { config: PrivuConfig; path: string } | null {
   let currentDir = resolve(startDir);
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     // Check for config files
     for (const fileName of CONFIG_FILE_NAMES) {
@@ -273,7 +274,6 @@ export function createLintCommand(): Command {
 
         // Load privurc config
         let privuConfig: PrivuConfig = getDefaultConfig();
-        let configPath: string | undefined;
 
         if (options.config) {
           // Use specified config file
@@ -297,7 +297,6 @@ export function createLintCommand(): Command {
           }
 
           privuConfig = mergeConfigs(privuConfig, loadedConfig);
-          configPath = resolve(cwd, options.config);
         } else {
           // Search for config file
           const found = findConfig(cwd);
@@ -314,7 +313,6 @@ export function createLintCommand(): Command {
               process.exit(1);
             }
             privuConfig = mergeConfigs(privuConfig, found.config);
-            configPath = found.path;
           }
         }
 

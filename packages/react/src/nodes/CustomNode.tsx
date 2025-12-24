@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { NodeTypeDefinition } from '@principal-ai/principal-view-core';
 import { resolveIcon } from '../utils/iconResolver';
+import { NodeTooltip } from '../components/NodeTooltip';
+import type { OtelInfo } from '../components/NodeTooltip';
 
 export interface CustomNodeData extends Record<string, unknown> {
   name: string;
@@ -22,6 +24,8 @@ export interface CustomNodeData extends Record<string, unknown> {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const nodeRef = useRef<HTMLDivElement>(null);
   const nodeProps = data as CustomNodeData;
   const {
     typeDefinition,
@@ -32,6 +36,56 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
     animationDuration = 1000,
     editable = false,
   } = nodeProps;
+
+  // Extract OTEL info and description for tooltip
+  const otelInfo = nodeData?.otel as OtelInfo | undefined;
+  const description = nodeData?.description as string | undefined;
+
+  // OTEL kind badge colors
+  const getOtelBadgeColor = (kind: string) => {
+    switch (kind) {
+      case 'type':
+        return '#4A90E2'; // Blue
+      case 'service':
+        return '#7ED321'; // Green
+      case 'instance':
+        return '#9B59B6'; // Purple
+      default:
+        return '#888';
+    }
+  };
+
+  // Render OTEL badge
+  const renderOtelBadge = () => {
+    if (!otelInfo?.kind) return null;
+    const badgeColor = getOtelBadgeColor(otelInfo.kind);
+    const label = otelInfo.kind.charAt(0).toUpperCase(); // T, S, or I
+
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          top: -6,
+          right: -6,
+          width: 18,
+          height: 18,
+          borderRadius: '50%',
+          backgroundColor: badgeColor,
+          color: 'white',
+          fontSize: '10px',
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+          zIndex: 10,
+        }}
+        title={`${otelInfo.kind}${otelInfo.category ? ` (${otelInfo.category})` : ''}`}
+      >
+        {label}
+      </div>
+    );
+  };
 
   // Guard against missing typeDefinition
   if (!typeDefinition) {
@@ -315,135 +369,162 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
 
       {/* Hexagon and Diamond need a wrapper for proper border rendering */}
       {isHexagon ? (
-        <div style={hexagonBorderStyle} className={animationClass}>
-          <div style={hexagonInnerStyle}>
-            {icon && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                {resolveIcon(icon, 20)}
-              </div>
-            )}
-            <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>{displayName}</div>
-            {state && (
-              <div
-                style={{
-                  fontSize: '10px',
-                  backgroundColor: color,
-                  color: 'white',
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  textAlign: 'center',
-                }}
-              >
-                {nodeDataStates?.[state]?.label || typeDefinition.states?.[state]?.label || state}
-              </div>
-            )}
-            {hasViolations && (
-              <div
-                style={{
-                  fontSize: '10px',
-                  color: '#D0021B',
-                  fontWeight: 'bold',
-                }}
-              >
-                ⚠️
-              </div>
-            )}
+        <div
+          ref={nodeRef}
+          style={{ position: 'relative', width: '100%', height: '100%' }}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {renderOtelBadge()}
+          <div style={hexagonBorderStyle} className={animationClass}>
+            <div style={hexagonInnerStyle}>
+              {icon && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  {resolveIcon(icon, 20)}
+                </div>
+              )}
+              <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>{displayName}</div>
+              {state && (
+                <div
+                  style={{
+                    fontSize: '10px',
+                    backgroundColor: color,
+                    color: 'white',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    textAlign: 'center',
+                  }}
+                >
+                  {nodeDataStates?.[state]?.label || typeDefinition.states?.[state]?.label || state}
+                </div>
+              )}
+              {hasViolations && (
+                <div
+                  style={{
+                    fontSize: '10px',
+                    color: '#D0021B',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  ⚠️
+                </div>
+              )}
+            </div>
           </div>
+          <NodeTooltip description={description} otel={otelInfo} visible={isHovered} nodeRef={nodeRef} />
         </div>
       ) : isDiamond ? (
-        <div style={diamondBorderStyle} className={animationClass}>
-          <div style={diamondInnerStyle}>
-            {icon && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                {resolveIcon(icon, 20)}
-              </div>
-            )}
-            <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>{displayName}</div>
-            {state && (
-              <div
-                style={{
-                  fontSize: '10px',
-                  backgroundColor: color,
-                  color: 'white',
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  textAlign: 'center',
-                }}
-              >
-                {nodeDataStates?.[state]?.label || typeDefinition.states?.[state]?.label || state}
-              </div>
-            )}
-            {hasViolations && (
-              <div
-                style={{
-                  fontSize: '10px',
-                  color: '#D0021B',
-                  fontWeight: 'bold',
-                }}
-              >
-                ⚠️
-              </div>
-            )}
+        <div
+          ref={nodeRef}
+          style={{ position: 'relative', width: '100%', height: '100%' }}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {renderOtelBadge()}
+          <div style={diamondBorderStyle} className={animationClass}>
+            <div style={diamondInnerStyle}>
+              {icon && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  {resolveIcon(icon, 20)}
+                </div>
+              )}
+              <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>{displayName}</div>
+              {state && (
+                <div
+                  style={{
+                    fontSize: '10px',
+                    backgroundColor: color,
+                    color: 'white',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    textAlign: 'center',
+                  }}
+                >
+                  {nodeDataStates?.[state]?.label || typeDefinition.states?.[state]?.label || state}
+                </div>
+              )}
+              {hasViolations && (
+                <div
+                  style={{
+                    fontSize: '10px',
+                    color: '#D0021B',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  ⚠️
+                </div>
+              )}
+            </div>
           </div>
+          <NodeTooltip description={description} otel={otelInfo} visible={isHovered} nodeRef={nodeRef} />
         </div>
       ) : (
-        <div style={getShapeStyles()} className={animationClass}>
-          {/* Inner content */}
-          <div
-            style={{
-              ...(isGroup ? { width: '100%' } : {}),
-            }}
-          >
-            {/* Groups: icon and text inline, centered */}
-            {isGroup ? (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  width: '100%',
-                }}
-              >
-                {icon && resolveIcon(icon, 18)}
-                <div style={{ wordBreak: 'break-word' }}>{displayName}</div>
-              </div>
-            ) : (
-              <>
-                {icon && (
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    {resolveIcon(icon, 20)}
-                  </div>
-                )}
-                <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>{displayName}</div>
-              </>
-            )}
-            {state && (
-              <div
-                style={{
-                  fontSize: '10px',
-                  backgroundColor: color,
-                  color: 'white',
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  textAlign: 'center',
-                }}
-              >
-                {nodeDataStates?.[state]?.label || typeDefinition.states?.[state]?.label || state}
-              </div>
-            )}
-            {hasViolations && (
-              <div
-                style={{
-                  fontSize: '10px',
-                  color: '#D0021B',
-                  fontWeight: 'bold',
-                }}
-              >
-                ⚠️
-              </div>
-            )}
+        <div
+          ref={nodeRef}
+          style={{ position: 'relative', width: '100%', height: '100%' }}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {renderOtelBadge()}
+          <div style={getShapeStyles()} className={animationClass}>
+            {/* Inner content */}
+            <div
+              style={{
+                ...(isGroup ? { width: '100%' } : {}),
+              }}
+            >
+              {/* Groups: icon and text inline, centered */}
+              {isGroup ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    width: '100%',
+                  }}
+                >
+                  {icon && resolveIcon(icon, 18)}
+                  <div style={{ wordBreak: 'break-word' }}>{displayName}</div>
+                </div>
+              ) : (
+                <>
+                  {icon && (
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                      {resolveIcon(icon, 20)}
+                    </div>
+                  )}
+                  <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>{displayName}</div>
+                </>
+              )}
+              {state && (
+                <div
+                  style={{
+                    fontSize: '10px',
+                    backgroundColor: color,
+                    color: 'white',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    textAlign: 'center',
+                  }}
+                >
+                  {nodeDataStates?.[state]?.label || typeDefinition.states?.[state]?.label || state}
+                </div>
+              )}
+              {hasViolations && (
+                <div
+                  style={{
+                    fontSize: '10px',
+                    color: '#D0021B',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  ⚠️
+                </div>
+              )}
+            </div>
           </div>
+          <NodeTooltip description={description} otel={otelInfo} visible={isHovered} nodeRef={nodeRef} />
         </div>
       )}
 

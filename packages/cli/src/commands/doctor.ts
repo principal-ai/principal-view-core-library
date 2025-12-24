@@ -8,7 +8,7 @@
 
 import { Command } from 'commander';
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { resolve, relative, dirname } from 'node:path';
+import { resolve, relative } from 'node:path';
 import chalk from 'chalk';
 import { globby } from 'globby';
 import yaml from 'js-yaml';

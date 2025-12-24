@@ -65,6 +65,10 @@ export type { GenericEdgeProps } from './edges/GenericEdge';
 export { CustomEdge } from './edges/CustomEdge';
 export type { CustomEdgeData } from './edges/CustomEdge';
 
+// Export tooltip component
+export { NodeTooltip } from './components/NodeTooltip';
+export type { NodeTooltipProps, OtelInfo } from './components/NodeTooltip';
+
 // Export utilities
 export {
   convertToXYFlowNodes,
