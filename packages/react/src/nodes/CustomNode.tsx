@@ -103,8 +103,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
       // Use 100% width/height to fill the node container (for resizing support)
       width: '100%',
       height: '100%',
-      minWidth: typeDefinition.size?.width || 80,
-      minHeight: typeDefinition.size?.height || 40,
+      // Use small absolute minimums - typeDefinition.size is the default, not the minimum
+      minWidth: 20,
+      minHeight: 20,
       display: 'flex',
       flexDirection: 'column' as const,
       alignItems: 'center',
@@ -167,9 +168,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
   // Determine if aspect ratio should be locked (circles should maintain square aspect)
   const keepAspectRatio = isCircle;
 
-  // Minimum dimensions for resizing
-  const minWidth = typeDefinition.size?.width || 80;
-  const minHeight = typeDefinition.size?.height || (isCircle ? minWidth : 40);
+  // Minimum dimensions for resizing - use small absolute values, not typeDefinition.size
+  const minWidth = 40;
+  const minHeight = isCircle ? 40 : 30;
 
   // Hexagon border wrapper styles (outer shape that acts as border)
   // Hexagon with gentle diagonals
@@ -183,8 +184,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
         // Use 100% to fill container for resizing support
         width: '100%',
         height: '100%',
-        minWidth: typeDefinition.size?.width || 120,
-        minHeight: typeDefinition.size?.height || 120,
+        // Use small absolute minimums - typeDefinition.size is the default, not the minimum
+        minWidth: 20,
+        minHeight: 20,
         boxShadow: selected ? `0 0 0 2px ${strokeColor}` : '0 2px 4px rgba(0,0,0,0.1)',
         transition: 'box-shadow 0.2s ease',
         boxSizing: 'border-box',
@@ -224,8 +226,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
         backgroundColor: hasViolations ? '#D0021B' : strokeColor,
         width: '100%',
         height: '100%',
-        minWidth: typeDefinition.size?.width || 80,
-        minHeight: typeDefinition.size?.height || 80,
+        // Use small absolute minimums - typeDefinition.size is the default, not the minimum
+        minWidth: 20,
+        minHeight: 20,
         boxShadow: selected ? `0 0 0 2px ${strokeColor}` : '0 2px 4px rgba(0,0,0,0.1)',
         transition: 'box-shadow 0.2s ease',
         boxSizing: 'border-box',
