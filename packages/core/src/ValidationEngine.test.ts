@@ -57,7 +57,7 @@ describe('ValidationEngine', () => {
           const engine = new ValidationEngine(rules);
           engineSpan.setAttribute('rules.count', 0);
           return engine;
-        });
+        }, span);
 
         const engine = result;
 
@@ -82,7 +82,7 @@ describe('ValidationEngine', () => {
           validateSpan.setAttribute('edge.from', 'user-1');
           validateSpan.setAttribute('edge.to', 'server-1');
           return engine.validate(event, testState);
-        });
+        }, span);
 
         expect(validationResult.valid).toBe(true);
         expect(validationResult.violations).toHaveLength(0);
@@ -121,7 +121,7 @@ describe('ValidationEngine', () => {
           validateSpan.setAttribute('edge.from', 'server-1');
           validateSpan.setAttribute('edge.to', 'user-1');
           return engine.validate(event, testState);
-        });
+        }, span);
 
         expect(result.valid).toBe(false);
         expect(result.violations).toHaveLength(1);
@@ -160,7 +160,7 @@ describe('ValidationEngine', () => {
         const result = await withSpan('engine:validate', async (validateSpan) => {
           validateSpan.setAttribute('edge.to', 'nonexistent-node');
           return engine.validate(event, testState);
-        });
+        }, span);
 
         expect(result.valid).toBe(false);
         expect(result.violations).toHaveLength(1);
@@ -189,7 +189,7 @@ describe('ValidationEngine', () => {
         const engine = await withSpan('engine:create-with-rules', async (engineSpan) => {
           engineSpan.setAttribute('rules.stateTransitions', true);
           return new ValidationEngine(rules);
-        });
+        }, span);
 
         const event: GraphEvent = {
           id: 'evt-1',
@@ -209,7 +209,7 @@ describe('ValidationEngine', () => {
           validateSpan.setAttribute('state.from', 'offline');
           validateSpan.setAttribute('state.to', 'online');
           return engine.validate(event, testState);
-        });
+        }, span);
 
         expect(result.valid).toBe(true);
         expect(result.violations).toHaveLength(0);
@@ -253,7 +253,7 @@ describe('ValidationEngine', () => {
           validateSpan.setAttribute('state.to', 'grace');
           validateSpan.setAttribute('state.allowed', false);
           return engine.validate(event, testState);
-        });
+        }, span);
 
         expect(result.valid).toBe(false);
         expect(result.violations).toHaveLength(1);
@@ -282,7 +282,7 @@ describe('ValidationEngine', () => {
           engineSpan.setAttribute('cardinality.server.min', 1);
           engineSpan.setAttribute('cardinality.server.max', 1);
           return new ValidationEngine(rules);
-        });
+        }, span);
 
         // Remove server node
         const stateWithoutServer: GraphState = {
@@ -293,7 +293,7 @@ describe('ValidationEngine', () => {
         const violations = await withSpan('engine:check-constraints', async (checkSpan) => {
           checkSpan.setAttribute('state.serverCount', 0);
           return engine.checkConstraints(stateWithoutServer);
-        });
+        }, span);
 
         expect(violations).toHaveLength(1);
         expect(violations[0].type).toBe('cardinality');
@@ -327,7 +327,7 @@ describe('ValidationEngine', () => {
         const violations = await withSpan('engine:check-constraints', async (checkSpan) => {
           checkSpan.setAttribute('state.serverCount', 2);
           return engine.checkConstraints(testState);
-        });
+        }, span);
 
         expect(violations).toHaveLength(1);
         expect(violations[0].type).toBe('cardinality');
@@ -354,7 +354,7 @@ describe('ValidationEngine', () => {
           checkSpan.setAttribute('cardinality.min', 1);
           checkSpan.setAttribute('cardinality.max', 2);
           return engine.checkConstraints(testState);
-        });
+        }, span);
 
         expect(violations).toHaveLength(0);
         span.setAttribute('result.violations', 0);

@@ -5,8 +5,8 @@
       "type": "group",
       "x": -20,
       "y": -50,
-      "width": 4740,
-      "height": 130,
+      "width": 2740,
+      "height": 270,
       "label": "principal-view-core-tests",
       "pv": {
         "nodeType": "service",
@@ -15,17 +15,17 @@
       }
     },
     {
-      "id": "329b7a80b8a3de66",
+      "id": "a65e0347b4fa6e25",
       "type": "text",
       "x": 0,
-      "y": 0,
+      "y": 140,
       "width": 200,
       "height": 60,
       "text": "engine:create",
       "pv": {
         "nodeType": "span",
         "name": "engine:create",
-        "description": "128μs",
+        "description": "127μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -47,17 +47,17 @@
       }
     },
     {
-      "id": "a7d173c731522405",
+      "id": "638e5ba097e3494f",
       "type": "text",
       "x": 250,
-      "y": 0,
+      "y": 140,
       "width": 200,
       "height": 60,
       "text": "engine:validate",
       "pv": {
         "nodeType": "span",
         "name": "engine:validate",
-        "description": "94μs",
+        "description": "101μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -87,9 +87,9 @@
       }
     },
     {
-      "id": "af6fdab27e514e58",
+      "id": "3d8cd612e02fa738",
       "type": "text",
-      "x": 500,
+      "x": 125,
       "y": 0,
       "width": 200,
       "height": 60,
@@ -97,7 +97,7 @@
       "pv": {
         "nodeType": "span",
         "name": "validation:connection:valid",
-        "description": "819μs",
+        "description": "844μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -127,17 +127,17 @@
       }
     },
     {
-      "id": "3696b74d79bf2a5b",
+      "id": "df13406688721a9a",
       "type": "text",
-      "x": 750,
-      "y": 0,
+      "x": 500,
+      "y": 140,
       "width": 200,
       "height": 60,
       "text": "engine:validate",
       "pv": {
         "nodeType": "span",
         "name": "engine:validate",
-        "description": "48μs",
+        "description": "54μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -167,9 +167,9 @@
       }
     },
     {
-      "id": "068daf4ca451504f",
+      "id": "a381909a74ab0f9a",
       "type": "text",
-      "x": 1000,
+      "x": 500,
       "y": 0,
       "width": 200,
       "height": 60,
@@ -177,7 +177,7 @@
       "pv": {
         "nodeType": "span",
         "name": "validation:connection:invalid",
-        "description": "120μs",
+        "description": "131μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -211,17 +211,17 @@
       }
     },
     {
-      "id": "9b6771eaf902fb7d",
+      "id": "bfdf3d512d91765e",
       "type": "text",
-      "x": 1250,
-      "y": 0,
+      "x": 750,
+      "y": 140,
       "width": 200,
       "height": 60,
       "text": "engine:validate",
       "pv": {
         "nodeType": "span",
         "name": "engine:validate",
-        "description": "21μs",
+        "description": "25μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -243,9 +243,9 @@
       }
     },
     {
-      "id": "f3e8743fdbbb2c9d",
+      "id": "57e316a4792045c2",
       "type": "text",
-      "x": 1500,
+      "x": 750,
       "y": 0,
       "width": 200,
       "height": 60,
@@ -253,7 +253,7 @@
       "pv": {
         "nodeType": "span",
         "name": "validation:connection:missing-node",
-        "description": "93μs",
+        "description": "91μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -283,17 +283,17 @@
       }
     },
     {
-      "id": "bb762ef61e191029",
+      "id": "e7bbf9d2bbf7da72",
       "type": "text",
-      "x": 1750,
-      "y": 0,
+      "x": 1000,
+      "y": 140,
       "width": 200,
       "height": 60,
       "text": "engine:create-with-rules",
       "pv": {
         "nodeType": "span",
         "name": "engine:create-with-rules",
-        "description": "23μs",
+        "description": "38μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -315,17 +315,17 @@
       }
     },
     {
-      "id": "1be1126347275ddc",
+      "id": "f33c56eb782a6dae",
       "type": "text",
-      "x": 2000,
-      "y": 0,
+      "x": 1250,
+      "y": 140,
       "width": 200,
       "height": 60,
       "text": "engine:validate-transition",
       "pv": {
         "nodeType": "span",
         "name": "engine:validate-transition",
-        "description": "66μs",
+        "description": "68μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -351,9 +351,9 @@
       }
     },
     {
-      "id": "302c43d108f08556",
+      "id": "cd5472c8b20bd551",
       "type": "text",
-      "x": 2250,
+      "x": 1125,
       "y": 0,
       "width": 200,
       "height": 60,
@@ -361,7 +361,7 @@
       "pv": {
         "nodeType": "span",
         "name": "validation:state:valid-transition",
-        "description": "181μs",
+        "description": "220μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -391,17 +391,17 @@
       }
     },
     {
-      "id": "5d0e7cd37df951c1",
+      "id": "ceef25b4c8affedf",
       "type": "text",
-      "x": 2500,
-      "y": 0,
+      "x": 1500,
+      "y": 140,
       "width": 200,
       "height": 60,
       "text": "engine:validate-transition",
       "pv": {
         "nodeType": "span",
         "name": "engine:validate-transition",
-        "description": "35μs",
+        "description": "36μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -431,9 +431,9 @@
       }
     },
     {
-      "id": "4a83100529a10de8",
+      "id": "f1ee263a50c3871b",
       "type": "text",
-      "x": 2750,
+      "x": 1500,
       "y": 0,
       "width": 200,
       "height": 60,
@@ -441,7 +441,7 @@
       "pv": {
         "nodeType": "span",
         "name": "validation:state:invalid-transition",
-        "description": "105μs",
+        "description": "103μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -475,17 +475,17 @@
       }
     },
     {
-      "id": "2f0eb10fb1a84197",
+      "id": "172143a27b166eb8",
       "type": "text",
-      "x": 3000,
-      "y": 0,
+      "x": 1750,
+      "y": 140,
       "width": 200,
       "height": 60,
       "text": "engine:create-with-cardinality",
       "pv": {
         "nodeType": "span",
         "name": "engine:create-with-cardinality",
-        "description": "24μs",
+        "description": "44μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -511,17 +511,17 @@
       }
     },
     {
-      "id": "ba3d6bf84ab403cd",
+      "id": "f44cb54b54007bad",
       "type": "text",
-      "x": 3250,
-      "y": 0,
+      "x": 2000,
+      "y": 140,
       "width": 200,
       "height": 60,
       "text": "engine:check-constraints",
       "pv": {
         "nodeType": "span",
         "name": "engine:check-constraints",
-        "description": "57μs",
+        "description": "65μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -543,9 +543,9 @@
       }
     },
     {
-      "id": "f0276ceb1a276fc7",
+      "id": "f37005f6c6995bfe",
       "type": "text",
-      "x": 3500,
+      "x": 1875,
       "y": 0,
       "width": 200,
       "height": 60,
@@ -553,7 +553,7 @@
       "pv": {
         "nodeType": "span",
         "name": "validation:cardinality:min-violation",
-        "description": "274μs",
+        "description": "309μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -583,17 +583,17 @@
       }
     },
     {
-      "id": "2206dc679a1c5c98",
+      "id": "1b788422e6da8c15",
       "type": "text",
-      "x": 3750,
-      "y": 0,
+      "x": 2250,
+      "y": 140,
       "width": 200,
       "height": 60,
       "text": "engine:check-constraints",
       "pv": {
         "nodeType": "span",
         "name": "engine:check-constraints",
-        "description": "21μs",
+        "description": "26μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -615,9 +615,9 @@
       }
     },
     {
-      "id": "74f7796c60a22325",
+      "id": "2ea23853d6cf901e",
       "type": "text",
-      "x": 4000,
+      "x": 2250,
       "y": 0,
       "width": 200,
       "height": 60,
@@ -625,7 +625,7 @@
       "pv": {
         "nodeType": "span",
         "name": "validation:cardinality:max-violation",
-        "description": "90μs",
+        "description": "110μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -655,17 +655,17 @@
       }
     },
     {
-      "id": "e8822e851e9e296f",
+      "id": "92671aa14a7f014b",
       "type": "text",
-      "x": 4250,
-      "y": 0,
+      "x": 2500,
+      "y": 140,
       "width": 200,
       "height": 60,
       "text": "engine:check-constraints",
       "pv": {
         "nodeType": "span",
         "name": "engine:check-constraints",
-        "description": "28μs",
+        "description": "29μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -695,9 +695,9 @@
       }
     },
     {
-      "id": "d50d41998383c4fb",
+      "id": "2ac27ca828ed43d9",
       "type": "text",
-      "x": 4500,
+      "x": 2500,
       "y": 0,
       "width": 200,
       "height": 60,
@@ -705,7 +705,7 @@
       "pv": {
         "nodeType": "span",
         "name": "validation:cardinality:within-bounds",
-        "description": "96μs",
+        "description": "95μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -735,11 +735,155 @@
       }
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "edge-3d8cd612e02fa738-a65e0347b4fa6e25",
+      "fromNode": "3d8cd612e02fa738",
+      "toNode": "a65e0347b4fa6e25",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "pv": {
+        "edgeType": "span-child",
+        "style": "solid",
+        "width": 1
+      }
+    },
+    {
+      "id": "edge-3d8cd612e02fa738-638e5ba097e3494f",
+      "fromNode": "3d8cd612e02fa738",
+      "toNode": "638e5ba097e3494f",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "pv": {
+        "edgeType": "span-child",
+        "style": "solid",
+        "width": 1
+      }
+    },
+    {
+      "id": "edge-a381909a74ab0f9a-df13406688721a9a",
+      "fromNode": "a381909a74ab0f9a",
+      "toNode": "df13406688721a9a",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "pv": {
+        "edgeType": "span-child",
+        "style": "solid",
+        "width": 1
+      }
+    },
+    {
+      "id": "edge-57e316a4792045c2-bfdf3d512d91765e",
+      "fromNode": "57e316a4792045c2",
+      "toNode": "bfdf3d512d91765e",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "pv": {
+        "edgeType": "span-child",
+        "style": "solid",
+        "width": 1
+      }
+    },
+    {
+      "id": "edge-cd5472c8b20bd551-e7bbf9d2bbf7da72",
+      "fromNode": "cd5472c8b20bd551",
+      "toNode": "e7bbf9d2bbf7da72",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "pv": {
+        "edgeType": "span-child",
+        "style": "solid",
+        "width": 1
+      }
+    },
+    {
+      "id": "edge-cd5472c8b20bd551-f33c56eb782a6dae",
+      "fromNode": "cd5472c8b20bd551",
+      "toNode": "f33c56eb782a6dae",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "pv": {
+        "edgeType": "span-child",
+        "style": "solid",
+        "width": 1
+      }
+    },
+    {
+      "id": "edge-f1ee263a50c3871b-ceef25b4c8affedf",
+      "fromNode": "f1ee263a50c3871b",
+      "toNode": "ceef25b4c8affedf",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "pv": {
+        "edgeType": "span-child",
+        "style": "solid",
+        "width": 1
+      }
+    },
+    {
+      "id": "edge-f37005f6c6995bfe-172143a27b166eb8",
+      "fromNode": "f37005f6c6995bfe",
+      "toNode": "172143a27b166eb8",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "pv": {
+        "edgeType": "span-child",
+        "style": "solid",
+        "width": 1
+      }
+    },
+    {
+      "id": "edge-f37005f6c6995bfe-f44cb54b54007bad",
+      "fromNode": "f37005f6c6995bfe",
+      "toNode": "f44cb54b54007bad",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "pv": {
+        "edgeType": "span-child",
+        "style": "solid",
+        "width": 1
+      }
+    },
+    {
+      "id": "edge-2ea23853d6cf901e-1b788422e6da8c15",
+      "fromNode": "2ea23853d6cf901e",
+      "toNode": "1b788422e6da8c15",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "pv": {
+        "edgeType": "span-child",
+        "style": "solid",
+        "width": 1
+      }
+    },
+    {
+      "id": "edge-2ac27ca828ed43d9-92671aa14a7f014b",
+      "fromNode": "2ac27ca828ed43d9",
+      "toNode": "92671aa14a7f014b",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "pv": {
+        "edgeType": "span-child",
+        "style": "solid",
+        "width": 1
+      }
+    }
+  ],
   "pv": {
     "version": "1.0.0",
     "name": "Trace: principal-view-core-tests",
-    "description": "Exported at 2025-12-26T15:28:05.129Z",
+    "description": "Exported at 2025-12-26T15:52:58.147Z",
     "nodeTypes": {
       "span": {
         "description": "OpenTelemetry span from trace",

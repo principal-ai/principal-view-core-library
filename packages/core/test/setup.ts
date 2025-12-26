@@ -83,10 +83,14 @@ export { trace, context, SpanStatusCode };
  */
 export function traced<T>(
   name: string,
-  fn: (span: ReturnType<typeof tracer.startSpan>) => T | Promise<T>
+  fn: (span: Span) => T | Promise<T>
 ): () => Promise<T> {
   return async () => {
-    return tracer.startActiveSpan(name, async (span) => {
+    // Start a new root span for this test
+    const span = tracer.startSpan(name);
+
+    // Run with this span as active context
+    return context.with(trace.setSpan(context.active(), span), async () => {
       try {
         const result = await fn(span);
         span.setStatus({ code: SpanStatusCode.OK });
@@ -120,9 +124,22 @@ export function traced<T>(
  */
 export async function withSpan<T>(
   name: string,
-  fn: (span: ReturnType<typeof tracer.startSpan>) => T | Promise<T>
+  fn: (span: Span) => T | Promise<T>,
+  parentSpan?: Span
 ): Promise<T> {
-  return tracer.startActiveSpan(name, async (span) => {
+  // Get the current active context
+  const activeContext = context.active();
+
+  // If parent span provided, create context from it; otherwise use active context
+  const parentContext = parentSpan
+    ? trace.setSpan(activeContext, parentSpan)
+    : activeContext;
+
+  // Start span as child of the parent context
+  const span = tracer.startSpan(name, {}, parentContext);
+
+  // Run the function with this span as active
+  return context.with(trace.setSpan(parentContext, span), async () => {
     try {
       const result = await fn(span);
       span.setStatus({ code: SpanStatusCode.OK });
@@ -144,10 +161,13 @@ export async function withSpan<T>(
  * Convert ReadableSpan to a serializable format matching our OtelSpan type
  */
 function spanToJson(span: ReadableSpan) {
+  // Get parent span ID from parentSpanContext (Bun doesn't support the parentSpanId getter)
+  const parentSpanId = (span as unknown as { parentSpanContext?: { spanId?: string } }).parentSpanContext?.spanId;
+
   return {
     traceId: span.spanContext().traceId,
     spanId: span.spanContext().spanId,
-    parentSpanId: span.parentSpanId,
+    ...(parentSpanId ? { parentSpanId } : {}),
     name: span.name,
     kind: ['INTERNAL', 'SERVER', 'CLIENT', 'PRODUCER', 'CONSUMER'][span.kind] as string,
     startTime: span.startTime[0] * 1000 + span.startTime[1] / 1_000_000, // Convert to ms
