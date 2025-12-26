@@ -294,10 +294,10 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                     otelInfo.kind === 'type'
                       ? '#4A90E2'
                       : otelInfo.kind === 'service'
-                        ? '#7ED321'
-                        : otelInfo.kind === 'instance'
-                          ? '#9B59B6'
-                          : '#888',
+                      ? '#7ED321'
+                      : otelInfo.kind === 'instance'
+                      ? '#9B59B6'
+                      : '#888',
                 }}
               >
                 {otelInfo.kind}
@@ -368,7 +368,9 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
         <>
           {/* Icon Selector */}
           <div style={{ marginBottom: '12px' }}>
-            <div style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '4px' }}>
+            <div
+              style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '4px' }}
+            >
               Icon
             </div>
             <div style={{ position: 'relative' }}>
@@ -397,7 +399,9 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                 </span>
                 <span>{currentIcon || 'No icon'}</span>
                 {canEdit && (
-                  <span style={{ marginLeft: 'auto', color: theme.colors.textMuted, fontSize: '10px' }}>
+                  <span
+                    style={{ marginLeft: 'auto', color: theme.colors.textMuted, fontSize: '10px' }}
+                  >
                     ✎
                   </span>
                 )}
@@ -442,7 +446,9 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                               : `1px solid ${theme.colors.border}`,
                           borderRadius: '4px',
                           backgroundColor:
-                            currentIcon === iconName ? theme.colors.highlight : theme.colors.background,
+                            currentIcon === iconName
+                              ? theme.colors.highlight
+                              : theme.colors.background,
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
@@ -461,7 +467,9 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
 
           {/* Node Type - Editable if availableNodeTypes provided */}
           <div style={{ marginBottom: '12px' }}>
-            <div style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '4px' }}>
+            <div
+              style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '4px' }}
+            >
               Type
             </div>
             {canEdit && availableNodeTypes && Object.keys(availableNodeTypes).length > 1 ? (
@@ -504,7 +512,9 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
           {/* Node State */}
           {node.state && (
             <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '4px' }}>
+              <div
+                style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '4px' }}
+              >
                 State
               </div>
               <div

@@ -132,7 +132,7 @@ function spanToJson(span: ReadableSpan) {
       code: ['UNSET', 'OK', 'ERROR'][span.status.code],
       message: span.status.message,
     },
-    events: span.events.map(e => ({
+    events: span.events.map((e) => ({
       name: e.name,
       timestamp: e.time[0] * 1000 + e.time[1] / 1_000_000,
       attributes: Object.fromEntries(Object.entries(e.attributes ?? {})),
@@ -202,14 +202,17 @@ import { traced, withSpan, tracer } from './setup';
 
 describe('MyFeature', () => {
   // Option 1: Wrap entire test with traced()
-  test('does something', traced('test:does-something', async (span) => {
-    span.setAttribute('input.size', 42);
+  test(
+    'does something',
+    traced('test:does-something', async (span) => {
+      span.setAttribute('input.size', 42);
 
-    const result = await myFunction();
+      const result = await myFunction();
 
-    span.setAttribute('output.success', true);
-    expect(result).toBeDefined();
-  }));
+      span.setAttribute('output.success', true);
+      expect(result).toBeDefined();
+    })
+  );
 
   // Option 2: Trace specific operations with withSpan()
   test('processes data', async () => {
@@ -284,15 +287,15 @@ Traces are written to `__traces__/test-run.json`:
 
 Use consistent span name prefixes:
 
-| Prefix | Use for |
-|--------|---------|
-| `test:` | Top-level test spans |
-| `setup:` | Test setup/fixtures |
-| `teardown:` | Cleanup operations |
-| `db:` | Database operations |
-| `http:` | HTTP requests |
-| `cache:` | Cache operations |
-| `compute:` | CPU-intensive work |
+| Prefix      | Use for              |
+| ----------- | -------------------- |
+| `test:`     | Top-level test spans |
+| `setup:`    | Test setup/fixtures  |
+| `teardown:` | Cleanup operations   |
+| `db:`       | Database operations  |
+| `http:`     | HTTP requests        |
+| `cache:`    | Cache operations     |
+| `compute:`  | CPU-intensive work   |
 
 Example: `test:user-registration`, `db:insert-user`, `http:send-welcome-email`
 
@@ -337,11 +340,11 @@ span.addEvent('cache-populated', { key: 'user:123', ttl: 3600 });
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OTEL_TRACE_OUTPUT` | Output file path | `__traces__/test-run.json` |
-| `OTEL_CONSOLE_EXPORT` | Also print spans to console | `false` |
-| `OTEL_SERVICE_NAME` | Override service name | (from setup) |
+| Variable              | Description                 | Default                    |
+| --------------------- | --------------------------- | -------------------------- |
+| `OTEL_TRACE_OUTPUT`   | Output file path            | `__traces__/test-run.json` |
+| `OTEL_CONSOLE_EXPORT` | Also print spans to console | `false`                    |
+| `OTEL_SERVICE_NAME`   | Override service name       | (from setup)               |
 
 ### Console Export for Debugging
 
@@ -383,8 +386,8 @@ const otlpExporter = new OTLPTraceExporter({
 const provider = new BasicTracerProvider({
   resource,
   spanProcessors: [
-    new SimpleSpanProcessor(memoryExporter),      // Keep in-memory for file output
-    new BatchSpanProcessor(otlpExporter),          // Send to OTLP endpoint
+    new SimpleSpanProcessor(memoryExporter), // Keep in-memory for file output
+    new BatchSpanProcessor(otlpExporter), // Send to OTLP endpoint
   ],
 });
 ```
@@ -424,20 +427,30 @@ await tracer.startActiveSpan('parent', async (parent) => {
 
 ```typescript
 // ❌ Doesn't work in Bun - context isn't propagated
-test('broken in bun', traced('test:example', async (span) => {
-  const result = await withSpan('child:operation', async (child) => {
-    // child has different traceId, no parentSpanId!
-    return doSomething();
-  });
-}));
+test(
+  'broken in bun',
+  traced('test:example', async (span) => {
+    const result = await withSpan('child:operation', async (child) => {
+      // child has different traceId, no parentSpanId!
+      return doSomething();
+    });
+  })
+);
 
 // ✅ Works in Bun - pass parent span explicitly
-test('works in bun', traced('test:example', async (span) => {
-  const result = await withSpan('child:operation', async (child) => {
-    // child has same traceId, correct parentSpanId
-    return doSomething();
-  }, span);  // <-- pass parent span as third argument
-}));
+test(
+  'works in bun',
+  traced('test:example', async (span) => {
+    const result = await withSpan(
+      'child:operation',
+      async (child) => {
+        // child has same traceId, correct parentSpanId
+        return doSomething();
+      },
+      span
+    ); // <-- pass parent span as third argument
+  })
+);
 ```
 
 Update your `withSpan` helper to accept and use the parent span:
@@ -448,12 +461,10 @@ import { trace, context, SpanStatusCode, type Span } from '@opentelemetry/api';
 export async function withSpan<T>(
   name: string,
   fn: (span: Span) => T | Promise<T>,
-  parentSpan?: Span  // Optional for Node.js, required for Bun
+  parentSpan?: Span // Optional for Node.js, required for Bun
 ): Promise<T> {
   const activeContext = context.active();
-  const parentContext = parentSpan
-    ? trace.setSpan(activeContext, parentSpan)
-    : activeContext;
+  const parentContext = parentSpan ? trace.setSpan(activeContext, parentSpan) : activeContext;
 
   const span = tracer.startSpan(name, {}, parentContext);
 
@@ -481,9 +492,11 @@ export async function withSpan<T>(
 function spanToJson(span: ReadableSpan) {
   // Bun workaround: the parentSpanId getter returns undefined
   // Access parentSpanContext.spanId directly instead
-  const parentSpanId = (span as unknown as {
-    parentSpanContext?: { spanId?: string }
-  }).parentSpanContext?.spanId;
+  const parentSpanId = (
+    span as unknown as {
+      parentSpanContext?: { spanId?: string };
+    }
+  ).parentSpanContext?.spanId;
 
   return {
     traceId: span.spanContext().traceId,
@@ -495,6 +508,7 @@ function spanToJson(span: ReadableSpan) {
 ```
 
 **Status**: This is a known limitation of Bun's runtime. Track progress:
+
 - https://github.com/oven-sh/bun/issues (search for "async_hooks" or "AsyncLocalStorage")
 
 This workaround can be removed once Bun fully supports async context propagation.

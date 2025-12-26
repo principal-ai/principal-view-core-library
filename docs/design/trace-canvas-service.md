@@ -35,23 +35,23 @@ A development tool that converts OpenTelemetry traces from test runs into canvas
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-| Term | What it means |
-|------|---------------|
-| **SDK** | Library in your app that creates spans |
-| **Exporter** | Part of SDK that sends telemetry out |
-| **OTLP** | The wire protocol (like HTTP, but for telemetry) |
+| Term          | What it means                                                 |
+| ------------- | ------------------------------------------------------------- |
+| **SDK**       | Library in your app that creates spans                        |
+| **Exporter**  | Part of SDK that sends telemetry out                          |
+| **OTLP**      | The wire protocol (like HTTP, but for telemetry)              |
 | **Collector** | Optional proxy that receives, processes, and routes telemetry |
 
 ### Our Approach: Simple OTLP Receiver
 
 We're building a **lightweight OTLP receiver service**, not a full OTel Collector. The difference:
 
-| Full OTel Collector | Our Trace Canvas Service |
-|---------------------|--------------------------|
-| Written in Go | Written in TypeScript (fits our ecosystem) |
-| General-purpose pipeline | Single purpose: traces → canvas |
-| Multiple receivers, processors, exporters | Just OTLP in, canvas out |
-| Production-grade routing | Dev-time visualization |
+| Full OTel Collector                       | Our Trace Canvas Service                   |
+| ----------------------------------------- | ------------------------------------------ |
+| Written in Go                             | Written in TypeScript (fits our ecosystem) |
+| General-purpose pipeline                  | Single purpose: traces → canvas            |
+| Multiple receivers, processors, exporters | Just OTLP in, canvas out                   |
+| Production-grade routing                  | Dev-time visualization                     |
 
 **Can we add a real Collector later?** Yes. Since we speak standard OTLP, users can put a Collector in front of us whenever they need production features (sampling, multi-destination routing, etc.):
 
@@ -96,13 +96,13 @@ Later:     App ──OTLP──► Collector ──OTLP──► Trace Canvas Se
 
 ### Component Responsibilities
 
-| Component | Responsibility |
-|-----------|----------------|
-| **OTLP Receiver** | Accept traces via gRPC (port 4317) or HTTP (port 4318) |
-| **Trace Assembler** | Buffer spans, correlate by traceId, detect trace completion |
-| **Canvas Writer** | Convert `OtelSpan[]` → `ExtendedCanvas`, save to files |
-| **WebSocket Server** | Stream incremental updates for live viewing (optional) |
-| **React Viewer** | Render canvas, handle layout, show live updates |
+| Component            | Responsibility                                              |
+| -------------------- | ----------------------------------------------------------- |
+| **OTLP Receiver**    | Accept traces via gRPC (port 4317) or HTTP (port 4318)      |
+| **Trace Assembler**  | Buffer spans, correlate by traceId, detect trace completion |
+| **Canvas Writer**    | Convert `OtelSpan[]` → `ExtendedCanvas`, save to files      |
+| **WebSocket Server** | Stream incremental updates for live viewing (optional)      |
+| **React Viewer**     | Render canvas, handle layout, show live updates             |
 
 ---
 
@@ -110,25 +110,25 @@ Later:     App ──OTLP──► Collector ──OTLP──► Trace Canvas Se
 
 ### Core Mappings
 
-| OTel Concept | Canvas Concept | Notes |
-|--------------|----------------|-------|
-| `Span` | `CanvasTextNode` | Node per span with `pv` extensions |
-| `parentSpanId` → `spanId` | `CanvasEdge` | Edge from parent to child span |
-| `Resource.service.name` | `CanvasGroupNode` | Group nodes by service |
-| `Span.kind` | `pv.shape` | Visual differentiation by span kind |
-| `Span.status.code` | `pv.states` | Error/OK states with colors |
-| `Span.events` | Edge animations | Events trigger visual effects |
-| `Span.attributes` | `pv.dataSchema` | Shown in node details |
+| OTel Concept              | Canvas Concept    | Notes                               |
+| ------------------------- | ----------------- | ----------------------------------- |
+| `Span`                    | `CanvasTextNode`  | Node per span with `pv` extensions  |
+| `parentSpanId` → `spanId` | `CanvasEdge`      | Edge from parent to child span      |
+| `Resource.service.name`   | `CanvasGroupNode` | Group nodes by service              |
+| `Span.kind`               | `pv.shape`        | Visual differentiation by span kind |
+| `Span.status.code`        | `pv.states`       | Error/OK states with colors         |
+| `Span.events`             | Edge animations   | Events trigger visual effects       |
+| `Span.attributes`         | `pv.dataSchema`   | Shown in node details               |
 
 ### Span Kind to Visual Shape
 
 ```typescript
 const kindToShape: Record<OtelSpan['kind'], PVShape> = {
-  'SERVER':   'hexagon',    // Entry points
-  'CLIENT':   'diamond',    // Outbound calls
-  'PRODUCER': 'rectangle',  // Async send
-  'CONSUMER': 'rectangle',  // Async receive
-  'INTERNAL': 'circle',     // Internal operations
+  SERVER: 'hexagon', // Entry points
+  CLIENT: 'diamond', // Outbound calls
+  PRODUCER: 'rectangle', // Async send
+  CONSUMER: 'rectangle', // Async receive
+  INTERNAL: 'circle', // Internal operations
 };
 ```
 
@@ -136,11 +136,11 @@ const kindToShape: Record<OtelSpan['kind'], PVShape> = {
 
 ```typescript
 const kindToColor: Record<OtelSpan['kind'], string> = {
-  'SERVER':   '#4f46e5',  // Indigo - entry points stand out
-  'CLIENT':   '#0891b2',  // Cyan - outbound calls
-  'PRODUCER': '#059669',  // Emerald - async producers
-  'CONSUMER': '#059669',  // Emerald - async consumers
-  'INTERNAL': '#6b7280',  // Gray - internal ops are subtle
+  SERVER: '#4f46e5', // Indigo - entry points stand out
+  CLIENT: '#0891b2', // Cyan - outbound calls
+  PRODUCER: '#059669', // Emerald - async producers
+  CONSUMER: '#059669', // Emerald - async consumers
+  INTERNAL: '#6b7280', // Gray - internal ops are subtle
 };
 ```
 
@@ -148,9 +148,9 @@ const kindToColor: Record<OtelSpan['kind'], string> = {
 
 ```typescript
 const statusToState: Record<OtelSpan['status']['code'], PVState> = {
-  'OK':    { color: '#22c55e', icon: 'check-circle', label: 'Success' },
-  'ERROR': { color: '#ef4444', icon: 'x-circle', label: 'Error' },
-  'UNSET': { color: '#6b7280', icon: 'circle', label: 'Unknown' },
+  OK: { color: '#22c55e', icon: 'check-circle', label: 'Success' },
+  ERROR: { color: '#ef4444', icon: 'x-circle', label: 'Error' },
+  UNSET: { color: '#6b7280', icon: 'circle', label: 'Unknown' },
 };
 ```
 
@@ -189,10 +189,7 @@ interface TraceCanvasResult {
   };
 }
 
-function traceToCanvas(
-  spans: OtelSpan[],
-  options?: SpanToCanvasOptions
-): TraceCanvasResult;
+function traceToCanvas(spans: OtelSpan[], options?: SpanToCanvasOptions): TraceCanvasResult;
 ```
 
 ### Conversion Algorithm
@@ -202,13 +199,11 @@ function traceToCanvas(spans: OtelSpan[], options: SpanToCanvasOptions = {}): Tr
   const { groupByService = true, layout = 'hierarchical' } = options;
 
   // 1. Build span tree
-  const spanMap = new Map(spans.map(s => [s.spanId, s]));
-  const roots = spans.filter(s => !s.parentSpanId || !spanMap.has(s.parentSpanId));
+  const spanMap = new Map(spans.map((s) => [s.spanId, s]));
+  const roots = spans.filter((s) => !s.parentSpanId || !spanMap.has(s.parentSpanId));
 
   // 2. Group by service if enabled
-  const serviceGroups = groupByService
-    ? groupSpansByService(spans)
-    : new Map([['default', spans]]);
+  const serviceGroups = groupByService ? groupSpansByService(spans) : new Map([['default', spans]]);
 
   // 3. Create group nodes for services
   const groupNodes: CanvasGroupNode[] = [...serviceGroups.entries()].map(
@@ -229,23 +224,22 @@ function traceToCanvas(spans: OtelSpan[], options: SpanToCanvasOptions = {}): Tr
   );
 
   // 4. Create span nodes
-  const spanNodes: CanvasTextNode[] = spans.map(span =>
-    spanToNode(span, serviceGroups)
-  );
+  const spanNodes: CanvasTextNode[] = spans.map((span) => spanToNode(span, serviceGroups));
 
   // 5. Create edges from parent-child relationships
   const edges: CanvasEdge[] = spans
-    .filter(span => span.parentSpanId && spanMap.has(span.parentSpanId))
-    .map(span => ({
+    .filter((span) => span.parentSpanId && spanMap.has(span.parentSpanId))
+    .map((span) => ({
       id: `edge-${span.parentSpanId}-${span.spanId}`,
       fromNode: span.parentSpanId!,
       toNode: span.spanId,
       toEnd: 'arrow',
       pv: {
         edgeType: 'span-child',
-        style: span.resource['service.name'] !== spanMap.get(span.parentSpanId)?.resource['service.name']
-          ? 'dashed'  // Cross-service calls are dashed
-          : 'solid',
+        style:
+          span.resource['service.name'] !== spanMap.get(span.parentSpanId)?.resource['service.name']
+            ? 'dashed' // Cross-service calls are dashed
+            : 'solid',
       },
     }));
 
@@ -277,15 +271,13 @@ function traceToCanvas(spans: OtelSpan[], options: SpanToCanvasOptions = {}): Tr
 
 function spanToNode(span: OtelSpan, serviceGroups: Map<string, OtelSpan[]>): CanvasTextNode {
   const serviceName = span.resource['service.name'] ?? 'unknown';
-  const duration = span.endTime
-    ? (toMs(span.endTime) - toMs(span.startTime))
-    : undefined;
+  const duration = span.endTime ? toMs(span.endTime) - toMs(span.startTime) : undefined;
 
   return {
     id: span.spanId,
     type: 'text',
-    x: 0,  // Set by layout
-    y: 0,  // Set by layout
+    x: 0, // Set by layout
+    y: 0, // Set by layout
     width: 200,
     height: 60,
     text: span.name,
@@ -333,7 +325,7 @@ function spanToNode(span: OtelSpan, serviceGroups: Map<string, OtelSpan[]>): Can
 // Initial state when client connects
 interface InitMessage {
   type: 'init';
-  traces: Map<string, ExtendedCanvas>;  // Current active traces
+  traces: Map<string, ExtendedCanvas>; // Current active traces
 }
 
 // New span received
@@ -341,7 +333,7 @@ interface SpanAddedMessage {
   type: 'span:added';
   traceId: string;
   node: CanvasTextNode;
-  edge?: CanvasEdge;  // Edge to parent if exists
+  edge?: CanvasEdge; // Edge to parent if exists
   parentNodeId?: string;
 }
 
@@ -360,14 +352,14 @@ interface SpanEventMessage {
   traceId: string;
   spanId: string;
   event: OtelSpan['events'][0];
-  animation?: PVEdgeActivation;  // Trigger edge animation
+  animation?: PVEdgeActivation; // Trigger edge animation
 }
 
 // Trace completed (all spans have endTime, timeout reached)
 interface TraceCompletedMessage {
   type: 'trace:completed';
   traceId: string;
-  canvas: ExtendedCanvas;  // Final complete canvas
+  canvas: ExtendedCanvas; // Final complete canvas
   stats: TraceCanvasResult['stats'];
 }
 ```
@@ -378,7 +370,7 @@ interface TraceCompletedMessage {
 // Subscribe to specific trace
 interface SubscribeMessage {
   type: 'subscribe';
-  traceId?: string;  // Omit for all traces
+  traceId?: string; // Omit for all traces
 }
 
 // Request full canvas for trace
@@ -390,7 +382,7 @@ interface GetTraceMessage {
 // Clear completed traces
 interface ClearMessage {
   type: 'clear';
-  olderThan?: number;  // Unix timestamp
+  olderThan?: number; // Unix timestamp
 }
 ```
 
@@ -495,12 +487,12 @@ interface LayoutOptions {
   algorithm: 'hierarchical' | 'timeline' | 'force-directed';
 
   // Hierarchical options
-  direction?: 'TB' | 'LR';  // Top-to-bottom or left-to-right
+  direction?: 'TB' | 'LR'; // Top-to-bottom or left-to-right
   levelSeparation?: number;
   nodeSeparation?: number;
 
   // Timeline options
-  timeScale?: number;  // Pixels per millisecond
+  timeScale?: number; // Pixels per millisecond
   swimlanes?: boolean; // Group by service in rows
 
   // Force-directed options
@@ -551,21 +543,21 @@ assembler:
   filter:
     minDurationMs: 1
     excludeNames:
-      - "internal/*"
+      - 'internal/*'
 
 output:
   # Write completed traces to files (for Storybook mocks)
   files:
     enabled: true
     directory: ./stories/__traces__
-    naming: root-span  # or 'trace-id' or 'service-timestamp'
+    naming: root-span # or 'trace-id' or 'service-timestamp'
 
   # Live streaming for real-time viewing
   websocket:
     enabled: true
     port: 8080
     cors:
-      allowedOrigins: ["http://localhost:*"]
+      allowedOrigins: ['http://localhost:*']
 
 canvas:
   layout: hierarchical
@@ -646,24 +638,28 @@ import { trace } from '@opentelemetry/api';
 const tracer = trace.getTracer('my-service');
 
 // These attributes will be reflected in the canvas
-tracer.startActiveSpan('processOrder', {
-  attributes: {
-    // Standard semantic conventions (auto-detected)
-    'http.method': 'POST',
-    'http.url': '/api/orders',
+tracer.startActiveSpan(
+  'processOrder',
+  {
+    attributes: {
+      // Standard semantic conventions (auto-detected)
+      'http.method': 'POST',
+      'http.url': '/api/orders',
 
-    // Custom attributes (shown in node details)
-    'order.id': orderId,
-    'order.total': total,
+      // Custom attributes (shown in node details)
+      'order.id': orderId,
+      'order.total': total,
 
-    // Canvas hints (optional, for power users)
-    'canvas.color': '#f59e0b',  // Override node color
-    'canvas.icon': 'shopping-cart',  // Set node icon
+      // Canvas hints (optional, for power users)
+      'canvas.color': '#f59e0b', // Override node color
+      'canvas.icon': 'shopping-cart', // Set node icon
+    },
   },
-}, async (span) => {
-  // ... do work
-  span.end();
-});
+  async (span) => {
+    // ... do work
+    span.end();
+  }
+);
 ```
 
 ---
@@ -724,10 +720,7 @@ The service can produce audit reports using the existing `AuditReport` types:
 import type { AuditReport, LogRoutingResult } from '@principal-ai/principal-view-core';
 
 // Track which spans map to expected services
-function auditTraceMapping(
-  spans: OtelSpan[],
-  expectedCanvas: ExtendedCanvas
-): AuditReport {
+function auditTraceMapping(spans: OtelSpan[], expectedCanvas: ExtendedCanvas): AuditReport {
   // Compare actual services in trace vs nodes in expected canvas
   // Report orphaned spans (services not in canvas)
   // Report silent nodes (canvas nodes with no spans)

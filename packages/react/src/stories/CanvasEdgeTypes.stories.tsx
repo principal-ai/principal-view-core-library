@@ -738,7 +738,9 @@ const EdgeFieldsComparisonTemplate = () => {
           <tr style={{ backgroundColor: '#f3f4f6' }}>
             <th style={{ padding: 10, textAlign: 'left', border: '1px solid #e5e7eb' }}>Field</th>
             <th style={{ padding: 10, textAlign: 'left', border: '1px solid #e5e7eb' }}>Type</th>
-            <th style={{ padding: 10, textAlign: 'left', border: '1px solid #e5e7eb' }}>Required</th>
+            <th style={{ padding: 10, textAlign: 'left', border: '1px solid #e5e7eb' }}>
+              Required
+            </th>
             <th style={{ padding: 10, textAlign: 'left', border: '1px solid #e5e7eb' }}>
               Description
             </th>
@@ -829,7 +831,9 @@ const EdgeFieldsComparisonTemplate = () => {
             </td>
             <td style={{ padding: 10, border: '1px solid #e5e7eb' }}>string</td>
             <td style={{ padding: 10, border: '1px solid #e5e7eb' }}>No</td>
-            <td style={{ padding: 10, border: '1px solid #e5e7eb' }}>Text label displayed on edge</td>
+            <td style={{ padding: 10, border: '1px solid #e5e7eb' }}>
+              Text label displayed on edge
+            </td>
           </tr>
         </tbody>
       </table>
@@ -972,8 +976,7 @@ export const EdgeFieldsReference: Story = {
   parameters: {
     docs: {
       description: {
-        story:
-          'Complete reference for all JSON Canvas edge fields and Principal View extensions.',
+        story: 'Complete reference for all JSON Canvas edge fields and Principal View extensions.',
       },
     },
   },

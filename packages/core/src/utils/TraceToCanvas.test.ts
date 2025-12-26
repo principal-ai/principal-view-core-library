@@ -1,5 +1,10 @@
 import { describe, test, expect } from 'bun:test';
-import { traceToCanvas, traceToCanvasJson, type TraceExport, type TraceSpan } from './TraceToCanvas';
+import {
+  traceToCanvas,
+  traceToCanvasJson,
+  type TraceExport,
+  type TraceSpan,
+} from './TraceToCanvas';
 
 describe('TraceToCanvas', () => {
   const createSpan = (overrides: Partial<TraceSpan> = {}): TraceSpan => ({

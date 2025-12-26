@@ -891,7 +891,8 @@ export const NodeTypeComparison: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Interactive comparison view showing all JSON Canvas node types with field documentation.',
+        story:
+          'Interactive comparison view showing all JSON Canvas node types with field documentation.',
       },
     },
   },

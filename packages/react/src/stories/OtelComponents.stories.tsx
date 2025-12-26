@@ -43,7 +43,8 @@ const otelCanvas = {
       pv: {
         nodeType: 'otel-service',
         name: 'LogRouter',
-        description: 'Routes incoming OTEL logs to canvas nodes based on scope and resourceMatch criteria',
+        description:
+          'Routes incoming OTEL logs to canvas nodes based on scope and resourceMatch criteria',
         otel: {
           kind: 'service',
           category: 'router',
@@ -162,10 +163,7 @@ export const OtelBadgesAndTooltips: StoryObj = {
   render: () => (
     <ThemeProvider theme="technology">
       <div style={{ width: '100%', height: '600px' }}>
-        <GraphRenderer
-          canvas={otelCanvas}
-          initialViewport={{ x: 200, y: 50, zoom: 1 }}
-        />
+        <GraphRenderer canvas={otelCanvas} initialViewport={{ x: 200, y: 50, zoom: 1 }} />
       </div>
     </ThemeProvider>
   ),
@@ -246,7 +244,8 @@ export const InfoPanelWithOtel: StoryObj = {
       type: 'otel-service',
       name: 'LogRouter',
       data: {
-        description: 'Routes incoming OTEL logs to canvas nodes based on scope and resourceMatch criteria',
+        description:
+          'Routes incoming OTEL logs to canvas nodes based on scope and resourceMatch criteria',
         otel: {
           kind: 'service',
           category: 'router',
@@ -274,11 +273,7 @@ export const InfoPanelWithOtel: StoryObj = {
           <p style={{ marginBottom: '20px', color: '#666' }}>
             The panel shows the OpenTelemetry section with kind badge, category, and NEW indicator.
           </p>
-          <NodeInfoPanel
-            node={selectedNode}
-            typeDefinition={typeDefinition}
-            onClose={() => {}}
-          />
+          <NodeInfoPanel node={selectedNode} typeDefinition={typeDefinition} onClose={() => {}} />
         </div>
       </ThemeProvider>
     );

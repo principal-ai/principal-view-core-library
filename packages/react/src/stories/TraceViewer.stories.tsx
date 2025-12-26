@@ -212,7 +212,8 @@ export const HTTPRequestFlow: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Example trace showing a typical HTTP request with authentication and database query.',
+        story:
+          'Example trace showing a typical HTTP request with authentication and database query.',
       },
     },
   },
@@ -344,7 +345,8 @@ export const CrossServiceCall: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Trace showing calls across three services. Dashed edges indicate cross-service boundaries.',
+        story:
+          'Trace showing calls across three services. Dashed edges indicate cross-service boundaries.',
       },
     },
   },
@@ -432,7 +434,8 @@ export const ErrorPropagation: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Trace showing how an error in a child span propagates to the parent. Red nodes indicate ERROR status.',
+        story:
+          'Trace showing how an error in a child span propagates to the parent. Red nodes indicate ERROR status.',
       },
     },
   },

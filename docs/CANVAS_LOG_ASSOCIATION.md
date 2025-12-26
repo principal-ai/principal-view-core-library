@@ -68,16 +68,16 @@ Canvas nodes are defined to match OpenTelemetry Resource attributes. This is the
 ```yaml
 # Canvas configuration
 nodes:
-  - id: "api-gateway"
-    type: "api"
+  - id: 'api-gateway'
+    type: 'api'
     resourceMatch:
-      service.name: "api-gateway"
+      service.name: 'api-gateway'
 
-  - id: "user-db"
-    type: "database"
+  - id: 'user-db'
+    type: 'database'
     resourceMatch:
-      service.name: "user-service"
-      db.system: "postgresql"
+      service.name: 'user-service'
+      db.system: 'postgresql'
 ```
 
 When a log arrives:
@@ -85,18 +85,19 @@ When a log arrives:
 ```yaml
 # Log with resource
 resource:
-  service.name: "api-gateway"
-  deployment.environment: "production"
-
+  service.name: 'api-gateway'
+  deployment.environment: 'production'
 # → Matches node "api-gateway" via service.name
 ```
 
 **Advantages:**
+
 - Uses standard OTEL attributes
 - No application code changes required
 - Works with any OTEL-instrumented system
 
 **Disadvantages:**
+
 - Requires upfront canvas configuration
 - May need updates as services change
 
@@ -115,6 +116,7 @@ Edge animation follows span hierarchy:
 ```
 
 **Mapping rules:**
+
 - Span's `resource.service.name` → Node identification
 - Span's `parentSpanId` → Edge source
 - Span's `spanId` → Edge target
@@ -126,15 +128,17 @@ Applications can include custom attributes that directly reference canvas elemen
 ```yaml
 # In the log/span attributes
 attributes:
-  vv.canvas.id: "checkout-flow"    # Which canvas
-  vv.node.id: "api-gateway"        # Which node
+  vv.canvas.id: 'checkout-flow' # Which canvas
+  vv.node.id: 'api-gateway' # Which node
 ```
 
 **Advantages:**
+
 - Precise control
 - Supports dynamic node assignment
 
 **Disadvantages:**
+
 - Requires application code changes
 - Coupling between app and visualization
 
@@ -154,13 +158,13 @@ A canvas **scope** defines which telemetry is relevant to that canvas. Only logs
 
 ```yaml
 canvas:
-  id: "checkout-system"
-  name: "Checkout Flow"
+  id: 'checkout-system'
+  name: 'Checkout Flow'
 
   scope:
     # ALL conditions must match for a log to be in scope
-    deployment.environment: "production"
-    service.namespace: "checkout"
+    deployment.environment: 'production'
+    service.namespace: 'checkout'
 ```
 
 ```
@@ -193,12 +197,12 @@ canvas:
 
 ### Scope Matching Rules
 
-| Operator | Description | Example |
-|----------|-------------|---------|
-| Exact | Attribute equals value | `service.name: "api"` |
-| Glob | Wildcard matching | `service.name: "checkout-*"` |
-| Regex | Pattern matching | `service.name: /^checkout-.+$/` |
-| Exists | Attribute is present | `k8s.pod.name: { exists: true }` |
+| Operator | Description            | Example                          |
+| -------- | ---------------------- | -------------------------------- |
+| Exact    | Attribute equals value | `service.name: "api"`            |
+| Glob     | Wildcard matching      | `service.name: "checkout-*"`     |
+| Regex    | Pattern matching       | `service.name: /^checkout-.+$/`  |
+| Exists   | Attribute is present   | `k8s.pod.name: { exists: true }` |
 
 ---
 
@@ -208,30 +212,30 @@ Each node defines `resourceMatch` - the criteria for routing logs to that node.
 
 ```yaml
 nodes:
-  - id: "api-gateway"
-    type: "api"
-    label: "API Gateway"
+  - id: 'api-gateway'
+    type: 'api'
+    label: 'API Gateway'
     resourceMatch:
-      service.name: "checkout-api"
+      service.name: 'checkout-api'
 
-  - id: "payment-service"
-    type: "service"
-    label: "Payments"
+  - id: 'payment-service'
+    type: 'service'
+    label: 'Payments'
     resourceMatch:
-      service.name: "payment-*"      # Glob pattern
+      service.name: 'payment-*' # Glob pattern
 
-  - id: "orders-db"
-    type: "database"
-    label: "Orders DB"
+  - id: 'orders-db'
+    type: 'database'
+    label: 'Orders DB'
     resourceMatch:
-      db.system: "postgresql"
-      db.name: "orders"              # Multiple conditions (AND)
+      db.system: 'postgresql'
+      db.name: 'orders' # Multiple conditions (AND)
 
-  - id: "any-redis"
-    type: "cache"
-    label: "Redis Cache"
+  - id: 'any-redis'
+    type: 'cache'
+    label: 'Redis Cache'
     resourceMatch:
-      db.system: "redis"             # Matches any Redis instance
+      db.system: 'redis' # Matches any Redis instance
 ```
 
 ### Matching Priority
@@ -246,17 +250,17 @@ When multiple nodes could match a log, priority is determined by:
 # Log with: service.name: "payment-validator"
 
 nodes:
-  - id: "payment-validator"          # Priority 1: Exact match
+  - id: 'payment-validator' # Priority 1: Exact match
     resourceMatch:
-      service.name: "payment-validator"
+      service.name: 'payment-validator'
 
-  - id: "payment-services"           # Priority 2: Glob match
+  - id: 'payment-services' # Priority 2: Glob match
     resourceMatch:
-      service.name: "payment-*"
+      service.name: 'payment-*'
 
-  - id: "all-services"               # Priority 3: Matches anything
+  - id: 'all-services' # Priority 3: Matches anything
     resourceMatch:
-      service.name: "*"
+      service.name: '*'
 ```
 
 ---
@@ -271,10 +275,10 @@ Pre-defined connections that are always displayed:
 
 ```yaml
 edges:
-  - id: "api-to-payment"
-    source: "api-gateway"
-    target: "payment-service"
-    type: "calls"
+  - id: 'api-to-payment'
+    source: 'api-gateway'
+    target: 'payment-service'
+    type: 'calls'
 ```
 
 ### Dynamic Edges from Spans
@@ -351,13 +355,13 @@ A powerful capability of canvas-log association is **Log Auditing** - analyzing 
 
 ### Orphan Categories
 
-| Category | Description | Action |
-|----------|-------------|--------|
-| **Missing Node** | Legitimate service not in canvas | Add node to canvas |
-| **Misconfigured** | Wrong resource attributes | Fix instrumentation |
-| **Out of Scope** | Service shouldn't be in namespace | Move service or fix scope |
-| **Deprecated** | Old service still emitting | Remove or migrate service |
-| **Test/Debug** | Development artifacts | Clean up or filter |
+| Category          | Description                       | Action                    |
+| ----------------- | --------------------------------- | ------------------------- |
+| **Missing Node**  | Legitimate service not in canvas  | Add node to canvas        |
+| **Misconfigured** | Wrong resource attributes         | Fix instrumentation       |
+| **Out of Scope**  | Service shouldn't be in namespace | Move service or fix scope |
+| **Deprecated**    | Old service still emitting        | Remove or migrate service |
+| **Test/Debug**    | Development artifacts             | Clean up or filter        |
 
 ### Coverage Analysis
 
@@ -450,16 +454,19 @@ interface AuditReport {
 ### Audit Use Cases
 
 1. **Onboarding New Services**
+
    - Deploy service to namespace
    - Run audit to see orphaned logs
    - Add corresponding node to canvas
 
 2. **Decommissioning Services**
+
    - Mark node as deprecated
    - Monitor for remaining log activity
    - Remove node when logs stop
 
 3. **Instrumentation Validation**
+
    - Compare expected vs actual resource attributes
    - Identify services with missing OTEL setup
    - Verify trace context propagation
@@ -479,107 +486,107 @@ interface AuditReport {
 # .principal-views/checkout-system.yaml
 
 metadata:
-  name: "Checkout System"
-  version: "1.0.0"
-  description: "Production checkout flow visualization"
+  name: 'Checkout System'
+  version: '1.0.0'
+  description: 'Production checkout flow visualization'
 
 canvas:
-  id: "checkout-system"
+  id: 'checkout-system'
 
   # Scope: which logs are relevant to this canvas
   scope:
-    deployment.environment: "production"
-    service.namespace: "checkout"
+    deployment.environment: 'production'
+    service.namespace: 'checkout'
 
   # Audit configuration
   audit:
     enabled: true
-    orphanThreshold: 100          # Alert if >100 orphaned logs
-    silentNodeAlertAfter: "1h"    # Alert if node silent for 1 hour
-    coverageTarget: 95            # Target 95% coverage
+    orphanThreshold: 100 # Alert if >100 orphaned logs
+    silentNodeAlertAfter: '1h' # Alert if node silent for 1 hour
+    coverageTarget: 95 # Target 95% coverage
 
 # Node definitions
 nodes:
-  - id: "web-frontend"
-    type: "frontend"
-    label: "Web App"
+  - id: 'web-frontend'
+    type: 'frontend'
+    label: 'Web App'
     resourceMatch:
-      service.name: "checkout-web"
+      service.name: 'checkout-web'
     position: { x: 100, y: 100 }
 
-  - id: "api-gateway"
-    type: "api"
-    label: "API Gateway"
+  - id: 'api-gateway'
+    type: 'api'
+    label: 'API Gateway'
     resourceMatch:
-      service.name: "checkout-api"
+      service.name: 'checkout-api'
     position: { x: 300, y: 100 }
 
-  - id: "payment-service"
-    type: "service"
-    label: "Payments"
+  - id: 'payment-service'
+    type: 'service'
+    label: 'Payments'
     resourceMatch:
-      service.name: "payment-*"
+      service.name: 'payment-*'
     position: { x: 500, y: 100 }
 
-  - id: "orders-db"
-    type: "database"
-    label: "Orders DB"
+  - id: 'orders-db'
+    type: 'database'
+    label: 'Orders DB'
     resourceMatch:
-      db.system: "postgresql"
-      db.name: "orders"
+      db.system: 'postgresql'
+      db.name: 'orders'
     position: { x: 500, y: 300 }
 
-  - id: "redis-cache"
-    type: "cache"
-    label: "Session Cache"
+  - id: 'redis-cache'
+    type: 'cache'
+    label: 'Session Cache'
     resourceMatch:
-      db.system: "redis"
+      db.system: 'redis'
     position: { x: 300, y: 300 }
 
 # Edge definitions
 edges:
-  - source: "web-frontend"
-    target: "api-gateway"
-    type: "calls"
+  - source: 'web-frontend'
+    target: 'api-gateway'
+    type: 'calls'
 
-  - source: "api-gateway"
-    target: "payment-service"
-    type: "calls"
+  - source: 'api-gateway'
+    target: 'payment-service'
+    type: 'calls'
 
-  - source: "api-gateway"
-    target: "redis-cache"
-    type: "reads"
+  - source: 'api-gateway'
+    target: 'redis-cache'
+    type: 'reads'
 
-  - source: "payment-service"
-    target: "orders-db"
-    type: "writes"
+  - source: 'payment-service'
+    target: 'orders-db'
+    type: 'writes'
 
 # Node type definitions (can also be global)
 nodeTypes:
   frontend:
-    shape: "rectangle"
-    color: "#4CAF50"
-    icon: "monitor"
+    shape: 'rectangle'
+    color: '#4CAF50'
+    icon: 'monitor'
 
   api:
-    shape: "hexagon"
-    color: "#2196F3"
-    icon: "globe"
+    shape: 'hexagon'
+    color: '#2196F3'
+    icon: 'globe'
 
   service:
-    shape: "rectangle"
-    color: "#9C27B0"
-    icon: "box"
+    shape: 'rectangle'
+    color: '#9C27B0'
+    icon: 'box'
 
   database:
-    shape: "cylinder"
-    color: "#FF9800"
-    icon: "database"
+    shape: 'cylinder'
+    color: '#FF9800'
+    icon: 'database'
 
   cache:
-    shape: "diamond"
-    color: "#00BCD4"
-    icon: "zap"
+    shape: 'diamond'
+    color: '#00BCD4'
+    icon: 'zap'
 ```
 
 ---
@@ -626,14 +633,14 @@ function routeLog(log: OtelLog, canvas: Canvas): RoutingResult {
   if (matches.length === 0) {
     return {
       status: 'orphaned',
-      resource: log.resource
+      resource: log.resource,
     };
   }
 
   matches.sort((a, b) => b.score - a.score);
   return {
     status: 'routed',
-    nodeId: matches[0].nodeId
+    nodeId: matches[0].nodeId,
   };
 }
 ```

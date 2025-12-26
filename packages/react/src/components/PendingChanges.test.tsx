@@ -46,11 +46,7 @@ globalThis.matchMedia = mock(() => ({
 
 // Helper to wrap component with ThemeProvider
 const renderWithTheme = (ui: React.ReactElement) => {
-  return render(
-    <ThemeProvider theme={defaultEditorTheme}>
-      {ui}
-    </ThemeProvider>
-  );
+  return render(<ThemeProvider theme={defaultEditorTheme}>{ui}</ThemeProvider>);
 };
 
 describe('PendingChanges', () => {
@@ -130,13 +126,7 @@ describe('PendingChanges', () => {
     test('should have correct structure with all required fields', () => {
       const ref = createRef<GraphRendererHandle>();
 
-      renderWithTheme(
-        <GraphRenderer
-          ref={ref}
-          canvas={createTestCanvas()}
-          editable={true}
-        />
-      );
+      renderWithTheme(<GraphRenderer ref={ref} canvas={createTestCanvas()} editable={true} />);
 
       const pendingChanges = ref.current?.getPendingChanges();
 
@@ -153,13 +143,7 @@ describe('PendingChanges', () => {
     test('should return empty arrays/false when no changes made', () => {
       const ref = createRef<GraphRendererHandle>();
 
-      renderWithTheme(
-        <GraphRenderer
-          ref={ref}
-          canvas={createTestCanvas()}
-          editable={true}
-        />
-      );
+      renderWithTheme(<GraphRenderer ref={ref} canvas={createTestCanvas()} editable={true} />);
 
       const pendingChanges = ref.current?.getPendingChanges();
 
@@ -175,13 +159,7 @@ describe('PendingChanges', () => {
     test('hasUnsavedChanges should return false initially', () => {
       const ref = createRef<GraphRendererHandle>();
 
-      renderWithTheme(
-        <GraphRenderer
-          ref={ref}
-          canvas={createTestCanvas()}
-          editable={true}
-        />
-      );
+      renderWithTheme(<GraphRenderer ref={ref} canvas={createTestCanvas()} editable={true} />);
 
       expect(ref.current?.hasUnsavedChanges()).toBe(false);
     });
@@ -191,13 +169,7 @@ describe('PendingChanges', () => {
     test('positionChanges should have correct structure', () => {
       const ref = createRef<GraphRendererHandle>();
 
-      renderWithTheme(
-        <GraphRenderer
-          ref={ref}
-          canvas={createTestCanvas()}
-          editable={true}
-        />
-      );
+      renderWithTheme(<GraphRenderer ref={ref} canvas={createTestCanvas()} editable={true} />);
 
       const pendingChanges = ref.current?.getPendingChanges();
 
@@ -214,13 +186,7 @@ describe('PendingChanges', () => {
     test('dimensionChanges should have correct structure', () => {
       const ref = createRef<GraphRendererHandle>();
 
-      renderWithTheme(
-        <GraphRenderer
-          ref={ref}
-          canvas={createTestCanvas()}
-          editable={true}
-        />
-      );
+      renderWithTheme(<GraphRenderer ref={ref} canvas={createTestCanvas()} editable={true} />);
 
       const pendingChanges = ref.current?.getPendingChanges();
 
@@ -250,13 +216,7 @@ describe('PendingChanges', () => {
     test('resetEditState should clear all pending changes', () => {
       const ref = createRef<GraphRendererHandle>();
 
-      renderWithTheme(
-        <GraphRenderer
-          ref={ref}
-          canvas={createTestCanvas()}
-          editable={true}
-        />
-      );
+      renderWithTheme(<GraphRenderer ref={ref} canvas={createTestCanvas()} editable={true} />);
 
       // Reset should work even when there are no changes
       ref.current?.resetEditState();
@@ -290,13 +250,7 @@ describe('PendingChanges', () => {
     test('should still provide getPendingChanges in non-editable mode', () => {
       const ref = createRef<GraphRendererHandle>();
 
-      renderWithTheme(
-        <GraphRenderer
-          ref={ref}
-          canvas={createTestCanvas()}
-          editable={false}
-        />
-      );
+      renderWithTheme(<GraphRenderer ref={ref} canvas={createTestCanvas()} editable={false} />);
 
       const pendingChanges = ref.current?.getPendingChanges();
 
@@ -309,13 +263,7 @@ describe('PendingChanges', () => {
     test('nodeUpdates should have correct structure', () => {
       const ref = createRef<GraphRendererHandle>();
 
-      renderWithTheme(
-        <GraphRenderer
-          ref={ref}
-          canvas={createTestCanvas()}
-          editable={true}
-        />
-      );
+      renderWithTheme(<GraphRenderer ref={ref} canvas={createTestCanvas()} editable={true} />);
 
       const pendingChanges = ref.current?.getPendingChanges();
 
@@ -328,13 +276,7 @@ describe('PendingChanges', () => {
     test('createdEdges should have correct structure', () => {
       const ref = createRef<GraphRendererHandle>();
 
-      renderWithTheme(
-        <GraphRenderer
-          ref={ref}
-          canvas={createTestCanvas()}
-          editable={true}
-        />
-      );
+      renderWithTheme(<GraphRenderer ref={ref} canvas={createTestCanvas()} editable={true} />);
 
       const pendingChanges = ref.current?.getPendingChanges();
 
@@ -345,13 +287,7 @@ describe('PendingChanges', () => {
     test('deletedEdges should have correct structure', () => {
       const ref = createRef<GraphRendererHandle>();
 
-      renderWithTheme(
-        <GraphRenderer
-          ref={ref}
-          canvas={createTestCanvas()}
-          editable={true}
-        />
-      );
+      renderWithTheme(<GraphRenderer ref={ref} canvas={createTestCanvas()} editable={true} />);
 
       const pendingChanges = ref.current?.getPendingChanges();
 
@@ -364,13 +300,7 @@ describe('PendingChanges', () => {
     test('deletedNodeIds should have correct structure', () => {
       const ref = createRef<GraphRendererHandle>();
 
-      renderWithTheme(
-        <GraphRenderer
-          ref={ref}
-          canvas={createTestCanvas()}
-          editable={true}
-        />
-      );
+      renderWithTheme(<GraphRenderer ref={ref} canvas={createTestCanvas()} editable={true} />);
 
       const pendingChanges = ref.current?.getPendingChanges();
 

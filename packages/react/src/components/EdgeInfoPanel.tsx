@@ -59,7 +59,9 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
           borderBottom: `2px solid ${edgeColor}`,
         }}
       >
-        <div style={{ fontWeight: 'bold', fontSize: '14px', color: edgeColor }}>Edge Information</div>
+        <div style={{ fontWeight: 'bold', fontSize: '14px', color: edgeColor }}>
+          Edge Information
+        </div>
         <button
           onClick={onClose}
           style={{
@@ -143,11 +145,7 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
               value={(edge.data?.fromSide as string) || 'right'}
               onChange={(e) => {
                 if (onUpdateSides) {
-                  onUpdateSides(
-                    edge.id,
-                    e.target.value,
-                    (edge.data?.toSide as string) || 'left'
-                  );
+                  onUpdateSides(edge.id, e.target.value, (edge.data?.toSide as string) || 'left');
                 }
               }}
               disabled={!onUpdateSides}
@@ -207,7 +205,6 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
           </div>
         </div>
       </div>
-
 
       {/* Metadata */}
       <div

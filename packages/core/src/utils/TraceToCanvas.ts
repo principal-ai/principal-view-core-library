@@ -181,13 +181,9 @@ function buildSpanTree(spans: TraceSpan[]): SpanTree[] {
   }
 
   // Find roots (spans with no parent or parent not in this trace)
-  const roots = spans.filter(
-    (s) => !s.parentSpanId || !spanMap.has(s.parentSpanId)
-  );
+  const roots = spans.filter((s) => !s.parentSpanId || !spanMap.has(s.parentSpanId));
 
-  return roots
-    .sort((a, b) => a.startTime - b.startTime)
-    .map((root, i) => buildNode(root, 0, i));
+  return roots.sort((a, b) => a.startTime - b.startTime).map((root, i) => buildNode(root, 0, i));
 }
 
 /**
@@ -238,10 +234,7 @@ function calculateHierarchicalLayout(
     positions.set(span.spanId, { x: Math.max(currentX, parentX), y });
 
     // Update depth width if needed
-    const newWidth = Math.max(
-      depthWidths.get(depth) ?? 0,
-      parentX + nodeWidth + horizontalSpacing
-    );
+    const newWidth = Math.max(depthWidths.get(depth) ?? 0, parentX + nodeWidth + horizontalSpacing);
     depthWidths.set(depth, newWidth);
 
     return parentCenter;
@@ -286,12 +279,7 @@ function spanToNode(
       fill: statusCode === 'ERROR' ? '#ef4444' : kindColors[span.kind as OtelSpanKind],
       states: {
         [statusCode]: {
-          color:
-            statusCode === 'OK'
-              ? '#22c55e'
-              : statusCode === 'ERROR'
-                ? '#ef4444'
-                : '#6b7280',
+          color: statusCode === 'OK' ? '#22c55e' : statusCode === 'ERROR' ? '#ef4444' : '#6b7280',
           label: statusCode,
         },
       },

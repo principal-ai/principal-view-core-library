@@ -723,7 +723,8 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'otel-service',
         name: 'LogRouter',
-        description: 'Routes incoming OTEL logs to canvas nodes based on scope and resourceMatch criteria',
+        description:
+          'Routes incoming OTEL logs to canvas nodes based on scope and resourceMatch criteria',
         otel: {
           kind: 'service',
           category: 'router',
@@ -846,7 +847,8 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
       pv: {
         nodeType: 'otel-service',
         name: 'AuditCollector',
-        description: 'Tracks routing metrics, orphaned logs, silent nodes, and generates coverage reports',
+        description:
+          'Tracks routing metrics, orphaned logs, silent nodes, and generates coverage reports',
         otel: {
           kind: 'service',
           category: 'collector',

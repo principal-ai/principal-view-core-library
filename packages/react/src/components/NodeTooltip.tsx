@@ -19,7 +19,12 @@ export interface NodeTooltipProps {
  * Tooltip component for displaying node information on hover
  * Uses a portal to render above all other elements
  */
-export const NodeTooltip: React.FC<NodeTooltipProps> = ({ description, otel, visible, nodeRef }) => {
+export const NodeTooltip: React.FC<NodeTooltipProps> = ({
+  description,
+  otel,
+  visible,
+  nodeRef,
+}) => {
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
@@ -73,8 +78,8 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({ description, otel, vis
     <div
       style={{
         position: usePortal ? 'fixed' : 'absolute',
-        top: usePortal ? (position?.top ?? 0) : '100%',
-        left: usePortal ? (position?.left ?? 0) : '50%',
+        top: usePortal ? position?.top ?? 0 : '100%',
+        left: usePortal ? position?.left ?? 0 : '50%',
         transform: 'translateX(-50%)',
         marginTop: usePortal ? 0 : '8px',
         padding: '8px 12px',
@@ -129,7 +134,9 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({ description, otel, vis
             {getKindLabel(otel.kind)}
           </span>
           {otel.category && (
-            <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '10px' }}>{otel.category}</span>
+            <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '10px' }}>
+              {otel.category}
+            </span>
           )}
           {otel.isNew && (
             <span

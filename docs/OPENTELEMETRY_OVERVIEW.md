@@ -65,11 +65,11 @@ OpenTelemetry defines three core telemetry signals:
 
 ### Signal Comparison
 
-| Signal  | Purpose                          | Granularity      | Use Case                        |
-| ------- | -------------------------------- | ---------------- | ------------------------------- |
-| Traces  | Track request flow               | Per-request      | Debugging distributed systems   |
-| Logs    | Record discrete events           | Per-event        | Error investigation, audit      |
-| Metrics | Measure aggregated values        | Time-windowed    | Alerting, dashboards            |
+| Signal  | Purpose                   | Granularity   | Use Case                      |
+| ------- | ------------------------- | ------------- | ----------------------------- |
+| Traces  | Track request flow        | Per-request   | Debugging distributed systems |
+| Logs    | Record discrete events    | Per-event     | Error investigation, audit    |
+| Metrics | Measure aggregated values | Time-windowed | Alerting, dashboards          |
 
 ---
 
@@ -149,21 +149,21 @@ traceparent: {version}-{trace-id}-{parent-span-id}-{trace-flags}
 traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
 ```
 
-| Field          | Size     | Description                              |
-| -------------- | -------- | ---------------------------------------- |
-| version        | 2 chars  | Always "00" for current spec             |
-| trace-id       | 32 chars | 128-bit trace identifier                 |
-| parent-span-id | 16 chars | 64-bit parent span identifier            |
-| trace-flags    | 2 chars  | Sampling flags (01 = sampled)            |
+| Field          | Size     | Description                   |
+| -------------- | -------- | ----------------------------- |
+| version        | 2 chars  | Always "00" for current spec  |
+| trace-id       | 32 chars | 128-bit trace identifier      |
+| parent-span-id | 16 chars | 64-bit parent span identifier |
+| trace-flags    | 2 chars  | Sampling flags (01 = sampled) |
 
 #### Propagation Mechanisms
 
-| Transport      | Propagation Method                    |
-| -------------- | ------------------------------------- |
-| HTTP           | `traceparent` / `tracestate` headers  |
-| gRPC           | Metadata                              |
-| Message Queues | Message headers/properties            |
-| In-process     | Thread-local context                  |
+| Transport      | Propagation Method                   |
+| -------------- | ------------------------------------ |
+| HTTP           | `traceparent` / `tracestate` headers |
+| gRPC           | Metadata                             |
+| Message Queues | Message headers/properties           |
+| In-process     | Thread-local context                 |
 
 ### 3. Resource
 
@@ -172,24 +172,24 @@ A **Resource** describes the entity producing telemetry - the "who am I?" of obs
 ```yaml
 resource:
   # Service identification
-  service.name: "payment-service"
-  service.version: "2.1.0"
-  service.namespace: "checkout"
+  service.name: 'payment-service'
+  service.version: '2.1.0'
+  service.namespace: 'checkout'
 
   # Deployment context
-  deployment.environment: "production"
+  deployment.environment: 'production'
 
   # Kubernetes context
-  k8s.cluster.name: "prod-us-east"
-  k8s.namespace.name: "checkout"
-  k8s.deployment.name: "payment-service"
-  k8s.pod.name: "payment-service-7d8f9-x2k4m"
+  k8s.cluster.name: 'prod-us-east'
+  k8s.namespace.name: 'checkout'
+  k8s.deployment.name: 'payment-service'
+  k8s.pod.name: 'payment-service-7d8f9-x2k4m'
 
   # Infrastructure
-  host.name: "node-3.cluster.local"
-  host.type: "n2-standard-4"
-  cloud.provider: "gcp"
-  cloud.region: "us-east1"
+  host.name: 'node-3.cluster.local'
+  host.type: 'n2-standard-4'
+  cloud.provider: 'gcp'
+  cloud.region: 'us-east1'
 ```
 
 All telemetry (spans, logs, metrics) from the same process shares the same Resource. This enables:
@@ -205,35 +205,35 @@ Attributes are key-value pairs that provide context to spans, logs, and metrics.
 #### HTTP Attributes
 
 ```yaml
-http.request.method: "POST"
-http.route: "/api/v1/checkout"
-url.full: "https://api.example.com/api/v1/checkout"
+http.request.method: 'POST'
+http.route: '/api/v1/checkout'
+url.full: 'https://api.example.com/api/v1/checkout'
 http.response.status_code: 200
 ```
 
 #### Database Attributes
 
 ```yaml
-db.system: "postgresql"
-db.name: "orders"
-db.operation: "SELECT"
-db.statement: "SELECT * FROM users WHERE id = $1"
+db.system: 'postgresql'
+db.name: 'orders'
+db.operation: 'SELECT'
+db.statement: 'SELECT * FROM users WHERE id = $1'
 ```
 
 #### Messaging Attributes
 
 ```yaml
-messaging.system: "rabbitmq"
-messaging.destination.name: "orders.created"
-messaging.operation: "publish"
+messaging.system: 'rabbitmq'
+messaging.destination.name: 'orders.created'
+messaging.operation: 'publish'
 ```
 
 #### Exception Attributes
 
 ```yaml
-exception.type: "ConnectionError"
-exception.message: "Connection refused"
-exception.stacktrace: "..."
+exception.type: 'ConnectionError'
+exception.message: 'Connection refused'
+exception.stacktrace: '...'
 ```
 
 ---
@@ -276,13 +276,13 @@ exception.stacktrace: "..."
 
 ### Component Responsibilities
 
-| Component         | Responsibility                                          |
-| ----------------- | ------------------------------------------------------- |
-| **SDK**           | Instrument code, create spans/logs/metrics              |
-| **API**           | Vendor-neutral interface for instrumentation            |
-| **Propagators**   | Inject/extract trace context across boundaries          |
-| **Exporters**     | Send telemetry to backends (OTLP, Jaeger, Zipkin, etc.) |
-| **Collector**     | Receive, process, and export telemetry                  |
+| Component       | Responsibility                                          |
+| --------------- | ------------------------------------------------------- |
+| **SDK**         | Instrument code, create spans/logs/metrics              |
+| **API**         | Vendor-neutral interface for instrumentation            |
+| **Propagators** | Inject/extract trace context across boundaries          |
+| **Exporters**   | Send telemetry to backends (OTLP, Jaeger, Zipkin, etc.) |
+| **Collector**   | Receive, process, and export telemetry                  |
 
 ### The Collector
 
@@ -313,7 +313,7 @@ processors:
 
 exporters:
   otlp:
-    endpoint: "backend.example.com:4317"
+    endpoint: 'backend.example.com:4317'
   logging:
     loglevel: debug
 
@@ -351,7 +351,7 @@ function generateTraceId(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
   return Array.from(bytes)
-    .map(b => b.toString(16).padStart(2, '0'))
+    .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 }
 
@@ -359,17 +359,17 @@ function generateSpanId(): string {
   const bytes = new Uint8Array(8);
   crypto.getRandomValues(bytes);
   return Array.from(bytes)
-    .map(b => b.toString(16).padStart(2, '0'))
+    .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
 }
 
 // Simplified alternative
 function generateTraceIdSimple(): string {
-  return crypto.randomUUID().replace(/-/g, '');  // 32 hex chars
+  return crypto.randomUUID().replace(/-/g, ''); // 32 hex chars
 }
 
 function generateSpanIdSimple(): string {
-  return crypto.randomUUID().replace(/-/g, '').slice(0, 16);  // 16 hex chars
+  return crypto.randomUUID().replace(/-/g, '').slice(0, 16); // 16 hex chars
 }
 ```
 
@@ -385,15 +385,15 @@ function generateSpanIdSimple(): string {
 
 OpenTelemetry concepts map directly to Visual Validation Framework concepts:
 
-| OpenTelemetry         | Visual Validation           | Mapping                                    |
-| --------------------- | --------------------------- | ------------------------------------------ |
-| **TraceId**           | Animation sequence          | Single user action flowing through graph   |
-| **SpanId + ParentId** | Edges                       | Call graph / parent-child relationships    |
-| **Resource**          | Node identity               | `service.name` → which node                |
-| **Span**              | Node + state change         | Operation on a component                   |
-| **LogRecord**         | GraphEvent                  | Event that updates node state              |
-| **Attributes**        | Node.data / NodeState       | `http.status_code` → state, tooltips       |
-| **SeverityNumber**    | NodeState                   | ERROR (17+) → error state                  |
+| OpenTelemetry         | Visual Validation     | Mapping                                  |
+| --------------------- | --------------------- | ---------------------------------------- |
+| **TraceId**           | Animation sequence    | Single user action flowing through graph |
+| **SpanId + ParentId** | Edges                 | Call graph / parent-child relationships  |
+| **Resource**          | Node identity         | `service.name` → which node              |
+| **Span**              | Node + state change   | Operation on a component                 |
+| **LogRecord**         | GraphEvent            | Event that updates node state            |
+| **Attributes**        | Node.data / NodeState | `http.status_code` → state, tooltips     |
+| **SeverityNumber**    | NodeState             | ERROR (17+) → error state                |
 
 ### Log Correlation Dimensions
 
@@ -426,14 +426,14 @@ OpenTelemetry logs can be correlated with architecture in three dimensions:
 
 OpenTelemetry defines severity levels 1-24:
 
-| SeverityNumber | Level   | Suggested Node State |
-| -------------- | ------- | -------------------- |
-| 1-4            | TRACE   | debug                |
-| 5-8            | DEBUG   | debug                |
-| 9-12           | INFO    | default              |
-| 13-16          | WARN    | warning              |
-| 17-20          | ERROR   | error                |
-| 21-24          | FATAL   | critical             |
+| SeverityNumber | Level | Suggested Node State |
+| -------------- | ----- | -------------------- |
+| 1-4            | TRACE | debug                |
+| 5-8            | DEBUG | debug                |
+| 9-12           | INFO  | default              |
+| 13-16          | WARN  | warning              |
+| 17-20          | ERROR | error                |
+| 21-24          | FATAL | critical             |
 
 ---
 

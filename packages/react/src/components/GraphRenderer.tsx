@@ -427,25 +427,22 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   }, []);
 
   // Handle edge side updates from EdgeInfoPanel
-  const handleUpdateEdgeSides = useCallback(
-    (edgeId: string, fromSide: string, toSide: string) => {
-      setLocalEdges((currentEdges) =>
-        currentEdges.map((edge) =>
-          edge.id === edgeId
-            ? {
-                ...edge,
-                data: {
-                  ...edge.data,
-                  fromSide,
-                  toSide,
-                },
-              }
-            : edge
-        )
-      );
-    },
-    []
-  );
+  const handleUpdateEdgeSides = useCallback((edgeId: string, fromSide: string, toSide: string) => {
+    setLocalEdges((currentEdges) =>
+      currentEdges.map((edge) =>
+        edge.id === edgeId
+          ? {
+              ...edge,
+              data: {
+                ...edge.data,
+                fromSide,
+                toSide,
+              },
+            }
+          : edge
+      )
+    );
+  }, []);
 
   // Handle close node info panel
   const onCloseNodeInfoPanel = useCallback(() => {
@@ -1269,7 +1266,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           <div style={{ fontWeight: 'bold', marginBottom: '12px', fontSize: '14px' }}>
             Select Edge Type
           </div>
-          <div style={{ fontSize: '12px', color: theme.colors.textSecondary, marginBottom: '12px' }}>
+          <div
+            style={{ fontSize: '12px', color: theme.colors.textSecondary, marginBottom: '12px' }}
+          >
             {pendingConnection.from} → {pendingConnection.to}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

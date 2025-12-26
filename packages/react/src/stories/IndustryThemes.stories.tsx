@@ -341,28 +341,30 @@ const ThemeSwitcher = () => {
             gap: '16px',
           }}
         >
-          {['primary', 'secondary', 'accent', 'success', 'warning', 'error', 'info'].map((colorKey) => (
-            <div
-              key={colorKey}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '12px',
-              }}
-            >
+          {['primary', 'secondary', 'accent', 'success', 'warning', 'error', 'info'].map(
+            (colorKey) => (
               <div
+                key={colorKey}
                 style={{
-                  width: '16px',
-                  height: '16px',
-                  borderRadius: '4px',
-                  backgroundColor: themeConfig.theme.colors[colorKey],
-                  border: `1px solid ${themeConfig.theme.colors.border}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '12px',
                 }}
-              />
-              <span style={{ fontFamily: themeConfig.theme.fonts.monospace }}>{colorKey}</span>
-            </div>
-          ))}
+              >
+                <div
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '4px',
+                    backgroundColor: themeConfig.theme.colors[colorKey],
+                    border: `1px solid ${themeConfig.theme.colors.border}`,
+                  }}
+                />
+                <span style={{ fontFamily: themeConfig.theme.fonts.monospace }}>{colorKey}</span>
+              </div>
+            )
+          )}
         </div>
       </div>
     </ThemeProvider>

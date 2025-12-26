@@ -31,7 +31,8 @@ import { traceToCanvas, type TraceExport } from '../src/utils/TraceToCanvas';
 const SERVICE_NAME = 'principal-view-core-tests';
 const ENABLE_CONSOLE_EXPORT = process.env.OTEL_CONSOLE_EXPORT === 'true';
 const ENABLE_CANVAS_OUTPUT = process.env.OTEL_CANVAS_OUTPUT === 'true';
-const TRACE_OUTPUT_PATH = process.env.OTEL_TRACE_OUTPUT ?? join(__dirname, '../__traces__/test-run.json');
+const TRACE_OUTPUT_PATH =
+  process.env.OTEL_TRACE_OUTPUT ?? join(__dirname, '../__traces__/test-run.json');
 const CANVAS_OUTPUT_PATH = TRACE_OUTPUT_PATH.replace(/\.json$/, '.canvas.json');
 
 // Create resource identifying this test suite
@@ -81,10 +82,7 @@ export { trace, context, SpanStatusCode };
  * }));
  * ```
  */
-export function traced<T>(
-  name: string,
-  fn: (span: Span) => T | Promise<T>
-): () => Promise<T> {
+export function traced<T>(name: string, fn: (span: Span) => T | Promise<T>): () => Promise<T> {
   return async () => {
     // Start a new root span for this test
     const span = tracer.startSpan(name);
@@ -146,9 +144,7 @@ export async function withSpan<T>(
   const activeContext = context.active();
 
   // If parent span provided, create context from it; otherwise use active context
-  const parentContext = parentSpan
-    ? trace.setSpan(activeContext, parentSpan)
-    : activeContext;
+  const parentContext = parentSpan ? trace.setSpan(activeContext, parentSpan) : activeContext;
 
   // Start span as child of the parent context
   const span = tracer.startSpan(name, {}, parentContext);
@@ -177,7 +173,8 @@ export async function withSpan<T>(
  */
 function spanToJson(span: ReadableSpan) {
   // Get parent span ID from parentSpanContext (Bun doesn't support the parentSpanId getter)
-  const parentSpanId = (span as unknown as { parentSpanContext?: { spanId?: string } }).parentSpanContext?.spanId;
+  const parentSpanId = (span as unknown as { parentSpanContext?: { spanId?: string } })
+    .parentSpanContext?.spanId;
 
   return {
     traceId: span.spanContext().traceId,
@@ -191,19 +188,15 @@ function spanToJson(span: ReadableSpan) {
     resource: Object.fromEntries(
       span.resource.attributes ? Object.entries(span.resource.attributes) : []
     ),
-    attributes: Object.fromEntries(
-      span.attributes ? Object.entries(span.attributes) : []
-    ),
+    attributes: Object.fromEntries(span.attributes ? Object.entries(span.attributes) : []),
     status: {
       code: ['UNSET', 'OK', 'ERROR'][span.status.code] as string,
       message: span.status.message,
     },
-    events: span.events.map(e => ({
+    events: span.events.map((e) => ({
       name: e.name,
       timestamp: e.time[0] * 1000 + e.time[1] / 1_000_000,
-      attributes: Object.fromEntries(
-        e.attributes ? Object.entries(e.attributes) : []
-      ),
+      attributes: Object.fromEntries(e.attributes ? Object.entries(e.attributes) : []),
     })),
   };
 }
@@ -237,7 +230,9 @@ afterAll(async () => {
     if (ENABLE_CANVAS_OUTPUT) {
       const { canvas, stats } = traceToCanvas(traceExport);
       writeFileSync(CANVAS_OUTPUT_PATH, JSON.stringify(canvas, null, 2));
-      console.log(`🎨 Wrote canvas (${stats.traceCount} traces, ${stats.serviceCount} services) to ${CANVAS_OUTPUT_PATH}`);
+      console.log(
+        `🎨 Wrote canvas (${stats.traceCount} traces, ${stats.serviceCount} services) to ${CANVAS_OUTPUT_PATH}`
+      );
     }
   }
 

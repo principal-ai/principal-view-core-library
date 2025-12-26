@@ -116,7 +116,11 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
               );
               // Validate state icon name format
               const state = stateDef as Record<string, unknown>;
-              validateIconName(state.icon, `nodeComponents.${compId}.states.${stateId}.icon`, issues);
+              validateIconName(
+                state.icon,
+                `nodeComponents.${compId}.states.${stateId}.icon`,
+                issues
+              );
             }
           }
         }
@@ -258,11 +262,7 @@ function isKebabCase(str: string): boolean {
  * Validate an icon name and return issues if invalid
  * Icons should be in PascalCase (e.g., "FileText", "Database", "AlertCircle")
  */
-function validateIconName(
-  iconValue: unknown,
-  path: string,
-  issues: ValidationIssue[]
-): void {
+function validateIconName(iconValue: unknown, path: string, issues: ValidationIssue[]): void {
   if (typeof iconValue !== 'string' || !iconValue) {
     return; // No icon specified, that's fine
   }
@@ -300,7 +300,17 @@ function validateIconName(
  */
 const ALLOWED_CANVAS_FIELDS = {
   root: ['nodes', 'edges', 'pv'],
-  pv: ['version', 'name', 'description', 'nodeTypes', 'edgeTypes', 'pathConfig', 'display', 'scope', 'audit'],
+  pv: [
+    'version',
+    'name',
+    'description',
+    'nodeTypes',
+    'edgeTypes',
+    'pathConfig',
+    'display',
+    'scope',
+    'audit',
+  ],
   pvPathConfig: [
     'projectRoot',
     'captureSource',
@@ -932,7 +942,9 @@ function validateCanvas(
           type: 'error',
           message: `Edge "${edgeLabel}" must have a "fromSide" field`,
           path: `${edgePath}.fromSide`,
-          suggestion: `Specify which side of the source node the edge starts from: ${VALID_SIDES.join(', ')}`,
+          suggestion: `Specify which side of the source node the edge starts from: ${VALID_SIDES.join(
+            ', '
+          )}`,
         });
       } else if (!VALID_SIDES.includes(e.fromSide as (typeof VALID_SIDES)[number])) {
         issues.push({
@@ -947,7 +959,9 @@ function validateCanvas(
           type: 'error',
           message: `Edge "${edgeLabel}" must have a "toSide" field`,
           path: `${edgePath}.toSide`,
-          suggestion: `Specify which side of the target node the edge connects to: ${VALID_SIDES.join(', ')}`,
+          suggestion: `Specify which side of the target node the edge connects to: ${VALID_SIDES.join(
+            ', '
+          )}`,
         });
       } else if (!VALID_SIDES.includes(e.toSide as (typeof VALID_SIDES)[number])) {
         issues.push({
@@ -973,9 +987,10 @@ function validateCanvas(
             type: 'error',
             message: `Edge "${edgeLabel}" must have a "pv.edgeType" field`,
             path: `${edgePath}.pv.edgeType`,
-            suggestion: allDefinedEdgeTypes.length > 0
-              ? `Available types: ${allDefinedEdgeTypes.join(', ')}`
-              : 'Define edge types in canvas pv.edgeTypes or library.yaml edgeComponents',
+            suggestion:
+              allDefinedEdgeTypes.length > 0
+                ? `Available types: ${allDefinedEdgeTypes.join(', ')}`
+                : 'Define edge types in canvas pv.edgeTypes or library.yaml edgeComponents',
           });
         }
       }

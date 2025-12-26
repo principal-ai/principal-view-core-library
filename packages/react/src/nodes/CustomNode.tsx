@@ -363,7 +363,12 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
 
       {/* Input handles - all 4 sides for incoming connections */}
       <Handle type="target" position={Position.Top} id="top" style={getHandleStyle('top')} />
-      <Handle type="target" position={Position.Bottom} id="bottom" style={getHandleStyle('bottom')} />
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="bottom"
+        style={getHandleStyle('bottom')}
+      />
       <Handle type="target" position={Position.Left} id="left" style={getHandleStyle('left')} />
       <Handle type="target" position={Position.Right} id="right" style={getHandleStyle('right')} />
 
@@ -411,7 +416,12 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
               )}
             </div>
           </div>
-          <NodeTooltip description={description} otel={otelInfo} visible={isHovered} nodeRef={nodeRef} />
+          <NodeTooltip
+            description={description}
+            otel={otelInfo}
+            visible={isHovered}
+            nodeRef={nodeRef}
+          />
         </div>
       ) : isDiamond ? (
         <div
@@ -456,7 +466,12 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
               )}
             </div>
           </div>
-          <NodeTooltip description={description} otel={otelInfo} visible={isHovered} nodeRef={nodeRef} />
+          <NodeTooltip
+            description={description}
+            otel={otelInfo}
+            visible={isHovered}
+            nodeRef={nodeRef}
+          />
         </div>
       ) : (
         <div
@@ -490,7 +505,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
               ) : (
                 <>
                   {icon && (
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <div
+                      style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                    >
                       {resolveIcon(icon, 20)}
                     </div>
                   )}
@@ -524,7 +541,12 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
               )}
             </div>
           </div>
-          <NodeTooltip description={description} otel={otelInfo} visible={isHovered} nodeRef={nodeRef} />
+          <NodeTooltip
+            description={description}
+            otel={otelInfo}
+            visible={isHovered}
+            nodeRef={nodeRef}
+          />
         </div>
       )}
 

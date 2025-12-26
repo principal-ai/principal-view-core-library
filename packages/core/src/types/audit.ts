@@ -51,11 +51,7 @@ export interface NodeActivity {
  * - `remove`: Log appears to be test/debug artifact, should be removed
  * - `investigate`: Unable to determine, needs manual investigation
  */
-export type OrphanSuggestedAction =
-  | 'add-node'
-  | 'fix-instrumentation'
-  | 'remove'
-  | 'investigate';
+export type OrphanSuggestedAction = 'add-node' | 'fix-instrumentation' | 'remove' | 'investigate';
 
 /**
  * An orphaned log group
