@@ -5,7 +5,7 @@
       "type": "group",
       "x": -20,
       "y": -50,
-      "width": 1490,
+      "width": 4740,
       "height": 130,
       "label": "principal-view-core-tests",
       "pv": {
@@ -15,17 +15,17 @@
       }
     },
     {
-      "id": "ac239f825108da25",
+      "id": "329b7a80b8a3de66",
       "type": "text",
       "x": 0,
       "y": 0,
       "width": 200,
       "height": 60,
-      "text": "test:basic-traced",
+      "text": "engine:create",
       "pv": {
         "nodeType": "span",
-        "name": "test:basic-traced",
-        "description": "11.75ms",
+        "name": "engine:create",
+        "description": "128μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -39,25 +39,25 @@
           "category": "span"
         },
         "dataSchema": {
-          "test.type": {
-            "type": "string",
+          "rules.count": {
+            "type": "number",
             "required": false
           }
         }
       }
     },
     {
-      "id": "a2ec37169e76db0a",
+      "id": "a7d173c731522405",
       "type": "text",
       "x": 250,
       "y": 0,
       "width": 200,
       "height": 60,
-      "text": "operation:validate",
+      "text": "engine:validate",
       "pv": {
         "nodeType": "span",
-        "name": "operation:validate",
-        "description": "5.63ms",
+        "name": "engine:validate",
+        "description": "94μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -71,7 +71,15 @@
           "category": "span"
         },
         "dataSchema": {
-          "operation.type": {
+          "event.type": {
+            "type": "string",
+            "required": false
+          },
+          "edge.from": {
+            "type": "string",
+            "required": false
+          },
+          "edge.to": {
             "type": "string",
             "required": false
           }
@@ -79,17 +87,17 @@
       }
     },
     {
-      "id": "4cc98464bf2a78b6",
+      "id": "af6fdab27e514e58",
       "type": "text",
       "x": 500,
       "y": 0,
       "width": 200,
       "height": 60,
-      "text": "operation:process",
+      "text": "validation:connection:valid",
       "pv": {
         "nodeType": "span",
-        "name": "operation:process",
-        "description": "5.78ms",
+        "name": "validation:connection:valid",
+        "description": "819μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -103,29 +111,33 @@
           "category": "span"
         },
         "dataSchema": {
-          "operation.type": {
+          "test.category": {
             "type": "string",
             "required": false
           },
-          "input": {
+          "test.expectation": {
             "type": "string",
+            "required": false
+          },
+          "result.valid": {
+            "type": "boolean",
             "required": false
           }
         }
       }
     },
     {
-      "id": "c6354fc184a8d56a",
+      "id": "3696b74d79bf2a5b",
       "type": "text",
       "x": 750,
       "y": 0,
       "width": 200,
       "height": 60,
-      "text": "test:nested-spans",
+      "text": "engine:validate",
       "pv": {
         "nodeType": "span",
-        "name": "test:nested-spans",
-        "description": "11.60ms",
+        "name": "engine:validate",
+        "description": "48μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
@@ -139,7 +151,15 @@
           "category": "span"
         },
         "dataSchema": {
-          "test.type": {
+          "event.type": {
+            "type": "string",
+            "required": false
+          },
+          "edge.from": {
+            "type": "string",
+            "required": false
+          },
+          "edge.to": {
             "type": "string",
             "required": false
           }
@@ -147,23 +167,23 @@
       }
     },
     {
-      "id": "3884b9ed9e60a5c9",
+      "id": "068daf4ca451504f",
       "type": "text",
       "x": 1000,
       "y": 0,
       "width": 200,
       "height": 60,
-      "text": "child:computation",
+      "text": "validation:connection:invalid",
       "pv": {
         "nodeType": "span",
-        "name": "child:computation",
-        "description": "5.55ms",
+        "name": "validation:connection:invalid",
+        "description": "120μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
-          "UNSET": {
-            "color": "#6b7280",
-            "label": "UNSET"
+          "OK": {
+            "color": "#22c55e",
+            "label": "OK"
           }
         },
         "otel": {
@@ -171,7 +191,51 @@
           "category": "span"
         },
         "dataSchema": {
-          "computation.type": {
+          "test.category": {
+            "type": "string",
+            "required": false
+          },
+          "test.expectation": {
+            "type": "string",
+            "required": false
+          },
+          "result.valid": {
+            "type": "boolean",
+            "required": false
+          },
+          "result.violations": {
+            "type": "number",
+            "required": false
+          }
+        }
+      }
+    },
+    {
+      "id": "9b6771eaf902fb7d",
+      "type": "text",
+      "x": 1250,
+      "y": 0,
+      "width": 200,
+      "height": 60,
+      "text": "engine:validate",
+      "pv": {
+        "nodeType": "span",
+        "name": "engine:validate",
+        "description": "21μs",
+        "shape": "circle",
+        "fill": "#6b7280",
+        "states": {
+          "OK": {
+            "color": "#22c55e",
+            "label": "OK"
+          }
+        },
+        "otel": {
+          "kind": "instance",
+          "category": "span"
+        },
+        "dataSchema": {
+          "edge.to": {
             "type": "string",
             "required": false
           }
@@ -179,23 +243,23 @@
       }
     },
     {
-      "id": "ffede854df0d18bc",
+      "id": "f3e8743fdbbb2c9d",
       "type": "text",
-      "x": 1250,
+      "x": 1500,
       "y": 0,
       "width": 200,
       "height": 60,
-      "text": "test:manual-span",
+      "text": "validation:connection:missing-node",
       "pv": {
         "nodeType": "span",
-        "name": "test:manual-span",
-        "description": "5.64ms",
+        "name": "validation:connection:missing-node",
+        "description": "93μs",
         "shape": "circle",
         "fill": "#6b7280",
         "states": {
-          "UNSET": {
-            "color": "#6b7280",
-            "label": "UNSET"
+          "OK": {
+            "color": "#22c55e",
+            "label": "OK"
           }
         },
         "otel": {
@@ -203,8 +267,468 @@
           "category": "span"
         },
         "dataSchema": {
-          "manual": {
+          "test.category": {
+            "type": "string",
+            "required": false
+          },
+          "test.expectation": {
+            "type": "string",
+            "required": false
+          },
+          "result.valid": {
             "type": "boolean",
+            "required": false
+          }
+        }
+      }
+    },
+    {
+      "id": "bb762ef61e191029",
+      "type": "text",
+      "x": 1750,
+      "y": 0,
+      "width": 200,
+      "height": 60,
+      "text": "engine:create-with-rules",
+      "pv": {
+        "nodeType": "span",
+        "name": "engine:create-with-rules",
+        "description": "23μs",
+        "shape": "circle",
+        "fill": "#6b7280",
+        "states": {
+          "OK": {
+            "color": "#22c55e",
+            "label": "OK"
+          }
+        },
+        "otel": {
+          "kind": "instance",
+          "category": "span"
+        },
+        "dataSchema": {
+          "rules.stateTransitions": {
+            "type": "boolean",
+            "required": false
+          }
+        }
+      }
+    },
+    {
+      "id": "1be1126347275ddc",
+      "type": "text",
+      "x": 2000,
+      "y": 0,
+      "width": 200,
+      "height": 60,
+      "text": "engine:validate-transition",
+      "pv": {
+        "nodeType": "span",
+        "name": "engine:validate-transition",
+        "description": "66μs",
+        "shape": "circle",
+        "fill": "#6b7280",
+        "states": {
+          "OK": {
+            "color": "#22c55e",
+            "label": "OK"
+          }
+        },
+        "otel": {
+          "kind": "instance",
+          "category": "span"
+        },
+        "dataSchema": {
+          "state.from": {
+            "type": "string",
+            "required": false
+          },
+          "state.to": {
+            "type": "string",
+            "required": false
+          }
+        }
+      }
+    },
+    {
+      "id": "302c43d108f08556",
+      "type": "text",
+      "x": 2250,
+      "y": 0,
+      "width": 200,
+      "height": 60,
+      "text": "validation:state:valid-transition",
+      "pv": {
+        "nodeType": "span",
+        "name": "validation:state:valid-transition",
+        "description": "181μs",
+        "shape": "circle",
+        "fill": "#6b7280",
+        "states": {
+          "OK": {
+            "color": "#22c55e",
+            "label": "OK"
+          }
+        },
+        "otel": {
+          "kind": "instance",
+          "category": "span"
+        },
+        "dataSchema": {
+          "test.category": {
+            "type": "string",
+            "required": false
+          },
+          "test.expectation": {
+            "type": "string",
+            "required": false
+          },
+          "result.valid": {
+            "type": "boolean",
+            "required": false
+          }
+        }
+      }
+    },
+    {
+      "id": "5d0e7cd37df951c1",
+      "type": "text",
+      "x": 2500,
+      "y": 0,
+      "width": 200,
+      "height": 60,
+      "text": "engine:validate-transition",
+      "pv": {
+        "nodeType": "span",
+        "name": "engine:validate-transition",
+        "description": "35μs",
+        "shape": "circle",
+        "fill": "#6b7280",
+        "states": {
+          "OK": {
+            "color": "#22c55e",
+            "label": "OK"
+          }
+        },
+        "otel": {
+          "kind": "instance",
+          "category": "span"
+        },
+        "dataSchema": {
+          "state.from": {
+            "type": "string",
+            "required": false
+          },
+          "state.to": {
+            "type": "string",
+            "required": false
+          },
+          "state.allowed": {
+            "type": "boolean",
+            "required": false
+          }
+        }
+      }
+    },
+    {
+      "id": "4a83100529a10de8",
+      "type": "text",
+      "x": 2750,
+      "y": 0,
+      "width": 200,
+      "height": 60,
+      "text": "validation:state:invalid-transition",
+      "pv": {
+        "nodeType": "span",
+        "name": "validation:state:invalid-transition",
+        "description": "105μs",
+        "shape": "circle",
+        "fill": "#6b7280",
+        "states": {
+          "OK": {
+            "color": "#22c55e",
+            "label": "OK"
+          }
+        },
+        "otel": {
+          "kind": "instance",
+          "category": "span"
+        },
+        "dataSchema": {
+          "test.category": {
+            "type": "string",
+            "required": false
+          },
+          "test.expectation": {
+            "type": "string",
+            "required": false
+          },
+          "result.valid": {
+            "type": "boolean",
+            "required": false
+          },
+          "result.violations": {
+            "type": "number",
+            "required": false
+          }
+        }
+      }
+    },
+    {
+      "id": "2f0eb10fb1a84197",
+      "type": "text",
+      "x": 3000,
+      "y": 0,
+      "width": 200,
+      "height": 60,
+      "text": "engine:create-with-cardinality",
+      "pv": {
+        "nodeType": "span",
+        "name": "engine:create-with-cardinality",
+        "description": "24μs",
+        "shape": "circle",
+        "fill": "#6b7280",
+        "states": {
+          "OK": {
+            "color": "#22c55e",
+            "label": "OK"
+          }
+        },
+        "otel": {
+          "kind": "instance",
+          "category": "span"
+        },
+        "dataSchema": {
+          "cardinality.server.min": {
+            "type": "number",
+            "required": false
+          },
+          "cardinality.server.max": {
+            "type": "number",
+            "required": false
+          }
+        }
+      }
+    },
+    {
+      "id": "ba3d6bf84ab403cd",
+      "type": "text",
+      "x": 3250,
+      "y": 0,
+      "width": 200,
+      "height": 60,
+      "text": "engine:check-constraints",
+      "pv": {
+        "nodeType": "span",
+        "name": "engine:check-constraints",
+        "description": "57μs",
+        "shape": "circle",
+        "fill": "#6b7280",
+        "states": {
+          "OK": {
+            "color": "#22c55e",
+            "label": "OK"
+          }
+        },
+        "otel": {
+          "kind": "instance",
+          "category": "span"
+        },
+        "dataSchema": {
+          "state.serverCount": {
+            "type": "number",
+            "required": false
+          }
+        }
+      }
+    },
+    {
+      "id": "f0276ceb1a276fc7",
+      "type": "text",
+      "x": 3500,
+      "y": 0,
+      "width": 200,
+      "height": 60,
+      "text": "validation:cardinality:min-violation",
+      "pv": {
+        "nodeType": "span",
+        "name": "validation:cardinality:min-violation",
+        "description": "274μs",
+        "shape": "circle",
+        "fill": "#6b7280",
+        "states": {
+          "OK": {
+            "color": "#22c55e",
+            "label": "OK"
+          }
+        },
+        "otel": {
+          "kind": "instance",
+          "category": "span"
+        },
+        "dataSchema": {
+          "test.category": {
+            "type": "string",
+            "required": false
+          },
+          "test.constraint": {
+            "type": "string",
+            "required": false
+          },
+          "result.violations": {
+            "type": "number",
+            "required": false
+          }
+        }
+      }
+    },
+    {
+      "id": "2206dc679a1c5c98",
+      "type": "text",
+      "x": 3750,
+      "y": 0,
+      "width": 200,
+      "height": 60,
+      "text": "engine:check-constraints",
+      "pv": {
+        "nodeType": "span",
+        "name": "engine:check-constraints",
+        "description": "21μs",
+        "shape": "circle",
+        "fill": "#6b7280",
+        "states": {
+          "OK": {
+            "color": "#22c55e",
+            "label": "OK"
+          }
+        },
+        "otel": {
+          "kind": "instance",
+          "category": "span"
+        },
+        "dataSchema": {
+          "state.serverCount": {
+            "type": "number",
+            "required": false
+          }
+        }
+      }
+    },
+    {
+      "id": "74f7796c60a22325",
+      "type": "text",
+      "x": 4000,
+      "y": 0,
+      "width": 200,
+      "height": 60,
+      "text": "validation:cardinality:max-violation",
+      "pv": {
+        "nodeType": "span",
+        "name": "validation:cardinality:max-violation",
+        "description": "90μs",
+        "shape": "circle",
+        "fill": "#6b7280",
+        "states": {
+          "OK": {
+            "color": "#22c55e",
+            "label": "OK"
+          }
+        },
+        "otel": {
+          "kind": "instance",
+          "category": "span"
+        },
+        "dataSchema": {
+          "test.category": {
+            "type": "string",
+            "required": false
+          },
+          "test.constraint": {
+            "type": "string",
+            "required": false
+          },
+          "result.violations": {
+            "type": "number",
+            "required": false
+          }
+        }
+      }
+    },
+    {
+      "id": "e8822e851e9e296f",
+      "type": "text",
+      "x": 4250,
+      "y": 0,
+      "width": 200,
+      "height": 60,
+      "text": "engine:check-constraints",
+      "pv": {
+        "nodeType": "span",
+        "name": "engine:check-constraints",
+        "description": "28μs",
+        "shape": "circle",
+        "fill": "#6b7280",
+        "states": {
+          "OK": {
+            "color": "#22c55e",
+            "label": "OK"
+          }
+        },
+        "otel": {
+          "kind": "instance",
+          "category": "span"
+        },
+        "dataSchema": {
+          "state.serverCount": {
+            "type": "number",
+            "required": false
+          },
+          "cardinality.min": {
+            "type": "number",
+            "required": false
+          },
+          "cardinality.max": {
+            "type": "number",
+            "required": false
+          }
+        }
+      }
+    },
+    {
+      "id": "d50d41998383c4fb",
+      "type": "text",
+      "x": 4500,
+      "y": 0,
+      "width": 200,
+      "height": 60,
+      "text": "validation:cardinality:within-bounds",
+      "pv": {
+        "nodeType": "span",
+        "name": "validation:cardinality:within-bounds",
+        "description": "96μs",
+        "shape": "circle",
+        "fill": "#6b7280",
+        "states": {
+          "OK": {
+            "color": "#22c55e",
+            "label": "OK"
+          }
+        },
+        "otel": {
+          "kind": "instance",
+          "category": "span"
+        },
+        "dataSchema": {
+          "test.category": {
+            "type": "string",
+            "required": false
+          },
+          "test.expectation": {
+            "type": "string",
+            "required": false
+          },
+          "result.violations": {
+            "type": "number",
             "required": false
           }
         }
@@ -215,7 +739,7 @@
   "pv": {
     "version": "1.0.0",
     "name": "Trace: principal-view-core-tests",
-    "description": "Exported at 2025-12-26T01:11:11.110Z",
+    "description": "Exported at 2025-12-26T15:28:05.129Z",
     "nodeTypes": {
       "span": {
         "description": "OpenTelemetry span from trace",

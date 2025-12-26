@@ -1,5 +1,6 @@
 import { ValidationEngine } from './ValidationEngine';
 import type { GraphEvent, GraphState, ValidationRules } from './types';
+import { traced, withSpan } from '../test/setup';
 
 describe('ValidationEngine', () => {
   let testState: GraphState;
@@ -45,214 +46,320 @@ describe('ValidationEngine', () => {
   });
 
   describe('Connection Validation', () => {
-    it('should allow valid connections', () => {
-      const rules: ValidationRules = {};
-      const engine = new ValidationEngine(rules);
+    it(
+      'should allow valid connections',
+      traced('validation:connection:valid', async (span) => {
+        span.setAttribute('test.category', 'connection');
+        span.setAttribute('test.expectation', 'allow');
 
-      const event: GraphEvent = {
-        id: 'evt-1',
-        type: 'edge_created',
-        timestamp: Date.now(),
-        category: 'edge',
-        operation: 'create',
-        payload: {
+        const result = await withSpan('engine:create', async (engineSpan) => {
+          const rules: ValidationRules = {};
+          const engine = new ValidationEngine(rules);
+          engineSpan.setAttribute('rules.count', 0);
+          return engine;
+        });
+
+        const engine = result;
+
+        const event: GraphEvent = {
+          id: 'evt-1',
+          type: 'edge_created',
+          timestamp: Date.now(),
+          category: 'edge',
           operation: 'create',
-          edgeId: 'conn-1',
-          edgeType: 'connection',
-          from: 'user-1',
-          to: 'server-1',
-        },
-        expected: true,
-      };
+          payload: {
+            operation: 'create',
+            edgeId: 'conn-1',
+            edgeType: 'connection',
+            from: 'user-1',
+            to: 'server-1',
+          },
+          expected: true,
+        };
 
-      const result = engine.validate(event, testState);
+        const validationResult = await withSpan('engine:validate', async (validateSpan) => {
+          validateSpan.setAttribute('event.type', event.type);
+          validateSpan.setAttribute('edge.from', 'user-1');
+          validateSpan.setAttribute('edge.to', 'server-1');
+          return engine.validate(event, testState);
+        });
 
-      expect(result.valid).toBe(true);
-      expect(result.violations).toHaveLength(0);
-    });
+        expect(validationResult.valid).toBe(true);
+        expect(validationResult.violations).toHaveLength(0);
+        span.setAttribute('result.valid', true);
+      })
+    );
 
-    it('should reject invalid connections', () => {
-      const rules: ValidationRules = {};
-      const engine = new ValidationEngine(rules);
+    it(
+      'should reject invalid connections',
+      traced('validation:connection:invalid', async (span) => {
+        span.setAttribute('test.category', 'connection');
+        span.setAttribute('test.expectation', 'reject');
 
-      // Try to connect server to user (not allowed)
-      const event: GraphEvent = {
-        id: 'evt-1',
-        type: 'edge_created',
-        timestamp: Date.now(),
-        category: 'edge',
-        operation: 'create',
-        payload: {
+        const rules: ValidationRules = {};
+        const engine = new ValidationEngine(rules);
+
+        // Try to connect server to user (not allowed)
+        const event: GraphEvent = {
+          id: 'evt-1',
+          type: 'edge_created',
+          timestamp: Date.now(),
+          category: 'edge',
           operation: 'create',
-          edgeId: 'conn-1',
-          edgeType: 'connection',
-          from: 'server-1',
-          to: 'user-1',
-        },
-        expected: true,
-      };
+          payload: {
+            operation: 'create',
+            edgeId: 'conn-1',
+            edgeType: 'connection',
+            from: 'server-1',
+            to: 'user-1',
+          },
+          expected: true,
+        };
 
-      const result = engine.validate(event, testState);
+        const result = await withSpan('engine:validate', async (validateSpan) => {
+          validateSpan.setAttribute('event.type', event.type);
+          validateSpan.setAttribute('edge.from', 'server-1');
+          validateSpan.setAttribute('edge.to', 'user-1');
+          return engine.validate(event, testState);
+        });
 
-      expect(result.valid).toBe(false);
-      expect(result.violations).toHaveLength(1);
-      expect(result.violations[0].type).toBe('connection');
-      expect(result.violations[0].severity).toBe('error');
-    });
+        expect(result.valid).toBe(false);
+        expect(result.violations).toHaveLength(1);
+        expect(result.violations[0].type).toBe('connection');
+        expect(result.violations[0].severity).toBe('error');
+        span.setAttribute('result.valid', false);
+        span.setAttribute('result.violations', 1);
+      })
+    );
 
-    it('should reject connections when nodes do not exist', () => {
-      const rules: ValidationRules = {};
-      const engine = new ValidationEngine(rules);
+    it(
+      'should reject connections when nodes do not exist',
+      traced('validation:connection:missing-node', async (span) => {
+        span.setAttribute('test.category', 'connection');
+        span.setAttribute('test.expectation', 'reject');
 
-      const event: GraphEvent = {
-        id: 'evt-1',
-        type: 'edge_created',
-        timestamp: Date.now(),
-        category: 'edge',
-        operation: 'create',
-        payload: {
+        const rules: ValidationRules = {};
+        const engine = new ValidationEngine(rules);
+
+        const event: GraphEvent = {
+          id: 'evt-1',
+          type: 'edge_created',
+          timestamp: Date.now(),
+          category: 'edge',
           operation: 'create',
-          edgeId: 'conn-1',
-          edgeType: 'connection',
-          from: 'user-1',
-          to: 'nonexistent-node',
-        },
-        expected: true,
-      };
+          payload: {
+            operation: 'create',
+            edgeId: 'conn-1',
+            edgeType: 'connection',
+            from: 'user-1',
+            to: 'nonexistent-node',
+          },
+          expected: true,
+        };
 
-      const result = engine.validate(event, testState);
+        const result = await withSpan('engine:validate', async (validateSpan) => {
+          validateSpan.setAttribute('edge.to', 'nonexistent-node');
+          return engine.validate(event, testState);
+        });
 
-      expect(result.valid).toBe(false);
-      expect(result.violations).toHaveLength(1);
-      expect(result.violations[0].description).toContain('do not exist');
-    });
+        expect(result.valid).toBe(false);
+        expect(result.violations).toHaveLength(1);
+        expect(result.violations[0].description).toContain('do not exist');
+        span.setAttribute('result.valid', false);
+      })
+    );
   });
 
   describe('State Transition Validation', () => {
-    it('should allow valid state transitions', () => {
-      const rules: ValidationRules = {
-        stateTransitions: {
-          user: [
-            { from: 'offline', to: ['online'] },
-            { from: 'online', to: ['offline', 'grace'] },
-          ],
-        },
-      };
-      const engine = new ValidationEngine(rules);
+    it(
+      'should allow valid state transitions',
+      traced('validation:state:valid-transition', async (span) => {
+        span.setAttribute('test.category', 'state-transition');
+        span.setAttribute('test.expectation', 'allow');
 
-      const event: GraphEvent = {
-        id: 'evt-1',
-        type: 'state_changed',
-        timestamp: Date.now(),
-        category: 'state',
-        operation: 'update',
-        payload: {
-          nodeId: 'user-1',
-          previousState: 'offline',
-          newState: 'online',
-        },
-        expected: true,
-      };
+        const rules: ValidationRules = {
+          stateTransitions: {
+            user: [
+              { from: 'offline', to: ['online'] },
+              { from: 'online', to: ['offline', 'grace'] },
+            ],
+          },
+        };
 
-      const result = engine.validate(event, testState);
+        const engine = await withSpan('engine:create-with-rules', async (engineSpan) => {
+          engineSpan.setAttribute('rules.stateTransitions', true);
+          return new ValidationEngine(rules);
+        });
 
-      expect(result.valid).toBe(true);
-      expect(result.violations).toHaveLength(0);
-    });
+        const event: GraphEvent = {
+          id: 'evt-1',
+          type: 'state_changed',
+          timestamp: Date.now(),
+          category: 'state',
+          operation: 'update',
+          payload: {
+            nodeId: 'user-1',
+            previousState: 'offline',
+            newState: 'online',
+          },
+          expected: true,
+        };
 
-    it('should reject invalid state transitions', () => {
-      const rules: ValidationRules = {
-        stateTransitions: {
-          user: [
-            { from: 'offline', to: ['online'] },
-            { from: 'online', to: ['offline', 'grace'] },
-          ],
-        },
-      };
-      const engine = new ValidationEngine(rules);
+        const result = await withSpan('engine:validate-transition', async (validateSpan) => {
+          validateSpan.setAttribute('state.from', 'offline');
+          validateSpan.setAttribute('state.to', 'online');
+          return engine.validate(event, testState);
+        });
 
-      // Try to go from offline to grace (not allowed)
-      const event: GraphEvent = {
-        id: 'evt-1',
-        type: 'state_changed',
-        timestamp: Date.now(),
-        category: 'state',
-        operation: 'update',
-        payload: {
-          nodeId: 'user-1',
-          previousState: 'offline',
-          newState: 'grace',
-        },
-        expected: true,
-      };
+        expect(result.valid).toBe(true);
+        expect(result.violations).toHaveLength(0);
+        span.setAttribute('result.valid', true);
+      })
+    );
 
-      const result = engine.validate(event, testState);
+    it(
+      'should reject invalid state transitions',
+      traced('validation:state:invalid-transition', async (span) => {
+        span.setAttribute('test.category', 'state-transition');
+        span.setAttribute('test.expectation', 'reject');
 
-      expect(result.valid).toBe(false);
-      expect(result.violations).toHaveLength(1);
-      expect(result.violations[0].type).toBe('state');
-      expect(result.violations[0].description).toContain('Invalid state transition');
-    });
+        const rules: ValidationRules = {
+          stateTransitions: {
+            user: [
+              { from: 'offline', to: ['online'] },
+              { from: 'online', to: ['offline', 'grace'] },
+            ],
+          },
+        };
+        const engine = new ValidationEngine(rules);
+
+        // Try to go from offline to grace (not allowed)
+        const event: GraphEvent = {
+          id: 'evt-1',
+          type: 'state_changed',
+          timestamp: Date.now(),
+          category: 'state',
+          operation: 'update',
+          payload: {
+            nodeId: 'user-1',
+            previousState: 'offline',
+            newState: 'grace',
+          },
+          expected: true,
+        };
+
+        const result = await withSpan('engine:validate-transition', async (validateSpan) => {
+          validateSpan.setAttribute('state.from', 'offline');
+          validateSpan.setAttribute('state.to', 'grace');
+          validateSpan.setAttribute('state.allowed', false);
+          return engine.validate(event, testState);
+        });
+
+        expect(result.valid).toBe(false);
+        expect(result.violations).toHaveLength(1);
+        expect(result.violations[0].type).toBe('state');
+        expect(result.violations[0].description).toContain('Invalid state transition');
+        span.setAttribute('result.valid', false);
+        span.setAttribute('result.violations', 1);
+      })
+    );
   });
 
   describe('Cardinality Constraints', () => {
-    it('should check minimum cardinality', () => {
-      const rules: ValidationRules = {
-        cardinality: {
-          server: { min: 1, max: 1 },
-        },
-      };
-      const engine = new ValidationEngine(rules);
+    it(
+      'should check minimum cardinality',
+      traced('validation:cardinality:min-violation', async (span) => {
+        span.setAttribute('test.category', 'cardinality');
+        span.setAttribute('test.constraint', 'minimum');
 
-      // Remove server node
-      const stateWithoutServer: GraphState = {
-        ...testState,
-        nodes: new Map(Array.from(testState.nodes.entries()).filter(([id]) => id !== 'server-1')),
-      };
+        const rules: ValidationRules = {
+          cardinality: {
+            server: { min: 1, max: 1 },
+          },
+        };
 
-      const violations = engine.checkConstraints(stateWithoutServer);
+        const engine = await withSpan('engine:create-with-cardinality', async (engineSpan) => {
+          engineSpan.setAttribute('cardinality.server.min', 1);
+          engineSpan.setAttribute('cardinality.server.max', 1);
+          return new ValidationEngine(rules);
+        });
 
-      expect(violations).toHaveLength(1);
-      expect(violations[0].type).toBe('cardinality');
-      expect(violations[0].description).toContain('at least 1');
-    });
+        // Remove server node
+        const stateWithoutServer: GraphState = {
+          ...testState,
+          nodes: new Map(Array.from(testState.nodes.entries()).filter(([id]) => id !== 'server-1')),
+        };
 
-    it('should check maximum cardinality', () => {
-      const rules: ValidationRules = {
-        cardinality: {
-          server: { min: 1, max: 1 },
-        },
-      };
-      const engine = new ValidationEngine(rules);
+        const violations = await withSpan('engine:check-constraints', async (checkSpan) => {
+          checkSpan.setAttribute('state.serverCount', 0);
+          return engine.checkConstraints(stateWithoutServer);
+        });
 
-      // Add second server node
-      testState.nodes.set('server-2', {
-        id: 'server-2',
-        type: 'server',
-        data: { uptime: 0 },
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
+        expect(violations).toHaveLength(1);
+        expect(violations[0].type).toBe('cardinality');
+        expect(violations[0].description).toContain('at least 1');
+        span.setAttribute('result.violations', 1);
+      })
+    );
 
-      const violations = engine.checkConstraints(testState);
+    it(
+      'should check maximum cardinality',
+      traced('validation:cardinality:max-violation', async (span) => {
+        span.setAttribute('test.category', 'cardinality');
+        span.setAttribute('test.constraint', 'maximum');
 
-      expect(violations).toHaveLength(1);
-      expect(violations[0].type).toBe('cardinality');
-      expect(violations[0].description).toContain('at most 1');
-    });
+        const rules: ValidationRules = {
+          cardinality: {
+            server: { min: 1, max: 1 },
+          },
+        };
+        const engine = new ValidationEngine(rules);
 
-    it('should pass when cardinality is within bounds', () => {
-      const rules: ValidationRules = {
-        cardinality: {
-          server: { min: 1, max: 2 },
-        },
-      };
-      const engine = new ValidationEngine(rules);
+        // Add second server node
+        testState.nodes.set('server-2', {
+          id: 'server-2',
+          type: 'server',
+          data: { uptime: 0 },
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
 
-      const violations = engine.checkConstraints(testState);
+        const violations = await withSpan('engine:check-constraints', async (checkSpan) => {
+          checkSpan.setAttribute('state.serverCount', 2);
+          return engine.checkConstraints(testState);
+        });
 
-      expect(violations).toHaveLength(0);
-    });
+        expect(violations).toHaveLength(1);
+        expect(violations[0].type).toBe('cardinality');
+        expect(violations[0].description).toContain('at most 1');
+        span.setAttribute('result.violations', 1);
+      })
+    );
+
+    it(
+      'should pass when cardinality is within bounds',
+      traced('validation:cardinality:within-bounds', async (span) => {
+        span.setAttribute('test.category', 'cardinality');
+        span.setAttribute('test.expectation', 'pass');
+
+        const rules: ValidationRules = {
+          cardinality: {
+            server: { min: 1, max: 2 },
+          },
+        };
+        const engine = new ValidationEngine(rules);
+
+        const violations = await withSpan('engine:check-constraints', async (checkSpan) => {
+          checkSpan.setAttribute('state.serverCount', 1);
+          checkSpan.setAttribute('cardinality.min', 1);
+          checkSpan.setAttribute('cardinality.max', 2);
+          return engine.checkConstraints(testState);
+        });
+
+        expect(violations).toHaveLength(0);
+        span.setAttribute('result.violations', 0);
+      })
+    );
   });
 
   describe('Unexpected Events', () => {

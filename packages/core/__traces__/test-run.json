@@ -1,24 +1,24 @@
 {
-  "exportedAt": "2025-12-26T01:15:27.332Z",
+  "exportedAt": "2025-12-26T15:28:05.129Z",
   "serviceName": "principal-view-core-tests",
-  "spanCount": 6,
+  "spanCount": 19,
   "spans": [
     {
-      "traceId": "d116c5316942e11140f8ca51e1367911",
-      "spanId": "d3e418497464457c",
-      "name": "test:basic-traced",
+      "traceId": "4749f572b78d9036a852eb4db5928d80",
+      "spanId": "329b7a80b8a3de66",
+      "name": "engine:create",
       "kind": "INTERNAL",
-      "startTime": 1766711727286,
-      "endTime": 1766711727297.5283,
-      "duration": 11.528208,
+      "startTime": 1766762885127,
+      "endTime": 1766762885127.1282,
+      "duration": 0.128125,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1766711727153-226yb0g"
+        "test.run.id": "1766762885125-586782b"
       },
       "attributes": {
-        "test.type": "demo"
+        "rules.count": 0
       },
       "status": {
         "code": "OK"
@@ -26,21 +26,23 @@
       "events": []
     },
     {
-      "traceId": "5fea541fd6d0994a65b114199347366e",
-      "spanId": "ecffbb63136f47e6",
-      "name": "operation:validate",
+      "traceId": "65faff9e28e6138e33b78ec1b3f183dd",
+      "spanId": "a7d173c731522405",
+      "name": "engine:validate",
       "kind": "INTERNAL",
-      "startTime": 1766711727298,
-      "endTime": 1766711727303.373,
-      "duration": 5.373167,
+      "startTime": 1766762885128,
+      "endTime": 1766762885128.0935,
+      "duration": 0.093625,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1766711727153-226yb0g"
+        "test.run.id": "1766762885125-586782b"
       },
       "attributes": {
-        "operation.type": "validation"
+        "event.type": "edge_created",
+        "edge.from": "user-1",
+        "edge.to": "server-1"
       },
       "status": {
         "code": "OK"
@@ -48,22 +50,23 @@
       "events": []
     },
     {
-      "traceId": "a968ff2269b2fe0f030eb6f7639be4c0",
-      "spanId": "da287d320e827487",
-      "name": "operation:process",
+      "traceId": "3792e080fc16305983d6d6fb341fa1ef",
+      "spanId": "af6fdab27e514e58",
+      "name": "validation:connection:valid",
       "kind": "INTERNAL",
-      "startTime": 1766711727304,
-      "endTime": 1766711727309.552,
-      "duration": 5.551958,
+      "startTime": 1766762885127,
+      "endTime": 1766762885127.819,
+      "duration": 0.819166,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1766711727153-226yb0g"
+        "test.run.id": "1766762885125-586782b"
       },
       "attributes": {
-        "operation.type": "processing",
-        "input": "validated"
+        "test.category": "connection",
+        "test.expectation": "allow",
+        "result.valid": true
       },
       "status": {
         "code": "OK"
@@ -71,21 +74,23 @@
       "events": []
     },
     {
-      "traceId": "f88f1ced41784bb2bf943c0757793efa",
-      "spanId": "cb5578e224cdfed8",
-      "name": "test:nested-spans",
+      "traceId": "e166574487b2e6aa897a01c11e12928a",
+      "spanId": "3696b74d79bf2a5b",
+      "name": "engine:validate",
       "kind": "INTERNAL",
-      "startTime": 1766711727298,
-      "endTime": 1766711727309.134,
-      "duration": 11.133959,
+      "startTime": 1766762885128,
+      "endTime": 1766762885128.048,
+      "duration": 0.048209,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1766711727153-226yb0g"
+        "test.run.id": "1766762885125-586782b"
       },
       "attributes": {
-        "test.type": "nested"
+        "event.type": "edge_created",
+        "edge.from": "server-1",
+        "edge.to": "user-1"
       },
       "status": {
         "code": "OK"
@@ -93,46 +98,354 @@
       "events": []
     },
     {
-      "traceId": "17d6ef39c36f847852220ba6b4d84b60",
-      "spanId": "0ed1dff7218fe254",
-      "name": "child:computation",
+      "traceId": "f6023d781f9d4d7dc8c8ae0ae8cd63a3",
+      "spanId": "068daf4ca451504f",
+      "name": "validation:connection:invalid",
       "kind": "INTERNAL",
-      "startTime": 1766711727310,
-      "endTime": 1766711727315.5674,
-      "duration": 5.5675,
+      "startTime": 1766762885128,
+      "endTime": 1766762885128.12,
+      "duration": 0.120209,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1766711727153-226yb0g"
+        "test.run.id": "1766762885125-586782b"
       },
       "attributes": {
-        "computation.type": "example"
+        "test.category": "connection",
+        "test.expectation": "reject",
+        "result.valid": false,
+        "result.violations": 1
       },
       "status": {
-        "code": "UNSET"
+        "code": "OK"
       },
       "events": []
     },
     {
-      "traceId": "7088991697c41656ac4e96a276c320b0",
-      "spanId": "1ec9b7625e9011a7",
-      "name": "test:manual-span",
+      "traceId": "47716abc80a4ed2cd50f80ac901bcf54",
+      "spanId": "9b6771eaf902fb7d",
+      "name": "engine:validate",
       "kind": "INTERNAL",
-      "startTime": 1766711727309,
-      "endTime": 1766711727314.6494,
-      "duration": 5.649459,
+      "startTime": 1766762885128,
+      "endTime": 1766762885128.0205,
+      "duration": 0.020584,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1766711727153-226yb0g"
+        "test.run.id": "1766762885125-586782b"
       },
       "attributes": {
-        "manual": true
+        "edge.to": "nonexistent-node"
       },
       "status": {
-        "code": "UNSET"
+        "code": "OK"
+      },
+      "events": []
+    },
+    {
+      "traceId": "c611b7ce2ebcb3f3136c9d9ceb3fa32b",
+      "spanId": "f3e8743fdbbb2c9d",
+      "name": "validation:connection:missing-node",
+      "kind": "INTERNAL",
+      "startTime": 1766762885128,
+      "endTime": 1766762885128.093,
+      "duration": 0.092959,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1766762885125-586782b"
+      },
+      "attributes": {
+        "test.category": "connection",
+        "test.expectation": "reject",
+        "result.valid": false
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": []
+    },
+    {
+      "traceId": "d8947ead9ecaba07d198b67234a1f62c",
+      "spanId": "bb762ef61e191029",
+      "name": "engine:create-with-rules",
+      "kind": "INTERNAL",
+      "startTime": 1766762885128,
+      "endTime": 1766762885128.0232,
+      "duration": 0.023125,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1766762885125-586782b"
+      },
+      "attributes": {
+        "rules.stateTransitions": true
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": []
+    },
+    {
+      "traceId": "f6754a0ced54db36fd3ee4402b108257",
+      "spanId": "1be1126347275ddc",
+      "name": "engine:validate-transition",
+      "kind": "INTERNAL",
+      "startTime": 1766762885128,
+      "endTime": 1766762885128.0662,
+      "duration": 0.066209,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1766762885125-586782b"
+      },
+      "attributes": {
+        "state.from": "offline",
+        "state.to": "online"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": []
+    },
+    {
+      "traceId": "e8b2e4088b4666dea5ef8a3aa7b66c16",
+      "spanId": "302c43d108f08556",
+      "name": "validation:state:valid-transition",
+      "kind": "INTERNAL",
+      "startTime": 1766762885128,
+      "endTime": 1766762885128.181,
+      "duration": 0.181,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1766762885125-586782b"
+      },
+      "attributes": {
+        "test.category": "state-transition",
+        "test.expectation": "allow",
+        "result.valid": true
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": []
+    },
+    {
+      "traceId": "8e83de26b22f8e2a11015ba35022ac4f",
+      "spanId": "5d0e7cd37df951c1",
+      "name": "engine:validate-transition",
+      "kind": "INTERNAL",
+      "startTime": 1766762885128,
+      "endTime": 1766762885128.0344,
+      "duration": 0.034542,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1766762885125-586782b"
+      },
+      "attributes": {
+        "state.from": "offline",
+        "state.to": "grace",
+        "state.allowed": false
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": []
+    },
+    {
+      "traceId": "6c4865e924ae7093ac958297d3bc11ea",
+      "spanId": "4a83100529a10de8",
+      "name": "validation:state:invalid-transition",
+      "kind": "INTERNAL",
+      "startTime": 1766762885128,
+      "endTime": 1766762885128.1047,
+      "duration": 0.104833,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1766762885125-586782b"
+      },
+      "attributes": {
+        "test.category": "state-transition",
+        "test.expectation": "reject",
+        "result.valid": false,
+        "result.violations": 1
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": []
+    },
+    {
+      "traceId": "f03bdd4c1268eaa7989028fa5171081e",
+      "spanId": "2f0eb10fb1a84197",
+      "name": "engine:create-with-cardinality",
+      "kind": "INTERNAL",
+      "startTime": 1766762885128,
+      "endTime": 1766762885128.0237,
+      "duration": 0.023667,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1766762885125-586782b"
+      },
+      "attributes": {
+        "cardinality.server.min": 1,
+        "cardinality.server.max": 1
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": []
+    },
+    {
+      "traceId": "4534ac1c4de0a8e3f180676beef4d3c7",
+      "spanId": "ba3d6bf84ab403cd",
+      "name": "engine:check-constraints",
+      "kind": "INTERNAL",
+      "startTime": 1766762885129,
+      "endTime": 1766762885129.0571,
+      "duration": 0.05725,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1766762885125-586782b"
+      },
+      "attributes": {
+        "state.serverCount": 0
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": []
+    },
+    {
+      "traceId": "7ff7e8a781da21b7addff314edd20114",
+      "spanId": "f0276ceb1a276fc7",
+      "name": "validation:cardinality:min-violation",
+      "kind": "INTERNAL",
+      "startTime": 1766762885128,
+      "endTime": 1766762885128.2744,
+      "duration": 0.274458,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1766762885125-586782b"
+      },
+      "attributes": {
+        "test.category": "cardinality",
+        "test.constraint": "minimum",
+        "result.violations": 1
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": []
+    },
+    {
+      "traceId": "bad44fb0bb85d5a5a86a9ffab94a75b3",
+      "spanId": "2206dc679a1c5c98",
+      "name": "engine:check-constraints",
+      "kind": "INTERNAL",
+      "startTime": 1766762885129,
+      "endTime": 1766762885129.021,
+      "duration": 0.021,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1766762885125-586782b"
+      },
+      "attributes": {
+        "state.serverCount": 2
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": []
+    },
+    {
+      "traceId": "a3c978ab04fc03781b4f471849b35f7c",
+      "spanId": "74f7796c60a22325",
+      "name": "validation:cardinality:max-violation",
+      "kind": "INTERNAL",
+      "startTime": 1766762885129,
+      "endTime": 1766762885129.0898,
+      "duration": 0.08975,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1766762885125-586782b"
+      },
+      "attributes": {
+        "test.category": "cardinality",
+        "test.constraint": "maximum",
+        "result.violations": 1
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": []
+    },
+    {
+      "traceId": "91a750ee4ded80f723f3bd8573cf1438",
+      "spanId": "e8822e851e9e296f",
+      "name": "engine:check-constraints",
+      "kind": "INTERNAL",
+      "startTime": 1766762885129,
+      "endTime": 1766762885129.028,
+      "duration": 0.028,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1766762885125-586782b"
+      },
+      "attributes": {
+        "state.serverCount": 1,
+        "cardinality.min": 1,
+        "cardinality.max": 2
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": []
+    },
+    {
+      "traceId": "49ac5a8b41dbd3dc791e94282d2d1cbb",
+      "spanId": "d50d41998383c4fb",
+      "name": "validation:cardinality:within-bounds",
+      "kind": "INTERNAL",
+      "startTime": 1766762885129,
+      "endTime": 1766762885129.0955,
+      "duration": 0.095542,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1766762885125-586782b"
+      },
+      "attributes": {
+        "test.category": "cardinality",
+        "test.expectation": "pass",
+        "result.violations": 0
+      },
+      "status": {
+        "code": "OK"
       },
       "events": []
     }
