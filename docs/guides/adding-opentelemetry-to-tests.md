@@ -89,9 +89,11 @@ export function traced<T>(
 }
 
 // Helper: create a child span for an operation
+// NOTE: In Bun, you must pass the parent span explicitly due to async_hooks limitations
 export async function withSpan<T>(
   name: string,
-  fn: (span: ReturnType<typeof tracer.startSpan>) => T | Promise<T>
+  fn: (span: ReturnType<typeof tracer.startSpan>) => T | Promise<T>,
+  parentSpan?: ReturnType<typeof tracer.startSpan> // Required for Bun!
 ): Promise<T> {
   return tracer.startActiveSpan(name, async (span) => {
     try {
@@ -112,10 +114,14 @@ export async function withSpan<T>(
 
 // Convert span to JSON
 function spanToJson(span: ReadableSpan) {
+  // Bun workaround: parentSpanId getter doesn't work, access parentSpanContext directly
+  const parentSpanId = (span as unknown as { parentSpanContext?: { spanId?: string } })
+    .parentSpanContext?.spanId;
+
   return {
     traceId: span.spanContext().traceId,
     spanId: span.spanContext().spanId,
-    parentSpanId: span.parentSpanId,
+    ...(parentSpanId ? { parentSpanId } : {}),
     name: span.name,
     kind: ['INTERNAL', 'SERVER', 'CLIENT', 'PRODUCER', 'CONSUMER'][span.kind],
     startTime: span.startTime[0] * 1000 + span.startTime[1] / 1_000_000,
@@ -405,6 +411,93 @@ await tracer.startActiveSpan('parent', async (parent) => {
   parent.end();
 });
 ```
+
+### Bun: Context propagation not working
+
+**Known Issue**: Bun's `async_hooks` implementation doesn't fully support the async context propagation that OpenTelemetry relies on. This causes:
+
+1. **Each span gets a different `traceId`** - traces aren't connected
+2. **`span.parentSpanId` returns `undefined`** - hierarchy is lost
+3. **`startActiveSpan` doesn't propagate context** - child spans are orphaned
+
+**Workaround**: Pass the parent span explicitly to `withSpan()`:
+
+```typescript
+// ❌ Doesn't work in Bun - context isn't propagated
+test('broken in bun', traced('test:example', async (span) => {
+  const result = await withSpan('child:operation', async (child) => {
+    // child has different traceId, no parentSpanId!
+    return doSomething();
+  });
+}));
+
+// ✅ Works in Bun - pass parent span explicitly
+test('works in bun', traced('test:example', async (span) => {
+  const result = await withSpan('child:operation', async (child) => {
+    // child has same traceId, correct parentSpanId
+    return doSomething();
+  }, span);  // <-- pass parent span as third argument
+}));
+```
+
+Update your `withSpan` helper to accept and use the parent span:
+
+```typescript
+import { trace, context, SpanStatusCode, type Span } from '@opentelemetry/api';
+
+export async function withSpan<T>(
+  name: string,
+  fn: (span: Span) => T | Promise<T>,
+  parentSpan?: Span  // Optional for Node.js, required for Bun
+): Promise<T> {
+  const activeContext = context.active();
+  const parentContext = parentSpan
+    ? trace.setSpan(activeContext, parentSpan)
+    : activeContext;
+
+  const span = tracer.startSpan(name, {}, parentContext);
+
+  return context.with(trace.setSpan(parentContext, span), async () => {
+    try {
+      const result = await fn(span);
+      span.setStatus({ code: SpanStatusCode.OK });
+      return result;
+    } catch (error) {
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
+}
+```
+
+**Also fix `parentSpanId` extraction** when converting spans to JSON:
+
+```typescript
+function spanToJson(span: ReadableSpan) {
+  // Bun workaround: the parentSpanId getter returns undefined
+  // Access parentSpanContext.spanId directly instead
+  const parentSpanId = (span as unknown as {
+    parentSpanContext?: { spanId?: string }
+  }).parentSpanContext?.spanId;
+
+  return {
+    traceId: span.spanContext().traceId,
+    spanId: span.spanContext().spanId,
+    ...(parentSpanId ? { parentSpanId } : {}),
+    // ... rest of span data
+  };
+}
+```
+
+**Status**: This is a known limitation of Bun's runtime. Track progress:
+- https://github.com/oven-sh/bun/issues (search for "async_hooks" or "AsyncLocalStorage")
+
+This workaround can be removed once Bun fully supports async context propagation.
 
 ### Spans have wrong timestamps
 

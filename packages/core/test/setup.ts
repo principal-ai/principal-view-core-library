@@ -112,12 +112,27 @@ export function traced<T>(
 /**
  * Creates a child span within the current context
  *
+ * NOTE: Due to a Bun compatibility issue with OpenTelemetry's async context propagation,
+ * you must explicitly pass the parent span when using Bun. The automatic context
+ * propagation via async_hooks doesn't work reliably in Bun's runtime.
+ *
+ * This workaround can be removed once Bun fully supports async_hooks context propagation.
+ * Track: https://github.com/oven-sh/bun/issues (search for async_hooks or AsyncLocalStorage)
+ *
  * @example
  * ```ts
- * import { withSpan } from '../test/setup';
+ * import { traced, withSpan } from '../test/setup';
  *
+ * // With Bun - must pass parent span explicitly
+ * test('example', traced('test:example', async (span) => {
+ *   const result = await withSpan('db:query', async (childSpan) => {
+ *     childSpan.setAttribute('db.query', 'SELECT ...');
+ *     return db.query(...);
+ *   }, span);  // <-- pass parent span here
+ * }));
+ *
+ * // With Node.js/Vitest/Jest - parent span is optional (auto-propagated)
  * const result = await withSpan('db:query', async (span) => {
- *   span.setAttribute('db.query', 'SELECT ...');
  *   return db.query(...);
  * });
  * ```
