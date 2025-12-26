@@ -34,6 +34,15 @@ export * from './types/canvas';
 export { CanvasConverter } from './utils/CanvasConverter';
 export type { ReactFlowNode, ReactFlowEdge } from './utils/CanvasConverter';
 
+// Export trace-to-canvas conversion
+export { traceToCanvas, traceToCanvasJson } from './utils/TraceToCanvas';
+export type {
+  TraceSpan,
+  TraceExport,
+  TraceToCanvasOptions,
+  TraceCanvasResult,
+} from './utils/TraceToCanvas';
+
 // Export session management (Event Recording System)
 export { SessionManager } from './SessionManager';
 export type {
