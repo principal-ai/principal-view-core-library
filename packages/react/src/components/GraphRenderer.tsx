@@ -330,6 +330,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       editStateRef.current = createEmptyEditState();
       onEditStateChange?.(editStateRef.current);
       onPendingChangesChange?.(false);
+      // Clear animation state to prevent stale animations from affecting new edges
+      setAnimationState({ nodeAnimations: {}, edgeAnimations: {} });
     }
   }, [propNodes, propEdges, editStateRef, onEditStateChange, onPendingChangesChange]);
 
@@ -977,6 +979,13 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       .join(',');
   }, [nodes]);
 
+  const baseEdgesKey = useMemo(() => {
+    return edges
+      .map((e) => e.id)
+      .sort()
+      .join(',');
+  }, [edges]);
+
   // Local xyflow nodes state for dragging
   const [xyflowLocalNodes, setXyflowLocalNodes] = useState(xyflowNodesBase);
 
@@ -1157,7 +1166,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [baseNodesKey, fitView]);
+  }, [baseNodesKey, baseEdgesKey, fitView]);
 
   // ============================================
   // RENDER
@@ -1166,7 +1175,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   return (
     <>
       <ReactFlow
-        key={baseNodesKey}
+        key={`${baseNodesKey}-${baseEdgesKey}`}
         nodes={xyflowNodes as any}
         edges={xyflowEdges as any}
         nodeTypes={nodeTypes as any}
