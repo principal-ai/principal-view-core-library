@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "timestamp": "2025-12-26T20:34:52.119Z",
+    "timestamp": "2025-12-26T22:37:36.913Z",
     "version": "1.0.0",
     "totalPackages": 5,
     "totalLenses": 11
@@ -18,8 +18,8 @@
       "execution": {
         "success": true,
         "exitCode": 1,
-        "duration": 1460,
-        "timestamp": 1766781289206
+        "duration": 1281,
+        "timestamp": 1766788654132
       },
       "issues": [
         {
@@ -2239,8 +2239,8 @@
       "execution": {
         "success": true,
         "exitCode": 0,
-        "duration": 1825,
-        "timestamp": 1766781291031
+        "duration": 1733,
+        "timestamp": 1766788655865
       },
       "issues": [
         {
@@ -2324,8 +2324,8 @@
       "execution": {
         "success": true,
         "exitCode": 0,
-        "duration": 565,
-        "timestamp": 1766781291596
+        "duration": 540,
+        "timestamp": 1766788656405
       },
       "issues": [],
       "metrics": {
@@ -2846,8 +2846,8 @@
       "execution": {
         "success": true,
         "exitCode": 0,
-        "duration": 316,
-        "timestamp": 1766781291912
+        "duration": 304,
+        "timestamp": 1766788656709
       },
       "issues": [],
       "metrics": {
@@ -2859,7 +2859,7 @@
           "info": 0,
           "hint": 0
         },
-        "executionTime": 220,
+        "executionTime": 216,
         "custom": {
           "totalTests": 248,
           "passedTests": 248,
@@ -2867,7 +2867,7 @@
           "skippedTests": 0,
           "expectCalls": 579,
           "passRate": 100,
-          "duration": 220,
+          "duration": 216,
           "testFilesRun": 14,
           "functionCoverage": 86.94,
           "lineCoverage": 67.1,
@@ -3308,8 +3308,8 @@
       "execution": {
         "success": true,
         "exitCode": 0,
-        "duration": 206,
-        "timestamp": 1766781292118
+        "duration": 203,
+        "timestamp": 1766788656912
       },
       "issues": [],
       "metrics": {
@@ -3321,7 +3321,7 @@
           "info": 0,
           "hint": 0
         },
-        "executionTime": 108,
+        "executionTime": 107,
         "custom": {
           "totalTests": 10,
           "passedTests": 10,
@@ -3329,7 +3329,7 @@
           "skippedTests": 0,
           "expectCalls": 25,
           "passRate": 100,
-          "duration": 108,
+          "duration": 107,
           "testFilesRun": 1,
           "functionCoverage": 100,
           "lineCoverage": 98.51,
@@ -3381,7 +3381,7 @@
         "success": true,
         "exitCode": 1,
         "duration": 0,
-        "timestamp": 1766781289206
+        "timestamp": 1766788654132
       },
       "issues": [
         {
@@ -4737,7 +4737,7 @@
         "success": true,
         "exitCode": 1,
         "duration": 0,
-        "timestamp": 1766781291031
+        "timestamp": 1766788655865
       },
       "issues": [
         {
@@ -4778,7 +4778,7 @@
         "success": true,
         "exitCode": 1,
         "duration": 0,
-        "timestamp": 1766781289206
+        "timestamp": 1766788654132
       },
       "issues": [
         {
@@ -5263,7 +5263,7 @@
         "success": true,
         "exitCode": 0,
         "duration": 0,
-        "timestamp": 1766781289206
+        "timestamp": 1766788654132
       },
       "issues": [],
       "metrics": {
@@ -5292,7 +5292,7 @@
         "success": true,
         "exitCode": 0,
         "duration": 0,
-        "timestamp": 1766781291031
+        "timestamp": 1766788655865
       },
       "issues": [],
       "metrics": {
@@ -5321,7 +5321,7 @@
         "success": true,
         "exitCode": 0,
         "duration": 0,
-        "timestamp": 1766781291031
+        "timestamp": 1766788655865
       },
       "issues": [],
       "metrics": {
@@ -5354,7 +5354,8 @@
         "lensesRan": [
           "eslint",
           "prettier"
-        ]
+        ],
+        "isOrchestrator": true
       },
       {
         "name": "@principal-ai/principal-view-cli",
