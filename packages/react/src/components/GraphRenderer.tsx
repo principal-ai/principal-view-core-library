@@ -102,6 +102,12 @@ interface GraphRendererBaseProps {
   violations?: Violation[];
 
   /**
+   * Whether to show tooltips on hover for nodes and edges.
+   * Defaults to true.
+   */
+  showTooltips?: boolean;
+
+  /**
    * Whether to automatically update edge sides (fromSide/toSide) when nodes are moved.
    * Only updates edges where there is no cycle between the connected nodes.
    * Uses position-based logic to determine optimal connection sides.
@@ -232,6 +238,7 @@ interface GraphRendererInnerProps {
   showMinimap?: boolean;
   showControls?: boolean;
   showBackground?: boolean;
+  showTooltips?: boolean;
   events?: GraphEvent[];
   onEventProcessed?: (event: GraphEvent) => void;
   editable?: boolean;
@@ -254,6 +261,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   showMinimap = true,
   showControls = true,
   showBackground = true,
+  showTooltips = true,
   events = [],
   onEventProcessed,
   editable = false,
@@ -961,6 +969,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         data: {
           ...node.data,
           editable,
+          tooltipsEnabled: showTooltips,
           ...(animation
             ? {
                 animationType: animation.type,
@@ -970,7 +979,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         } as CustomNodeData,
       };
     });
-  }, [nodes, configuration, violations, animationState.nodeAnimations, editable, editStateRef]);
+  }, [nodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, editStateRef]);
 
   const baseNodesKey = useMemo(() => {
     return nodes
@@ -1138,20 +1147,22 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
     return converted.map((edge) => {
       const animation = animationState.edgeAnimations[edge.id];
-      if (animation) {
-        return {
-          ...edge,
-          data: {
-            ...edge.data,
-            animationType: animation.type,
-            animationDuration: animation.duration,
-            animationDirection: animation.direction,
-          } as CustomEdgeData,
-        };
-      }
-      return edge;
+      return {
+        ...edge,
+        data: {
+          ...edge.data,
+          tooltipsEnabled: showTooltips,
+          ...(animation
+            ? {
+                animationType: animation.type,
+                animationDuration: animation.duration,
+                animationDirection: animation.direction,
+              }
+            : {}),
+        } as CustomEdgeData,
+      };
     });
-  }, [edges, configuration, violations, animationState.edgeAnimations]);
+  }, [edges, configuration, violations, animationState.edgeAnimations, showTooltips]);
 
   // Fit view on mount and structure changes
   useEffect(() => {
@@ -1610,6 +1621,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     showMinimap,
     showControls,
     showBackground,
+    showTooltips,
     events,
     onEventProcessed,
     editable,
@@ -1630,6 +1642,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           showMinimap={showMinimap}
           showControls={showControls}
           showBackground={showBackground}
+          showTooltips={showTooltips}
           events={events}
           onEventProcessed={onEventProcessed}
           editable={editable}

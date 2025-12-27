@@ -17,6 +17,8 @@ export interface CustomNodeData extends Record<string, unknown> {
   animationDuration?: number;
   // Edit mode - shows larger connection handles
   editable?: boolean;
+  // Whether tooltips are enabled (defaults to true)
+  tooltipsEnabled?: boolean;
 }
 
 /**
@@ -35,6 +37,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
     animationType,
     animationDuration = 1000,
     editable = false,
+    tooltipsEnabled = true,
   } = nodeProps;
 
   // Extract OTEL info and description for tooltip
@@ -416,12 +419,14 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
               )}
             </div>
           </div>
-          <NodeTooltip
-            description={description}
-            otel={otelInfo}
-            visible={isHovered}
-            nodeRef={nodeRef}
-          />
+          {tooltipsEnabled && (
+            <NodeTooltip
+              description={description}
+              otel={otelInfo}
+              visible={isHovered}
+              nodeRef={nodeRef}
+            />
+          )}
         </div>
       ) : isDiamond ? (
         <div
@@ -466,12 +471,14 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
               )}
             </div>
           </div>
-          <NodeTooltip
-            description={description}
-            otel={otelInfo}
-            visible={isHovered}
-            nodeRef={nodeRef}
-          />
+          {tooltipsEnabled && (
+            <NodeTooltip
+              description={description}
+              otel={otelInfo}
+              visible={isHovered}
+              nodeRef={nodeRef}
+            />
+          )}
         </div>
       ) : (
         <div
@@ -541,12 +548,14 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
               )}
             </div>
           </div>
-          <NodeTooltip
-            description={description}
-            otel={otelInfo}
-            visible={isHovered}
-            nodeRef={nodeRef}
-          />
+          {tooltipsEnabled && (
+            <NodeTooltip
+              description={description}
+              otel={otelInfo}
+              visible={isHovered}
+              nodeRef={nodeRef}
+            />
+          )}
         </div>
       )}
 

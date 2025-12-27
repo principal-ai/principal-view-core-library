@@ -12,6 +12,8 @@ export interface CustomEdgeData extends Record<string, unknown> {
   animationType?: 'flow' | 'particle' | 'pulse' | 'glow' | null;
   animationDuration?: number;
   animationDirection?: 'forward' | 'backward' | 'bidirectional';
+  // Whether tooltips are enabled (defaults to true)
+  tooltipsEnabled?: boolean;
 }
 
 /**
@@ -39,6 +41,7 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
     animationType,
     animationDuration = 1000,
     animationDirection = 'forward',
+    tooltipsEnabled = true,
   } = edgeProps || ({} as CustomEdgeData);
 
   const [particlePosition, setParticlePosition] = useState(0);
@@ -283,7 +286,7 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
       )}
 
       {/* Hover tooltip showing edge type */}
-      {isHovered && (
+      {tooltipsEnabled && isHovered && (
         <EdgeLabelRenderer>
           <div
             style={{
