@@ -330,6 +330,17 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       .join(',');
 
     if (newNodesKey !== propNodesKeyRef.current || newEdgesKey !== propEdgesKeyRef.current) {
+      // Debug: Log sync events
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[GraphRenderer] Syncing local state with props:', {
+          prevNodesKey: propNodesKeyRef.current,
+          newNodesKey,
+          prevEdgesKey: propEdgesKeyRef.current,
+          newEdgesKey,
+          propNodesCount: propNodes.length,
+          propEdgesCount: propEdges.length,
+        });
+      }
       propNodesKeyRef.current = newNodesKey;
       propEdgesKeyRef.current = newEdgesKey;
       setLocalNodes(propNodes);
@@ -1145,6 +1156,17 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   const xyflowEdges = useMemo(() => {
     const converted = convertToXYFlowEdges(edges, configuration, violations);
 
+    // Debug: Log edge counts to help diagnose disappearing edges
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[GraphRenderer] xyflowEdges computed:', {
+        inputEdges: edges.length,
+        convertedEdges: converted.length,
+        editable,
+        propEdgesCount: propEdges.length,
+        localEdgesCount: localEdges.length,
+      });
+    }
+
     return converted.map((edge) => {
       const animation = animationState.edgeAnimations[edge.id];
       return {
@@ -1529,6 +1551,17 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
 
   // Convert canvas to internal format (merging library types if provided)
   const canvasData = useCanvasToLegacy(canvas, library);
+
+  // Debug: Log canvas data to help diagnose disappearing edges
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[GraphRenderer] Canvas data:', {
+      hasCanvas: !!canvas,
+      canvasEdgesCount: canvas?.edges?.length ?? 0,
+      hasCanvasData: !!canvasData,
+      convertedNodesCount: canvasData?.nodes.length ?? 0,
+      convertedEdgesCount: canvasData?.edges.length ?? 0,
+    });
+  }
 
   // Internal edit state ref - must be before any conditional returns
   const editStateRef = useRef<EditState>(createEmptyEditState());
