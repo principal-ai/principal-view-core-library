@@ -577,7 +577,6 @@ const EditableTemplate = () => {
         width={800}
         height={500}
         editable={true}
-        autoUpdateEdgeSides={true}
         onPendingChangesChange={setHasChanges}
       />
     </div>

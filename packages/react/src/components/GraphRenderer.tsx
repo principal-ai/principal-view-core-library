@@ -39,9 +39,6 @@ import type { CustomEdgeData } from '../edges/CustomEdge';
 import {
   convertToXYFlowNodes,
   convertToXYFlowEdges,
-  autoLayoutNodes,
-  hasCycleBetweenNodes,
-  computeOptimalEdgeSides,
 } from '../utils/graphConverter';
 import { EdgeInfoPanel } from './EdgeInfoPanel';
 import { NodeInfoPanel } from './NodeInfoPanel';
@@ -106,13 +103,6 @@ interface GraphRendererBaseProps {
    * Defaults to true.
    */
   showTooltips?: boolean;
-
-  /**
-   * Whether to automatically update edge sides (fromSide/toSide) when nodes are moved.
-   * Only updates edges where there is no cycle between the connected nodes.
-   * Uses position-based logic to determine optimal connection sides.
-   */
-  autoUpdateEdgeSides?: boolean;
 
   /** Optional configuration name for identification (used with multi-config setups) */
   configName?: string;
@@ -242,7 +232,6 @@ interface GraphRendererInnerProps {
   events?: GraphEvent[];
   onEventProcessed?: (event: GraphEvent) => void;
   editable?: boolean;
-  autoUpdateEdgeSides?: boolean;
   onPendingChangesChange?: (hasChanges: boolean) => void;
   onEditStateChange?: (editState: EditState) => void;
   editStateRef: React.MutableRefObject<EditState>;
@@ -265,7 +254,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   events = [],
   onEventProcessed,
   editable = false,
-  autoUpdateEdgeSides = false,
   onPendingChangesChange,
   onEditStateChange,
   editStateRef,
@@ -967,10 +955,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   const xyflowNodesBase = useMemo(() => {
     const converted = convertToXYFlowNodes(nodes, configuration, violations);
-    const layoutType = configuration.display?.layout || 'hierarchical';
-    const positioned = autoLayoutNodes(converted, [], layoutType);
 
-    return positioned.map((node) => {
+    return converted.map((node) => {
       const animation = animationState.nodeAnimations[node.id];
       // Apply any pending position changes
       const pendingPosition = editStateRef.current.positionChanges.get(node.id);
@@ -1095,62 +1081,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           }
           return { ...prev, positionChanges: newPositions };
         });
-
-        // Auto-update edge sides if enabled
-        if (autoUpdateEdgeSides) {
-          setXyflowLocalNodes((currentNodes) => {
-            // Build a position map from current xyflow nodes
-            const nodePositions = new Map<string, { x: number; y: number }>();
-            for (const node of currentNodes) {
-              nodePositions.set(node.id, node.position);
-            }
-
-            // Get moved node IDs
-            const movedNodeIds = new Set(positionChanges.map((c) => c.id));
-
-            // Update edges connected to moved nodes
-            setLocalEdges((currentEdges) => {
-              return currentEdges.map((edge) => {
-                // Only process edges connected to moved nodes
-                if (!movedNodeIds.has(edge.from) && !movedNodeIds.has(edge.to)) {
-                  return edge;
-                }
-
-                // Check for cycles - skip if there's a cycle between these nodes
-                const edgesWithoutCurrent = currentEdges.filter((e) => e.id !== edge.id);
-                if (hasCycleBetweenNodes(edge.from, edge.to, edgesWithoutCurrent)) {
-                  return edge; // Don't auto-update edges that are part of a cycle
-                }
-
-                // Get positions of both nodes
-                const fromPos = nodePositions.get(edge.from);
-                const toPos = nodePositions.get(edge.to);
-                if (!fromPos || !toPos) {
-                  return edge;
-                }
-
-                // Compute optimal sides
-                const { fromSide, toSide } = computeOptimalEdgeSides(fromPos, toPos);
-
-                // Update edge data with new sides
-                return {
-                  ...edge,
-                  data: {
-                    ...edge.data,
-                    fromSide,
-                    toSide,
-                  },
-                  updatedAt: Date.now(),
-                };
-              });
-            });
-
-            return currentNodes;
-          });
-        }
       }
     },
-    [editable, autoUpdateEdgeSides, updateEditState]
+    [editable, updateEditState]
   );
 
   const xyflowEdges = useMemo(() => {
@@ -1658,7 +1591,6 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     events,
     onEventProcessed,
     editable,
-    autoUpdateEdgeSides,
     onPendingChangesChange,
     onSourceClick,
   } = props;
@@ -1679,7 +1611,6 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           events={events}
           onEventProcessed={onEventProcessed}
           editable={editable}
-          autoUpdateEdgeSides={autoUpdateEdgeSides}
           onPendingChangesChange={onPendingChangesChange}
           editStateRef={editStateRef}
           onSourceClick={onSourceClick}
