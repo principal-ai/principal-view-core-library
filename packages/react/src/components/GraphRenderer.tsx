@@ -292,7 +292,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   // Track selected nodes for info panel (supports multi-select)
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
-  const [isDragging, setIsDragging] = useState(false);
+  // Track whether panel should be shown (only on explicit clicks, not after dragging)
+  const [showNodePanel, setShowNodePanel] = useState(false);
+  const [showEdgePanel, setShowEdgePanel] = useState(false);
 
   // Track pending connection for edge type picker
   const [pendingConnection, setPendingConnection] = useState<{
@@ -408,18 +410,22 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           }
           return next;
         });
+        setShowEdgePanel(true);
       } else {
         // Regular click: single select (replace selection)
-        setSelectedEdgeIds((prev) => {
-          if (prev.size === 1 && prev.has(edge.id)) {
-            return new Set(); // Deselect if clicking same edge
-          }
-          return new Set([edge.id]);
-        });
+        const shouldDeselect = selectedEdgeIds.size === 1 && selectedEdgeIds.has(edge.id);
+        if (shouldDeselect) {
+          setSelectedEdgeIds(new Set());
+          setShowEdgePanel(false);
+        } else {
+          setSelectedEdgeIds(new Set([edge.id]));
+          setShowEdgePanel(true);
+        }
         setSelectedNodeIds(new Set());
+        setShowNodePanel(false);
       }
     },
-    [editable]
+    [editable, selectedEdgeIds]
   );
 
   // Handle node click (toggle selection, supports Shift for multi-select)
@@ -436,23 +442,28 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           }
           return next;
         });
+        setShowNodePanel(true);
       } else {
         // Regular click: single select (replace selection)
-        setSelectedNodeIds((prev) => {
-          if (prev.size === 1 && prev.has(node.id)) {
-            return new Set(); // Deselect if clicking same node
-          }
-          return new Set([node.id]);
-        });
+        const shouldDeselect = selectedNodeIds.size === 1 && selectedNodeIds.has(node.id);
+        if (shouldDeselect) {
+          setSelectedNodeIds(new Set());
+          setShowNodePanel(false);
+        } else {
+          setSelectedNodeIds(new Set([node.id]));
+          setShowNodePanel(true);
+        }
         setSelectedEdgeIds(new Set());
+        setShowEdgePanel(false);
       }
     },
-    [editable]
+    [editable, selectedNodeIds]
   );
 
   // Handle close edge info panel
   const onCloseEdgeInfoPanel = useCallback(() => {
     setSelectedEdgeIds(new Set());
+    setShowEdgePanel(false);
   }, []);
 
   // Handle edge side updates from EdgeInfoPanel
@@ -476,12 +487,15 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   // Handle close node info panel
   const onCloseNodeInfoPanel = useCallback(() => {
     setSelectedNodeIds(new Set());
+    setShowNodePanel(false);
   }, []);
 
   // Handle pane click (clear selection when clicking empty space)
   const onPaneClick = useCallback(() => {
     setSelectedNodeIds(new Set());
     setSelectedEdgeIds(new Set());
+    setShowNodePanel(false);
+    setShowEdgePanel(false);
   }, []);
 
   // Handle selection change from ReactFlow (box selection)
@@ -490,6 +504,13 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       if (editable) {
         setSelectedNodeIds(new Set(selectedNodes.map((n) => n.id)));
         setSelectedEdgeIds(new Set(selectedEdges.map((e) => e.id)));
+        // Box selection is an explicit action, so show panels
+        if (selectedNodes.length > 0) {
+          setShowNodePanel(true);
+        }
+        if (selectedEdges.length > 0) {
+          setShowEdgePanel(true);
+        }
       }
     },
     [editable]
@@ -1043,24 +1064,17 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
       setXyflowLocalNodes((nds) => applyNodeChanges(changes, nds) as Node<CustomNodeData>[]);
 
-      // Track dragging state - check if any position change has dragging: true
+      // Check if dragging started - hide panel when dragging starts
       const hasDragging = changes.some(
         (change) =>
           change.type === 'position' &&
           'dragging' in change &&
           change.dragging === true
       );
-      const hasStoppedDragging = changes.some(
-        (change) =>
-          change.type === 'position' &&
-          'dragging' in change &&
-          change.dragging === false
-      );
 
       if (hasDragging) {
-        setIsDragging(true);
-      } else if (hasStoppedDragging) {
-        setIsDragging(false);
+        // Hide panel when dragging starts - it won't show again until an explicit click
+        setShowNodePanel(false);
       }
 
       // Track position changes on drag end
@@ -1238,8 +1252,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         )}
       </ReactFlow>
 
-      {/* Multi-selection sidebar - shown when 2+ nodes are selected, hidden while dragging */}
-      {selectedNodeIds.size >= 2 && !isDragging && (
+      {/* Multi-selection sidebar - shown when 2+ nodes are selected via explicit click/box select */}
+      {selectedNodeIds.size >= 2 && showNodePanel && (
         <SelectionSidebar
           selectedNodeIds={selectedNodeIds}
           nodes={nodes}
@@ -1248,8 +1262,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         />
       )}
 
-      {/* Single edge info panel - hidden when multiple edges selected or while dragging */}
-      {selectedEdgeIds.size === 1 && selectedEdge && selectedEdgeTypeDefinition && !isDragging && (
+      {/* Single edge info panel - shown only on explicit click */}
+      {selectedEdgeIds.size === 1 && selectedEdge && selectedEdgeTypeDefinition && showEdgePanel && (
         <EdgeInfoPanel
           edge={selectedEdge}
           typeDefinition={selectedEdgeTypeDefinition}
@@ -1261,8 +1275,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         />
       )}
 
-      {/* Single node info panel - hidden when multiple nodes selected or while dragging */}
-      {selectedNodeIds.size === 1 && selectedNode && selectedNodeTypeDefinition && !isDragging && (
+      {/* Single node info panel - shown only on explicit click */}
+      {selectedNodeIds.size === 1 && selectedNode && selectedNodeTypeDefinition && showNodePanel && (
         <NodeInfoPanel
           node={selectedNode}
           typeDefinition={selectedNodeTypeDefinition}
