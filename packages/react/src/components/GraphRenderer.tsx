@@ -134,6 +134,12 @@ interface GraphRendererBaseProps {
    */
   backgroundVariant?: 'dots' | 'lines' | 'cross';
 
+  /**
+   * Gap between background pattern elements in pixels.
+   * Defaults to 16 for dots, 50 for lines/cross.
+   */
+  backgroundGap?: number;
+
   /** Optional event stream for triggering animations */
   events?: GraphEvent[];
 
@@ -238,6 +244,7 @@ interface GraphRendererInnerProps {
   showControls?: boolean;
   showBackground?: boolean;
   backgroundVariant?: 'dots' | 'lines' | 'cross';
+  backgroundGap?: number;
   showTooltips?: boolean;
   events?: GraphEvent[];
   onEventProcessed?: (event: GraphEvent) => void;
@@ -261,6 +268,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   showControls = true,
   showBackground = true,
   backgroundVariant = 'dots',
+  backgroundGap,
   showTooltips = true,
   events = [],
   onEventProcessed,
@@ -1184,7 +1192,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         {showBackground && (
           <Background
             color={backgroundVariant === 'dots' ? theme.colors.border : theme.colors.textMuted}
-            gap={backgroundVariant === 'dots' ? 16 : 50}
+            gap={backgroundGap ?? (backgroundVariant === 'dots' ? 16 : 50)}
             size={backgroundVariant === 'dots' ? 1 : 0.5}
             variant={
               backgroundVariant === 'dots'
@@ -1612,6 +1620,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     showControls,
     showBackground,
     backgroundVariant,
+    backgroundGap,
     showTooltips,
     events,
     onEventProcessed,
@@ -1633,6 +1642,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           showControls={showControls}
           showBackground={showBackground}
           backgroundVariant={backgroundVariant}
+          backgroundGap={backgroundGap}
           showTooltips={showTooltips}
           events={events}
           onEventProcessed={onEventProcessed}
