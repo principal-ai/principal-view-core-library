@@ -1183,9 +1183,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       >
         {showBackground && (
           <Background
-            color={theme.colors.border}
-            gap={16}
-            size={backgroundVariant === 'dots' ? 1 : undefined}
+            color={backgroundVariant === 'dots' ? theme.colors.border : theme.colors.textMuted}
+            gap={backgroundVariant === 'dots' ? 16 : 24}
+            size={backgroundVariant === 'dots' ? 1 : 0.5}
             variant={
               backgroundVariant === 'dots'
                 ? BackgroundVariant.Dots
