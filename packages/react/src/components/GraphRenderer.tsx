@@ -10,6 +10,7 @@ import React, {
 import {
   ReactFlow,
   Background,
+  BackgroundVariant,
   Controls,
   MiniMap,
   ReactFlowProvider,
@@ -125,6 +126,14 @@ interface GraphRendererBaseProps {
   /** Whether to show background */
   showBackground?: boolean;
 
+  /**
+   * Background variant style.
+   * - 'dots': Small dots pattern (default)
+   * - 'lines': Grid lines
+   * - 'cross': Cross pattern
+   */
+  backgroundVariant?: 'dots' | 'lines' | 'cross';
+
   /** Optional event stream for triggering animations */
   events?: GraphEvent[];
 
@@ -228,6 +237,7 @@ interface GraphRendererInnerProps {
   showMinimap?: boolean;
   showControls?: boolean;
   showBackground?: boolean;
+  backgroundVariant?: 'dots' | 'lines' | 'cross';
   showTooltips?: boolean;
   events?: GraphEvent[];
   onEventProcessed?: (event: GraphEvent) => void;
@@ -250,6 +260,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   showMinimap = true,
   showControls = true,
   showBackground = true,
+  backgroundVariant = 'dots',
   showTooltips = true,
   events = [],
   onEventProcessed,
@@ -1170,7 +1181,20 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         selectionKeyCode={editable ? 'Shift' : null}
         multiSelectionKeyCode="Shift"
       >
-        {showBackground && <Background color={theme.colors.border} gap={16} size={1} />}
+        {showBackground && (
+          <Background
+            color={theme.colors.border}
+            gap={16}
+            size={backgroundVariant === 'dots' ? 1 : undefined}
+            variant={
+              backgroundVariant === 'dots'
+                ? BackgroundVariant.Dots
+                : backgroundVariant === 'lines'
+                  ? BackgroundVariant.Lines
+                  : BackgroundVariant.Cross
+            }
+          />
+        )}
         {showControls && <Controls showZoom showFitView showInteractive />}
         {showMinimap && (
           <MiniMap
@@ -1587,6 +1611,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     showMinimap,
     showControls,
     showBackground,
+    backgroundVariant,
     showTooltips,
     events,
     onEventProcessed,
@@ -1607,6 +1632,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           showMinimap={showMinimap}
           showControls={showControls}
           showBackground={showBackground}
+          backgroundVariant={backgroundVariant}
           showTooltips={showTooltips}
           events={events}
           onEventProcessed={onEventProcessed}
