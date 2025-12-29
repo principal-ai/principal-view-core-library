@@ -25,8 +25,11 @@ export interface CustomNodeData extends Record<string, unknown> {
  * Custom node component for xyflow that renders based on NodeTypeDefinition
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
+export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging }) => {
   const [isHovered, setIsHovered] = useState(false);
+
+  // Don't show tooltip while dragging
+  const showTooltip = isHovered && !dragging;
   const nodeRef = useRef<HTMLDivElement>(null);
   const nodeProps = data as CustomNodeData;
   const {
@@ -423,7 +426,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
             <NodeTooltip
               description={description}
               otel={otelInfo}
-              visible={isHovered}
+              visible={showTooltip}
               nodeRef={nodeRef}
             />
           )}
@@ -475,7 +478,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
             <NodeTooltip
               description={description}
               otel={otelInfo}
-              visible={isHovered}
+              visible={showTooltip}
               nodeRef={nodeRef}
             />
           )}
@@ -552,7 +555,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected }) => {
             <NodeTooltip
               description={description}
               otel={otelInfo}
-              visible={isHovered}
+              visible={showTooltip}
               nodeRef={nodeRef}
             />
           )}
