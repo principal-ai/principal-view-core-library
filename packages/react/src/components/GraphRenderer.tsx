@@ -15,6 +15,7 @@ import {
   MiniMap,
   ReactFlowProvider,
   useReactFlow,
+  useViewport,
   applyNodeChanges,
   type Edge,
   type NodeChange,
@@ -140,6 +141,13 @@ interface GraphRendererBaseProps {
    */
   backgroundGap?: number;
 
+  /**
+   * Whether to show a center indicator at the canvas origin (0,0).
+   * Useful for visualizing where the center point is when items aren't centered.
+   * Defaults to false.
+   */
+  showCenterIndicator?: boolean;
+
   /** Optional event stream for triggering animations */
   events?: GraphEvent[];
 
@@ -233,6 +241,65 @@ const createEmptyEditState = (): EditState => ({
   deletedEdges: [],
 });
 
+/**
+ * Center indicator component that shows a crosshair at the canvas origin (0,0).
+ * Uses viewport transform to position correctly regardless of pan/zoom.
+ */
+const CenterIndicator: React.FC<{ color: string }> = ({ color }) => {
+  const { x, y } = useViewport();
+
+  // Size of the crosshair in screen pixels (stays constant regardless of zoom)
+  const size = 20;
+  const strokeWidth = 1.5;
+
+  // The viewport transform places origin (0,0) at screen position (x, y)
+  const screenX = x;
+  const screenY = y;
+
+  return (
+    <svg
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        zIndex: 5,
+      }}
+    >
+      {/* Vertical line */}
+      <line
+        x1={screenX}
+        y1={screenY - size}
+        x2={screenX}
+        y2={screenY + size}
+        stroke={color}
+        strokeWidth={strokeWidth}
+        opacity={0.7}
+      />
+      {/* Horizontal line */}
+      <line
+        x1={screenX - size}
+        y1={screenY}
+        x2={screenX + size}
+        y2={screenY}
+        stroke={color}
+        strokeWidth={strokeWidth}
+        opacity={0.7}
+      />
+      {/* Center dot */}
+      <circle
+        cx={screenX}
+        cy={screenY}
+        r={3}
+        fill={color}
+        opacity={0.7}
+      />
+    </svg>
+  );
+};
+
 /** Inner component receives normalized legacy format */
 interface GraphRendererInnerProps {
   configuration: GraphConfiguration;
@@ -245,6 +312,7 @@ interface GraphRendererInnerProps {
   showBackground?: boolean;
   backgroundVariant?: 'dots' | 'lines' | 'cross';
   backgroundGap?: number;
+  showCenterIndicator?: boolean;
   showTooltips?: boolean;
   events?: GraphEvent[];
   onEventProcessed?: (event: GraphEvent) => void;
@@ -269,6 +337,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   showBackground = true,
   backgroundVariant = 'dots',
   backgroundGap,
+  showCenterIndicator = false,
   showTooltips = true,
   events = [],
   onEventProcessed,
@@ -1250,6 +1319,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
             zoomable
           />
         )}
+        {showCenterIndicator && <CenterIndicator color={theme.colors.textMuted} />}
       </ReactFlow>
 
       {/* Multi-selection sidebar - shown when 2+ nodes are selected via explicit click/box select */}
@@ -1656,6 +1726,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     showBackground,
     backgroundVariant,
     backgroundGap,
+    showCenterIndicator,
     showTooltips,
     events,
     onEventProcessed,
@@ -1678,6 +1749,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           showBackground={showBackground}
           backgroundVariant={backgroundVariant}
           backgroundGap={backgroundGap}
+          showCenterIndicator={showCenterIndicator}
           showTooltips={showTooltips}
           events={events}
           onEventProcessed={onEventProcessed}
