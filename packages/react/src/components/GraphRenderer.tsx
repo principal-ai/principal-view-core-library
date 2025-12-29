@@ -292,6 +292,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   // Track selected nodes for info panel (supports multi-select)
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
+  const [isDragging, setIsDragging] = useState(false);
 
   // Track pending connection for edge type picker
   const [pendingConnection, setPendingConnection] = useState<{
@@ -1042,6 +1043,26 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
       setXyflowLocalNodes((nds) => applyNodeChanges(changes, nds) as Node<CustomNodeData>[]);
 
+      // Track dragging state - check if any position change has dragging: true
+      const hasDragging = changes.some(
+        (change) =>
+          change.type === 'position' &&
+          'dragging' in change &&
+          change.dragging === true
+      );
+      const hasStoppedDragging = changes.some(
+        (change) =>
+          change.type === 'position' &&
+          'dragging' in change &&
+          change.dragging === false
+      );
+
+      if (hasDragging) {
+        setIsDragging(true);
+      } else if (hasStoppedDragging) {
+        setIsDragging(false);
+      }
+
       // Track position changes on drag end
       const positionChanges = changes.filter(
         (
@@ -1217,8 +1238,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         )}
       </ReactFlow>
 
-      {/* Multi-selection sidebar - shown when 2+ nodes are selected */}
-      {selectedNodeIds.size >= 2 && (
+      {/* Multi-selection sidebar - shown when 2+ nodes are selected, hidden while dragging */}
+      {selectedNodeIds.size >= 2 && !isDragging && (
         <SelectionSidebar
           selectedNodeIds={selectedNodeIds}
           nodes={nodes}
@@ -1227,8 +1248,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         />
       )}
 
-      {/* Single edge info panel - hidden when multiple edges selected */}
-      {selectedEdgeIds.size === 1 && selectedEdge && selectedEdgeTypeDefinition && (
+      {/* Single edge info panel - hidden when multiple edges selected or while dragging */}
+      {selectedEdgeIds.size === 1 && selectedEdge && selectedEdgeTypeDefinition && !isDragging && (
         <EdgeInfoPanel
           edge={selectedEdge}
           typeDefinition={selectedEdgeTypeDefinition}
@@ -1240,8 +1261,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         />
       )}
 
-      {/* Single node info panel - hidden when multiple nodes selected */}
-      {selectedNodeIds.size === 1 && selectedNode && selectedNodeTypeDefinition && (
+      {/* Single node info panel - hidden when multiple nodes selected or while dragging */}
+      {selectedNodeIds.size === 1 && selectedNode && selectedNodeTypeDefinition && !isDragging && (
         <NodeInfoPanel
           node={selectedNode}
           typeDefinition={selectedNodeTypeDefinition}
