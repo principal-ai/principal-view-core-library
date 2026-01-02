@@ -728,45 +728,20 @@ function validateCanvas(
         });
       }
 
-      // Validate node type - must be standard canvas type OR have pv metadata
+      // Validate node type - must be a standard JSON Canvas type
       const isStandardType = STANDARD_CANVAS_TYPES.includes(
         nodeType as (typeof STANDARD_CANVAS_TYPES)[number]
       );
 
       if (!isStandardType) {
-        // Custom type - must have pv.nodeType with shape
-        if (!n.pv || typeof n.pv !== 'object') {
-          issues.push({
-            type: 'error',
-            message: `Node "${
-              n.id || index
-            }" uses custom type "${nodeType}" but has no "pv" extension`,
-            path: `nodes[${index}].pv`,
-            suggestion: `Use a standard type (${STANDARD_CANVAS_TYPES.join(
-              ', '
-            )}) or add pv.nodeType and pv.shape`,
-          });
-        } else {
-          const nodePv = n.pv as Record<string, unknown>;
-          if (typeof nodePv.nodeType !== 'string' || !nodePv.nodeType) {
-            issues.push({
-              type: 'error',
-              message: `Node "${n.id || index}" with custom type must have "pv.nodeType"`,
-              path: `nodes[${index}].pv.nodeType`,
-            });
-          }
-          if (
-            typeof nodePv.shape !== 'string' ||
-            !VALID_NODE_SHAPES.includes(nodePv.shape as (typeof VALID_NODE_SHAPES)[number])
-          ) {
-            issues.push({
-              type: 'error',
-              message: `Node "${n.id || index}" must have a valid "pv.shape"`,
-              path: `nodes[${index}].pv.shape`,
-              suggestion: `Valid shapes: ${VALID_NODE_SHAPES.join(', ')}`,
-            });
-          }
-        }
+        issues.push({
+          type: 'error',
+          message: `Node "${n.id || index}" uses invalid type "${nodeType}"`,
+          path: `nodes[${index}].type`,
+          suggestion: `Use a standard JSON Canvas type (${STANDARD_CANVAS_TYPES.join(
+            ', '
+          )}). For custom shapes, use type: "text" with pv.shape: "${nodeType}"`,
+        });
       }
 
       // Validate node pv extension fields
