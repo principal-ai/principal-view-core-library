@@ -63,7 +63,7 @@ export function createListCommand(): Command {
             if (!options.all) {
               console.log(chalk.dim('Run with --all to search all directories'));
             }
-            console.log(chalk.dim('\nTo create a new canvas, run: privu init'));
+            console.log(chalk.dim('\nTo create a new canvas, run: npx @principal-ai/principal-view-cli init'));
           }
           return;
         }

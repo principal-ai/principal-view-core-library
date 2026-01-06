@@ -2,7 +2,7 @@
  * Hooks command - Manage husky pre-commit hooks for Principal View
  *
  * This command installs/removes pre-commit hooks into a target project
- * that will run `privu doctor` and `privu validate` before each commit.
+ * that will run `npx @principal-ai/principal-view-cli doctor` and `npx @principal-ai/principal-view-cli validate` before each commit.
  */
 
 import { Command } from 'commander';
@@ -21,17 +21,17 @@ const VV_HOOK_MARKER = '# Principal View checks';
 function getVVHookContent(): string {
   return `${VV_HOOK_MARKER}
 echo "Running Principal View doctor check..."
-npx privu doctor --errors-only || {
+npx @principal-ai/principal-view-cli doctor --errors-only || {
   echo "❌ Principal View doctor check failed (errors found)"
-  echo "   Run 'privu doctor' to see details"
+  echo "   Run 'npx @principal-ai/principal-view-cli doctor' to see details"
   exit 1
 }
 
 echo "Running Principal View canvas validation..."
-npx privu validate --quiet 2>/dev/null || {
+npx @principal-ai/principal-view-cli validate --quiet 2>/dev/null || {
   if [ $? -ne 0 ]; then
     echo "❌ Canvas validation failed"
-    echo "   Run 'privu validate' to see details"
+    echo "   Run 'npx @principal-ai/principal-view-cli validate' to see details"
     exit 1
   fi
 }
@@ -191,7 +191,7 @@ function removeVVHook(repoPath: string): void {
     // Check if this line is part of the PV block
     if (
       line &&
-      (line.includes('privu ') ||
+      (line.includes('@principal-ai/principal-view-cli ') ||
         line.includes('Principal View') ||
         line.includes('echo "Running Visual') ||
         (line.includes('exit 1') && i > startIndex && i < startIndex + 15) ||
@@ -255,11 +255,11 @@ export function createHooksCommand(): Command {
         if (!isHuskyInstalled(repoPath)) {
           if (options.check) {
             console.log(chalk.red('❌ Husky is not installed'));
-            console.log('   Run "privu hooks --init" to install husky');
+            console.log('   Run "npx @principal-ai/principal-view-cli hooks --init" to install husky');
             process.exit(1);
           } else if (options.add) {
             console.log(chalk.red('❌ Husky is not installed'));
-            console.log('   Run "privu hooks --init" first to install husky');
+            console.log('   Run "npx @principal-ai/principal-view-cli hooks --init" first to install husky');
             process.exit(1);
           } else if (options.remove) {
             console.log('ℹ️  Husky is not installed');
@@ -267,7 +267,7 @@ export function createHooksCommand(): Command {
           } else {
             console.log(chalk.red('❌ Husky is not installed in this repository'));
             console.log('\nTo install husky and set up Principal View hooks:');
-            console.log('  privu hooks --init --add');
+            console.log('  npx @principal-ai/principal-view-cli hooks --init --add');
             process.exit(1);
           }
         }
@@ -288,7 +288,7 @@ export function createHooksCommand(): Command {
             addVVHook(repoPath);
             console.log(chalk.green('✅ Added Principal View checks to pre-commit hook'));
             console.log('\nPre-commit hook will now:');
-            console.log('  • Run privu doctor to check for stale configurations');
+            console.log('  • Run npx @principal-ai/principal-view-cli doctor to check for stale configurations');
             console.log('  • Validate all .canvas files');
           }
         } else if (options.remove) {

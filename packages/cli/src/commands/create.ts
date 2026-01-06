@@ -54,8 +54,8 @@ export function createCreateCommand(): Command {
           `  1. Open ${chalk.cyan(`.principal-views/${options.name}.canvas`)} in your editor`
         );
         console.log(`  2. Add nodes and edges to define your architecture`);
-        console.log(`  3. Run ${chalk.cyan('privu validate')} to check your configuration`);
-        console.log(`  4. Run ${chalk.cyan('privu doctor')} to verify source mappings`);
+        console.log(`  3. Run ${chalk.cyan('npx @principal-ai/principal-view-cli validate')} to check your configuration`);
+        console.log(`  4. Run ${chalk.cyan('npx @principal-ai/principal-view-cli doctor')} to verify source mappings`);
       } catch (error) {
         console.error(chalk.red('Error:'), (error as Error).message);
         process.exit(1);

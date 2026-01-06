@@ -1101,7 +1101,7 @@ export function createValidateCommand(): Command {
           } else {
             console.log(chalk.yellow('No .canvas files found matching the specified patterns.'));
             console.log(chalk.dim(`Patterns searched: ${patterns.join(', ')}`));
-            console.log(chalk.dim('\nTo create a new .principal-views folder, run: privu init'));
+            console.log(chalk.dim('\nTo create a new .principal-views folder, run: npx @principal-ai/principal-view-cli init'));
           }
           return;
         }

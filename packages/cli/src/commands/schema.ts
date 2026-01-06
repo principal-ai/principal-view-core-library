@@ -36,7 +36,7 @@ ${chalk.dim('│')}   }                                             ${chalk.dim(
 ${chalk.dim('│')} }                                               ${chalk.dim('│')}
 ${chalk.dim('└─────────────────────────────────────────────────┘')}
 
-Run ${chalk.cyan('privu schema <section>')} for details on:
+Run ${chalk.cyan('npx @principal-ai/principal-view-cli schema <section>')} for details on:
   ${chalk.yellow('nodes')}      Node types and properties
   ${chalk.yellow('edges')}      Edge properties and types
   ${chalk.yellow('vv')}         Principal View extension fields
@@ -331,8 +331,8 @@ ${chalk.dim('─'.repeat(50))}
   }
 }
 
-${chalk.bold('Run validation:')} ${chalk.cyan('privu validate <file>')}
-${chalk.bold('Initialize project:')} ${chalk.cyan('privu init')}
+${chalk.bold('Run validation:')} ${chalk.cyan('npx @principal-ai/principal-view-cli validate <file>')}
+${chalk.bold('Initialize project:')} ${chalk.cyan('npx @principal-ai/principal-view-cli init')}
 `,
 };
 

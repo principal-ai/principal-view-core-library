@@ -190,8 +190,7 @@ edgeComponents: {}
                   // Check if our hook is already in the file
                   const existingContent = readFileSync(preCommitFile, 'utf8');
                   if (
-                    existingContent.includes('principal-view-cli lint') ||
-                    existingContent.includes('privu lint')
+                    existingContent.includes('principal-view-cli lint')
                   ) {
                     console.log(
                       chalk.yellow(`Husky pre-commit hook already includes principal view linting`)
@@ -284,17 +283,17 @@ edgeComponents: {}
         console.log(
           `  2. Build your graph in ${chalk.cyan(`.principal-views/${options.name}.canvas`)}`
         );
-        console.log(`  3. Run ${chalk.cyan('privu lint')} to validate your configuration`);
+        console.log(`  3. Run ${chalk.cyan('npx @principal-ai/principal-view-cli lint')} to validate your configuration`);
         if (huskySetup) {
           console.log(`  4. Commits will now automatically lint .principal-views files`);
         }
 
         console.log('');
         console.log(chalk.bold('Commands:'));
-        console.log(`  • ${chalk.cyan('privu lint')} - Lint configuration files`);
-        console.log(`  • ${chalk.cyan('privu lint --json')} - Output lint results as JSON`);
-        console.log(`  • ${chalk.cyan('privu validate')} - Validate canvas files`);
-        console.log(`  • ${chalk.cyan('privu doctor')} - Check project setup`);
+        console.log(`  • ${chalk.cyan('npx @principal-ai/principal-view-cli lint')} - Lint configuration files`);
+        console.log(`  • ${chalk.cyan('npx @principal-ai/principal-view-cli lint --json')} - Output lint results as JSON`);
+        console.log(`  • ${chalk.cyan('npx @principal-ai/principal-view-cli validate')} - Validate canvas files`);
+        console.log(`  • ${chalk.cyan('npx @principal-ai/principal-view-cli doctor')} - Check project setup`);
       } catch (error) {
         console.error(chalk.red('Error:'), (error as Error).message);
         process.exit(1);

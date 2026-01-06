@@ -206,7 +206,7 @@ export function createDoctorCommand(): Command {
             );
           } else {
             console.log(chalk.yellow('No .principal-views directory found.'));
-            console.log(chalk.dim('Run "privu init" to create a configuration.'));
+            console.log(chalk.dim('Run "npx @principal-ai/principal-view-cli init" to create a configuration.'));
           }
           return;
         }
