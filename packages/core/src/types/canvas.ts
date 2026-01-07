@@ -259,6 +259,28 @@ export interface PVOtelExtension {
 }
 
 /**
+ * Event field schema definition
+ */
+export interface PVEventFieldSchema {
+  /** Field data type */
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  /** Whether this field is required */
+  required?: boolean;
+  /** Description of what this field represents */
+  description?: string;
+}
+
+/**
+ * Event schema definition for a specific event type
+ */
+export interface PVEventSchema {
+  /** Description of what this event represents */
+  description: string;
+  /** Expected attributes/fields for this event */
+  attributes: Record<string, PVEventFieldSchema>;
+}
+
+/**
  * Principal View node extensions
  */
 export interface PVNodeExtension {
@@ -317,6 +339,35 @@ export interface PVNodeExtension {
 
   /** Action patterns for event extraction */
   actions?: PVActionPattern[];
+
+  /**
+   * Event schemas for type-safe telemetry validation
+   *
+   * Defines the events that this node should emit during execution.
+   * Used for compile-time and runtime validation of telemetry events.
+   *
+   * @example
+   * ```typescript
+   * events: {
+   *   'conversion.started': {
+   *     description: 'Graph conversion begins',
+   *     attributes: {
+   *       'config.nodeTypes': { type: 'number', required: true },
+   *       'config.edgeTypes': { type: 'number', required: true }
+   *     }
+   *   },
+   *   'conversion.complete': {
+   *     description: 'Graph conversion completes',
+   *     attributes: {
+   *       'result.nodes.count': { type: 'number', required: true },
+   *       'result.edges.count': { type: 'number', required: true }
+   *     }
+   *   }
+   * }
+   * ```
+   */
+  events?: Record<string, PVEventSchema>;
+
   /** Data schema for typed fields */
   dataSchema?: Record<
     string,

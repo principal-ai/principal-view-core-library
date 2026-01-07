@@ -3,10 +3,14 @@
  *
  * Lightweight span collection for test execution visualization.
  * Collects span data that can be exported to JSON for Storybook.
+ *
+ * Integrates with EventValidator to ensure emitted events match canvas schema.
  */
 
 import fs from 'fs';
 import path from 'path';
+import type { ExtendedCanvas } from '../src/types/canvas';
+import { EventValidator, createValidatedEmitter } from '../src/telemetry/event-validator';
 
 // Span event structure
 interface SpanEvent {
@@ -106,6 +110,46 @@ export function addEvent(
       ...attributes, // attributes can override filepath/lineno
     },
   });
+}
+
+/**
+ * Create a validated event emitter for a test span
+ *
+ * Validates events against the canvas schema for the specified node.
+ * Throws EventValidationError if events don't match schema (in strict mode).
+ *
+ * @param canvas - The canvas containing event schemas
+ * @param nodeId - The node ID to validate events against
+ * @param span - The test span to add events to
+ * @param options - Validation options (strict: true by default in tests)
+ *
+ * @example
+ * ```typescript
+ * const canvas = loadCanvas('my-execution-flow.canvas');
+ * const span = startTestSpan('my test');
+ * const emit = createValidatedSpanEmitter(canvas, 'graph-converter', span);
+ *
+ * // Type-safe and validated against canvas schema
+ * emit('conversion.started', {
+ *   'config.nodeTypes': 2,
+ *   'config.edgeTypes': 1
+ * });
+ * ```
+ */
+export function createValidatedSpanEmitter(
+  canvas: ExtendedCanvas,
+  nodeId: string,
+  span: TestSpan,
+  options: { strict?: boolean } = { strict: true }
+): (eventName: string, attributes?: Record<string, string | number | boolean>) => void {
+  const validator = new EventValidator(canvas);
+
+  return createValidatedEmitter(
+    validator,
+    nodeId,
+    (eventName, attributes) => addEvent(span, eventName, attributes),
+    options
+  );
 }
 
 /**

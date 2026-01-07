@@ -52,6 +52,9 @@ export type { NodeInfoPanelProps } from './components/NodeInfoPanel';
 export { ConfigurationSelector } from './components/ConfigurationSelector';
 export type { ConfigurationSelectorProps } from './components/ConfigurationSelector';
 
+export { TestEventPanel } from './components/TestEventPanel';
+export type { TestEventPanelProps } from './components/TestEventPanel';
+
 // Export node/edge renderers
 export { GenericNode } from './nodes/GenericNode';
 export type { GenericNodeProps } from './nodes/GenericNode';

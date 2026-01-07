@@ -1,0 +1,194 @@
+{
+  "nodes": [
+    {
+      "id": "graph-converter",
+      "type": "text",
+      "text": "# Graph Converter\n\nConverts configuration to graph nodes and edges",
+      "x": -150,
+      "y": -50,
+      "width": 300,
+      "height": 120,
+      "pv": {
+        "nodeType": "converter",
+        "name": "Graph Converter",
+        "description": "Converts configuration to graph nodes and edges",
+        "shape": "rectangle",
+        "fill": "#3b82f6",
+        "events": {
+          "conversion.started": {
+            "description": "Graph conversion begins",
+            "attributes": {
+              "config.nodeTypes": {
+                "type": "number",
+                "required": true,
+                "description": "Number of node types in configuration"
+              },
+              "config.edgeTypes": {
+                "type": "number",
+                "required": true,
+                "description": "Number of edge types in configuration"
+              }
+            }
+          },
+          "conversion.processingNodes": {
+            "description": "Processing node definitions",
+            "attributes": {
+              "nodes.count": {
+                "type": "number",
+                "required": true,
+                "description": "Number of nodes being processed"
+              }
+            }
+          },
+          "conversion.processingEdges": {
+            "description": "Processing edge definitions",
+            "attributes": {
+              "edges.count": {
+                "type": "number",
+                "required": true,
+                "description": "Number of edges being processed"
+              }
+            }
+          },
+          "conversion.complete": {
+            "description": "Graph conversion completes successfully",
+            "attributes": {
+              "result.nodes.count": {
+                "type": "number",
+                "required": true,
+                "description": "Number of nodes in result"
+              },
+              "result.edges.count": {
+                "type": "number",
+                "required": true,
+                "description": "Number of edges in result"
+              },
+              "duration.ms": {
+                "type": "number",
+                "required": false,
+                "description": "Conversion duration in milliseconds"
+              }
+            }
+          },
+          "conversion.error": {
+            "description": "Error during conversion",
+            "attributes": {
+              "error.message": {
+                "type": "string",
+                "required": true,
+                "description": "Error message"
+              },
+              "error.phase": {
+                "type": "string",
+                "required": false,
+                "description": "Phase where error occurred"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "validation",
+      "type": "text",
+      "text": "# Validation\n\nValidates configuration structure",
+      "x": -400,
+      "y": 150,
+      "width": 250,
+      "height": 100,
+      "pv": {
+        "nodeType": "validator",
+        "name": "Configuration Validator",
+        "description": "Validates configuration structure before conversion",
+        "shape": "hexagon",
+        "fill": "#10b981",
+        "events": {
+          "validation.started": {
+            "description": "Validation begins",
+            "attributes": {
+              "config.size": {
+                "type": "number",
+                "required": true,
+                "description": "Size of configuration object"
+              }
+            }
+          },
+          "validation.complete": {
+            "description": "Validation completes",
+            "attributes": {
+              "validation.passed": {
+                "type": "boolean",
+                "required": true,
+                "description": "Whether validation passed"
+              },
+              "errors.count": {
+                "type": "number",
+                "required": true,
+                "description": "Number of validation errors"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "graph-output",
+      "type": "text",
+      "text": "# Graph Output\n\nResulting graph structure",
+      "x": 100,
+      "y": 150,
+      "width": 250,
+      "height": 100,
+      "pv": {
+        "nodeType": "output",
+        "name": "Graph Output",
+        "description": "The resulting graph with nodes and edges",
+        "shape": "rectangle",
+        "fill": "#8b5cf6",
+        "events": {
+          "output.created": {
+            "description": "Graph output is created",
+            "attributes": {
+              "output.type": {
+                "type": "string",
+                "required": true,
+                "description": "Type of output (NodeState[] | EdgeState[])"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "validate-before-convert",
+      "fromNode": "validation",
+      "toNode": "graph-converter",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "validated config",
+      "pv": {
+        "edgeType": "data-flow",
+        "style": "solid"
+      }
+    },
+    {
+      "id": "convert-to-output",
+      "fromNode": "graph-converter",
+      "toNode": "graph-output",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "graph data",
+      "pv": {
+        "edgeType": "data-flow",
+        "style": "solid"
+      }
+    }
+  ],
+  "pv": {
+    "version": "1.0.0",
+    "name": "Graph Converter Execution",
+    "description": "Execution flow for graph conversion with event schema validation"
+  }
+}

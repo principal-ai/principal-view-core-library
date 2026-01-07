@@ -34,6 +34,10 @@ export * from './types/canvas';
 export { CanvasConverter } from './utils/CanvasConverter';
 export type { ReactFlowNode, ReactFlowEdge } from './utils/CanvasConverter';
 
+// Export telemetry event validation
+export { EventValidator, createValidatedEmitter, EventValidationError } from './telemetry/event-validator';
+export type { ValidationResult } from './telemetry/event-validator';
+
 // Export trace-to-canvas conversion
 export { traceToCanvas, traceToCanvasJson } from './utils/TraceToCanvas';
 export type {
