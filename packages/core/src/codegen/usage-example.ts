@@ -15,7 +15,7 @@
  *   GraphConverter,
  *   Validation,
  *   NodeEmitterByName,
- * } from './graph-converter-execution.types';
+ * } from '@generated/graph-converter-execution.types';
  * ```
  *
  * For this example file, we define the types inline to avoid import errors.

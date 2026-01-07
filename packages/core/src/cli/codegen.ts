@@ -120,9 +120,20 @@ function generateTypesForFile(canvasPath: string, options: CliOptions) {
       outputPath = options.output;
     }
   } else {
-    // Default: same directory as canvas file
+    // Default: packages/core/src/generated/ for .principal-views canvases
+    // This keeps canvas files in .principal-views/ but generates types to idiomatic locations
     const canvasDir = path.dirname(canvasPath);
-    outputPath = path.join(canvasDir, result.filename);
+    const canvasAbsPath = path.resolve(canvasPath);
+
+    if (canvasAbsPath.includes('.principal-views')) {
+      // Canvas is in .principal-views/, output to packages/core/src/generated/
+      const repoRoot = canvasAbsPath.split('.principal-views')[0];
+      const generatedDir = path.join(repoRoot, 'packages', 'core', 'src', 'generated');
+      outputPath = path.join(generatedDir, result.filename);
+    } else {
+      // Canvas is elsewhere, use same directory
+      outputPath = path.join(canvasDir, result.filename);
+    }
   }
 
   // Ensure output directory exists

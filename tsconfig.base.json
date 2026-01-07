@@ -20,7 +20,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": false,
-    "emitDeclarationOnly": false
+    "emitDeclarationOnly": false,
+    "baseUrl": ".",
+    "paths": {
+      "@generated/*": ["packages/core/src/generated/*"]
+    }
   },
   "exclude": ["node_modules", "dist", "build", "*.test.ts", "*.test.tsx", "*.stories.tsx"]
 }

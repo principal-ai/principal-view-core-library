@@ -6,6 +6,16 @@ Generate type-safe code from canvas event schemas.
 
 The code generator creates TypeScript types (and other languages in the future) from canvas event schemas, providing compile-time type safety in addition to runtime validation.
 
+### Hybrid Approach
+
+The framework uses a hybrid approach for organizing canvas files and generated types:
+
+- **Canvas files** remain in `.principal-views/` (as the framework expects them)
+- **Generated types** are output to `packages/core/src/generated/` (more idiomatic TypeScript location)
+- **Path aliases** (`@generated/*`) provide clean imports without awkward relative paths
+
+This keeps the framework structure intact while improving the developer experience with standard TypeScript conventions.
+
 ## Precedents
 
 This follows industry-standard patterns from:
@@ -76,7 +86,7 @@ fs.writeFileSync(result.filename, result.code);
 ### 3. Use Generated Types
 
 ```typescript
-import type { MyService, NodeEmitterByName } from './my-service.types';
+import type { MyService, NodeEmitterByName } from '@generated/my-service.types';
 
 const emit: NodeEmitterByName<MyService.Event> = (name, attrs) => {
   // Emit event
@@ -98,17 +108,17 @@ emit('operation.started', {
 ### Basic Usage
 
 ```bash
-# Generate TypeScript types
-npx @principal-ai/principal-view-core codegen my-flow.canvas
+# Generate TypeScript types (outputs to packages/core/src/generated/ by default)
+npx @principal-ai/principal-view-core codegen .principal-views/my-flow.canvas
 
 # Generate to specific output directory
-npx @principal-ai/principal-view-core codegen --output src/types/ my-flow.canvas
+npx @principal-ai/principal-view-core codegen --output src/types/ .principal-views/my-flow.canvas
 
 # Generate multiple files
-npx @principal-ai/principal-view-core codegen *.canvas
+npx @principal-ai/principal-view-core codegen .principal-views/*.canvas
 
 # Generate with namespace
-npx @principal-ai/principal-view-core codegen --namespace Events my-flow.canvas
+npx @principal-ai/principal-view-core codegen --namespace Events .principal-views/my-flow.canvas
 ```
 
 ### Options
@@ -116,7 +126,7 @@ npx @principal-ai/principal-view-core codegen --namespace Events my-flow.canvas
 ```bash
 Options:
   -l, --lang <language>           Target language (typescript|python|go|rust)
-  -o, --output <path>             Output file or directory
+  -o, --output <path>             Output file or directory [default: packages/core/src/generated/ for .principal-views canvases]
   -n, --namespace <name>          Wrap types in a namespace
   --readonly                      Use readonly modifiers (TypeScript)
   --no-strict-null-checks         Disable strict null checks
@@ -306,9 +316,9 @@ function handleEvent(event: GraphConverter.Event) {
 
 ```typescript
 import { EventValidator, createValidatedEmitter } from '@principal-ai/principal-view-core';
-import type { GraphConverter, NodeEmitterByName } from './graph-converter.types';
+import type { GraphConverter, NodeEmitterByName } from '@generated/graph-converter-execution.types';
 
-const canvas = loadCanvas('graph-converter.canvas');
+const canvas = loadCanvas('.principal-views/graph-converter-execution.canvas');
 const validator = new EventValidator(canvas);
 
 // Both type-safe AND runtime-validated
@@ -373,7 +383,7 @@ generatorRegistry.register(new PythonGenerator());
 # .git/hooks/pre-commit
 #!/bin/bash
 npx @principal-ai/principal-view-core codegen .principal-views/*.canvas
-git add .principal-views/*.types.ts
+git add packages/core/src/generated/*.types.ts
 ```
 
 ### Workflow 2: Build Script
@@ -405,7 +415,7 @@ tsc --watch
   run: npx @principal-ai/principal-view-core codegen .principal-views/*.canvas
 
 - name: Check for uncommitted changes
-  run: git diff --exit-code .principal-views/*.types.ts
+  run: git diff --exit-code packages/core/src/generated/*.types.ts
 ```
 
 ## Best Practices
@@ -447,7 +457,7 @@ tsc --watch
 
 See:
 - `packages/core/src/codegen/usage-example.ts` - Usage examples
-- `.principal-views/graph-converter-execution.types.ts` - Generated types
+- `packages/core/src/generated/graph-converter-execution.types.ts` - Generated types
 - `packages/core/src/codegen/type-generator.test.ts` - Test suite
 
 ## Future Enhancements
