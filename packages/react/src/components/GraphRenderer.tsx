@@ -101,6 +101,13 @@ interface GraphRendererBaseProps {
   violations?: Violation[];
 
   /**
+   * Duration of the fitView animation in milliseconds.
+   * Set to 0 for instant positioning (no animation).
+   * Defaults to 200.
+   */
+  fitViewDuration?: number;
+
+  /**
    * Whether to show tooltips on hover for nodes and edges.
    * Defaults to true.
    */
@@ -173,6 +180,7 @@ interface GraphRendererBaseProps {
    * Receives the node ID and the source path that was clicked.
    */
   onSourceClick?: (nodeId: string, source: string) => void;
+
 }
 
 /** GraphRenderer props - canvas format only */
@@ -314,6 +322,7 @@ interface GraphRendererInnerProps {
   backgroundGap?: number;
   showCenterIndicator?: boolean;
   showTooltips?: boolean;
+  fitViewDuration?: number;
   events?: GraphEvent[];
   onEventProcessed?: (event: GraphEvent) => void;
   editable?: boolean;
@@ -339,6 +348,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   backgroundGap,
   showCenterIndicator = false,
   showTooltips = true,
+  fitViewDuration = 200,
   events = [],
   onEventProcessed,
   editable = false,
@@ -349,6 +359,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 }) => {
   const { fitView } = useReactFlow();
   const { theme } = useTheme();
+
 
   // Track active animations
   const [animationState, setAnimationState] = useState<AnimationState>({
@@ -1060,11 +1071,15 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   }, [events, onEventProcessed]);
 
   // ============================================
+  // ============================================
+
+
+  // ============================================
   // XYFLOW CONVERSION
   // ============================================
 
   const xyflowNodesBase = useMemo(() => {
-    const converted = convertToXYFlowNodes(nodes, configuration, violations);
+    const converted = convertToXYFlowNodes(localNodes, configuration, violations);
 
     return converted.map((node) => {
       const animation = animationState.nodeAnimations[node.id];
@@ -1086,7 +1101,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         } as CustomNodeData,
       };
     });
-  }, [nodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, editStateRef]);
+  }, [localNodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, editStateRef]);
 
   const baseNodesKey = useMemo(() => {
     return nodes
@@ -1250,12 +1265,12 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         includeHiddenNodes: false,
         minZoom: 0.1,
         maxZoom: 1.5,
-        duration: 200,
+        duration: fitViewDuration,
       });
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [baseNodesKey, baseEdgesKey, fitView]);
+  }, [baseNodesKey, baseEdgesKey, fitView, fitViewDuration]);
 
   // ============================================
   // RENDER
@@ -1357,6 +1372,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           onSourceClick={onSourceClick}
         />
       )}
+
 
       {pendingConnection && (
         <div
@@ -1717,6 +1733,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
 
   const { configuration, nodes, edges } = canvasData;
 
+
   // Extract only the props that inner component needs
   const {
     violations,
@@ -1728,6 +1745,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     backgroundGap,
     showCenterIndicator,
     showTooltips,
+    fitViewDuration,
     events,
     onEventProcessed,
     editable,
@@ -1751,6 +1769,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           backgroundGap={backgroundGap}
           showCenterIndicator={showCenterIndicator}
           showTooltips={showTooltips}
+          fitViewDuration={fitViewDuration}
           events={events}
           onEventProcessed={onEventProcessed}
           editable={editable}
