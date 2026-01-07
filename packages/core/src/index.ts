@@ -38,6 +38,10 @@ export type { ReactFlowNode, ReactFlowEdge } from './utils/CanvasConverter';
 export { EventValidator, createValidatedEmitter, EventValidationError } from './telemetry/event-validator';
 export type { ValidationResult } from './telemetry/event-validator';
 
+// Export code generation
+export { generateTypes, TypeScriptGenerator, generatorRegistry } from './codegen/type-generator';
+export type { CodegenOptions, CodegenResult, CodeGenerator } from './codegen/type-generator';
+
 // Export trace-to-canvas conversion
 export { traceToCanvas, traceToCanvasJson } from './utils/TraceToCanvas';
 export type {
