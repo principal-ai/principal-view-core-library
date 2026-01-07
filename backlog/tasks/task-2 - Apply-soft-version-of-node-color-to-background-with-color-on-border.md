@@ -1,9 +1,10 @@
 ---
 id: task-2
 title: Apply soft version of node color to background with color on border
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-01-07 20:55'
+completed_date: '2026-01-07'
 labels:
   - ui
   - enhancement
