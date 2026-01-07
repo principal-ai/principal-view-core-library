@@ -1,478 +1,21 @@
 {
-  "exportedAt": "2025-12-26T22:37:36.691Z",
+  "exportedAt": "2026-01-07T17:48:11.493Z",
   "serviceName": "principal-view-core-tests",
-  "spanCount": 25,
+  "spanCount": 6,
   "spans": [
     {
-      "traceId": "689e380bef4c1eb4aa88a8761d49ab58",
-      "spanId": "30156e32d0d1657b",
-      "parentSpanId": "aa94cf84beb1264f",
-      "name": "engine:create",
-      "kind": "INTERNAL",
-      "startTime": 1766788656531,
-      "endTime": 1766788656531.1184,
-      "duration": 0.118375,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "rules.count": 0
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "689e380bef4c1eb4aa88a8761d49ab58",
-      "spanId": "870660189dfc137b",
-      "parentSpanId": "aa94cf84beb1264f",
-      "name": "engine:validate",
-      "kind": "INTERNAL",
-      "startTime": 1766788656531,
-      "endTime": 1766788656531.0872,
-      "duration": 0.087125,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "event.type": "edge_created",
-        "edge.from": "user-1",
-        "edge.to": "server-1"
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "689e380bef4c1eb4aa88a8761d49ab58",
-      "spanId": "aa94cf84beb1264f",
-      "name": "validation:connection:valid",
-      "kind": "INTERNAL",
-      "startTime": 1766788656530,
-      "endTime": 1766788656530.797,
-      "duration": 0.797042,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "test.category": "connection",
-        "test.expectation": "allow",
-        "result.valid": true
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "f26277e6c5654266e2b00913d347918e",
-      "spanId": "4da9338140fa0281",
-      "parentSpanId": "2422a994e3594460",
-      "name": "engine:validate",
-      "kind": "INTERNAL",
-      "startTime": 1766788656531,
-      "endTime": 1766788656531.0562,
-      "duration": 0.056208,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "event.type": "edge_created",
-        "edge.from": "server-1",
-        "edge.to": "user-1"
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "f26277e6c5654266e2b00913d347918e",
-      "spanId": "2422a994e3594460",
-      "name": "validation:connection:invalid",
-      "kind": "INTERNAL",
-      "startTime": 1766788656531,
-      "endTime": 1766788656531.146,
-      "duration": 0.145875,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "test.category": "connection",
-        "test.expectation": "reject",
-        "result.valid": false,
-        "result.violations": 1
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "285ee37f0c6980aaac94d6752f0af89f",
-      "spanId": "c885241571a90ce3",
-      "parentSpanId": "b4b2ed47b2888d4a",
-      "name": "engine:validate",
-      "kind": "INTERNAL",
-      "startTime": 1766788656531,
-      "endTime": 1766788656531.0227,
-      "duration": 0.022791,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "edge.to": "nonexistent-node"
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "285ee37f0c6980aaac94d6752f0af89f",
-      "spanId": "b4b2ed47b2888d4a",
-      "name": "validation:connection:missing-node",
-      "kind": "INTERNAL",
-      "startTime": 1766788656531,
-      "endTime": 1766788656531.0781,
-      "duration": 0.078084,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "test.category": "connection",
-        "test.expectation": "reject",
-        "result.valid": false
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "71020547af599a1edb575c5835076c72",
-      "spanId": "8e3588ec99a7e0e2",
-      "parentSpanId": "ad013b57c95e7491",
-      "name": "engine:create-with-rules",
-      "kind": "INTERNAL",
-      "startTime": 1766788656532,
-      "endTime": 1766788656532.0288,
-      "duration": 0.028708,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "rules.stateTransitions": true
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "71020547af599a1edb575c5835076c72",
-      "spanId": "6104dfde1863a98c",
-      "parentSpanId": "ad013b57c95e7491",
-      "name": "engine:validate-transition",
-      "kind": "INTERNAL",
-      "startTime": 1766788656532,
-      "endTime": 1766788656532.0627,
-      "duration": 0.062834,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "state.from": "offline",
-        "state.to": "online"
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "71020547af599a1edb575c5835076c72",
-      "spanId": "ad013b57c95e7491",
-      "name": "validation:state:valid-transition",
-      "kind": "INTERNAL",
-      "startTime": 1766788656532,
-      "endTime": 1766788656532.1792,
-      "duration": 0.179209,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "test.category": "state-transition",
-        "test.expectation": "allow",
-        "result.valid": true
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "e9228ff11c8143b3528083d7df936e4f",
-      "spanId": "c750801377cf6053",
-      "parentSpanId": "ee366e5ea61e88e7",
-      "name": "engine:validate-transition",
-      "kind": "INTERNAL",
-      "startTime": 1766788656532,
-      "endTime": 1766788656532.0393,
-      "duration": 0.039417,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "state.from": "offline",
-        "state.to": "grace",
-        "state.allowed": false
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "e9228ff11c8143b3528083d7df936e4f",
-      "spanId": "ee366e5ea61e88e7",
-      "name": "validation:state:invalid-transition",
-      "kind": "INTERNAL",
-      "startTime": 1766788656532,
-      "endTime": 1766788656532.1057,
-      "duration": 0.10575,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "test.category": "state-transition",
-        "test.expectation": "reject",
-        "result.valid": false,
-        "result.violations": 1
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "44dbeb142860d14fb23e4d5bb1baf2cb",
-      "spanId": "08aac11ce0a6cb4e",
-      "parentSpanId": "3f040ccef51abc72",
-      "name": "engine:create-with-cardinality",
-      "kind": "INTERNAL",
-      "startTime": 1766788656532,
-      "endTime": 1766788656532.0254,
-      "duration": 0.025416,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "cardinality.server.min": 1,
-        "cardinality.server.max": 1
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "44dbeb142860d14fb23e4d5bb1baf2cb",
-      "spanId": "49fdd20310da5ba0",
-      "parentSpanId": "3f040ccef51abc72",
-      "name": "engine:check-constraints",
-      "kind": "INTERNAL",
-      "startTime": 1766788656532,
-      "endTime": 1766788656532.058,
-      "duration": 0.058083,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "state.serverCount": 0
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "44dbeb142860d14fb23e4d5bb1baf2cb",
-      "spanId": "3f040ccef51abc72",
-      "name": "validation:cardinality:min-violation",
-      "kind": "INTERNAL",
-      "startTime": 1766788656532,
-      "endTime": 1766788656532.2239,
-      "duration": 0.223958,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "test.category": "cardinality",
-        "test.constraint": "minimum",
-        "result.violations": 1
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "8f41d5cd204d8c6c00b8fbe5a12ecdc3",
-      "spanId": "55f24f090e41dd02",
-      "parentSpanId": "9010c9ce2e60c22f",
-      "name": "engine:check-constraints",
-      "kind": "INTERNAL",
-      "startTime": 1766788656532,
-      "endTime": 1766788656532.0474,
-      "duration": 0.047291,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "state.serverCount": 2
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "8f41d5cd204d8c6c00b8fbe5a12ecdc3",
-      "spanId": "9010c9ce2e60c22f",
-      "name": "validation:cardinality:max-violation",
-      "kind": "INTERNAL",
-      "startTime": 1766788656532,
-      "endTime": 1766788656532.1418,
-      "duration": 0.141917,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "test.category": "cardinality",
-        "test.constraint": "maximum",
-        "result.violations": 1
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "468b20eb749920b4afc4999ae147e488",
-      "spanId": "dfeed6b539fd3ac6",
-      "parentSpanId": "2a7239534ed7d2eb",
-      "name": "engine:check-constraints",
-      "kind": "INTERNAL",
-      "startTime": 1766788656532,
-      "endTime": 1766788656532.0317,
-      "duration": 0.031792,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "state.serverCount": 1,
-        "cardinality.min": 1,
-        "cardinality.max": 2
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "468b20eb749920b4afc4999ae147e488",
-      "spanId": "2a7239534ed7d2eb",
-      "name": "validation:cardinality:within-bounds",
-      "kind": "INTERNAL",
-      "startTime": 1766788656532,
-      "endTime": 1766788656532.1155,
-      "duration": 0.115375,
-      "resource": {
-        "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
-        "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
-      },
-      "attributes": {
-        "test.category": "cardinality",
-        "test.expectation": "pass",
-        "result.violations": 0
-      },
-      "status": {
-        "code": "OK"
-      },
-      "events": []
-    },
-    {
-      "traceId": "7668a37aac816008fb7295c110b1cfde",
-      "spanId": "cc0b8dd558bbcc84",
+      "traceId": "f382c349abcff5bb2c5299262c10d1c6",
+      "spanId": "f74edf7726c1cddf",
       "name": "test:basic-traced",
       "kind": "INTERNAL",
-      "startTime": 1766788656645,
-      "endTime": 1766788656656.1316,
-      "duration": 11.1315,
+      "startTime": 1767808091464,
+      "endTime": 1767808091475.8118,
+      "duration": 11.811709,
       "resource": {
         "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
+        "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
+        "test.run.id": "1767808091463-ja71lg4"
       },
       "attributes": {
         "test.type": "demo"
@@ -483,18 +26,18 @@
       "events": []
     },
     {
-      "traceId": "0f49d6c7c1e396ae1585a921a9d078ab",
-      "spanId": "ac7fd1c6e91bdb37",
+      "traceId": "c38e08f2fb7fae7b5126759a80f466ff",
+      "spanId": "9c24116023368ca1",
       "name": "operation:validate",
       "kind": "INTERNAL",
-      "startTime": 1766788656656,
-      "endTime": 1766788656661.575,
-      "duration": 5.575,
+      "startTime": 1767808091477,
+      "endTime": 1767808091482.3726,
+      "duration": 5.372458,
       "resource": {
         "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
+        "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
+        "test.run.id": "1767808091463-ja71lg4"
       },
       "attributes": {
         "operation.type": "validation"
@@ -505,18 +48,18 @@
       "events": []
     },
     {
-      "traceId": "f44a1b19a1b2a018fefe7b005be11210",
-      "spanId": "8a88ecc822b49ac1",
+      "traceId": "079ee32ce3afe48b007f37d3e82bf2f2",
+      "spanId": "6f13dfecfec36b30",
       "name": "operation:process",
       "kind": "INTERNAL",
-      "startTime": 1766788656662,
-      "endTime": 1766788656667.8298,
-      "duration": 5.829833,
+      "startTime": 1767808091482,
+      "endTime": 1767808091487.5493,
+      "duration": 5.549291,
       "resource": {
         "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
+        "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
+        "test.run.id": "1767808091463-ja71lg4"
       },
       "attributes": {
         "operation.type": "processing",
@@ -528,18 +71,18 @@
       "events": []
     },
     {
-      "traceId": "c320d9495c6a7d19836e91c69b19aa9d",
-      "spanId": "925a3ef7f183b628",
+      "traceId": "4588414d96fe0ac3298c983abd53dd74",
+      "spanId": "d4cdc0584e7da0bf",
       "name": "test:nested-spans",
       "kind": "INTERNAL",
-      "startTime": 1766788656656,
-      "endTime": 1766788656667.5854,
-      "duration": 11.585416,
+      "startTime": 1767808091476,
+      "endTime": 1767808091487.1155,
+      "duration": 11.115375,
       "resource": {
         "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
+        "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
+        "test.run.id": "1767808091463-ja71lg4"
       },
       "attributes": {
         "test.type": "nested"
@@ -550,18 +93,18 @@
       "events": []
     },
     {
-      "traceId": "7da844e11f92c33513afb079689f6911",
-      "spanId": "b54aa43f1be0d185",
+      "traceId": "a97709514d22df2b491b89d02c7fc0b0",
+      "spanId": "5cbd8eddd61c822b",
       "name": "child:computation",
       "kind": "INTERNAL",
-      "startTime": 1766788656668,
-      "endTime": 1766788656673.4453,
-      "duration": 5.445375,
+      "startTime": 1767808091488,
+      "endTime": 1767808091493.5522,
+      "duration": 5.552125,
       "resource": {
         "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
+        "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
+        "test.run.id": "1767808091463-ja71lg4"
       },
       "attributes": {
         "computation.type": "example"
@@ -572,18 +115,18 @@
       "events": []
     },
     {
-      "traceId": "e4ee5142612c5b668811de23325b75a9",
-      "spanId": "157edaacb138a922",
+      "traceId": "abd0dc848f3c0b3cd7a16ea9658629c1",
+      "spanId": "403cb1ad913350e9",
       "name": "test:manual-span",
       "kind": "INTERNAL",
-      "startTime": 1766788656668,
-      "endTime": 1766788656673.5474,
-      "duration": 5.54725,
+      "startTime": 1767808091488,
+      "endTime": 1767808091493.6309,
+      "duration": 5.630916,
       "resource": {
         "service.name": "principal-view-core-tests",
-        "service.version": "0.5.15",
+        "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1766788656512-kukjoxs"
+        "test.run.id": "1767808091463-ja71lg4"
       },
       "attributes": {
         "manual": true

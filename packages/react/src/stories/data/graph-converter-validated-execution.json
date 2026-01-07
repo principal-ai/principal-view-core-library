@@ -2,7 +2,7 @@
   {
     "id": "span-1",
     "name": "graph conversion with validation",
-    "startTime": 1767807940472,
+    "startTime": 1767809672129,
     "attributes": {
       "span.kind": "test.case",
       "test.name": "graph conversion with validation",
@@ -12,7 +12,7 @@
     },
     "events": [
       {
-        "time": 1767807940472,
+        "time": 1767809672129,
         "name": "conversion.started",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -22,7 +22,7 @@
         }
       },
       {
-        "time": 1767807940472,
+        "time": 1767809672129,
         "name": "conversion.processingNodes",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -31,7 +31,7 @@
         }
       },
       {
-        "time": 1767807940472,
+        "time": 1767809672129,
         "name": "conversion.processingEdges",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -40,7 +40,7 @@
         }
       },
       {
-        "time": 1767807940472,
+        "time": 1767809672129,
         "name": "conversion.complete",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -52,7 +52,7 @@
       }
     ],
     "status": "OK",
-    "endTime": 1767807940472,
+    "endTime": 1767809672129,
     "duration": 0
   }
 ]
