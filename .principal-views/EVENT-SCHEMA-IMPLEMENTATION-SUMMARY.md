@@ -210,7 +210,7 @@ test('should emit correct events', () => {
 - Easy to understand execution flow
 
 ### 2. Type Safety
-- Compile-time validation (future: TypeScript codegen)
+- Compile-time validation (TypeScript codegen implemented - see CODE-GENERATION-GUIDE.md)
 - Runtime validation catches bugs early
 - Prevents telemetry drift
 
@@ -252,8 +252,10 @@ $ bun test packages/core/test/event-validation.test.ts
 
 ## Next Steps
 
-Potential enhancements:
-1. **TypeScript Codegen**: Generate types from canvas schemas
+Completed enhancements:
+1. ✅ **TypeScript Codegen**: Implemented - see CODE-GENERATION-GUIDE.md
+
+Potential future enhancements:
 2. **Zod Integration**: Use Zod for more powerful validation
 3. **IDE Support**: Autocomplete for event names/attributes
 4. **Coverage Reports**: Which events are never emitted

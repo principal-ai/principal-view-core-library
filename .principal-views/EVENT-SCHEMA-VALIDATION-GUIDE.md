@@ -337,9 +337,12 @@ cat packages/react/src/stories/data/graph-converter-validated-execution.json
 5. **Keep events focused**: Each event should represent a single meaningful moment
 6. **Use consistent naming**: `phase.action` pattern (e.g., `conversion.started`, `validation.complete`)
 
+## Implemented Features
+
+- ✅ TypeScript type generation from canvas schemas - see CODE-GENERATION-GUIDE.md
+
 ## Future Enhancements
 
-- TypeScript type generation from canvas schemas
 - Zod schema generation for runtime validation
 - IDE autocomplete for event names and attributes
 - Schema visualization in Storybook
