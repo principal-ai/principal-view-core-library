@@ -318,7 +318,7 @@ async function exampleWithValidator() {
 
   // Load canvas with schema
   const canvas = JSON.parse(
-    fs.readFileSync('.principal-views/graph-converter-execution.canvas', 'utf-8')
+    fs.readFileSync('.principal-views/graph-converter-execution.otel.canvas', 'utf-8')
   );
 
   const validator = new EventValidator(canvas);

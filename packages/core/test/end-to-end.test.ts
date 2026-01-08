@@ -18,7 +18,7 @@ import type { ExtendedCanvas } from '../src/types/canvas';
 import { startTestSpan, createValidatedSpanEmitter, clearSpans } from './otel-setup';
 
 // Load canvas with event schemas
-const canvasPath = path.join(__dirname, '../../../.principal-views/graph-converter-execution.canvas');
+const canvasPath = path.join(__dirname, '../../../.principal-views/graph-converter-execution.otel.canvas');
 const canvas: ExtendedCanvas = JSON.parse(fs.readFileSync(canvasPath, 'utf-8'));
 
 describe('End-to-End: Canvas → Types → Validation → Emission', () => {

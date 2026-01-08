@@ -318,7 +318,7 @@ function handleEvent(event: GraphConverter.Event) {
 import { EventValidator, createValidatedEmitter } from '@principal-ai/principal-view-core';
 import type { GraphConverter, NodeEmitterByName } from '@generated/graph-converter-execution.types';
 
-const canvas = loadCanvas('.principal-views/graph-converter-execution.canvas');
+const canvas = loadCanvas('.principal-views/graph-converter-execution.otel.canvas');
 const validator = new EventValidator(canvas);
 
 // Both type-safe AND runtime-validated

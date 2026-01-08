@@ -218,7 +218,7 @@ export class GraphConverter {
 ```typescript
 // test/GraphConverter.test.ts
 test('should emit correct telemetry events', () => {
-  const canvas = loadCanvas('graph-converter-execution.canvas');
+  const canvas = loadCanvas('graph-converter-execution.otel.canvas');
   const span = startTestSpan('telemetry validation');
   const emit = createValidatedSpanEmitter(canvas, 'graph-converter', span, {
     strict: true, // Strict in tests!
@@ -314,7 +314,7 @@ Events emitted in production are validated in tests:
 
 ## Example: Graph Converter
 
-See `.principal-views/graph-converter-execution.canvas` for a complete example with event schemas.
+See `.principal-views/graph-converter-execution.otel.canvas` for a complete example with event schemas.
 
 Run the validation tests:
 

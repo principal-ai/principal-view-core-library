@@ -347,6 +347,7 @@ const ALLOWED_CANVAS_FIELDS = {
     'name',
     'description',
     'otel',
+    'events',
     'shape',
     'icon',
     'fill',
@@ -469,6 +470,59 @@ function findSimilarField(field: string, allowedFields: string[]): string | null
     }
   }
   return null;
+}
+
+/**
+ * Check if a canvas has OTEL-related features
+ * Returns true if the canvas contains any of:
+ * 1. Nodes with pv.otel extension (kind, category)
+ * 2. Event schemas (pv.events with validation)
+ * 3. Canvas scope/audit config (OTEL log routing)
+ * 4. Resource matching for OTEL logs
+ */
+function hasOtelFeatures(canvas: unknown): boolean {
+  if (!canvas || typeof canvas !== 'object') {
+    return false;
+  }
+
+  const c = canvas as Record<string, unknown>;
+
+  // Check for canvas-level scope or audit config
+  if (c.pv && typeof c.pv === 'object') {
+    const pv = c.pv as Record<string, unknown>;
+    if (pv.scope !== undefined || pv.audit !== undefined) {
+      return true;
+    }
+  }
+
+  // Check nodes for OTEL features
+  if (Array.isArray(c.nodes)) {
+    for (const node of c.nodes) {
+      if (node && typeof node === 'object') {
+        const n = node as Record<string, unknown>;
+        if (n.pv && typeof n.pv === 'object') {
+          const nodePv = n.pv as Record<string, unknown>;
+
+          // Check for pv.otel extension
+          if (nodePv.otel !== undefined) {
+            return true;
+          }
+
+          // Check for event schemas (pv.events)
+          if (nodePv.events !== undefined) {
+            return true;
+          }
+
+          // Check for resourceMatch (OTEL log routing)
+          if (nodePv.resourceMatch !== undefined) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -1032,6 +1086,28 @@ function validateCanvas(
           }
         }
       }
+    });
+  }
+
+  // Validate OTEL canvas naming convention
+  const hasOtel = hasOtelFeatures(canvas);
+  const isOtelCanvas = filePath.endsWith('.otel.canvas');
+
+  if (hasOtel && !isOtelCanvas) {
+    issues.push({
+      type: 'error',
+      message:
+        'Canvas contains OTEL features but does not use .otel.canvas naming convention',
+      suggestion:
+        'Rename file to use .otel.canvas extension (e.g., "graph-name.otel.canvas")',
+    });
+  } else if (!hasOtel && isOtelCanvas) {
+    issues.push({
+      type: 'warning',
+      message:
+        'Canvas uses .otel.canvas naming but does not contain any OTEL features',
+      suggestion:
+        'Either add OTEL features (pv.otel, pv.events, pv.scope, pv.audit, resourceMatch) or rename to .canvas',
     });
   }
 

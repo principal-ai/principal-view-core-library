@@ -96,7 +96,7 @@ emit('conversion.started', {
 });
 ```
 
-### 4. Example Canvas (`.principal-views/graph-converter-execution.canvas`)
+### 4. Example Canvas (`.principal-views/graph-converter-execution.otel.canvas`)
 
 Real-world example with event schemas for:
 - `graph-converter` node: 5 event types
@@ -229,7 +229,7 @@ test('should emit correct events', () => {
 ### Added
 - `packages/core/src/telemetry/event-validator.ts` - Validation engine
 - `packages/core/test/event-validation.test.ts` - Test suite
-- `.principal-views/graph-converter-execution.canvas` - Example canvas
+- `.principal-views/graph-converter-execution.otel.canvas` - Example canvas
 - `.principal-views/EVENT-SCHEMA-VALIDATION-GUIDE.md` - User guide
 - `.principal-views/EVENT-SCHEMA-IMPLEMENTATION-SUMMARY.md` - This file
 - `packages/react/src/stories/ValidatedExecution.stories.tsx` - Storybook demo

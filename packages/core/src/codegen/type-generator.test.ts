@@ -9,7 +9,7 @@ import { generateTypes, TypeScriptGenerator } from './type-generator';
 import type { ExtendedCanvas } from '../types/canvas';
 
 // Load the example canvas
-const canvasPath = path.join(__dirname, '../../../../.principal-views/graph-converter-execution.canvas');
+const canvasPath = path.join(__dirname, '../../../../.principal-views/graph-converter-execution.otel.canvas');
 const canvas: ExtendedCanvas = JSON.parse(fs.readFileSync(canvasPath, 'utf-8'));
 
 describe('TypeScript Type Generator', () => {

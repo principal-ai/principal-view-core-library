@@ -1,80 +1,419 @@
-# Visual Validation Framework
+# Principal View
 
-A configuration-driven, event-based graph visualization framework for real-time system monitoring and test validation.
+**Visual architecture documentation that stays in sync with your code.**
 
-## Architecture
+Principal View helps you create and maintain visual system architecture diagrams using the [JSON Canvas](https://jsoncanvas.org/) format. Define your architecture visually in `.canvas` files, then use the CLI to validate that your diagrams match your actual codebase structure.
 
-This is a monorepo containing two packages:
+## Why Principal View?
 
-### 📦 Packages
+- **Visual-First**: Create architecture diagrams using any JSON Canvas compatible tool (Obsidian, etc.)
+- **Always Up-to-Date**: CLI validates that your diagrams match your actual code structure
+- **Configuration-Driven**: Define components, connections, and validation rules in `.canvas` files
+- **Developer-Friendly**: Integrates with your workflow via CLI, git hooks, and CI/CD
+- **Framework-Agnostic**: Works with any codebase - Node.js, TypeScript, Python, Go, etc.
 
-#### `@principal-ai/visual-validation-core`
+## Quick Start
 
-Core logic library - **framework-agnostic**
+### No Installation Required
 
-- Type definitions for graph configurations, events, and validation
-- Event processing engine
-- Validation engine with rule checking
-- Graph state management
-- Test instrumentation helpers
+Use `npx` to run commands without installing:
 
-**Zero UI dependencies** - can be used in Node.js, tests, or any JavaScript environment.
+```bash
+npx @principal-ai/principal-view-cli --help
+```
 
-#### `@principal-ai/visual-validation-react`
+The CLI is available via the `privu` or `principal-view` commands.
 
-React UI **component library** (building blocks)
+**Optional**: Install globally for shorter commands:
 
-- `GraphRenderer` - Graph visualization component
-- `EventLog` - Event log component
-- `MetricsDashboard` - Metrics display component
-- `GenericNode` / `GenericEdge` - Configurable renderers
+```bash
+npm install -g @principal-ai/principal-view-cli
+# Then use: privu --help
+```
 
-**Note:** This is a component library. The actual "panel" application should be built separately using these components (e.g., using a panel starter project).
+### Initialize Your Project
 
-Depends on `@principal-ai/visual-validation-core`.
+```bash
+# Create .principal-views folder with template files
+npx @principal-ai/principal-view-cli init
+
+# Or create a specific canvas file
+npx @principal-ai/principal-view-cli create --name my-architecture
+```
+
+This creates a `.principal-views/` folder in your project with starter `.canvas` files.
+
+### Create Your Architecture
+
+Edit your `.canvas` file in any JSON Canvas compatible editor (like Obsidian) or directly in JSON:
+
+```json
+{
+  "nodes": [
+    {
+      "id": "api-server",
+      "type": "custom",
+      "x": 0,
+      "y": 0,
+      "width": 200,
+      "height": 100,
+      "vv": {
+        "nodeType": "service",
+        "shape": "hexagon"
+      }
+    }
+  ],
+  "edges": [],
+  "vv": {
+    "name": "my-architecture",
+    "version": "1.0.0"
+  }
+}
+```
+
+### Validate Your Architecture
+
+```bash
+# Validate all .canvas files
+npx @principal-ai/principal-view-cli validate
+
+# Check configuration health
+npx @principal-ai/principal-view-cli doctor
+
+# List all canvas files
+npx @principal-ai/principal-view-cli list
+```
+
+## CLI Commands
+
+All commands can be run with `npx @principal-ai/principal-view-cli` (or `privu` if installed globally).
+
+### `init`
+
+Initialize your project with a `.principal-views/` folder and template files:
+
+```bash
+npx @principal-ai/principal-view-cli init                    # Create default structure
+npx @principal-ai/principal-view-cli init --name my-app      # Custom canvas name
+npx @principal-ai/principal-view-cli init --force            # Overwrite existing files
+```
+
+Sets up git hooks for automatic validation on commit.
+
+### `create`
+
+Create a new canvas file:
+
+```bash
+npx @principal-ai/principal-view-cli create --name my-architecture
+npx @principal-ai/principal-view-cli create --name api-design --force
+```
+
+### `validate`
+
+Validate `.canvas` configuration files:
+
+```bash
+npx @principal-ai/principal-view-cli validate                      # Validate all .canvas files
+npx @principal-ai/principal-view-cli validate path/to/file.canvas  # Validate specific file
+npx @principal-ai/principal-view-cli validate "**/*.canvas"        # Glob pattern
+npx @principal-ai/principal-view-cli validate --quiet              # Only show errors
+npx @principal-ai/principal-view-cli validate --json               # JSON output for CI/CD
+```
+
+**Validation checks:**
+- Required `vv` extension with name and version
+- All nodes have required fields (id, type, x, y, width, height)
+- Custom node types have valid `vv.nodeType` and `vv.shape`
+- Edge references point to existing nodes
+- Edge types reference defined edge type definitions
+
+### `doctor`
+
+Health check for your architecture configuration:
+
+```bash
+npx @principal-ai/principal-view-cli doctor                  # Full health check
+npx @principal-ai/principal-view-cli doctor --quiet          # Only warnings and errors
+npx @principal-ai/principal-view-cli doctor --errors-only    # For CI/CD pipelines
+npx @principal-ai/principal-view-cli doctor --json           # JSON output
+```
+
+Checks for configuration staleness and validates source patterns.
+
+### `lint`
+
+Lint configuration files with custom rules:
+
+```bash
+npx @principal-ai/principal-view-cli lint                    # Lint all files
+npx @principal-ai/principal-view-cli lint --quiet            # Only show errors
+npx @principal-ai/principal-view-cli lint --fix              # Auto-fix issues
+```
+
+Configure rules in `.privurc` file.
+
+### `list` (alias: `ls`)
+
+List all canvas files in your project:
+
+```bash
+npx @principal-ai/principal-view-cli list                    # List .principal-views/ files
+npx @principal-ai/principal-view-cli ls --all                # Search all directories
+npx @principal-ai/principal-view-cli ls --json               # JSON output
+```
+
+### `schema`
+
+Display canvas format documentation:
+
+```bash
+npx @principal-ai/principal-view-cli schema                  # Overview
+npx @principal-ai/principal-view-cli schema nodes            # Node types and shapes
+npx @principal-ai/principal-view-cli schema edges            # Edge properties
+npx @principal-ai/principal-view-cli schema vv               # Visual Validation extensions
+npx @principal-ai/principal-view-cli schema examples         # Complete examples
+```
+
+### `hooks`
+
+Manage git hooks for validation:
+
+```bash
+npx @principal-ai/principal-view-cli hooks install           # Install pre-commit hook
+npx @principal-ai/principal-view-cli hooks uninstall         # Remove pre-commit hook
+```
+
+## Canvas File Format
+
+Principal View uses the [JSON Canvas](https://jsoncanvas.org/) format with Visual Validation extensions. This means your architecture diagrams are compatible with tools like Obsidian while adding validation capabilities.
+
+### Basic Structure
+
+```json
+{
+  "nodes": [...],
+  "edges": [...],
+  "vv": {
+    "name": "my-architecture",
+    "version": "1.0.0"
+  }
+}
+```
+
+### Node Types
+
+**Standard types** (no additional metadata required):
+- `text` - Text content
+- `group` - Container for other nodes
+- `file` - File reference
+- `link` - URL link
+
+**Custom types** require `vv` extension:
+
+```json
+{
+  "id": "service-1",
+  "type": "custom",
+  "x": 0,
+  "y": 0,
+  "width": 200,
+  "height": 100,
+  "vv": {
+    "nodeType": "microservice",
+    "shape": "hexagon",
+    "color": "#3498db"
+  }
+}
+```
+
+**Available shapes:** `circle`, `rectangle`, `hexagon`, `diamond`, `custom`
+
+### Edge Types
+
+Define reusable edge styles:
+
+```json
+{
+  "vv": {
+    "name": "my-architecture",
+    "version": "1.0.0",
+    "edgeTypes": {
+      "data-flow": {
+        "style": "dashed",
+        "color": "#3498db",
+        "width": 2,
+        "animated": true
+      },
+      "api-call": {
+        "style": "solid",
+        "color": "#2ecc71",
+        "width": 3
+      }
+    }
+  }
+}
+```
+
+Use in edges:
+
+```json
+{
+  "id": "edge-1",
+  "fromNode": "service-1",
+  "toNode": "service-2",
+  "vv": {
+    "edgeType": "api-call"
+  }
+}
+```
+
+### Component Library
+
+Define reusable node and edge components in `library.yaml`:
+
+```yaml
+nodeComponents:
+  api-service:
+    icon: Server
+    color: '#3498db'
+    shape: hexagon
+    size:
+      width: 200
+      height: 120
+
+edgeComponents:
+  http-request:
+    style: solid
+    color: '#2ecc71'
+    animated: false
+```
+
+Reference components in your canvas files using the `vv.nodeType` or `vv.edgeType` fields.
+
+## CI/CD Integration
+
+Integrate Principal View validation into your CI/CD pipeline:
+
+### GitHub Actions
+
+```yaml
+name: Validate Architecture
+
+on: [push, pull_request]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Validate architecture
+        run: npx @principal-ai/principal-view-cli validate --json
+      - name: Health check
+        run: npx @principal-ai/principal-view-cli doctor --errors-only
+```
+
+### Pre-commit Hook
+
+Automatically installed with `npx @principal-ai/principal-view-cli init` or manually:
+
+```bash
+npx @principal-ai/principal-view-cli hooks install
+```
+
+This runs validation on staged `.canvas` files before each commit.
+
+## Advanced Usage
+
+### Programmatic API
+
+For advanced use cases, you can use the core packages programmatically:
+
+#### Core Package (`@principal-ai/visual-validation-core`)
+
+Framework-agnostic core library with zero UI dependencies:
+
+```typescript
+import {
+  EventProcessor,
+  ValidationEngine,
+  GraphInstrumentationHelper,
+} from '@principal-ai/visual-validation-core';
+
+// Load and parse canvas files
+const canvas = JSON.parse(readFileSync('.principal-views/my-arch.canvas', 'utf8'));
+
+// Create event processor for runtime validation
+const processor = new EventProcessor(canvas);
+
+// Use in tests or monitoring
+const helper = new GraphInstrumentationHelper(canvas, (event) => {
+  const result = processor.processEvent(event);
+  if (!result.validation.isValid) {
+    console.error('Validation failed:', result.validation.errors);
+  }
+});
+
+helper.emitNodeCreated('service-1', 'microservice', { status: 'running' });
+```
+
+#### React Package (`@principal-ai/visual-validation-react`)
+
+React component library for building visualization panels:
+
+```typescript
+import { GraphRenderer } from '@principal-ai/visual-validation-react';
+
+function ArchitectureViewer({ canvas }) {
+  return (
+    <GraphRenderer
+      configuration={canvas}
+      configName="my-architecture"
+      nodes={canvas.nodes}
+      edges={canvas.edges}
+    />
+  );
+}
+```
+
+See the [packages README files](./packages/) for detailed API documentation.
+
+## Features
+
+- ✅ **JSON Canvas Compatible** - Works with Obsidian and other JSON Canvas tools
+- ✅ **CLI-First** - Complete command-line interface for validation and management
+- ✅ **Multi-config Support** - Store multiple architecture diagrams in `.principal-views/`
+- ✅ **Validation Engine** - Strict validation of canvas files with detailed error messages
+- ✅ **Component Library** - Reusable node and edge components via `library.yaml`
+- ✅ **Git Hooks** - Automatic validation on commit
+- ✅ **CI/CD Ready** - JSON output for pipeline integration
+- ✅ **Linting & Auto-fix** - Configurable rules with `.privurc`
+- ✅ **TypeScript Support** - Full type definitions for programmatic usage
+- ✅ **Framework Agnostic** - Core library works with any JavaScript environment
+- ✅ **React Components** - Optional visualization components for building panels
 
 ## Project Structure
 
 ```
-visual-validation-core-library/
-├── .principal-views/                           # Configuration folder (v0.3.0+)
-│   ├── simple-service.yaml         # Example: Basic architecture
-│   ├── microservices.yaml          # Example: Distributed system
-│   ├── data-pipeline.yaml          # Example: ETL pipeline
-│   ├── test-validation.yaml        # Example: Test validation
-│   └── README.md                   # Configuration guide
-├── package.json                    # Workspace root
-├── tsconfig.base.json              # Shared TypeScript config
+principal-view/
+├── .principal-views/           # Your architecture canvas files
+│   ├── my-architecture.canvas
+│   ├── library.yaml           # Optional component library
+│   └── .privurc               # Linting configuration
 ├── packages/
-│   ├── core/                       # Logic library
-│   │   ├── src/
-│   │   │   ├── types/              # TypeScript type definitions
-│   │   │   ├── helpers/            # GraphInstrumentationHelper
-│   │   │   ├── utils/              # PathMatcher, GraphConverter, YamlParser
-│   │   │   ├── EventProcessor.ts   # Event processing engine
-│   │   │   ├── ValidationEngine.ts # Validation & anomaly detection
-│   │   │   ├── ConfigurationLoader.ts # Multi-config loader (v0.3.0+)
-│   │   │   └── index.ts            # Public API exports
-│   │   └── package.json
-│   └── react/                      # React UI library
-│       ├── src/
-│       │   ├── components/         # React components
-│       │   │   ├── GraphRenderer.tsx       # Main graph component
-│       │   │   ├── ConfigurationSelector.tsx # Config switcher (v0.3.0+)
-│       │   │   ├── EventLog.tsx            # Event log
-│       │   │   └── MetricsDashboard.tsx    # Metrics display
-│       │   ├── nodes/              # Node renderers
-│       │   ├── edges/              # Edge renderers
-│       │   ├── hooks/              # React hooks
-│       │   ├── stories/            # Storybook stories
-│       │   └── index.ts            # Public API exports
-│       └── package.json
+│   ├── cli/                   # CLI tool (privu)
+│   ├── core/                  # Core validation engine
+│   ├── react/                 # React visualization components
+│   └── logger/                # Logging utilities
 └── README.md
 ```
 
-## Getting Started
+## Development
 
-### Installation
+Contributing to Principal View? Here's how to set up the development environment:
 
 ```bash
 # Install dependencies
@@ -83,282 +422,49 @@ bun install
 # Build all packages
 bun run build
 
-# Or build individually
-bun run build:core
-bun run build:react
-```
-
-### Development
-
-```bash
 # Watch mode for development
 bun run dev:core
 bun run dev:react
 
-# Testing
-bun run test              # Run all tests
-bun run test:core         # Run core package tests only
-bun run test:react        # Run react package tests only
-bun run test:watch        # Run tests in watch mode
-bun run test:coverage     # Run tests with coverage
+# Run tests
+bun test
+bun run test:coverage
 
-# Type checking
+# Type checking and linting
 bun run typecheck
-
-# Linting
 bun run lint
-bun run lint:fix
-
-# Formatting
 bun run format
-bun run format:check
 ```
 
-## Configuration
+### Package Development
 
-The framework uses a `.principal-views/` folder for storing multiple graph configurations. This allows you to have different visualizations for different aspects of your system.
-
-### Quick Start: Create a Configuration
-
-1. **Create the `.principal-views/` folder**:
-
-   ```bash
-   mkdir .principal-views
-   ```
-
-2. **Create a configuration file** (`.principal-views/my-system.yaml`):
-
-   ```yaml
-   metadata:
-     name: 'My System'
-     version: '1.0.0'
-     description: 'System architecture visualization'
-
-   nodeTypes:
-     server:
-       shape: hexagon
-       color: '#9C27B0'
-       dataSchema:
-         name: { type: string, required: true }
-       sources:
-         - 'src/server/**/*.ts'
-
-     user:
-       shape: circle
-       color: '#4CAF50'
-       dataSchema:
-         name: { type: string, required: true }
-       sources:
-         - 'src/client/**/*.ts'
-
-   edgeTypes:
-     connection:
-       style: solid
-       directed: true
-       color: '#666'
-
-   allowedConnections:
-     - from: user
-       to: server
-       via: connection
-   ```
-
-3. **See [.principal-views/README.md](./.principal-views/README.md)** for complete guide and examples.
-
----
-
-## Usage
-
-### Core Package (Logic Only)
-
-```typescript
-import {
-  EventProcessor,
-  ValidationEngine,
-  GraphInstrumentationHelper,
-  type GraphConfiguration,
-} from '@principal-ai/visual-validation-core';
-
-// Define your system configuration
-const config: GraphConfiguration = {
-  metadata: { name: 'My System', version: '1.0.0' },
-  nodeTypes: {
-    server: { shape: 'hexagon', color: '#9C27B0', dataSchema: {} },
-    user: { shape: 'circle', color: '#4CAF50', dataSchema: {} },
-  },
-  edgeTypes: {
-    connection: { style: 'solid', directed: true },
-  },
-  allowedConnections: [{ from: 'user', to: 'server', via: 'connection' }],
-};
-
-// Create event processor
-const processor = new EventProcessor(config);
-
-// Use instrumentation helper in tests
-const helper = new GraphInstrumentationHelper(config, (event) => {
-  const result = processor.processEvent(event);
-  console.log('Validation:', result.validation);
-});
-
-// Emit events from your tests
-helper.emitNodeCreated('server-1', 'server', { uptime: 0 });
-helper.emitNodeCreated('user-alice', 'user', { status: 'online' });
-helper.emitEdgeCreated('conn-1', 'connection', 'user-alice', 'server-1');
-```
-
-### React Package with Multi-Config Support (v0.3.0+)
-
-```typescript
-import {
-  GraphRenderer,
-  ConfigurationSelector,
-  EventLog,
-  MetricsDashboard,
-} from '@principal-ai/visual-validation-react';
-import { ConfigurationLoader, EventProcessor } from '@principal-ai/visual-validation-core';
-import { NodeFileSystemAdapter } from '@principal-ai/repository-abstraction';
-import { useState, useEffect } from 'react';
-
-function MyPanel() {
-  const [configs, setConfigs] = useState([]);
-  const [selectedConfig, setSelectedConfig] = useState('');
-  const [processor, setProcessor] = useState(null);
-
-  useEffect(() => {
-    // Load all configurations from .principal-views/ folder
-    const fsAdapter = new NodeFileSystemAdapter();
-    const loader = new ConfigurationLoader(fsAdapter);
-    const result = loader.loadAll(process.cwd());
-
-    setConfigs(result.configs);
-    if (result.configs.length > 0) {
-      setSelectedConfig(result.configs[0].name);
-      setProcessor(new EventProcessor(result.configs[0].config));
-    }
-  }, []);
-
-  const handleConfigChange = (configName) => {
-    const config = configs.find((c) => c.name === configName);
-    if (config) {
-      setSelectedConfig(configName);
-      setProcessor(new EventProcessor(config.config));
-    }
-  };
-
-  const config = configs.find((c) => c.name === selectedConfig);
-  const state = processor?.getGraphState();
-  const events = processor?.getEventHistory();
-
-  return (
-    <div>
-      {/* Configuration Selector */}
-      <ConfigurationSelector
-        configurations={configs}
-        selectedConfig={selectedConfig}
-        onConfigChange={handleConfigChange}
-        showDescription
-        showVersion
-      />
-
-      {/* Graph Visualization */}
-      {config && state && (
-        <GraphRenderer
-          configuration={config.config}
-          configName={selectedConfig}
-          nodes={Array.from(state.nodes.values())}
-          edges={Array.from(state.edges.values())}
-        />
-      )}
-
-      {/* Event Log & Metrics */}
-      <EventLog events={events} />
-      <MetricsDashboard metrics={currentMetrics} />
-    </div>
-  );
-}
-```
-
-**Note:** The above is an example of composing the components. In practice, you would build a complete "panel" application in a separate project that uses these components.
+- **`packages/cli/`** - The CLI tool built with Commander.js
+- **`packages/core/`** - Core validation logic (framework-agnostic)
+- **`packages/react/`** - React visualization components
+- **`packages/logger/`** - Shared logging utilities
 
 ## Documentation
 
-📚 **[Complete Documentation with Mermaid Diagrams](./docs/README.md)**
+- **[CLI Package README](./packages/cli/README.md)** - Detailed CLI documentation
+- **[Core Package README](./packages/core/README.md)** - Core API documentation
+- **[React Package README](./packages/react/README.md)** - React components guide
+- **[Configuration Docs](./docs/CONFIGURATION.md)** - Canvas format details
+- **[Examples](./docs/EXAMPLES.md)** - Complete architecture examples
 
-- **[Configuration Guide](./docs/CONFIGURATION.md)** - Define graph structure, node/edge types, validation rules
-- **[Event System Guide](./docs/EVENT_SYSTEM.md)** - Stream events to update graphs in real-time
-- **[Usage Guide](./docs/USAGE.md)** - Build complete panels with React components
+## Requirements
 
-Includes complete examples for e-commerce, data pipelines, and microservices with visual diagrams.
-
-## Storybook
-
-Interactive component examples:
-
-```bash
-bun run storybook
-```
-
-## Design Document
-
-For full design details, see [GENERIC_GRAPH_PANEL_DESIGN.md](../control-tower-core/GENERIC_GRAPH_PANEL_DESIGN.md)
-
-## Key Features
-
-- ✅ **Multi-config support** - Store multiple configurations in `.principal-views/` folder (v0.3.0+)
-- ✅ **Configuration switcher** - Switch between configs with `ConfigurationSelector` component
-- ✅ **Adapter pattern** - Environment-agnostic file operations via FileSystemAdapter
-- ✅ Configuration-driven graph definition
-- ✅ Event-based state changes
-- ✅ Validation engine with rule checking
-- ✅ Test instrumentation helpers
-- ✅ Real-time graph visualization with xyflow
-- ✅ Interactive nodes with custom shapes and states
-- ✅ Styled and animated edges
-- ✅ Auto-layout algorithms (hierarchical, circular, manual)
-- ✅ Anomaly detection & violation highlighting
-- ✅ Path-based log association (Milestone 1)
-- ✅ Action pattern matching (Milestone 2)
-- ⏳ Event log panel with filtering
-- ⏳ Metrics dashboard with charts
-- ⏳ Timeline/replay controls
-- ⏳ Export/import event streams
-
-## Status
-
-**Beta** - Core logic and graph visualization complete with test coverage.
-
-### Completed
-
-- ✅ Monorepo structure
-- ✅ Type definitions
-- ✅ EventProcessor with tests
-- ✅ ValidationEngine with tests
-- ✅ GraphInstrumentationHelper with tests
-- ✅ Package configuration
-- ✅ Test infrastructure (bun test)
-- ✅ Interactive graph visualization with xyflow
-- ✅ Custom node shapes (circle, rectangle, hexagon, diamond)
-- ✅ Custom edge styles (solid, dashed, dotted, animated)
-- ✅ Auto-layout algorithms (hierarchical, circular, manual)
-- ✅ Storybook examples
-- ✅ Comprehensive documentation with Mermaid diagrams
-- ✅ **Multi-config support with .principal-views/ folder (v0.3.0+)**
-- ✅ **ConfigurationLoader with FileSystemAdapter pattern**
-- ✅ **ConfigurationSelector React component**
-- ✅ **Path-based log association (Milestone 1)**
-- ✅ **Action pattern matching & edge activation (Milestone 2)**
-
-### TODO
-
-- 🔲 Complete event log panel with filtering and search
-- 🔲 Complete metrics dashboard with visual charts
-- 🔲 Add timeline/replay controls
-- 🔲 Increase test coverage for React components
+- Node.js >= 18
+- npm (for running npx commands)
 
 ## License
 
-MIT
+Apache-2.0
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/principal-ai/principal-view/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/principal-ai/principal-view/discussions)
+- **Documentation**: [Full Docs](./docs/README.md)
 
 
 

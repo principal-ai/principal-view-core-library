@@ -4,7 +4,7 @@ import { GraphRenderer } from '../components/GraphRenderer';
 import { TestEventPanel } from '../components/TestEventPanel';
 import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
-import executionCanvas from '../../../../.principal-views/graph-converter-execution.canvas';
+import executionCanvas from '../../../../.principal-views/graph-converter-execution.otel.canvas';
 import validatedSpans from './data/graph-converter-validated-execution.json';
 
 const meta = {
@@ -15,7 +15,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Demonstrates type-safe event emission with schema validation. The canvas defines expected events, and production code is validated against this schema. Shows how events match the schema defined in graph-converter-execution.canvas.',
+          'Demonstrates type-safe event emission with schema validation. The canvas defines expected events, and production code is validated against this schema. Shows how events match the schema defined in graph-converter-execution.otel.canvas.',
       },
     },
   },
@@ -47,7 +47,7 @@ type Story = StoryObj<typeof meta>;
  * - Field types (string, number, boolean, etc.)
  * - Field descriptions
  *
- * See `.principal-views/graph-converter-execution.canvas` for the full schema.
+ * See `.principal-views/graph-converter-execution.otel.canvas` for the full schema.
  */
 export const ExecutionFlow: Story = {
   args: {
@@ -113,7 +113,7 @@ export const FlowWithValidation: StoryObj = {
           </h3>
           <p style={{ margin: 0, fontSize: '12px', color: '#888' }}>
             Events validated against canvas schema. See{' '}
-            <code>.principal-views/graph-converter-execution.canvas</code>
+            <code>.principal-views/graph-converter-execution.otel.canvas</code>
           </p>
         </div>
         <TestEventPanel
