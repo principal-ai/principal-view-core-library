@@ -336,13 +336,14 @@ export function createLintCommand(): Command {
           expandDirectories: false,
         });
 
-        // Filter out library files, config files, and canvas files (canvas files use `validate` command)
+        // Filter out library files, config files, canvas files, and execution artifacts
         const configFiles = matchedFiles.filter((f) => {
           const name = basename(f).toLowerCase();
           const isLibraryFile = name.startsWith('library.');
           const isConfigFile = name.startsWith('.privurc');
           const isCanvasFile = f.toLowerCase().endsWith('.canvas');
-          return !isLibraryFile && !isConfigFile && !isCanvasFile;
+          const isExecutionArtifact = f.includes('__executions__/');
+          return !isLibraryFile && !isConfigFile && !isCanvasFile && !isExecutionArtifact;
         });
 
         if (configFiles.length === 0) {
