@@ -1,0 +1,408 @@
+{
+  "nodes": [
+    {
+      "id": "test-start",
+      "type": "text",
+      "text": "# Test Start\n\nInitialize test case for rules engine",
+      "x": -300,
+      "y": 0,
+      "width": 250,
+      "height": 120,
+      "pv": {
+        "nodeType": "test",
+        "name": "Test Start",
+        "description": "Initialize test case",
+        "shape": "hexagon",
+        "fill": "#8b5cf6",
+        "otel": {
+          "resourceMatch": {
+            "span.kind": "test.case"
+          }
+        },
+        "events": {
+          "test.started": {
+            "name": "Test Started",
+            "description": "Test case execution begins",
+            "attributes": {
+              "test.type": {
+                "type": "string",
+                "description": "Type of test (integration, unit, etc.)",
+                "required": true
+              },
+              "test.subject": {
+                "type": "string",
+                "description": "Subject under test",
+                "required": true
+              },
+              "test.expectation": {
+                "type": "string",
+                "description": "Expected outcome",
+                "required": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "engine-create",
+      "type": "text",
+      "text": "# Engine Creation\n\nCreate default rules engine with all builtin rules",
+      "x": 0,
+      "y": 0,
+      "width": 250,
+      "height": 140,
+      "pv": {
+        "nodeType": "factory",
+        "name": "Engine Creation",
+        "description": "Create rules engine instance",
+        "shape": "rectangle",
+        "fill": "#3b82f6",
+        "events": {
+          "engine.creating": {
+            "name": "Creating Engine",
+            "description": "Starting engine initialization",
+            "attributes": {
+              "engine.type": {
+                "type": "string",
+                "description": "Type of engine (default, custom)",
+                "required": true
+              }
+            }
+          },
+          "engine.created": {
+            "name": "Engine Created",
+            "description": "Engine initialized successfully",
+            "attributes": {
+              "engine.rules.count": {
+                "type": "number",
+                "description": "Number of registered rules",
+                "required": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "lint-start",
+      "type": "text",
+      "text": "# Lint Configuration\n\nBegin linting configuration against all rules",
+      "x": 300,
+      "y": 0,
+      "width": 250,
+      "height": 140,
+      "pv": {
+        "nodeType": "validator",
+        "name": "Lint Start",
+        "description": "Begin configuration validation",
+        "shape": "hexagon",
+        "fill": "#10b981",
+        "events": {
+          "lint.starting": {
+            "name": "Lint Starting",
+            "description": "Starting configuration validation",
+            "attributes": {
+              "config.node.types.count": {
+                "type": "number",
+                "description": "Number of node types in config",
+                "required": false
+              },
+              "config.edge.types.count": {
+                "type": "number",
+                "description": "Number of edge types in config",
+                "required": false
+              },
+              "config.connections.count": {
+                "type": "number",
+                "description": "Number of allowed connections",
+                "required": false
+              },
+              "config.has.violations": {
+                "type": "boolean",
+                "description": "Whether config is expected to have violations",
+                "required": false
+              },
+              "config.severity.override": {
+                "type": "string",
+                "description": "Severity overrides applied",
+                "required": false
+              },
+              "config.disabled.rules": {
+                "type": "string",
+                "description": "Comma-separated list of disabled rules",
+                "required": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "rule-execute",
+      "type": "text",
+      "text": "# Rule Execution\n\nExecute individual validation rules",
+      "x": 600,
+      "y": -100,
+      "width": 250,
+      "height": 160,
+      "pv": {
+        "nodeType": "processor",
+        "name": "Rule Execution",
+        "description": "Execute validation rule",
+        "shape": "rectangle",
+        "fill": "#f59e0b",
+        "otel": {
+          "resourceMatch": {
+            "rule.id": "*"
+          }
+        },
+        "events": {
+          "rule.completed": {
+            "name": "Rule Completed",
+            "description": "Rule execution finished",
+            "attributes": {
+              "rule.violations.count": {
+                "type": "number",
+                "description": "Number of violations found by this rule",
+                "required": true
+              },
+              "rule.duration.ms": {
+                "type": "number",
+                "description": "Rule execution time in milliseconds",
+                "required": true
+              }
+            }
+          },
+          "rule.error": {
+            "name": "Rule Error",
+            "description": "Rule execution failed",
+            "attributes": {
+              "error.message": {
+                "type": "string",
+                "description": "Error message",
+                "required": true
+              },
+              "error.type": {
+                "type": "string",
+                "description": "Error type/class",
+                "required": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "violations-detect",
+      "type": "text",
+      "text": "# Violations Detection\n\nAggregate violations from all rules",
+      "x": 600,
+      "y": 100,
+      "width": 250,
+      "height": 140,
+      "pv": {
+        "nodeType": "aggregator",
+        "name": "Violations Detection",
+        "description": "Collect and categorize violations",
+        "shape": "diamond",
+        "fill": "#ef4444",
+        "events": {
+          "violations.detected": {
+            "name": "Violations Detected",
+            "description": "Rule found violations",
+            "attributes": {
+              "rule.id": {
+                "type": "string",
+                "description": "ID of rule that found violations",
+                "required": true
+              },
+              "rule.category": {
+                "type": "string",
+                "description": "Category of rule",
+                "required": true
+              },
+              "violations.count": {
+                "type": "number",
+                "description": "Number of violations found",
+                "required": true
+              },
+              "violations.severity": {
+                "type": "string",
+                "description": "Severity of violations (error, warn)",
+                "required": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "lint-complete",
+      "type": "text",
+      "text": "# Lint Results\n\nFinalize validation results with statistics",
+      "x": 900,
+      "y": 0,
+      "width": 250,
+      "height": 180,
+      "pv": {
+        "nodeType": "output",
+        "name": "Lint Complete",
+        "description": "Validation complete with results",
+        "shape": "rectangle",
+        "fill": "#8b5cf6",
+        "events": {
+          "lint.completed": {
+            "name": "Lint Completed",
+            "description": "Configuration validation finished",
+            "attributes": {
+              "result.violations.total": {
+                "type": "number",
+                "description": "Total number of violations",
+                "required": true
+              },
+              "result.violations.errors": {
+                "type": "number",
+                "description": "Number of error-level violations",
+                "required": true
+              },
+              "result.violations.warnings": {
+                "type": "number",
+                "description": "Number of warning-level violations",
+                "required": true
+              },
+              "result.violations.fixable": {
+                "type": "number",
+                "description": "Number of auto-fixable violations",
+                "required": false
+              },
+              "violation.color.severity": {
+                "type": "string",
+                "description": "Severity override verification",
+                "required": false
+              },
+              "violation.color.disabled": {
+                "type": "boolean",
+                "description": "Whether color rule was disabled",
+                "required": false
+              },
+              "violation.sources.disabled": {
+                "type": "boolean",
+                "description": "Whether sources rule was disabled",
+                "required": false
+              }
+            }
+          },
+          "violations.analyzed": {
+            "name": "Violations Analyzed",
+            "description": "Specific violations examined",
+            "attributes": {
+              "violation.required-metadata.found": {
+                "type": "boolean",
+                "description": "Whether metadata violation was found",
+                "required": false
+              },
+              "violation.valid-color-format.found": {
+                "type": "boolean",
+                "description": "Whether color format violation was found",
+                "required": false
+              },
+              "violation.minimum-node-sources.found": {
+                "type": "boolean",
+                "description": "Whether sources violation was found",
+                "required": false
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "test-to-engine",
+      "fromNode": "test-start",
+      "toNode": "engine-create",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "initialize",
+      "pv": {
+        "edgeType": "control-flow",
+        "style": "solid"
+      }
+    },
+    {
+      "id": "engine-to-lint",
+      "fromNode": "engine-create",
+      "toNode": "lint-start",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "begin validation",
+      "pv": {
+        "edgeType": "control-flow",
+        "style": "solid"
+      }
+    },
+    {
+      "id": "lint-to-rules",
+      "fromNode": "lint-start",
+      "toNode": "rule-execute",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "execute rules",
+      "pv": {
+        "edgeType": "control-flow",
+        "style": "solid"
+      }
+    },
+    {
+      "id": "rules-to-violations",
+      "fromNode": "rule-execute",
+      "toNode": "violations-detect",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "label": "report violations",
+      "pv": {
+        "edgeType": "data-flow",
+        "style": "dashed"
+      }
+    },
+    {
+      "id": "violations-to-complete",
+      "fromNode": "violations-detect",
+      "toNode": "lint-complete",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "aggregate results",
+      "pv": {
+        "edgeType": "data-flow",
+        "style": "solid"
+      }
+    },
+    {
+      "id": "rules-to-complete",
+      "fromNode": "rule-execute",
+      "toNode": "lint-complete",
+      "fromSide": "right",
+      "toSide": "top",
+      "label": "all rules done",
+      "pv": {
+        "edgeType": "control-flow",
+        "style": "dotted"
+      }
+    }
+  ],
+  "pv": {
+    "version": "1.0.0",
+    "name": "Rules Engine Execution",
+    "description": "Execution flow for the Principal View rules engine validation system. This canvas shows how configuration files are validated through a series of rules, with violations detected and aggregated.",
+    "otel": {
+      "defaultScope": "span.kind",
+      "audit": {
+        "framework": "Principal View Core",
+        "version": "0.1.0",
+        "author": "Principal AI"
+      }
+    }
+  }
+}

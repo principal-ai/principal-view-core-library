@@ -37,6 +37,8 @@ export interface CustomNodeData extends Record<string, unknown> {
   editable?: boolean;
   // Whether tooltips are enabled (defaults to true)
   tooltipsEnabled?: boolean;
+  // Whether this node is highlighted (e.g., during execution playback)
+  isHighlighted?: boolean;
 }
 
 /**
@@ -59,6 +61,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
     animationDuration = 1000,
     editable = false,
     tooltipsEnabled = true,
+    isHighlighted = false,
   } = nodeProps;
 
   // Extract OTEL info and description for tooltip
@@ -189,7 +192,11 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
       alignItems: 'center',
       justifyContent: isGroup ? 'flex-start' : 'center',
       gap: '4px',
-      boxShadow: selected ? `0 0 0 2px ${strokeColor}` : '0 2px 4px rgba(0,0,0,0.1)',
+      boxShadow: isHighlighted
+        ? `0 0 0 3px #3b82f6, 0 0 20px rgba(59, 130, 246, 0.5)`
+        : selected
+        ? `0 0 0 2px ${strokeColor}`
+        : '0 2px 4px rgba(0,0,0,0.1)',
       transition: 'box-shadow 0.2s ease',
       animationDuration: animationType ? `${animationDuration}ms` : undefined,
       boxSizing: 'border-box' as const,

@@ -113,6 +113,12 @@ interface GraphRendererBaseProps {
    */
   showTooltips?: boolean;
 
+  /**
+   * Optional node ID to highlight (e.g., when playing back execution events).
+   * Highlighted nodes will have a special visual treatment.
+   */
+  highlightedNodeId?: string | null;
+
   /** Optional configuration name for identification (used with multi-config setups) */
   configName?: string;
 
@@ -323,6 +329,7 @@ interface GraphRendererInnerProps {
   showCenterIndicator?: boolean;
   showTooltips?: boolean;
   fitViewDuration?: number;
+  highlightedNodeId?: string | null;
   events?: GraphEvent[];
   onEventProcessed?: (event: GraphEvent) => void;
   editable?: boolean;
@@ -349,6 +356,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   showCenterIndicator = false,
   showTooltips = true,
   fitViewDuration = 200,
+  highlightedNodeId,
   events = [],
   onEventProcessed,
   editable = false,
@@ -1092,6 +1100,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           ...node.data,
           editable,
           tooltipsEnabled: showTooltips,
+          isHighlighted: highlightedNodeId === node.id,
           ...(animation
             ? {
                 animationType: animation.type,
@@ -1101,7 +1110,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         } as CustomNodeData,
       };
     });
-  }, [localNodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, editStateRef]);
+  }, [localNodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, highlightedNodeId, editStateRef]);
 
   const baseNodesKey = useMemo(() => {
     return nodes
@@ -1746,6 +1755,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     showCenterIndicator,
     showTooltips,
     fitViewDuration,
+    highlightedNodeId,
     events,
     onEventProcessed,
     editable,
@@ -1770,6 +1780,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           showCenterIndicator={showCenterIndicator}
           showTooltips={showTooltips}
           fitViewDuration={fitViewDuration}
+          highlightedNodeId={highlightedNodeId}
           events={events}
           onEventProcessed={onEventProcessed}
           editable={editable}

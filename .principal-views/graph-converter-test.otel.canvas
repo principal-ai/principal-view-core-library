@@ -1,0 +1,188 @@
+{
+  "nodes": [
+    {
+      "id": "test-setup",
+      "type": "text",
+      "text": "# Test Setup\n\nCreate test configuration",
+      "x": -300,
+      "y": 0,
+      "width": 250,
+      "height": 140,
+      "pv": {
+        "nodeType": "setup",
+        "name": "Test Setup",
+        "description": "Prepare test configuration and data",
+        "shape": "hexagon",
+        "fill": "#8b5cf6",
+        "otel": {
+          "resourceMatch": {
+            "span.kind": "test.case"
+          }
+        },
+        "events": {
+          "setup.started": {
+            "name": "Setup Started",
+            "description": "Begin test setup phase",
+            "attributes": {
+              "description": {
+                "type": "string",
+                "description": "Description of what is being set up",
+                "required": false
+              }
+            }
+          },
+          "setup.complete": {
+            "name": "Setup Complete",
+            "description": "Test setup completed successfully",
+            "attributes": {
+              "config.nodes": {
+                "type": "number",
+                "description": "Number of nodes in test config",
+                "required": false
+              },
+              "config.edges": {
+                "type": "number",
+                "description": "Number of edges in test config",
+                "required": false
+              },
+              "positions.defined": {
+                "type": "boolean",
+                "description": "Whether node positions are defined",
+                "required": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "graph-converter",
+      "type": "text",
+      "text": "# Graph Converter\n\nConvert configuration to graph nodes and edges",
+      "x": 0,
+      "y": 0,
+      "width": 280,
+      "height": 140,
+      "pv": {
+        "nodeType": "converter",
+        "name": "Graph Converter",
+        "description": "Converts configuration to graph structure",
+        "shape": "rectangle",
+        "fill": "#3b82f6",
+        "events": {
+          "execution.started": {
+            "name": "Execution Started",
+            "description": "Graph conversion begins",
+            "attributes": {
+              "action": {
+                "type": "string",
+                "description": "Name of the action being executed",
+                "required": true
+              }
+            }
+          },
+          "execution.complete": {
+            "name": "Execution Complete",
+            "description": "Graph conversion finished successfully",
+            "attributes": {
+              "result.nodes.count": {
+                "type": "number",
+                "description": "Number of nodes in result graph",
+                "required": true
+              },
+              "result.edges.count": {
+                "type": "number",
+                "description": "Number of edges in result graph",
+                "required": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "assertions",
+      "type": "text",
+      "text": "# Assertions\n\nVerify conversion results",
+      "x": 330,
+      "y": 0,
+      "width": 250,
+      "height": 160,
+      "pv": {
+        "nodeType": "validator",
+        "name": "Assertions",
+        "description": "Verify test results against expectations",
+        "shape": "diamond",
+        "fill": "#10b981",
+        "events": {
+          "assertion.started": {
+            "name": "Assertion Started",
+            "description": "Begin verifying results",
+            "attributes": {
+              "assertions": {
+                "type": "string",
+                "description": "Description of assertions being checked",
+                "required": true
+              }
+            }
+          },
+          "assertion.complete": {
+            "name": "Assertion Complete",
+            "description": "All assertions verified",
+            "attributes": {
+              "assertions.passed": {
+                "type": "number",
+                "description": "Number of assertions that passed",
+                "required": true
+              },
+              "assertions.failed": {
+                "type": "number",
+                "description": "Number of assertions that failed",
+                "required": true
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "setup-to-convert",
+      "fromNode": "test-setup",
+      "toNode": "graph-converter",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "config ready",
+      "pv": {
+        "edgeType": "data-flow",
+        "style": "solid"
+      }
+    },
+    {
+      "id": "convert-to-assert",
+      "fromNode": "graph-converter",
+      "toNode": "assertions",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "graph output",
+      "pv": {
+        "edgeType": "data-flow",
+        "style": "solid"
+      }
+    }
+  ],
+  "pv": {
+    "version": "1.0.0",
+    "name": "Graph Converter Tests",
+    "description": "Test execution flow for the GraphConverter component. This canvas visualizes the test lifecycle: setup test data, execute the converter, and verify results through assertions.",
+    "otel": {
+      "defaultScope": "span.kind",
+      "audit": {
+        "framework": "Principal View Core",
+        "version": "0.1.0",
+        "author": "Principal AI"
+      }
+    }
+  }
+}

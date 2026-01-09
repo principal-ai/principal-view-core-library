@@ -3,6 +3,7 @@
  * Central orchestrator for configuration validation rules
  */
 
+import { trace, context, type Span, SpanStatusCode } from '@opentelemetry/api';
 import type { GraphConfiguration } from '../types';
 import type { ComponentLibrary } from '../types/library';
 import type {
@@ -19,6 +20,9 @@ import type {
   RuleSeverity,
 } from './types';
 import { normalizeSeverity, isRuleDisabled } from './types';
+
+// Get tracer for instrumentation
+const tracer = trace.getTracer('principal-view-core');
 
 /**
  * Graph Rules Engine - validates GraphConfiguration against registered rules
@@ -81,47 +85,141 @@ export class GraphRulesEngine {
    * Lint a configuration against all enabled rules
    */
   async lint(configuration: GraphConfiguration, options?: LintOptions): Promise<GraphLintResult> {
-    const violations: GraphRuleViolation[] = [];
+    const span = tracer.startSpan('rules.lint', {
+      attributes: {
+        'lint.config.path': options?.configPath ?? 'unknown',
+        'lint.rules.total': this.rules.size,
+        'lint.library.provided': !!options?.library,
+      },
+    });
 
-    for (const [ruleId, rule] of this.rules) {
-      // Check if rule should be skipped
-      if (!this.shouldRunRule(rule, options)) {
-        continue;
-      }
+    try {
+      const violations: GraphRuleViolation[] = [];
+      let rulesExecuted = 0;
+      let rulesSkipped = 0;
 
-      // Build context for this rule
-      const context = this.buildRuleContext(configuration, rule, options);
+      span.addEvent('lint.started', {
+        'rules.registered': this.rules.size,
+      });
 
-      // Get effective severity
-      const effectiveSeverity = this.getEffectiveSeverity(rule, options);
-      if (effectiveSeverity === 'off') {
-        continue;
-      }
-
-      try {
-        // Execute rule check
-        const ruleViolations = await rule.check(context);
-
-        // Apply effective severity to all violations
-        for (const violation of ruleViolations) {
-          violation.severity = effectiveSeverity;
-          violations.push(violation);
+      for (const [ruleId, rule] of this.rules) {
+        // Check if rule should be skipped
+        if (!this.shouldRunRule(rule, options)) {
+          rulesSkipped++;
+          continue;
         }
-      } catch (error) {
-        // Rule execution error - report as a violation
-        violations.push({
-          ruleId,
-          severity: 'error',
-          message: `Rule "${ruleId}" threw an error: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-          impact: 'Rule could not complete validation',
-          fixable: false,
-        });
-      }
-    }
 
-    return this.buildResult(violations);
+        // Build context for this rule
+        const context = this.buildRuleContext(configuration, rule, options);
+
+        // Get effective severity
+        const effectiveSeverity = this.getEffectiveSeverity(rule, options);
+        if (effectiveSeverity === 'off') {
+          rulesSkipped++;
+          continue;
+        }
+
+        // Create child span for rule execution
+        // Note: Not using context propagation here to avoid Bun compatibility issues
+        const ruleSpan = tracer.startSpan('rule.execute', {
+          attributes: {
+            'rule.id': ruleId,
+            'rule.category': rule.category,
+            'rule.severity': effectiveSeverity,
+            'rule.name': rule.name,
+            'parent.span.id': span.spanContext().spanId,
+          },
+        });
+
+        try {
+          const ruleStartTime = Date.now();
+
+          // Execute rule check
+          const ruleViolations = await rule.check(context);
+
+          const ruleDuration = Date.now() - ruleStartTime;
+          rulesExecuted++;
+
+          // Apply effective severity to all violations
+          for (const violation of ruleViolations) {
+            violation.severity = effectiveSeverity;
+            violations.push(violation);
+          }
+
+          // Record rule completion event
+          ruleSpan.addEvent('rule.completed', {
+            'rule.violations.count': ruleViolations.length,
+            'rule.duration.ms': ruleDuration,
+          });
+
+          // If violations found, add event to parent span
+          if (ruleViolations.length > 0) {
+            span.addEvent('violations.detected', {
+              'rule.id': ruleId,
+              'rule.category': rule.category,
+              'violations.count': ruleViolations.length,
+              'violations.severity': effectiveSeverity,
+            });
+          }
+
+          ruleSpan.setStatus({ code: SpanStatusCode.OK });
+        } catch (error) {
+          // Rule execution error - report as a violation
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+
+          violations.push({
+            ruleId,
+            severity: 'error',
+            message: `Rule "${ruleId}" threw an error: ${errorMessage}`,
+            impact: 'Rule could not complete validation',
+            fixable: false,
+          });
+
+          ruleSpan.addEvent('rule.error', {
+            'error.message': errorMessage,
+            'error.type': error instanceof Error ? error.constructor.name : 'unknown',
+          });
+
+          ruleSpan.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: errorMessage,
+          });
+
+          span.addEvent('rule.execution.error', {
+            'rule.id': ruleId,
+            'error.message': errorMessage,
+          });
+        } finally {
+          ruleSpan.end();
+        }
+      }
+
+      const result = this.buildResult(violations);
+
+      // Record final statistics
+      span.addEvent('lint.completed', {
+        'lint.rules.executed': rulesExecuted,
+        'lint.rules.skipped': rulesSkipped,
+        'lint.violations.total': violations.length,
+        'lint.violations.errors': result.errorCount,
+        'lint.violations.warnings': result.warningCount,
+        'lint.violations.fixable': result.fixableCount,
+      });
+
+      span.setStatus({ code: SpanStatusCode.OK });
+      return result;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: errorMessage,
+      });
+      span.recordException(error instanceof Error ? error : new Error(errorMessage));
+      throw error;
+    } finally {
+      span.end();
+    }
   }
 
   /**
@@ -132,17 +230,48 @@ export class GraphRulesEngine {
     privuConfig: PrivuConfig,
     options?: Omit<LintOptions, 'ruleOptions' | 'severityOverrides'>
   ): Promise<GraphLintResult> {
-    // Convert VGC config rules to lint options
-    const { ruleOptions, severityOverrides, disabledRules } = this.parsePrivuConfigRules(
-      privuConfig.rules
-    );
-
-    return this.lint(configuration, {
-      ...options,
-      ruleOptions,
-      severityOverrides,
-      disabledRules: [...(options?.disabledRules ?? []), ...disabledRules],
+    const span = tracer.startSpan('rules.lintWithConfig', {
+      attributes: {
+        'config.path': options?.configPath ?? 'unknown',
+        'config.has.rules': !!privuConfig.rules,
+        'config.has.library': !!privuConfig.library,
+      },
     });
+
+    try {
+      span.addEvent('config.parsing');
+
+      // Convert VGC config rules to lint options
+      const { ruleOptions, severityOverrides, disabledRules } = this.parsePrivuConfigRules(
+        privuConfig.rules
+      );
+
+      span.addEvent('config.parsed', {
+        'config.rule.options.count': ruleOptions.size,
+        'config.severity.overrides.count': severityOverrides.size,
+        'config.disabled.rules.count': disabledRules.length,
+      });
+
+      const result = await this.lint(configuration, {
+        ...options,
+        ruleOptions,
+        severityOverrides,
+        disabledRules: [...(options?.disabledRules ?? []), ...disabledRules],
+      });
+
+      span.setStatus({ code: SpanStatusCode.OK });
+      return result;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: errorMessage,
+      });
+      span.recordException(error instanceof Error ? error : new Error(errorMessage));
+      throw error;
+    } finally {
+      span.end();
+    }
   }
 
   /**

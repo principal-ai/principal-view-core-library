@@ -92,8 +92,8 @@
       "id": "validation",
       "type": "text",
       "text": "# Validation\n\nValidates configuration structure",
-      "x": -400,
-      "y": 150,
+      "x": -477,
+      "y": -39,
       "width": 250,
       "height": 100,
       "pv": {
@@ -135,8 +135,8 @@
       "id": "graph-output",
       "type": "text",
       "text": "# Graph Output\n\nResulting graph structure",
-      "x": 100,
-      "y": 150,
+      "x": 225,
+      "y": -40,
       "width": 250,
       "height": 100,
       "pv": {
