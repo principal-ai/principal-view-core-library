@@ -52,7 +52,6 @@ type Story = StoryObj<typeof meta>;
 export const ExecutionFlow: Story = {
   args: {
     canvas: executionCanvas as ExtendedCanvas,
-    showMinimap: true,
     showControls: true,
   },
 };
@@ -68,7 +67,7 @@ export const ExecutionFlow: Story = {
  *
  * All events in this panel passed schema validation.
  */
-export const ValidatedEvents: StoryObj = {
+export const ValidatedEvents: Story = {
   render: () => (
     <div style={{ width: '800px', height: '100vh' }}>
       <TestEventPanel
@@ -93,14 +92,13 @@ export const ValidatedEvents: StoryObj = {
  *
  * This ensures production code emits events that match the architecture.
  */
-export const FlowWithValidation: StoryObj = {
+export const FlowWithValidation: Story = {
   render: () => (
     <div style={{ display: 'flex', width: '100%', height: '100%' }}>
       {/* Graph Visualization - Left Side */}
       <div style={{ flex: '0 0 60%', height: '100%', position: 'relative' }}>
         <GraphRenderer
           canvas={executionCanvas as ExtendedCanvas}
-          showMinimap={true}
           showControls={true}
         />
       </div>
@@ -136,7 +134,7 @@ export const FlowWithValidation: StoryObj = {
  * - Event descriptions
  * - Field schemas with types and requirements
  */
-export const CanvasSchema: StoryObj = {
+export const CanvasSchema: Story = {
   render: () => (
     <div
       style={{

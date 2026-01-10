@@ -411,7 +411,7 @@ function MultiConfigDemo() {
 
       {/* Graph visualization */}
       <div style={{ flex: 1 }}>
-        <GraphRenderer canvas={selectedConfig.canvas} showMinimap showControls showBackground />
+        <GraphRenderer canvas={selectedConfig.canvas} showControls showBackground />
       </div>
     </div>
   );

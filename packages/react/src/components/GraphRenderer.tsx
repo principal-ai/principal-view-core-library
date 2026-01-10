@@ -348,7 +348,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   edges: propEdges,
   violations = [],
   configName: _configName,
-  showMinimap = true,
+  showMinimap = false,
   showControls = true,
   showBackground = true,
   backgroundVariant = 'dots',
@@ -1247,8 +1247,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       });
     }
 
-    return converted.map((edge) => {
+    const mappedEdges = converted.map((edge) => {
       const animation = animationState.edgeAnimations[edge.id];
+      const isSelected = selectedEdgeIds.has(edge.id);
       return {
         ...edge,
         data: {
@@ -1262,9 +1263,20 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
               }
             : {}),
         } as CustomEdgeData,
+        // Add z-index to help with stacking (selected edges get higher values)
+        zIndex: isSelected ? 1000 : 0,
       };
     });
-  }, [edges, configuration, violations, animationState.edgeAnimations, showTooltips]);
+
+    // Sort edges so selected ones appear last (on top in SVG)
+    return mappedEdges.sort((a, b) => {
+      const aSelected = selectedEdgeIds.has(a.id);
+      const bSelected = selectedEdgeIds.has(b.id);
+      if (aSelected && !bSelected) return 1; // a comes after b (rendered on top)
+      if (!aSelected && bSelected) return -1; // b comes after a (rendered on top)
+      return 0; // maintain original order
+    });
+  }, [edges, configuration, violations, animationState.edgeAnimations, showTooltips, selectedEdgeIds]);
 
   // Fit view on mount and structure changes
   useEffect(() => {

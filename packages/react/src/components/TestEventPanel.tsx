@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useTheme } from '@principal-ade/industry-theme';
+import { HelpCircle } from 'lucide-react';
 
 interface SpanEvent {
   time: number;
@@ -31,6 +33,8 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
   currentEventIndex,
   highlightedPhase,
 }) => {
+  const { theme } = useTheme();
+  const [showHelp, setShowHelp] = useState(false);
   const currentSpan = spans[currentSpanIndex];
   const eventsUpToNow = currentSpan?.events.slice(0, currentEventIndex + 1) || [];
 
@@ -39,66 +43,127 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
       style={{
         width: '100%',
         height: '100%',
-        backgroundColor: '#1a1a1a',
-        color: '#ffffff',
+        backgroundColor: theme.colors.background,
+        color: theme.colors.text,
         padding: '20px',
-        fontFamily: 'monospace',
-        fontSize: '12px',
+        fontFamily: theme.fonts.monospace,
+        fontSize: '14px',
         overflow: 'auto',
+        boxSizing: 'border-box',
       }}
     >
-      <div style={{ fontWeight: 'bold', marginBottom: '15px', fontSize: '14px' }}>
-        📊 Wide Event Pattern - Code Journey
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
+        <div style={{ fontWeight: 'bold', fontSize: '18px' }}>
+          Wide Event Pattern - Code Journey
+        </div>
+        <button
+          onClick={() => setShowHelp(true)}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            color: theme.colors.textMuted,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = theme.colors.text;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = theme.colors.textMuted;
+          }}
+        >
+          <HelpCircle size={20} />
+        </button>
       </div>
-      <div style={{ fontSize: '10px', color: '#888', marginBottom: '15px' }}>
+      <div style={{ fontSize: '13px', color: theme.colors.textMuted, marginBottom: '15px' }}>
         Test: {currentSpan?.name || 'Loading...'}
-        <br />
-        Events: {eventsUpToNow.length} / {currentSpan?.events.length || 0}
       </div>
-      <div style={{ fontSize: '10px', color: '#a3a3a3', marginBottom: '20px', lineHeight: '1.5' }}>
-        Watch how execution flows through files:
-        <br />
-        <span style={{ color: '#60a5fa' }}>Blue = Test file</span>
-        {' • '}
-        <span style={{ color: '#4ade80' }}>Green → Code under test</span>
-      </div>
+
+      {/* Help Modal */}
+      {showHelp && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+          }}
+          onClick={() => setShowHelp(false)}
+        >
+          <div
+            style={{
+              backgroundColor: theme.colors.background,
+              color: theme.colors.text,
+              padding: '24px',
+              borderRadius: '8px',
+              maxWidth: '600px',
+              border: `1px solid ${theme.colors.border}`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '16px' }}>
+              How to Read This Panel
+            </div>
+            <div style={{ fontSize: '14px', marginBottom: '16px', lineHeight: '1.6' }}>
+              <p style={{ marginBottom: '12px' }}>
+                <strong>Watch how execution flows through files:</strong>
+              </p>
+              <ul style={{ marginLeft: '20px', marginBottom: '16px' }}>
+                <li style={{ marginBottom: '8px' }}>
+                  <span style={{ color: '#60a5fa' }}>Blue = Test file</span>
+                </li>
+                <li>
+                  <span style={{ color: '#4ade80' }}>Green → Code under test</span>
+                </li>
+              </ul>
+              <p style={{ marginBottom: '12px' }}>
+                <strong>Span Context (Static)</strong>
+              </p>
+              <pre
+                style={{
+                  background: theme.colors.surface,
+                  padding: '12px',
+                  borderRadius: '4px',
+                  fontSize: '13px',
+                  overflow: 'auto',
+                }}
+              >
+{`{
+  "test.file": "GraphConverter.test.ts",
+  "test.suite": "GraphConverter",
+  "test.result": "pass"
+}`}
+              </pre>
+            </div>
+            <button
+              onClick={() => setShowHelp(false)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: theme.colors.primary,
+                color: theme.colors.background,
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 500,
+              }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
 
       {currentSpan && (
         <>
-          {/* Span Attributes (static context) */}
-          <div style={{ marginBottom: '20px' }}>
-            <div
-              style={{
-                color: '#60a5fa',
-                fontWeight: 'bold',
-                marginBottom: '8px',
-                fontSize: '11px',
-              }}
-            >
-              Span Context (Static)
-            </div>
-            <pre
-              style={{
-                background: '#0d0d0d',
-                padding: '10px',
-                borderRadius: '4px',
-                margin: 0,
-                fontSize: '10px',
-                lineHeight: '1.5',
-              }}
-            >
-              {JSON.stringify(
-                {
-                  'test.file': currentSpan.attributes['test.file'],
-                  'test.suite': currentSpan.attributes['test.suite'],
-                  'test.result': currentSpan.attributes['test.result'],
-                },
-                null,
-                2
-              )}
-            </pre>
-          </div>
-
           {/* Event Timeline (context mutations) */}
           <div>
             <div
@@ -106,7 +171,7 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                 color: '#4ade80',
                 fontWeight: 'bold',
                 marginBottom: '8px',
-                fontSize: '11px',
+                fontSize: '15px',
               }}
             >
               Event Timeline (Context Mutations)
@@ -126,11 +191,11 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                   style={{
                     marginBottom: '12px',
                     paddingBottom: '12px',
-                    borderBottom: idx < eventsUpToNow.length - 1 ? '1px solid #333' : 'none',
+                    borderBottom: idx < eventsUpToNow.length - 1 ? `1px solid ${theme.colors.border}` : 'none',
                     opacity: highlightedPhase && !isHighlighted ? 0.4 : 1,
                     transition: 'opacity 0.2s ease',
                     transform: isHighlighted ? 'scale(1.02)' : 'scale(1)',
-                    backgroundColor: isHighlighted ? '#1e293b' : 'transparent',
+                    backgroundColor: isHighlighted ? theme.colors.surface : 'transparent',
                     padding: isHighlighted ? '8px' : '0',
                     borderRadius: '4px',
                   }}
@@ -141,20 +206,26 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       marginBottom: '4px',
+                      gap: '8px',
                     }}
                   >
-                    <div style={{ color: '#f59e0b', fontSize: '10px' }}>
+                    <div style={{ color: '#f59e0b', fontSize: '13px', flexShrink: 0 }}>
                       {idx + 1}. {event.name}
                     </div>
                     {filepath && (
                       <div
                         style={{
-                          fontSize: '9px',
+                          fontSize: '12px',
                           color: isCodeUnderTest ? '#4ade80' : '#60a5fa',
                           fontFamily: 'monospace',
                           background: isCodeUnderTest ? '#064e3b' : '#1e3a8a',
                           padding: '2px 6px',
                           borderRadius: '3px',
+                          flexShrink: 1,
+                          minWidth: 0,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
                         }}
                       >
                         {isCodeUnderTest && '→ '}
@@ -164,12 +235,14 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                   </div>
                   <pre
                     style={{
-                      background: '#0d0d0d',
+                      background: theme.colors.surface,
                       padding: '8px',
                       borderRadius: '4px',
                       margin: 0,
-                      fontSize: '9px',
+                      fontSize: '12px',
                       lineHeight: '1.4',
+                      overflow: 'auto',
+                      maxWidth: '100%',
                     }}
                   >
                     {JSON.stringify(
@@ -193,9 +266,9 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
         style={{
           marginTop: '20px',
           paddingTop: '15px',
-          borderTop: '1px solid #333',
-          fontSize: '10px',
-          color: '#888',
+          borderTop: `1px solid ${theme.colors.border}`,
+          fontSize: '13px',
+          color: theme.colors.textMuted,
         }}
       >
         <div style={{ marginBottom: '8px' }}>

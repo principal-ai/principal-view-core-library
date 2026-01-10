@@ -310,7 +310,6 @@ export const Default: Story = {
     canvas: multiDirectionalCanvas,
     width: '100%',
     height: '800px',
-    showMinimap: true,
     showControls: true,
     showBackground: true,
   },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
 import { TestEventPanel } from '../components/TestEventPanel';
@@ -183,156 +183,18 @@ const testExecutionCanvas: ExtendedCanvas = {
 };
 
 // ============================================================================
-// Convert Test Spans to Graph Events
-// ============================================================================
-
-function convertSpansToEvents(spans: typeof testSpans): GraphEvent[] {
-  const events: GraphEvent[] = [];
-  let time = 0;
-
-  spans.forEach((testSpan) => {
-    // Pulse test suite node at start of each test
-    events.push({
-      timestamp: time,
-      category: 'node',
-      operation: 'animate',
-      payload: {
-        nodeId: 'test-suite',
-        animation: { type: 'pulse', duration: 500 },
-      },
-    });
-    time += 600;
-
-    // Animate through events in the span
-    testSpan.events.forEach((event) => {
-      const eventName = event.name;
-
-      // Determine which phase based on event name
-      let nodeId = '';
-      let edgeId = '';
-
-      if (eventName.startsWith('setup.')) {
-        nodeId = 'setup-phase';
-        edgeId = 'suite-to-setup';
-      } else if (eventName.startsWith('execution.')) {
-        nodeId = 'execution-phase';
-        edgeId = 'setup-to-execution';
-      } else if (eventName.startsWith('assertion.')) {
-        nodeId = 'assertion-phase';
-        edgeId = 'execution-to-assertion';
-      }
-
-      // Animate edge when phase starts
-      if (eventName.endsWith('.started') && edgeId) {
-        events.push({
-          timestamp: time,
-          category: 'edge',
-          operation: 'animate',
-          payload: {
-            edgeId,
-            animation: { type: 'particle', duration: 500 },
-          },
-        });
-        time += 600;
-      }
-
-      // Pulse node
-      if (nodeId) {
-        events.push({
-          timestamp: time,
-          category: 'node',
-          operation: 'animate',
-          payload: {
-            nodeId,
-            animation: { type: 'pulse', duration: 600 },
-          },
-        });
-        time += 700;
-      }
-    });
-
-    // Animate to result
-    events.push({
-      timestamp: time,
-      category: 'edge',
-      operation: 'animate',
-      payload: {
-        edgeId: 'assertion-to-result',
-        animation: { type: 'particle', duration: 500 },
-      },
-    });
-    time += 600;
-
-    events.push({
-      timestamp: time,
-      category: 'node',
-      operation: 'animate',
-      payload: {
-        nodeId: 'test-result',
-        animation: { type: 'pulse', duration: 800 },
-      },
-    });
-    time += 1200; // Pause between tests
-  });
-
-  return events;
-}
-
-// ============================================================================
-// Animated Story
+// Interactive Story (No Animation)
 // ============================================================================
 
 const AnimatedTestExecution = () => {
-  const [events, setEvents] = useState<GraphEvent[]>([]);
-  const [currentSpanIndex, setCurrentSpanIndex] = useState(0);
-  const [currentEventIndex, setCurrentEventIndex] = useState(0);
+  const [events] = useState<GraphEvent[]>([]);
+  const [currentSpanIndex] = useState(0);
+  // Show all events by default - set to a large number
+  const [currentEventIndex] = useState(999);
   const [highlightedPhase, setHighlightedPhase] = useState<string | undefined>();
 
-  useEffect(() => {
-    const graphEvents = convertSpansToEvents(testSpans);
-    const timers: NodeJS.Timeout[] = [];
-
-    let spanIndex = 0;
-    let eventIndex = 0;
-    let eventsPerTest = testSpans[0].events.length * 2 + 2; // ~2 graph events per span event + suite + result
-
-    graphEvents.forEach((event, index) => {
-      const timer = setTimeout(() => {
-        setEvents((prev) => [...prev, event]);
-
-        // Track which span and event we're on
-        spanIndex = Math.floor(index / eventsPerTest);
-        eventIndex = Math.floor((index % eventsPerTest) / 2);
-
-        setCurrentSpanIndex(Math.min(spanIndex, testSpans.length - 1));
-        setCurrentEventIndex(eventIndex);
-      }, event.timestamp);
-      timers.push(timer);
-    });
-
-    // Reset animation
-    const resetTimer = setTimeout(() => {
-      setEvents([]);
-      setCurrentSpanIndex(0);
-      setCurrentEventIndex(0);
-    }, graphEvents[graphEvents.length - 1].timestamp + 2000);
-
-    return () => {
-      timers.forEach(clearTimeout);
-      clearTimeout(resetTimer);
-    };
-  }, []);
-
-  // Map node IDs to phase names
-  const getPhaseFromNodeId = (nodeId: string): string | undefined => {
-    if (nodeId === 'setup-phase') return 'setup';
-    if (nodeId === 'execution-phase') return 'execution';
-    if (nodeId === 'assertion-phase') return 'assertion';
-    return undefined;
-  };
-
   return (
-    <div style={{ display: 'flex', width: '100%', height: '100%' }}>
+    <div style={{ display: 'flex', width: '100vw', height: '100vh' }}>
       {/* Graph Visualization - Left Side */}
       <div
         style={{ flex: '0 0 60%', height: '100%', position: 'relative' }}
@@ -351,7 +213,6 @@ const AnimatedTestExecution = () => {
         >
           <GraphRenderer
             canvas={testExecutionCanvas}
-            showMinimap={true}
             showControls={true}
             events={events}
           />
@@ -359,7 +220,7 @@ const AnimatedTestExecution = () => {
       </div>
 
       {/* Event Panel - Right Side */}
-      <div style={{ flex: '0 0 40%', height: '100%', borderLeft: '1px solid #333' }}>
+      <div style={{ flex: '0 0 40%', height: '100%', borderLeft: `1px solid #333`, overflow: 'hidden' }}>
         <TestEventPanel
           spans={testSpans as any}
           currentSpanIndex={currentSpanIndex}
@@ -372,7 +233,7 @@ const AnimatedTestExecution = () => {
 };
 
 /**
- * Animated visualization of real test execution data using the "wide event" pattern.
+ * Interactive visualization of real test execution data using the "wide event" pattern.
  *
  * This demonstrates the key concept from loggingsucks.com:
  * - ONE comprehensive span per test (not multiple child spans)
@@ -383,7 +244,7 @@ const AnimatedTestExecution = () => {
  * **Interaction:**
  * - Hover over graph nodes (Setup, Execution, Assertion) to highlight related events
  * - Watch the code journey: blue = test file, green = code under test
- * - See how context builds up through events as the animation plays
+ * - All events are shown immediately for easy review
  */
 export const Animated: Story = {
   render: () => <AnimatedTestExecution />,
@@ -395,7 +256,6 @@ export const Animated: Story = {
 export const StaticView: Story = {
   args: {
     canvas: testExecutionCanvas,
-    showMinimap: true,
     showControls: true,
   },
 };
@@ -412,7 +272,7 @@ export const EventPanelOnly: StoryObj = {
       <TestEventPanel
         spans={testSpans as any}
         currentSpanIndex={0}
-        currentEventIndex={5} // Show all events
+        currentEventIndex={999} // Show all events
         highlightedPhase={undefined}
       />
     </div>

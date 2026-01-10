@@ -7,12 +7,12 @@ import { NodeTooltip } from '../components/NodeTooltip';
 import type { OtelInfo } from '../components/NodeTooltip';
 
 /**
- * Converts a hex color to a soft/lighter version with transparency
+ * Converts a hex color to a lighter/tinted version (opaque, not transparent)
  * @param hexColor - Hex color string (e.g., "#FF5733" or "#888")
- * @param alpha - Transparency level (0-1), defaults to 0.12 for subtle backgrounds
- * @returns rgba color string
+ * @param lightness - How much to lighten (0-1), defaults to 0.88 (88% white mixed in)
+ * @returns hex color string
  */
-function hexToSoftColor(hexColor: string, alpha = 0.12): string {
+function hexToLightColor(hexColor: string, lightness = 0.88): string {
   // Remove # if present
   const hex = hexColor.replace('#', '');
 
@@ -21,7 +21,15 @@ function hexToSoftColor(hexColor: string, alpha = 0.12): string {
   const g = parseInt(hex.substring(2, 4), 16);
   const b = parseInt(hex.substring(4, 6), 16);
 
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  // Mix with white based on lightness factor
+  // lightness of 0.88 means 88% white + 12% original color
+  const newR = Math.round(r + (255 - r) * lightness);
+  const newG = Math.round(g + (255 - g) * lightness);
+  const newB = Math.round(b + (255 - b) * lightness);
+
+  // Convert back to hex
+  const toHex = (n: number) => n.toString(16).padStart(2, '0');
+  return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`;
 }
 
 export interface CustomNodeData extends Record<string, unknown> {
@@ -176,7 +184,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
   const getShapeStyles = () => {
     const baseStyles = {
       padding: '12px 16px',
-      backgroundColor: isGroup ? 'rgba(255, 255, 255, 0.7)' : hexToSoftColor(fillColor),
+      backgroundColor: isGroup ? 'rgba(255, 255, 255, 0.7)' : hexToLightColor(fillColor),
       color: '#000',
       border: `2px solid ${hasViolations ? '#D0021B' : strokeColor}`,
       fontSize: '12px',
@@ -278,7 +286,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
       }
     : {};
 
-  // Hexagon inner fill styles (soft color background inset from border)
+  // Hexagon inner fill styles (light color background inset from border)
   const hexagonInnerStyle: React.CSSProperties = isHexagon
     ? {
         position: 'absolute',
@@ -287,7 +295,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         right: hexagonBorderWidth,
         bottom: hexagonBorderWidth,
         clipPath: hexagonClipPath,
-        backgroundColor: hexToSoftColor(fillColor),
+        backgroundColor: hexToLightColor(fillColor),
         color: '#000',
         display: 'flex',
         flexDirection: 'column',
@@ -320,7 +328,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
       }
     : {};
 
-  // Diamond inner fill styles (soft color background inset from border)
+  // Diamond inner fill styles (light color background inset from border)
   const diamondInnerStyle: React.CSSProperties = isDiamond
     ? {
         position: 'absolute',
@@ -329,7 +337,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         right: diamondBorderWidth,
         bottom: diamondBorderWidth,
         clipPath: diamondClipPath,
-        backgroundColor: hexToSoftColor(fillColor),
+        backgroundColor: hexToLightColor(fillColor),
         color: '#000',
         display: 'flex',
         flexDirection: 'column',
