@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useTheme } from '@principal-ade/industry-theme';
 import { HelpCircle } from 'lucide-react';
+import yaml from 'js-yaml';
 
 interface SpanEvent {
   time: number;
@@ -455,14 +456,13 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                       maxWidth: '100%',
                     }}
                   >
-                    {JSON.stringify(
+                    {yaml.dump(
                       Object.fromEntries(
                         Object.entries(item.attributes || {}).filter(
                           ([key]) => key !== 'code.filepath' && key !== 'code.lineno'
                         )
                       ),
-                      null,
-                      2
+                      { indent: 2, lineWidth: -1 }
                     )}
                   </pre>
                 </div>
@@ -532,7 +532,7 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                       item.body
                     ) : (
                       <pre style={{ margin: 0, fontSize: '12px' }}>
-                        {JSON.stringify(item.body, null, 2)}
+                        {yaml.dump(item.body, { indent: 2, lineWidth: -1 })}
                       </pre>
                     )}
                   </div>
@@ -549,7 +549,7 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                         opacity: 0.8,
                       }}
                     >
-                      {JSON.stringify(item.attributes, null, 2)}
+                      {yaml.dump(item.attributes, { indent: 2, lineWidth: -1 })}
                     </pre>
                   )}
                 </div>
