@@ -193,11 +193,27 @@ const AnimatedTestExecution = () => {
   const [currentEventIndex] = useState(999);
   const [highlightedPhase, setHighlightedPhase] = useState<string | undefined>();
 
+  // Extract spans and logs from test data
+  const testData = testSpans as any;
+  const spans = Array.isArray(testData) ? testData : testData.spans || testData;
+  const logs = testData.logs || [];
+
   return (
     <div style={{ display: 'flex', width: '100vw', height: '100vh' }}>
-      {/* Graph Visualization - Left Side */}
+      {/* Event Panel - Left Side */}
+      <div style={{ flex: '0 0 50%', height: '100%', borderRight: `1px solid #333`, overflow: 'hidden' }}>
+        <TestEventPanel
+          spans={spans}
+          logs={logs}
+          currentSpanIndex={currentSpanIndex}
+          currentEventIndex={currentEventIndex}
+          highlightedPhase={highlightedPhase}
+        />
+      </div>
+
+      {/* Graph Visualization - Right Side */}
       <div
-        style={{ flex: '0 0 60%', height: '100%', position: 'relative' }}
+        style={{ flex: '0 0 50%', height: '100%', position: 'relative' }}
         onMouseLeave={() => setHighlightedPhase(undefined)}
       >
         <div
@@ -217,16 +233,6 @@ const AnimatedTestExecution = () => {
             events={events}
           />
         </div>
-      </div>
-
-      {/* Event Panel - Right Side */}
-      <div style={{ flex: '0 0 40%', height: '100%', borderLeft: `1px solid #333`, overflow: 'hidden' }}>
-        <TestEventPanel
-          spans={testSpans as any}
-          currentSpanIndex={currentSpanIndex}
-          currentEventIndex={currentEventIndex}
-          highlightedPhase={highlightedPhase}
-        />
       </div>
     </div>
   );
@@ -263,18 +269,25 @@ export const StaticView: Story = {
 /**
  * Event panel component showing test execution narrative with file/line information.
  *
- * Shows how events accumulate context as tests execute, with automatic file/line
- * capture from stack traces and manual override for code under test.
+ * Shows how events and logs are interleaved in chronological order, with automatic
+ * file/line capture from stack traces and severity-based color coding for logs.
  */
 export const EventPanelOnly: StoryObj = {
-  render: () => (
-    <div style={{ width: '600px', height: '100vh' }}>
-      <TestEventPanel
-        spans={testSpans as any}
-        currentSpanIndex={0}
-        currentEventIndex={999} // Show all events
-        highlightedPhase={undefined}
-      />
-    </div>
-  ),
+  render: () => {
+    const testData = testSpans as any;
+    const spans = Array.isArray(testData) ? testData : testData.spans || testData;
+    const logs = testData.logs || [];
+
+    return (
+      <div style={{ width: '600px', height: '100vh' }}>
+        <TestEventPanel
+          spans={spans}
+          logs={logs}
+          currentSpanIndex={0}
+          currentEventIndex={999} // Show all events
+          highlightedPhase={undefined}
+        />
+      </div>
+    );
+  },
 };
