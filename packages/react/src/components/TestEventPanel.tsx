@@ -450,8 +450,8 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                       padding: '8px',
                       borderRadius: '4px',
                       margin: 0,
-                      fontSize: '12px',
-                      lineHeight: '1.4',
+                      fontSize: '13px',
+                      lineHeight: '1.5',
                       overflow: 'auto',
                       maxWidth: '100%',
                     }}
@@ -531,7 +531,7 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                     {typeof item.body === 'string' ? (
                       item.body
                     ) : (
-                      <pre style={{ margin: 0, fontSize: '12px' }}>
+                      <pre style={{ margin: 0, fontSize: '13px', lineHeight: '1.5' }}>
                         {yaml.dump(item.body, { indent: 2, lineWidth: -1 })}
                       </pre>
                     )}
@@ -545,7 +545,8 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                         padding: '8px',
                         borderRadius: '4px',
                         margin: 0,
-                        fontSize: '11px',
+                        fontSize: '12px',
+                        lineHeight: '1.5',
                         opacity: 0.8,
                       }}
                     >
