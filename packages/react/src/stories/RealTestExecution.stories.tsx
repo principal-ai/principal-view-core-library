@@ -188,7 +188,7 @@ const testExecutionCanvas: ExtendedCanvas = {
 
 const AnimatedTestExecution = () => {
   const [events] = useState<GraphEvent[]>([]);
-  const [currentSpanIndex] = useState(0);
+  const [currentSpanIndex, setCurrentSpanIndex] = useState(0);
   // Show all events by default - set to a large number
   const [currentEventIndex] = useState(999);
   const [highlightedPhase, setHighlightedPhase] = useState<string | undefined>();
@@ -208,6 +208,7 @@ const AnimatedTestExecution = () => {
           currentSpanIndex={currentSpanIndex}
           currentEventIndex={currentEventIndex}
           highlightedPhase={highlightedPhase}
+          onSpanIndexChange={setCurrentSpanIndex}
         />
       </div>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTheme } from '@principal-ade/industry-theme';
 import { HelpCircle } from 'lucide-react';
 
@@ -20,23 +20,129 @@ interface TestSpan {
   errorMessage?: string;
 }
 
+// OTEL Log types
+export type OtelSeverity = 'TRACE' | 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'FATAL';
+
+export interface OtelLog {
+  timestamp: number;
+  severity: OtelSeverity;
+  body: string | Record<string, unknown>;
+  resource: Record<string, string | number>;
+  attributes?: Record<string, any>;
+  traceId?: string;
+  spanId?: string;
+}
+
+// Timeline item (event or log)
+interface TimelineItem {
+  type: 'event' | 'log';
+  time: number;
+  // For events
+  name?: string;
+  attributes?: Record<string, any>;
+  // For logs
+  severity?: OtelSeverity;
+  body?: string | Record<string, unknown>;
+  resource?: Record<string, string | number>;
+}
+
 export interface TestEventPanelProps {
   spans: TestSpan[];
+  logs?: OtelLog[]; // Optional for backward compatibility
   currentSpanIndex: number;
   currentEventIndex: number;
   highlightedPhase?: string; // 'setup' | 'execution' | 'assertion'
+  onSpanIndexChange?: (index: number) => void;
+}
+
+// Helper functions for log severity
+function getSeverityColor(severity: OtelSeverity): string {
+  const colors = {
+    TRACE: '#6b7280',
+    DEBUG: '#60a5fa',
+    INFO: '#4ade80',
+    WARN: '#fbbf24',
+    ERROR: '#f87171',
+    FATAL: '#dc2626',
+  };
+  return colors[severity] || '#9ca3af';
+}
+
+function getSeverityIcon(severity: OtelSeverity): string {
+  const icons = {
+    TRACE: '○',
+    DEBUG: '◐',
+    INFO: '●',
+    WARN: '⚠',
+    ERROR: '✕',
+    FATAL: '☠',
+  };
+  return icons[severity] || '•';
 }
 
 export const TestEventPanel: React.FC<TestEventPanelProps> = ({
   spans,
+  logs = [],
   currentSpanIndex,
   currentEventIndex,
   highlightedPhase,
+  onSpanIndexChange,
 }) => {
   const { theme } = useTheme();
   const [showHelp, setShowHelp] = useState(false);
+  const [viewMode, setViewMode] = useState<'all' | 'events' | 'logs'>('all');
+
   const currentSpan = spans[currentSpanIndex];
-  const eventsUpToNow = currentSpan?.events.slice(0, currentEventIndex + 1) || [];
+
+  const handlePrevTest = () => {
+    if (currentSpanIndex > 0 && onSpanIndexChange) {
+      onSpanIndexChange(currentSpanIndex - 1);
+    }
+  };
+
+  const handleNextTest = () => {
+    if (currentSpanIndex < spans.length - 1 && onSpanIndexChange) {
+      onSpanIndexChange(currentSpanIndex + 1);
+    }
+  };
+
+  // Build interleaved timeline
+  const timeline = useMemo(() => {
+    if (!currentSpan) return [];
+
+    const items: TimelineItem[] = [
+      // Span events
+      ...currentSpan.events.slice(0, currentEventIndex + 1).map((event) => ({
+        type: 'event' as const,
+        time: event.time,
+        name: event.name,
+        attributes: event.attributes,
+      })),
+
+      // Correlated logs (matching current span's traceId)
+      ...logs
+        .filter((log) => log.traceId === currentSpan.id)
+        .map((log) => ({
+          type: 'log' as const,
+          time: typeof log.timestamp === 'number' ? log.timestamp : new Date(log.timestamp).getTime(),
+          severity: log.severity,
+          body: log.body,
+          resource: log.resource,
+          attributes: log.attributes,
+        })),
+    ].sort((a, b) => a.time - b.time);
+
+    return items;
+  }, [currentSpan, currentEventIndex, logs]);
+
+  // Filter timeline based on view mode
+  const filteredTimeline = useMemo(() => {
+    if (viewMode === 'all') return timeline;
+    return timeline.filter((item) => item.type === viewMode.slice(0, -1)); // 'events' -> 'event', 'logs' -> 'log'
+  }, [timeline, viewMode]);
+
+  const eventCount = timeline.filter((i) => i.type === 'event').length;
+  const logCount = timeline.filter((i) => i.type === 'log').length;
 
   return (
     <div
@@ -45,40 +151,147 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
         height: '100%',
         backgroundColor: theme.colors.background,
         color: theme.colors.text,
-        padding: '20px',
         fontFamily: theme.fonts.monospace,
         fontSize: '14px',
-        overflow: 'auto',
         boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
-        <div style={{ fontWeight: 'bold', fontSize: '18px' }}>
-          Wide Event Pattern - Code Journey
+      {/* Static Header */}
+      <div
+        style={{
+          padding: '20px 20px 0 20px',
+          backgroundColor: theme.colors.background,
+          borderBottom: `1px solid ${theme.colors.border}`,
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <div style={{ fontWeight: 'bold', fontSize: '18px' }}>
+            Execution Timeline
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ fontSize: '13px', color: theme.colors.textMuted }}>
+              <span style={{ color: '#4ade80' }}>All Passed ✓</span>
+            </div>
+            <button
+              onClick={() => setShowHelp(true)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                color: theme.colors.textMuted,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = theme.colors.text;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = theme.colors.textMuted;
+              }}
+            >
+              <HelpCircle size={20} />
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setShowHelp(true)}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            padding: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            color: theme.colors.textMuted,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = theme.colors.text;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = theme.colors.textMuted;
-          }}
-        >
-          <HelpCircle size={20} />
-        </button>
-      </div>
-      <div style={{ fontSize: '13px', color: theme.colors.textMuted, marginBottom: '15px' }}>
-        Test: {currentSpan?.name || 'Loading...'}
+
+        {/* Test Navigation */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+          <button
+            onClick={handlePrevTest}
+            disabled={currentSpanIndex === 0}
+            style={{
+              padding: '4px 12px',
+              background: theme.colors.surface,
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: '4px',
+              color: currentSpanIndex === 0 ? theme.colors.textMuted : theme.colors.text,
+              cursor: currentSpanIndex === 0 ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              opacity: currentSpanIndex === 0 ? 0.5 : 1,
+            }}
+          >
+            ← Prev
+          </button>
+          <div style={{ fontSize: '13px', color: theme.colors.textMuted }}>
+            Test {currentSpanIndex + 1} of {spans.length}
+          </div>
+          <button
+            onClick={handleNextTest}
+            disabled={currentSpanIndex === spans.length - 1}
+            style={{
+              padding: '4px 12px',
+              background: theme.colors.surface,
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: '4px',
+              color: currentSpanIndex === spans.length - 1 ? theme.colors.textMuted : theme.colors.text,
+              cursor: currentSpanIndex === spans.length - 1 ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              opacity: currentSpanIndex === spans.length - 1 ? 0.5 : 1,
+            }}
+          >
+            Next →
+          </button>
+          <div style={{ fontSize: '12px', color: theme.colors.textMuted, marginLeft: 'auto' }}>
+            {eventCount} events, {logCount} logs
+          </div>
+        </div>
+
+        {/* Filter Tabs */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <button
+            onClick={() => setViewMode('all')}
+            style={{
+              padding: '6px 12px',
+              background: viewMode === 'all' ? theme.colors.primary : 'transparent',
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: '4px',
+              color: viewMode === 'all' ? '#ffffff' : theme.colors.text,
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 500,
+            }}
+          >
+            All ({timeline.length})
+          </button>
+          <button
+            onClick={() => setViewMode('events')}
+            style={{
+              padding: '6px 12px',
+              background: viewMode === 'events' ? theme.colors.primary : 'transparent',
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: '4px',
+              color: viewMode === 'events' ? '#ffffff' : theme.colors.text,
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 500,
+            }}
+          >
+            Events ({eventCount})
+          </button>
+          <button
+            onClick={() => setViewMode('logs')}
+            style={{
+              padding: '6px 12px',
+              background: viewMode === 'logs' ? theme.colors.primary : 'transparent',
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: '4px',
+              color: viewMode === 'logs' ? '#ffffff' : theme.colors.text,
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: 500,
+            }}
+          >
+            Logs ({logCount})
+          </button>
+        </div>
+
+        <div style={{ fontSize: '13px', color: theme.colors.textMuted, marginBottom: '15px' }}>
+          Test: {currentSpan?.name || 'Loading...'}
+        </div>
       </div>
 
       {/* Help Modal */}
@@ -114,9 +327,15 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
             </div>
             <div style={{ fontSize: '14px', marginBottom: '16px', lineHeight: '1.6' }}>
               <p style={{ marginBottom: '12px' }}>
-                <strong>Watch how execution flows through files:</strong>
+                <strong>Timeline shows both events and logs:</strong>
               </p>
               <ul style={{ marginLeft: '20px', marginBottom: '16px' }}>
+                <li style={{ marginBottom: '8px' }}>
+                  <span style={{ color: '#f59e0b' }}>🟧 Events</span> - Structured lifecycle points
+                </li>
+                <li style={{ marginBottom: '8px' }}>
+                  <span style={{ color: '#4ade80' }}>● Logs</span> - Standalone log records (color = severity)
+                </li>
                 <li style={{ marginBottom: '8px' }}>
                   <span style={{ color: '#60a5fa' }}>Blue = Test file</span>
                 </li>
@@ -125,30 +344,20 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                 </li>
               </ul>
               <p style={{ marginBottom: '12px' }}>
-                <strong>Span Context (Static)</strong>
+                <strong>Use filter tabs to focus:</strong>
               </p>
-              <pre
-                style={{
-                  background: theme.colors.surface,
-                  padding: '12px',
-                  borderRadius: '4px',
-                  fontSize: '13px',
-                  overflow: 'auto',
-                }}
-              >
-{`{
-  "test.file": "GraphConverter.test.ts",
-  "test.suite": "GraphConverter",
-  "test.result": "pass"
-}`}
-              </pre>
+              <ul style={{ marginLeft: '20px' }}>
+                <li>All - Interleaved timeline</li>
+                <li>Events - Span events only</li>
+                <li>Logs - OTEL logs only</li>
+              </ul>
             </div>
             <button
               onClick={() => setShowHelp(false)}
               style={{
                 padding: '8px 16px',
                 backgroundColor: theme.colors.primary,
-                color: theme.colors.background,
+                color: '#ffffff',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: 'pointer',
@@ -162,27 +371,26 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
         </div>
       )}
 
-      {currentSpan && (
-        <>
-          {/* Event Timeline (context mutations) */}
+      {/* Scrollable Content */}
+      <div
+        style={{
+          flex: 1,
+          overflow: 'auto',
+          padding: '20px',
+        }}
+      >
+        {/* Timeline Items */}
+        {currentSpan && (
           <div>
-            <div
-              style={{
-                color: '#4ade80',
-                fontWeight: 'bold',
-                marginBottom: '8px',
-                fontSize: '15px',
-              }}
-            >
-              Event Timeline (Context Mutations)
-            </div>
-            {eventsUpToNow.map((event, idx) => {
-              const filepath = event.attributes['code.filepath'] as string;
-              const lineno = event.attributes['code.lineno'] as number;
+            {filteredTimeline.map((item, idx) => {
+            if (item.type === 'event') {
+              // SPAN EVENT RENDERING
+              const filepath = item.attributes?.['code.filepath'] as string;
+              const lineno = item.attributes?.['code.lineno'] as number;
               const isCodeUnderTest = filepath && filepath !== 'GraphConverter.test.ts';
 
               // Determine which phase this event belongs to
-              const eventPhase = event.name.split('.')[0]; // 'setup', 'execution', 'assertion'
+              const eventPhase = item.name?.split('.')[0]; // 'setup', 'execution', 'assertion'
               const isHighlighted = highlightedPhase === eventPhase;
 
               return (
@@ -191,12 +399,14 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                   style={{
                     marginBottom: '12px',
                     paddingBottom: '12px',
-                    borderBottom: idx < eventsUpToNow.length - 1 ? `1px solid ${theme.colors.border}` : 'none',
+                    paddingLeft: '12px',
+                    borderBottom: idx < filteredTimeline.length - 1 ? `1px solid ${theme.colors.border}` : 'none',
+                    borderLeft: '3px solid #f59e0b',
                     opacity: highlightedPhase && !isHighlighted ? 0.4 : 1,
                     transition: 'opacity 0.2s ease',
                     transform: isHighlighted ? 'scale(1.02)' : 'scale(1)',
                     backgroundColor: isHighlighted ? theme.colors.surface : 'transparent',
-                    padding: isHighlighted ? '8px' : '0',
+                    padding: isHighlighted ? '8px 8px 8px 12px' : '0 0 12px 12px',
                     borderRadius: '4px',
                   }}
                 >
@@ -209,8 +419,8 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                       gap: '8px',
                     }}
                   >
-                    <div style={{ color: '#f59e0b', fontSize: '13px', flexShrink: 0 }}>
-                      {idx + 1}. {event.name}
+                    <div style={{ color: '#f59e0b', fontSize: '13px', fontWeight: 'bold', flexShrink: 0 }}>
+                      EVENT: {item.name}
                     </div>
                     {filepath && (
                       <div
@@ -247,7 +457,7 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                   >
                     {JSON.stringify(
                       Object.fromEntries(
-                        Object.entries(event.attributes).filter(
+                        Object.entries(item.attributes || {}).filter(
                           ([key]) => key !== 'code.filepath' && key !== 'code.lineno'
                         )
                       ),
@@ -257,30 +467,97 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                   </pre>
                 </div>
               );
-            })}
-          </div>
-        </>
-      )}
+            } else {
+              // OTEL LOG RENDERING
+              const serviceName = item.resource?.['service.name'];
+              const severityColor = getSeverityColor(item.severity!);
 
-      <div
-        style={{
-          marginTop: '20px',
-          paddingTop: '15px',
-          borderTop: `1px solid ${theme.colors.border}`,
-          fontSize: '13px',
-          color: theme.colors.textMuted,
-        }}
-      >
-        <div style={{ marginBottom: '8px' }}>
-          <strong>Total tests:</strong> {spans.length}
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    marginBottom: '12px',
+                    paddingBottom: '12px',
+                    paddingLeft: '12px',
+                    borderBottom: idx < filteredTimeline.length - 1 ? `1px solid ${theme.colors.border}` : 'none',
+                    borderLeft: `3px solid ${severityColor}`,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '4px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '16px' }}>{getSeverityIcon(item.severity!)}</span>
+                      <span
+                        style={{
+                          color: severityColor,
+                          fontSize: '13px',
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        LOG: {item.severity}
+                      </span>
+                    </div>
+                    {serviceName && (
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          color: '#9ca3af',
+                          background: '#1e293b',
+                          padding: '2px 6px',
+                          borderRadius: '3px',
+                        }}
+                      >
+                        {serviceName}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Log body */}
+                  <div
+                    style={{
+                      background: theme.colors.surface,
+                      padding: '8px',
+                      borderRadius: '4px',
+                      marginBottom: item.attributes && Object.keys(item.attributes).length > 0 ? '8px' : '0',
+                      fontSize: '13px',
+                    }}
+                  >
+                    {typeof item.body === 'string' ? (
+                      item.body
+                    ) : (
+                      <pre style={{ margin: 0, fontSize: '12px' }}>
+                        {JSON.stringify(item.body, null, 2)}
+                      </pre>
+                    )}
+                  </div>
+
+                  {/* Log attributes */}
+                  {item.attributes && Object.keys(item.attributes).length > 0 && (
+                    <pre
+                      style={{
+                        background: theme.colors.surface,
+                        padding: '8px',
+                        borderRadius: '4px',
+                        margin: 0,
+                        fontSize: '11px',
+                        opacity: 0.8,
+                      }}
+                    >
+                      {JSON.stringify(item.attributes, null, 2)}
+                    </pre>
+                  )}
+                </div>
+              );
+            }
+          })}
         </div>
-        <div style={{ marginBottom: '8px' }}>
-          <strong>Pattern:</strong> One span per test + event timeline
-        </div>
-        <div>
-          <strong>Status:</strong>{' '}
-          <span style={{ color: '#4ade80' }}>All Passed ✓</span>
-        </div>
+      )}
       </div>
     </div>
   );
