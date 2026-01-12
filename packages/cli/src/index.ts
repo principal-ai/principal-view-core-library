@@ -14,6 +14,7 @@ import { createDoctorCommand } from './commands/doctor.js';
 import { createHooksCommand } from './commands/hooks.js';
 import { createCreateCommand } from './commands/create.js';
 import { createLintCommand } from './commands/lint.js';
+import { createCoverageCommand } from './commands/coverage.js';
 
 // Version is injected at build time via package.json
 const VERSION = '0.1.13';
@@ -34,6 +35,7 @@ program.addCommand(createListCommand());
 program.addCommand(createSchemaCommand());
 program.addCommand(createDoctorCommand());
 program.addCommand(createHooksCommand());
+program.addCommand(createCoverageCommand());
 
 // Parse command line arguments
 program.parse(process.argv);

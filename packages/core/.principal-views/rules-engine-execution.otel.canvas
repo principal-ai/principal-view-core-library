@@ -52,6 +52,11 @@
       "y": 0,
       "width": 250,
       "height": 140,
+      "anchors": [
+        {
+          "path": "packages/core/src/rules/engine.ts"
+        }
+      ],
       "pv": {
         "nodeType": "factory",
         "name": "Engine Creation",

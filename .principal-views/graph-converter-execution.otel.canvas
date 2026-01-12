@@ -8,6 +8,11 @@
       "y": -50,
       "width": 300,
       "height": 120,
+      "anchors": [
+        {
+          "path": "packages/core/src/utils/GraphConverter.ts"
+        }
+      ],
       "pv": {
         "nodeType": "converter",
         "name": "Graph Converter",
@@ -96,6 +101,11 @@
       "y": -39,
       "width": 250,
       "height": 100,
+      "anchors": [
+        {
+          "path": "packages/core/src/ConfigurationValidator.ts"
+        }
+      ],
       "pv": {
         "nodeType": "validator",
         "name": "Configuration Validator",

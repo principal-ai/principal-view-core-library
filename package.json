@@ -5,11 +5,12 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "bun run build:logger && bun run build:core && bun run build:react && bun run build:cli",
+    "build": "bun run build:logger && bun run build:core && bun run build:react && bun run build:cli && bun run build:storybook-addon",
     "build:logger": "cd packages/logger && bun run build",
     "build:core": "cd packages/core && bun run build",
     "build:react": "cd packages/react && bun run build",
     "build:cli": "cd packages/cli && bun run build",
+    "build:storybook-addon": "cd packages/storybook-addon-otel && npm run build",
     "test": "bun run test:core",
     "test:core": "cd packages/core && bun test",
     "test:react": "cd packages/react && bun test",
@@ -27,7 +28,9 @@
     "dev:cli": "cd packages/cli && bun run dev",
     "storybook": "bun run build:logger && bun run build:core && cd packages/react && bun run storybook",
     "build-storybook": "bun run build:logger && bun run build:core && cd packages/react && bun run build-storybook",
-    "doctor": "node packages/cli/dist/index.cjs doctor"
+    "doctor": "node packages/cli/dist/index.cjs doctor",
+    "coverage:telemetry": "bun run packages/core/scripts/measure-telemetry-coverage.ts",
+    "coverage:suggest-anchors": "bun run packages/core/scripts/suggest-anchors.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

@@ -60,6 +60,11 @@
       "y": 150,
       "width": 130,
       "height": 118,
+      "anchors": [
+        {
+          "path": "packages/core/src/PathBasedEventProcessor.ts"
+        }
+      ],
       "pv": {
         "nodeType": "otel-service",
         "name": "LogRouter",
@@ -82,6 +87,11 @@
       "y": 440,
       "width": 130,
       "height": 119,
+      "anchors": [
+        {
+          "path": "packages/core/src/utils/PathMatcher.ts"
+        }
+      ],
       "pv": {
         "nodeType": "service",
         "shape": "hexagon",
@@ -231,6 +241,11 @@
       "y": -44,
       "width": 180,
       "height": 135,
+      "anchors": [
+        {
+          "path": "packages/core/src/EventRecorderService.ts"
+        }
+      ],
       "pv": {
         "nodeType": "service",
         "shape": "hexagon",

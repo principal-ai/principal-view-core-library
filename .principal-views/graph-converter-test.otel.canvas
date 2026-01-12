@@ -63,6 +63,11 @@
       "y": 0,
       "width": 280,
       "height": 140,
+      "anchors": [
+        {
+          "path": "packages/core/src/utils/GraphConverter.ts"
+        }
+      ],
       "pv": {
         "nodeType": "converter",
         "name": "Graph Converter",

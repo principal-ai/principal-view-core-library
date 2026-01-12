@@ -38,6 +38,10 @@ export type { ReactFlowNode, ReactFlowEdge } from './utils/CanvasConverter';
 export { EventValidator, createValidatedEmitter, EventValidationError } from './telemetry/event-validator';
 export type { ValidationResult } from './telemetry/event-validator';
 
+// Export telemetry coverage analysis
+export { analyzeCoverage } from './telemetry/coverage';
+export type { CoverageMetrics, NodeCoverage, CanvasNode as CoverageCanvasNode } from './telemetry/coverage';
+
 // Export code generation
 export { generateTypes, TypeScriptGenerator, generatorRegistry } from './codegen/type-generator';
 export type { CodegenOptions, CodegenResult, CodeGenerator } from './codegen/type-generator';
