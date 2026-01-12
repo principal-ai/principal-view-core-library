@@ -17,7 +17,7 @@ import { createLintCommand } from './commands/lint.js';
 import { createCoverageCommand } from './commands/coverage.js';
 
 // Version is injected at build time via package.json
-const VERSION = '0.1.13';
+const VERSION = '0.1.28';
 
 const program = new Command();
 
