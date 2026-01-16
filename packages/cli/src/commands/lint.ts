@@ -336,14 +336,15 @@ export function createLintCommand(): Command {
           expandDirectories: false,
         });
 
-        // Filter out library files, config files, canvas files, and execution artifacts
-        const configFiles = matchedFiles.filter((f) => {
+        // Filter out library files, config files, canvas files, narrative templates, and execution artifacts
+        const configFiles = matchedFiles.filter((f: string) => {
           const name = basename(f).toLowerCase();
           const isLibraryFile = name.startsWith('library.');
           const isConfigFile = name.startsWith('.privurc');
           const isCanvasFile = f.toLowerCase().endsWith('.canvas');
+          const isNarrativeTemplate = name.endsWith('.narrative.json');
           const isExecutionArtifact = f.includes('__executions__/');
-          return !isLibraryFile && !isConfigFile && !isCanvasFile && !isExecutionArtifact;
+          return !isLibraryFile && !isConfigFile && !isCanvasFile && !isNarrativeTemplate && !isExecutionArtifact;
         });
 
         if (configFiles.length === 0) {

@@ -2,6 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { useTheme } from '@principal-ade/industry-theme';
 import { HelpCircle } from 'lucide-react';
 import yaml from 'js-yaml';
+import type { NarrativeTemplate } from '@principal-ai/principal-view-core';
+import { NarrativeRenderer } from './NarrativeRenderer';
+import { convertToOtelEvents } from '../utils/narrative-converter';
 
 interface SpanEvent {
   time: number;
@@ -47,6 +50,9 @@ interface TimelineItem {
   resource?: Record<string, string | number>;
 }
 
+// View mode type
+export type ViewMode = 'raw' | 'narrative';
+
 export interface TestEventPanelProps {
   spans: TestSpan[];
   logs?: OtelLog[]; // Optional for backward compatibility
@@ -54,6 +60,12 @@ export interface TestEventPanelProps {
   currentEventIndex: number;
   highlightedPhase?: string; // 'setup' | 'execution' | 'assertion'
   onSpanIndexChange?: (index: number) => void;
+
+  // Narrative view props
+  viewMode?: ViewMode;
+  narrativeTemplate?: NarrativeTemplate;
+  onViewModeChange?: (mode: ViewMode) => void;
+  showNarrativeMetadata?: boolean;
 }
 
 // Helper functions for log severity
@@ -88,12 +100,21 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
   currentEventIndex,
   highlightedPhase,
   onSpanIndexChange,
+  viewMode = 'raw',
+  narrativeTemplate,
+  onViewModeChange,
+  showNarrativeMetadata = false,
 }) => {
   const { theme } = useTheme();
   const [showHelp, setShowHelp] = useState(false);
-  const [viewMode, setViewMode] = useState<'all' | 'events' | 'logs'>('all');
 
   const currentSpan = spans[currentSpanIndex];
+
+  // Convert current span to OtelEvents for narrative rendering
+  const otelEvents = useMemo(() => {
+    if (!currentSpan || viewMode !== 'narrative') return [];
+    return convertToOtelEvents(currentSpan, logs);
+  }, [currentSpan, logs, viewMode]);
 
   const handlePrevTest = () => {
     if (currentSpanIndex > 0 && onSpanIndexChange) {
@@ -136,15 +157,6 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
     return items;
   }, [currentSpan, currentEventIndex, logs]);
 
-  // Filter timeline based on view mode
-  const filteredTimeline = useMemo(() => {
-    if (viewMode === 'all') return timeline;
-    return timeline.filter((item) => item.type === viewMode.slice(0, -1)); // 'events' -> 'event', 'logs' -> 'log'
-  }, [timeline, viewMode]);
-
-  const eventCount = timeline.filter((i) => i.type === 'event').length;
-  const logCount = timeline.filter((i) => i.type === 'log').length;
-
   return (
     <div
       style={{
@@ -168,9 +180,44 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
           flexShrink: 0,
         }}
       >
+        {/* Test Navigation - replacing title */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <div style={{ fontWeight: 'bold', fontSize: '18px' }}>
-            Execution Timeline
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              onClick={handlePrevTest}
+              disabled={currentSpanIndex === 0}
+              style={{
+                padding: '4px 12px',
+                background: theme.colors.surface,
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: '4px',
+                color: currentSpanIndex === 0 ? theme.colors.textMuted : theme.colors.text,
+                cursor: currentSpanIndex === 0 ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
+                opacity: currentSpanIndex === 0 ? 0.5 : 1,
+              }}
+            >
+              ← Prev
+            </button>
+            <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
+              Test {currentSpanIndex + 1} of {spans.length}
+            </div>
+            <button
+              onClick={handleNextTest}
+              disabled={currentSpanIndex === spans.length - 1}
+              style={{
+                padding: '4px 12px',
+                background: theme.colors.surface,
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: '4px',
+                color: currentSpanIndex === spans.length - 1 ? theme.colors.textMuted : theme.colors.text,
+                cursor: currentSpanIndex === spans.length - 1 ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
+                opacity: currentSpanIndex === spans.length - 1 ? 0.5 : 1,
+              }}
+            >
+              Next →
+            </button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ fontSize: '13px', color: theme.colors.textMuted }}>
@@ -199,96 +246,41 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
           </div>
         </div>
 
-        {/* Test Navigation */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-          <button
-            onClick={handlePrevTest}
-            disabled={currentSpanIndex === 0}
-            style={{
-              padding: '4px 12px',
-              background: theme.colors.surface,
-              border: `1px solid ${theme.colors.border}`,
-              borderRadius: '4px',
-              color: currentSpanIndex === 0 ? theme.colors.textMuted : theme.colors.text,
-              cursor: currentSpanIndex === 0 ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              opacity: currentSpanIndex === 0 ? 0.5 : 1,
-            }}
-          >
-            ← Prev
-          </button>
-          <div style={{ fontSize: '13px', color: theme.colors.textMuted }}>
-            Test {currentSpanIndex + 1} of {spans.length}
+        {/* View Mode Toggle */}
+        {narrativeTemplate && onViewModeChange && (
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <button
+              onClick={() => onViewModeChange('raw')}
+              style={{
+                padding: '6px 12px',
+                background: viewMode === 'raw' ? theme.colors.primary : theme.colors.surface,
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: '4px',
+                color: viewMode === 'raw' ? '#ffffff' : theme.colors.text,
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: viewMode === 'raw' ? 'bold' : 'normal',
+              }}
+            >
+              Raw Events
+            </button>
+            <button
+              onClick={() => onViewModeChange('narrative')}
+              style={{
+                padding: '6px 12px',
+                background: viewMode === 'narrative' ? theme.colors.primary : theme.colors.surface,
+                border: `1px solid ${theme.colors.border}`,
+                borderRadius: '4px',
+                color: viewMode === 'narrative' ? '#ffffff' : theme.colors.text,
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: viewMode === 'narrative' ? 'bold' : 'normal',
+              }}
+            >
+              Narrative
+            </button>
           </div>
-          <button
-            onClick={handleNextTest}
-            disabled={currentSpanIndex === spans.length - 1}
-            style={{
-              padding: '4px 12px',
-              background: theme.colors.surface,
-              border: `1px solid ${theme.colors.border}`,
-              borderRadius: '4px',
-              color: currentSpanIndex === spans.length - 1 ? theme.colors.textMuted : theme.colors.text,
-              cursor: currentSpanIndex === spans.length - 1 ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              opacity: currentSpanIndex === spans.length - 1 ? 0.5 : 1,
-            }}
-          >
-            Next →
-          </button>
-          <div style={{ fontSize: '12px', color: theme.colors.textMuted, marginLeft: 'auto' }}>
-            {eventCount} events, {logCount} logs
-          </div>
-        </div>
-
-        {/* Filter Tabs */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-          <button
-            onClick={() => setViewMode('all')}
-            style={{
-              padding: '6px 12px',
-              background: viewMode === 'all' ? theme.colors.primary : 'transparent',
-              border: `1px solid ${theme.colors.border}`,
-              borderRadius: '4px',
-              color: viewMode === 'all' ? '#ffffff' : theme.colors.text,
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 500,
-            }}
-          >
-            All ({timeline.length})
-          </button>
-          <button
-            onClick={() => setViewMode('events')}
-            style={{
-              padding: '6px 12px',
-              background: viewMode === 'events' ? theme.colors.primary : 'transparent',
-              border: `1px solid ${theme.colors.border}`,
-              borderRadius: '4px',
-              color: viewMode === 'events' ? '#ffffff' : theme.colors.text,
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 500,
-            }}
-          >
-            Events ({eventCount})
-          </button>
-          <button
-            onClick={() => setViewMode('logs')}
-            style={{
-              padding: '6px 12px',
-              background: viewMode === 'logs' ? theme.colors.primary : 'transparent',
-              border: `1px solid ${theme.colors.border}`,
-              borderRadius: '4px',
-              color: viewMode === 'logs' ? '#ffffff' : theme.colors.text,
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 500,
-            }}
-          >
-            Logs ({logCount})
-          </button>
-        </div>
+        )}
 
         <div style={{ fontSize: '13px', color: theme.colors.textMuted, marginBottom: '15px' }}>
           Test: {currentSpan?.name || 'Loading...'}
@@ -344,14 +336,6 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                   <span style={{ color: '#4ade80' }}>Green → Code under test</span>
                 </li>
               </ul>
-              <p style={{ marginBottom: '12px' }}>
-                <strong>Use filter tabs to focus:</strong>
-              </p>
-              <ul style={{ marginLeft: '20px' }}>
-                <li>All - Interleaved timeline</li>
-                <li>Events - Span events only</li>
-                <li>Logs - OTEL logs only</li>
-              </ul>
             </div>
             <button
               onClick={() => setShowHelp(false)}
@@ -377,13 +361,52 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
         style={{
           flex: 1,
           overflow: 'auto',
-          padding: '20px',
+          padding: viewMode === 'narrative' ? '0' : '20px',
         }}
       >
-        {/* Timeline Items */}
-        {currentSpan && (
+        {/* Narrative View */}
+        {viewMode === 'narrative' && narrativeTemplate && currentSpan ? (
+          <NarrativeRenderer
+            template={narrativeTemplate}
+            events={otelEvents}
+            showMetadata={showNarrativeMetadata}
+          />
+        ) : viewMode === 'narrative' && !narrativeTemplate ? (
+          <div
+            style={{
+              padding: '40px 20px',
+              textAlign: 'center',
+              color: theme.colors.textMuted,
+            }}
+          >
+            <div style={{ fontSize: '16px', marginBottom: '12px' }}>ⓘ No narrative template available</div>
+            <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
+              Create a narrative template to see a human-readable
+              <br />
+              summary of this test execution.
+            </div>
+            <button
+              onClick={() => onViewModeChange?.('raw')}
+              style={{
+                marginTop: '20px',
+                padding: '8px 16px',
+                background: theme.colors.primary,
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px',
+              }}
+            >
+              View Raw Events
+            </button>
+          </div>
+        ) : null}
+
+        {/* Raw Events View (Timeline) */}
+        {viewMode === 'raw' && currentSpan && (
           <div>
-            {filteredTimeline.map((item, idx) => {
+            {timeline.map((item, idx) => {
             if (item.type === 'event') {
               // SPAN EVENT RENDERING
               const filepath = item.attributes?.['code.filepath'] as string;
@@ -401,7 +424,7 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                     marginBottom: '12px',
                     paddingBottom: '12px',
                     paddingLeft: '12px',
-                    borderBottom: idx < filteredTimeline.length - 1 ? `1px solid ${theme.colors.border}` : 'none',
+                    borderBottom: idx < timeline.length - 1 ? `1px solid ${theme.colors.border}` : 'none',
                     borderLeft: '3px solid #f59e0b',
                     opacity: highlightedPhase && !isHighlighted ? 0.4 : 1,
                     transition: 'opacity 0.2s ease',
@@ -479,7 +502,7 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
                     marginBottom: '12px',
                     paddingBottom: '12px',
                     paddingLeft: '12px',
-                    borderBottom: idx < filteredTimeline.length - 1 ? `1px solid ${theme.colors.border}` : 'none',
+                    borderBottom: idx < timeline.length - 1 ? `1px solid ${theme.colors.border}` : 'none',
                     borderLeft: `3px solid ${severityColor}`,
                   }}
                 >
@@ -557,8 +580,8 @@ export const TestEventPanel: React.FC<TestEventPanelProps> = ({
               );
             }
           })}
-        </div>
-      )}
+          </div>
+        )}
       </div>
     </div>
   );

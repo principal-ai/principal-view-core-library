@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
 import { TestEventPanel } from '../components/TestEventPanel';
+import type { ViewMode } from '../components/TestEventPanel';
 import type { ExtendedCanvas, GraphEvent } from '@principal-ai/principal-view-core/browser';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 import testSpans from './data/graph-converter-test-execution.json';
+import narrativeTemplate from './data/graph-converter-test.narrative.json';
 
 const meta = {
   title: 'Features/Real Test Execution',
@@ -288,6 +290,114 @@ export const EventPanelOnly: StoryObj = {
           currentEventIndex={999} // Show all events
           highlightedPhase={undefined}
         />
+      </div>
+    );
+  },
+};
+
+/**
+ * Event panel with narrative view toggle
+ *
+ * Demonstrates the new narrative view mode that transforms raw OTEL events into
+ * human-readable execution narratives. Toggle between "Raw Events" and "Narrative"
+ * to see both views.
+ *
+ * Features:
+ * - Human-readable narrative generated from template
+ * - Scenario-based rendering (test-passed vs test-failed)
+ * - Syntax highlighting for better readability
+ * - Optional metadata display
+ */
+export const WithNarrativeToggle: StoryObj = {
+  render: () => {
+    const [viewMode, setViewMode] = useState<ViewMode>('narrative');
+    const [currentSpanIndex, setCurrentSpanIndex] = useState(0);
+    const [showMetadata, setShowMetadata] = useState(false);
+
+    const testData = testSpans as any;
+    const spans = Array.isArray(testData) ? testData : testData.spans || testData;
+    const logs = testData.logs || [];
+
+    return (
+      <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {/* Controls */}
+        <div
+          style={{
+            padding: '12px 20px',
+            background: '#1a1a1a',
+            borderBottom: '1px solid #333',
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'center',
+          }}
+        >
+          <label style={{ color: '#999', fontSize: '14px' }}>
+            <input
+              type="checkbox"
+              checked={showMetadata}
+              onChange={(e) => setShowMetadata(e.target.checked)}
+              style={{ marginRight: '6px' }}
+            />
+            Show Metadata
+          </label>
+        </div>
+
+        {/* Event Panel */}
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <TestEventPanel
+            spans={spans}
+            logs={logs}
+            currentSpanIndex={currentSpanIndex}
+            currentEventIndex={999}
+            onSpanIndexChange={setCurrentSpanIndex}
+            viewMode={viewMode}
+            narrativeTemplate={narrativeTemplate as any}
+            onViewModeChange={setViewMode}
+            showNarrativeMetadata={showMetadata}
+          />
+        </div>
+      </div>
+    );
+  },
+};
+
+/**
+ * Split view with narrative on left, graph on right
+ *
+ * Shows how the narrative view integrates with the graph visualization,
+ * providing a complete picture of test execution.
+ */
+export const NarrativeWithGraph: StoryObj = {
+  render: () => {
+    const [viewMode, setViewMode] = useState<ViewMode>('narrative');
+    const [currentSpanIndex, setCurrentSpanIndex] = useState(0);
+    const [events] = useState<GraphEvent[]>([]);
+
+    const testData = testSpans as any;
+    const spans = Array.isArray(testData) ? testData : testData.spans || testData;
+    const logs = testData.logs || [];
+
+    return (
+      <div style={{ display: 'flex', width: '100vw', height: '100vh' }}>
+        {/* Event Panel - Left Side */}
+        <div style={{ flex: '0 0 50%', height: '100%', borderRight: '1px solid #333', overflow: 'hidden' }}>
+          <TestEventPanel
+            spans={spans}
+            logs={logs}
+            currentSpanIndex={currentSpanIndex}
+            currentEventIndex={999}
+            onSpanIndexChange={setCurrentSpanIndex}
+            viewMode={viewMode}
+            narrativeTemplate={narrativeTemplate as any}
+            onViewModeChange={setViewMode}
+            showNarrativeMetadata={true}
+          />
+        </div>
+
+        {/* Graph Visualization - Right Side */}
+        <div style={{ flex: '0 0 50%', height: '100%', position: 'relative' }}>
+          <GraphRenderer canvas={testExecutionCanvas} showControls={true} events={events} />
+        </div>
       </div>
     );
   },

@@ -5,7 +5,7 @@
       "name": "@principal-ai/principal-view-react",
       "dependencies": {
         "@principal-ade/industry-theme": "0.1.7",
-        "@principal-ai/principal-view-core": "^0.7.4",
+        "@principal-ai/principal-view-core": "^0.7.5",
         "@xyflow/react": "12.0.0",
         "elkjs": "0.9.0",
         "js-yaml": "4.1.1",
@@ -169,7 +169,7 @@
 
     "@principal-ai/codebase-quality-lenses": ["@principal-ai/codebase-quality-lenses@0.1.59", "", { "peerDependencies": { "@a24z/alexandria-cli": ">=0.2.0" }, "optionalPeers": ["@a24z/alexandria-cli"] }, "sha512-/1QVT4YpIZc/9FEGRf/laspDuURWMW+OubR3bmaqjY954GNr3U6HibQgkydgDQp1XjsvLr2czidxVT41P3m37Q=="],
 
-    "@principal-ai/principal-view-core": ["@principal-ai/principal-view-core@0.7.4", "", { "dependencies": { "@opentelemetry/api": "1.9.0", "@opentelemetry/exporter-trace-otlp-http": "0.208.0", "@opentelemetry/resources": "2.2.0", "@opentelemetry/sdk-trace-base": "2.2.0", "@opentelemetry/semantic-conventions": "1.38.0", "@principal-ai/codebase-composition": "0.2.39", "@principal-ai/repository-abstraction": "0.2.6", "date-fns": "3.0.0", "js-yaml": "4.1.0", "zod": "3.22.0" } }, "sha512-OWpdokY4frtaEmwOCQYgXTg2I9LsxHrcUKxraagGLDmMDM4QWyoa8wYWFOHrzH7+xVHhQoJ0jH+VTG5iMR3yeQ=="],
+    "@principal-ai/principal-view-core": ["@principal-ai/principal-view-core@0.7.5", "", { "dependencies": { "@opentelemetry/api": "1.9.0", "@opentelemetry/exporter-trace-otlp-http": "0.208.0", "@opentelemetry/resources": "2.2.0", "@opentelemetry/sdk-trace-base": "2.2.0", "@opentelemetry/semantic-conventions": "1.38.0", "@principal-ai/codebase-composition": "0.2.39", "@principal-ai/repository-abstraction": "0.2.6", "date-fns": "3.0.0", "js-yaml": "4.1.0", "zod": "3.22.0" } }, "sha512-o7VUNP9Ew5RIgTtE/GbAp9yq6DEVJVHTK76I15vQFW2eDRXbR9FtzUWmQzSH4ID9fqPWTWpD8+p0ExaEjZLzJw=="],
 
     "@principal-ai/quality-lens-registry": ["@principal-ai/quality-lens-registry@0.3.3", "", {}, "sha512-+ln796H5BvVTEgiot9GIsTbEnZWF2aDNqYEG4AfBi0jmEJpHO68Gk2+fa6E4LvQ1da0Pa52JmQvnKptbeoEmaw=="],
 
