@@ -1043,61 +1043,75 @@ When multiple scenarios are applicable but lower priority ones matched:
 
 ## Implementation Plan
 
-### Phase 1: Core Infrastructure (Week 1-2)
+### Phase 1: Core Infrastructure ✅ COMPLETED
 
 **Deliverables:**
-- [ ] Define TypeScript types for narrative templates
-- [ ] Implement scenario matching algorithm
-- [ ] Implement template expression parser
-- [ ] Create basic template renderer
-- [ ] Write unit tests for matching logic
+- [x] Define TypeScript types for narrative templates
+- [x] Implement scenario matching algorithm
+- [x] Implement template expression parser
+- [x] Create basic template renderer
+- [x] Write unit tests for matching logic (89/89 passing)
 
-**Files to Create:**
+**Files Created:**
 ```
 packages/core/src/narrative/
 ├── types.ts                    # NarrativeTemplate, NarrativeScenario types
 ├── scenario-matcher.ts         # Scenario selection logic
 ├── template-parser.ts          # Expression parsing
 ├── template-renderer.ts        # Template → text rendering
+├── index.ts                    # Public API exports
 └── __tests__/
     ├── scenario-matcher.test.ts
+    ├── template-parser.test.ts
     └── template-renderer.test.ts
 ```
 
-### Phase 2: Template Examples (Week 2-3)
+**Published:** `@principal-ai/principal-view-core@0.7.0` with narrative exports
+
+### Phase 2: Template Examples ✅ COMPLETED
 
 **Deliverables:**
-- [ ] Create narrative templates for existing `.otel.canvas` files
-- [ ] Add `narratives` metadata to canvas `pv` sections
-- [ ] Document template authoring guidelines
-- [ ] Create template validation tool
+- [x] Create narrative templates for existing `.otel.canvas` files
+- [ ] Add `narratives` metadata to canvas `pv` sections (future)
+- [ ] Document template authoring guidelines (future)
+- [ ] Create template validation tool (future)
 
-**Templates to Create:**
-- `graph-converter-execution.narrative.json`
-- `graph-converter-execution.narrative-dev.json`
-- `rules-engine-execution.narrative.json`
-- `rules-engine-execution.narrative-debug.json`
-- `otel-log-association.narrative.json`
+**Templates Created:**
+- [x] `graph-converter-test.narrative.json` (test execution narrative)
+- [x] `graph-converter-execution.narrative.json` (graph converter narrative)
+- [x] `rules-engine-execution.narrative.json` (rules engine narrative)
 
-### Phase 3: UI Integration (Week 3-4)
+### Phase 3: UI Integration ✅ PARTIALLY COMPLETED
 
 **Deliverables:**
-- [ ] React component for narrative rendering
-- [ ] Narrative template selector UI
-- [ ] Scenario override dropdown
-- [ ] Raw event inspector toggle
-- [ ] Storybook stories for all components
+- [x] React component for narrative rendering
+- [x] Narrative view mode toggle (raw ↔ narrative)
+- [ ] Scenario override dropdown (future)
+- [x] Raw event inspector toggle (viewMode switch)
+- [x] Storybook stories for all components
 
-**Components to Create:**
+**Components Created:**
 ```
-packages/react/src/components/
-├── NarrativeView/
-│   ├── NarrativeView.tsx
-│   ├── NarrativeRenderer.tsx
-│   ├── ScenarioSelector.tsx
-│   ├── EventInspector.tsx
-│   └── NarrativeView.stories.tsx
+packages/react/src/
+├── components/
+│   ├── NarrativeRenderer.tsx        # Core narrative rendering
+│   └── TestEventPanel.tsx           # Modified with view mode toggle
+├── utils/
+│   ├── narrative-converter.ts       # TestSpan → OtelEvent conversion
+│   └── narrative-loader.ts          # Template validation utilities
+└── stories/
+    ├── RealTestExecution.stories.tsx  # Updated with narrative stories
+    │   ├── WithNarrativeToggle        # Interactive toggle demo
+    │   └── NarrativeWithGraph         # Split view demo
+    └── data/
+        └── graph-converter-test.narrative.json  # Template for Vite
 ```
+
+**Published:** React package with narrative UI integration
+
+**CLI Updates:**
+- [x] Exclude `.narrative.json` files from lint validation
+- [x] Published `@principal-ai/principal-view-cli@0.1.29`
 
 ### Phase 4: Advanced Features (Week 4-5)
 
