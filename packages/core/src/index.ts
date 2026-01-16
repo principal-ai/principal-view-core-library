@@ -107,3 +107,34 @@ export { InMemoryFileSystemAdapter } from '@principal-ai/repository-abstraction'
 
 // Export rules engine
 export * from './rules';
+
+// Export narrative template system
+export {
+  renderNarrative,
+  parseTemplate,
+  evaluateExpression,
+  selectScenario,
+  matchesCondition,
+  hasEventMatching,
+  computeAggregates,
+  evaluateAssertion,
+  getNestedValue,
+  setNestedValue,
+} from './narrative';
+export type {
+  NarrativeTemplate,
+  NarrativeScenario,
+  NarrativeMode,
+  ScenarioCondition,
+  ScenarioTemplate,
+  Assertion,
+  FlowDirective,
+  LogTemplates,
+  FormattingOptions,
+  OtelEvent,
+  OtelSignal,
+  NarrativeContext,
+  NarrativeResult,
+  ScenarioMatchResult,
+  SpanTreeNode,
+} from './narrative';

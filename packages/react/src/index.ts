@@ -26,7 +26,7 @@ export type {
   ComponentLibrary,
   LibraryNodeComponent,
   LibraryEdgeComponent,
-} from '@principal-ai/principal-view-core';
+} from '@principal-ai/principal-view-core/browser';
 
 // Export components
 export { GraphRenderer } from './components/GraphRenderer';
@@ -36,12 +36,6 @@ export type {
   NodePositionChange,
   PendingChanges,
 } from './components/GraphRenderer';
-
-export { EventLog } from './components/EventLog';
-export type { EventLogProps } from './components/EventLog';
-
-export { MetricsDashboard } from './components/MetricsDashboard';
-export type { MetricsDashboardProps } from './components/MetricsDashboard';
 
 export { EdgeInfoPanel } from './components/EdgeInfoPanel';
 export type { EdgeInfoPanelProps } from './components/EdgeInfoPanel';

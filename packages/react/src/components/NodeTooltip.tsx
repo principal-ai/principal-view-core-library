@@ -74,7 +74,7 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
     }
   };
 
-  const tooltipContent = (
+  const renderTooltipContent = (): React.JSX.Element => (
     <div
       style={{
         position: usePortal ? 'fixed' : 'absolute',
@@ -164,7 +164,7 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
 
   // Use portal to render at body level when nodeRef is provided, otherwise render inline
   if (usePortal) {
-    return createPortal(tooltipContent, document.body);
+    return createPortal(renderTooltipContent(), document.body);
   }
-  return tooltipContent;
+  return renderTooltipContent();
 };

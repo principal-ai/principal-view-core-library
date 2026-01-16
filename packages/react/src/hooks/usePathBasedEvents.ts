@@ -11,7 +11,7 @@ import type {
   ComponentActionEvent,
   EdgeAnimationEvent,
   PathBasedEvent,
-} from '@principal-ai/principal-view-core';
+} from '@principal-ai/principal-view-core/browser';
 import {
   logLevelToNodeAnimation,
   actionToNodeAnimation,

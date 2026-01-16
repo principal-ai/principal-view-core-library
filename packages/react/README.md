@@ -13,8 +13,6 @@ This library provides **building blocks** for creating graph visualization appli
   - Auto-layout algorithms (hierarchical, circular)
   - Zoom, pan, drag interactions
   - Minimap and controls
-- 📝 `EventLog` - Event log component (coming soon)
-- 📊 `MetricsDashboard` - Metrics dashboard component (coming soon)
 - 🎭 `CustomNode` / `CustomEdge` - Configurable xyflow renderers
 
 ## Installation
@@ -39,31 +37,20 @@ bun add @principal-ai/visual-validation-react
 These are **building block components**. You compose them to build your panel application:
 
 ```typescript
-import { GraphRenderer, EventLog, MetricsDashboard } from '@principal-ai/visual-validation-react';
-import { EventProcessor } from '@principal-ai/visual-validation-core';
-import type { GraphConfiguration } from '@principal-ai/visual-validation-core';
+import { GraphRenderer } from '@principal-ai/visual-validation-react';
+import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
 
-const config: GraphConfiguration = {
-  // ... your configuration
+const canvas: ExtendedCanvas = {
+  // ... your canvas data
 };
 
 function MyPanel() {
-  const processor = new EventProcessor(config);
-  const state = processor.getGraphState();
-  const events = processor.getEventHistory();
-
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr' }}>
-      <GraphRenderer
-        configuration={config}
-        nodes={Array.from(state.nodes.values())}
-        edges={Array.from(state.edges.values())}
-      />
-      <div>
-        <MetricsDashboard metrics={/* ... */} />
-        <EventLog events={events} />
-      </div>
-    </div>
+    <GraphRenderer
+      canvas={canvas}
+      width="100%"
+      height="600px"
+    />
   );
 }
 ```
@@ -99,8 +86,6 @@ bun run storybook
 - ✅ Implement node renderers with shapes and states
 - ✅ Implement edge renderers with styles and animations
 - ✅ Add auto-layout algorithms
-- 🔲 Build event log panel with filtering
-- 🔲 Build metrics dashboard with charts
 - ✅ Add Storybook stories
 
 ## License

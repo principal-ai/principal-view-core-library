@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
-import type { GraphEvent, ExtendedCanvas } from '@principal-ai/principal-view-core';
+import type { GraphEvent, ExtendedCanvas } from '@principal-ai/principal-view-core/browser';
 import { useState, useEffect } from 'react';
 import React from 'react';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';

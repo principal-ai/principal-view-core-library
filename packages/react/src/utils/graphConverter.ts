@@ -4,7 +4,7 @@ import type {
   EdgeState,
   GraphConfiguration,
   Violation,
-} from '@principal-ai/principal-view-core';
+} from '@principal-ai/principal-view-core/browser';
 import type { CustomNodeData } from '../nodes/CustomNode';
 import type { CustomEdgeData } from '../edges/CustomEdge';
 

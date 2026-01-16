@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
 import { TestEventPanel } from '../components/TestEventPanel';
-import type { ExtendedCanvas, GraphEvent } from '@principal-ai/principal-view-core';
+import type { ExtendedCanvas, GraphEvent } from '@principal-ai/principal-view-core/browser';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 import testSpans from './data/graph-converter-test-execution.json';
 

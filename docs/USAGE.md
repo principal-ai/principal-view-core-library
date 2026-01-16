@@ -118,55 +118,13 @@ import { GraphRenderer } from '@principal-ai/visual-validation-react';
 | `width`         | `number \| string`   | No       | Width (default: `100%`)                      |
 | `height`        | `number \| string`   | No       | Height (default: `100%`)                     |
 
-### EventLog
-
-Display a log of graph events.
-
-```typescript
-import { EventLog } from '@principal-ai/visual-validation-react';
-
-<EventLog
-  events={events}
-  violations={violations}
-  onEventClick={(event) => console.log('Clicked:', event)}
-  maxHeight="400px"
-/>;
-```
-
-**Props:**
-
-| Prop           | Type                          | Required | Description                    |
-| -------------- | ----------------------------- | -------- | ------------------------------ |
-| `events`       | `GraphEvent[]`                | Yes      | Array of events to display     |
-| `violations`   | `Violation[]`                 | No       | Violations to highlight        |
-| `onEventClick` | `(event: GraphEvent) => void` | No       | Callback when event is clicked |
-| `className`    | `string`                      | No       | CSS class name                 |
-| `maxHeight`    | `number \| string`            | No       | Max height (default: `400px`)  |
-
-### MetricsDashboard
-
-Show metrics about your graph.
-
-```typescript
-import { MetricsDashboard } from '@principal-ai/visual-validation-react';
-
-<MetricsDashboard metrics={metrics} className="metrics" />;
-```
-
-**Props:**
-
-| Prop        | Type           | Required | Description                                                 |
-| ----------- | -------------- | -------- | ----------------------------------------------------------- |
-| `metrics`   | `GraphMetrics` | Yes      | Metrics object with node, edge, event, and validation stats |
-| `className` | `string`       | No       | CSS class name                                              |
-
 ## Building a Complete Panel
 
 Combine components to create a full visualization panel:
 
 ```typescript
 import React, { useState, useEffect } from 'react';
-import { GraphRenderer, EventLog, MetricsDashboard } from '@principal-ai/visual-validation-react';
+import { GraphRenderer } from '@principal-ai/visual-validation-react';
 import { EventProcessor } from '@principal-ai/visual-validation-core';
 import type {
   GraphConfiguration,
@@ -232,104 +190,48 @@ function ValidationPanel({ configuration, eventStream }: PanelProps) {
     }
   }, [isPlaying, currentEventIndex]);
 
-  // Get validation results
-  const validation = processor.validate();
-
-  // Calculate metrics
-  const metrics = {
-    nodes: {
-      total: graphState.nodes.size,
-      byType: Array.from(graphState.nodes.values()).reduce((acc, node) => {
-        acc[node.type] = (acc[node.type] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-      byState: {},
-    },
-    edges: {
-      total: graphState.edges.size,
-      byType: Array.from(graphState.edges.values()).reduce((acc, edge) => {
-        acc[edge.type] = (acc[edge.type] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-    },
-    events: {
-      total: events.length,
-      byCategory: events.reduce((acc, evt) => {
-        acc[evt.category] = (acc[evt.category] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-      byType: events.reduce((acc, evt) => {
-        acc[evt.type] = (acc[evt.type] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-      rate: events.length / Math.max(1, currentEventIndex),
-    },
-    validation: {
-      violations: validation.violations.length,
-      warnings: validation.warnings.length,
-      unexpectedEvents: validation.metrics.unexpectedEvents,
-      healthScore: 1 - validation.violations.length / Math.max(1, events.length),
-    },
-    performance: {
-      renderTime: 0,
-      eventProcessingTime: 0,
-      layoutTime: 0,
-    },
-  };
-
   return (
     <div
       style={{
-        display: 'grid',
-        gridTemplateColumns: '2fr 1fr',
+        display: 'flex',
+        flexDirection: 'column',
         height: '100vh',
         gap: '16px',
         padding: '16px',
       }}
     >
-      {/* Left column: Graph */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button onClick={() => setIsPlaying(!isPlaying)}>{isPlaying ? 'Pause' : 'Play'}</button>
-          <button
-            onClick={processNextEvent}
-            disabled={currentEventIndex >= eventStream.events.length}
-          >
-            Next Event
-          </button>
-          <button
-            onClick={() => {
-              processor.reset();
-              setEvents([]);
-              setCurrentEventIndex(0);
-              setGraphState(processor.getGraphState());
-            }}
-          >
-            Reset
-          </button>
-          <span>
-            Event {currentEventIndex} / {eventStream.events.length}
-          </span>
-        </div>
-
-        <GraphRenderer
-          configuration={configuration}
-          nodes={Array.from(graphState.nodes.values())}
-          edges={Array.from(graphState.edges.values())}
-          width="100%"
-          height="100%"
-        />
+      {/* Playback controls */}
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <button onClick={() => setIsPlaying(!isPlaying)}>{isPlaying ? 'Pause' : 'Play'}</button>
+        <button
+          onClick={processNextEvent}
+          disabled={currentEventIndex >= eventStream.events.length}
+        >
+          Next Event
+        </button>
+        <button
+          onClick={() => {
+            processor.reset();
+            setEvents([]);
+            setCurrentEventIndex(0);
+            setGraphState(processor.getGraphState());
+          }}
+        >
+          Reset
+        </button>
+        <span>
+          Event {currentEventIndex} / {eventStream.events.length}
+        </span>
       </div>
 
-      {/* Right column: Metrics and Events */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', overflow: 'hidden' }}>
-        <MetricsDashboard metrics={metrics} />
-        <EventLog
-          events={events}
-          violations={validation.violations}
-          onEventClick={(event) => console.log('Event clicked:', event)}
-        />
-      </div>
+      {/* Graph visualization */}
+      <GraphRenderer
+        configuration={configuration}
+        nodes={Array.from(graphState.nodes.values())}
+        edges={Array.from(graphState.edges.values())}
+        width="100%"
+        height="100%"
+      />
     </div>
   );
 }
@@ -342,18 +244,13 @@ graph TB
     subgraph "Validation Panel Layout"
         direction TB
         Controls[Playback Controls<br/>Play/Pause/Next/Reset]
-        Graph[GraphRenderer<br/>2/3 width]
-        Metrics[MetricsDashboard<br/>1/3 width]
-        Events[EventLog<br/>1/3 width]
+        Graph[GraphRenderer<br/>Full width]
 
         Controls --> Graph
-        Metrics -.-> Events
     end
 
     style Controls fill:#4A90E2,stroke:#333,color:#fff
     style Graph fill:#50E3C2,stroke:#333,color:#fff
-    style Metrics fill:#F5A623,stroke:#333,color:#fff
-    style Events fill:#BD10E0,stroke:#333,color:#fff
 ```
 
 ## Advanced Patterns
@@ -453,38 +350,6 @@ function ReplayPanel({ configuration, eventStream }: PanelProps) {
 }
 ```
 
-### Event Filtering
-
-Filter events by type or category:
-
-```typescript
-function FilteredEventLog({ events }: { events: GraphEvent[] }) {
-  const [filter, setFilter] = useState<string | null>(null);
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-
-  const filteredEvents = events.filter((event) => {
-    if (filter && event.type !== filter) return false;
-    if (categoryFilter && event.category !== categoryFilter) return false;
-    return true;
-  });
-
-  return (
-    <div>
-      <select onChange={(e) => setCategoryFilter(e.target.value || null)}>
-        <option value="">All Categories</option>
-        <option value="node">Node Events</option>
-        <option value="edge">Edge Events</option>
-        <option value="state">State Events</option>
-        <option value="data">Data Events</option>
-        <option value="system">System Events</option>
-      </select>
-
-      <EventLog events={filteredEvents} />
-    </div>
-  );
-}
-```
-
 ### Custom Node Rendering
 
 Extend the default node renderer:
@@ -558,7 +423,7 @@ graph TB
     V --> Check{Has Violations?}
     Check -->|Yes| Alert[Show Alert]
     Check -->|No| Continue[Continue]
-    Alert --> Log[Log to EventLog]
+    Alert --> Log[Log Event]
     Continue --> Log
 
     style E fill:#4A90E2,stroke:#333,color:#fff

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
-import type { ExtendedCanvas, GraphEvent } from '@principal-ai/principal-view-core';
+import type { ExtendedCanvas, GraphEvent } from '@principal-ai/principal-view-core/browser';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 
 // Helper component that sets initial node states via events

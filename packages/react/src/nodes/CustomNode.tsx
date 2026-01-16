@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import type { NodeTypeDefinition } from '@principal-ai/principal-view-core';
+import type { NodeTypeDefinition } from '@principal-ai/principal-view-core/browser';
 import { resolveIcon } from '../utils/iconResolver';
 import { NodeTooltip } from '../components/NodeTooltip';
 import type { OtelInfo } from '../components/NodeTooltip';

@@ -4,32 +4,40 @@ const config: StorybookConfig = {
   stories: ['../src/**/*.mdx', '../src/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
   addons: [
     '@storybook/addon-links',
-    '@storybook/addon-essentials',
-    '@storybook/addon-interactions',
+    '@storybook/addon-docs',
   ],
   framework: {
     name: '@storybook/react-vite',
     options: {},
   },
-  docs: {
-    autodocs: 'tag',
+  typescript: {
+    check: false,
+    reactDocgen: 'react-docgen-typescript',
+    reactDocgenTypescriptOptions: {
+      shouldExtractLiteralValuesFromEnum: true,
+      propFilter: (prop) =>
+        prop.parent ? !/node_modules/.test(prop.parent.fileName) : true,
+    },
   },
   async viteFinal(config) {
-    // Add plugin to handle .canvas files as JSON modules
-    const fs = await import('fs');
+    if (config.resolve) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        '@storybook/blocks': '@storybook/addon-docs/blocks',
+      };
+    }
 
-    config.plugins = config.plugins || [];
-    config.plugins.push({
-      name: 'canvas-json-loader',
-      enforce: 'pre',
-      load(id) {
-        if (id.endsWith('.canvas')) {
-          const jsonContent = fs.readFileSync(id, 'utf-8');
-          const parsed = JSON.parse(jsonContent);
-          return `export default ${JSON.stringify(parsed)}`;
-        }
-      },
-    });
+    // Exclude local monorepo packages from Vite's dependency pre-bundling
+    if (config.optimizeDeps) {
+      config.optimizeDeps.exclude = [
+        ...(config.optimizeDeps.exclude || []),
+        '@principal-ai/principal-view-core',
+      ];
+    } else {
+      config.optimizeDeps = {
+        exclude: ['@principal-ai/principal-view-core'],
+      };
+    }
 
     return config;
   },

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { NodeTypeDefinition } from '@principal-ai/principal-view-core';
+import type { NodeTypeDefinition } from '@principal-ai/principal-view-core/browser';
 
 export interface GenericNodeProps {
   /** Node ID */

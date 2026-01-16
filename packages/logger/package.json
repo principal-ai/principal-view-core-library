@@ -25,12 +25,12 @@
     "test:coverage": "bun test --coverage"
   },
   "dependencies": {
-    "@principal-ai/principal-view-core": "^0.5.15"
+    "@principal-ai/principal-view-core": "0.6.4"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0",
-    "jest": "^30.1.3",
-    "typescript": "^5.0.4"
+    "@types/jest": "30.0.0",
+    "jest": "30.1.3",
+    "typescript": "5.0.4"
   },
   "keywords": [
     "logger",

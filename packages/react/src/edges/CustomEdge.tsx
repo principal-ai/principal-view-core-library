@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
 import type { EdgeProps } from '@xyflow/react';
-import type { EdgeTypeDefinition } from '@principal-ai/principal-view-core';
+import type { EdgeTypeDefinition } from '@principal-ai/principal-view-core/browser';
 
 export interface CustomEdgeData extends Record<string, unknown> {
   typeDefinition: EdgeTypeDefinition;

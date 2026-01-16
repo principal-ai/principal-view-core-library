@@ -31,8 +31,8 @@ import type {
   GraphEvent,
   ExtendedCanvas,
   ComponentLibrary,
-} from '@principal-ai/principal-view-core';
-import { CanvasConverter } from '@principal-ai/principal-view-core';
+} from '@principal-ai/principal-view-core/browser';
+import { CanvasConverter } from '@principal-ai/principal-view-core/browser';
 import { useTheme } from '@principal-ade/industry-theme';
 import { CustomNode } from '../nodes/CustomNode';
 import type { CustomNodeData } from '../nodes/CustomNode';

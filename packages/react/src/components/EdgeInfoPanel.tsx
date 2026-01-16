@@ -1,5 +1,5 @@
 import React from 'react';
-import type { EdgeState, EdgeTypeDefinition } from '@principal-ai/principal-view-core';
+import type { EdgeState, EdgeTypeDefinition } from '@principal-ai/principal-view-core/browser';
 import { useTheme } from '@principal-ade/industry-theme';
 
 export interface EdgeInfoPanelProps {

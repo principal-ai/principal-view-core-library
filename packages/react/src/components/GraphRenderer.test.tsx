@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { GraphRenderer } from './GraphRenderer';
-import type { GraphConfiguration, NodeState, EdgeState } from '@principal-ai/principal-view-core';
+import type { GraphConfiguration, NodeState, EdgeState } from '@principal-ai/principal-view-core/browser';
 
 describe('GraphRenderer', () => {
   const testConfig: GraphConfiguration = {
