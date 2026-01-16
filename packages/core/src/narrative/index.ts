@@ -33,3 +33,11 @@ export { parseTemplate, evaluateExpression } from './template-parser';
 
 // Template Rendering
 export { renderNarrative } from './template-renderer';
+
+// Validation
+export type {
+  NarrativeValidationContext,
+  NarrativeViolation,
+  NarrativeValidationResult,
+} from './validator';
+export { NarrativeValidator, createNarrativeValidator } from './validator';

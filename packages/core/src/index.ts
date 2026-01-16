@@ -120,6 +120,8 @@ export {
   evaluateAssertion,
   getNestedValue,
   setNestedValue,
+  createNarrativeValidator,
+  NarrativeValidator,
 } from './narrative';
 export type {
   NarrativeTemplate,
@@ -137,4 +139,7 @@ export type {
   NarrativeResult,
   ScenarioMatchResult,
   SpanTreeNode,
+  NarrativeValidationContext,
+  NarrativeViolation,
+  NarrativeValidationResult,
 } from './narrative';

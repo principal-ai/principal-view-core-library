@@ -18,6 +18,11 @@ import {
   type GraphRuleViolation,
   type PrivuConfig,
   type ComponentLibrary,
+  createNarrativeValidator,
+  type NarrativeTemplate,
+  type NarrativeValidationResult,
+  type NarrativeViolation,
+  type ExtendedCanvas,
 } from '@principal-ai/principal-view-core';
 
 // ============================================================================
@@ -135,6 +140,62 @@ function loadGraphConfig(filePath: string): { config: GraphConfiguration; raw: s
   } catch {
     return null;
   }
+}
+
+/**
+ * Load a narrative template file
+ */
+function loadNarrativeTemplate(filePath: string): { narrative: NarrativeTemplate; raw: string } | null {
+  if (!existsSync(filePath)) {
+    return null;
+  }
+
+  try {
+    const raw = readFileSync(filePath, 'utf8');
+    const narrative = JSON.parse(raw) as NarrativeTemplate;
+    return { narrative, raw };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Load a canvas file for narrative validation
+ */
+function loadCanvas(filePath: string): ExtendedCanvas | null {
+  if (!existsSync(filePath)) {
+    return null;
+  }
+
+  try {
+    const content = readFileSync(filePath, 'utf8');
+    const ext = filePath.toLowerCase();
+
+    if (ext.endsWith('.json')) {
+      return JSON.parse(content) as ExtendedCanvas;
+    } else {
+      return yaml.load(content) as ExtendedCanvas;
+    }
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Determine file type
+ */
+function getFileType(filePath: string): 'canvas' | 'narrative' | 'config' {
+  const name = basename(filePath).toLowerCase();
+
+  if (name.endsWith('.narrative.json')) {
+    return 'narrative';
+  }
+
+  if (name.endsWith('.canvas') || name.endsWith('.otel.canvas')) {
+    return 'canvas';
+  }
+
+  return 'config';
 }
 
 // ============================================================================
@@ -336,15 +397,14 @@ export function createLintCommand(): Command {
           expandDirectories: false,
         });
 
-        // Filter out library files, config files, canvas files, narrative templates, and execution artifacts
+        // Filter out library files, config files, and execution artifacts
+        // INCLUDE both canvas files and narrative templates for linting
         const configFiles = matchedFiles.filter((f: string) => {
           const name = basename(f).toLowerCase();
           const isLibraryFile = name.startsWith('library.');
           const isConfigFile = name.startsWith('.privurc');
-          const isCanvasFile = f.toLowerCase().endsWith('.canvas');
-          const isNarrativeTemplate = name.endsWith('.narrative.json');
           const isExecutionArtifact = f.includes('__executions__/');
-          return !isLibraryFile && !isConfigFile && !isCanvasFile && !isNarrativeTemplate && !isExecutionArtifact;
+          return !isLibraryFile && !isConfigFile && !isExecutionArtifact;
         });
 
         if (configFiles.length === 0) {
@@ -375,8 +435,18 @@ export function createLintCommand(): Command {
           }
         }
 
-        // Create rules engine
+        // Helper function to count violations by rule
+        function countByRule(violations: GraphRuleViolation[]): Record<string, number> {
+          const counts: Record<string, number> = {};
+          for (const v of violations) {
+            counts[v.ruleId] = (counts[v.ruleId] || 0) + 1;
+          }
+          return counts;
+        }
+
+        // Create validators
         const engine = createDefaultRulesEngine();
+        const narrativeValidator = createNarrativeValidator();
 
         // Lint each file
         const results = new Map<string, GraphLintResult>();
@@ -384,40 +454,106 @@ export function createLintCommand(): Command {
         for (const filePath of configFiles) {
           const absolutePath = resolve(cwd, filePath);
           const relativePath = relative(cwd, absolutePath);
+          const fileType = getFileType(absolutePath);
 
-          const loaded = loadGraphConfig(absolutePath);
-          if (!loaded) {
-            // File couldn't be loaded - report as error
-            results.set(relativePath, {
-              violations: [
-                {
-                  ruleId: 'parse-error',
-                  severity: 'error',
-                  file: relativePath,
-                  message: `Could not parse file: ${filePath}`,
-                  impact: 'File cannot be validated',
-                  fixable: false,
-                },
-              ],
-              errorCount: 1,
-              warningCount: 0,
-              fixableCount: 0,
-              byCategory: { schema: 1, reference: 0, structure: 0, pattern: 0, library: 0 },
-              byRule: { 'parse-error': 1 },
+          if (fileType === 'narrative') {
+            // Validate narrative template
+            const loaded = loadNarrativeTemplate(absolutePath);
+            if (!loaded) {
+              // File couldn't be loaded - report as error
+              results.set(relativePath, {
+                violations: [
+                  {
+                    ruleId: 'parse-error',
+                    severity: 'error',
+                    file: relativePath,
+                    message: `Could not parse narrative file: ${filePath}`,
+                    impact: 'File cannot be validated',
+                    fixable: false,
+                  },
+                ],
+                errorCount: 1,
+                warningCount: 0,
+                fixableCount: 0,
+                byCategory: { schema: 1, reference: 0, structure: 0, pattern: 0, library: 0 },
+                byRule: { 'parse-error': 1 },
+              });
+              continue;
+            }
+
+            // Load the referenced canvas if it exists
+            const canvasPath = loaded.narrative.canvas
+              ? resolve(dirname(absolutePath), loaded.narrative.canvas)
+              : undefined;
+            const canvas = canvasPath ? loadCanvas(canvasPath) : undefined;
+
+            // Run narrative validation
+            const narrativeResult = await narrativeValidator.validate({
+              narrative: loaded.narrative,
+              narrativePath: relativePath,
+              canvas: canvas ?? undefined,
+              canvasPath: canvasPath ? relative(cwd, canvasPath) : undefined,
+              basePath: dirname(absolutePath),
+              rawContent: loaded.raw,
             });
-            continue;
+
+            // Convert narrative violations to graph violations format
+            const violations: GraphRuleViolation[] = narrativeResult.violations.map((v: NarrativeViolation) => ({
+              ruleId: v.ruleId,
+              severity: v.severity,
+              file: v.file,
+              line: v.line,
+              path: v.path,
+              message: v.message,
+              impact: v.impact,
+              suggestion: v.suggestion,
+              fixable: v.fixable,
+            }));
+
+            results.set(relativePath, {
+              violations,
+              errorCount: narrativeResult.errorCount,
+              warningCount: narrativeResult.warningCount,
+              fixableCount: narrativeResult.fixableCount,
+              byCategory: { schema: 0, reference: 0, structure: 0, pattern: 0, library: 0 }, // Could categorize narrative rules
+              byRule: countByRule(violations),
+            });
+          } else {
+            // Validate canvas/graph configuration
+            const loaded = loadGraphConfig(absolutePath);
+            if (!loaded) {
+              // File couldn't be loaded - report as error
+              results.set(relativePath, {
+                violations: [
+                  {
+                    ruleId: 'parse-error',
+                    severity: 'error',
+                    file: relativePath,
+                    message: `Could not parse file: ${filePath}`,
+                    impact: 'File cannot be validated',
+                    fixable: false,
+                  },
+                ],
+                errorCount: 1,
+                warningCount: 0,
+                fixableCount: 0,
+                byCategory: { schema: 1, reference: 0, structure: 0, pattern: 0, library: 0 },
+                byRule: { 'parse-error': 1 },
+              });
+              continue;
+            }
+
+            // Run linting
+            const result = await engine.lintWithConfig(loaded.config, privuConfig, {
+              library,
+              configPath: relativePath,
+              rawContent: loaded.raw,
+              enabledRules: options.rule,
+              disabledRules: options.ignoreRule,
+            });
+
+            results.set(relativePath, result);
           }
-
-          // Run linting
-          const result = await engine.lintWithConfig(loaded.config, privuConfig, {
-            library,
-            configPath: relativePath,
-            rawContent: loaded.raw,
-            enabledRules: options.rule,
-            disabledRules: options.ignoreRule,
-          });
-
-          results.set(relativePath, result);
         }
 
         // Output results
