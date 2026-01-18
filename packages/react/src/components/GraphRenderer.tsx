@@ -17,7 +17,9 @@ import {
   useReactFlow,
   useViewport,
   applyNodeChanges,
+  applyEdgeChanges,
   type Edge,
+  type EdgeChange,
   type NodeChange,
   type Node,
   type Connection,
@@ -819,6 +821,16 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     setPendingConnection(null);
   }, []);
 
+  // Helper to convert handle ID back to side name
+  const handleToSide = useCallback((handle: string | null | undefined, isSource: boolean): string | undefined => {
+    if (!handle) return undefined;
+    // Source handles are like "right-out", target handles are like "left"
+    if (isSource) {
+      return handle.replace('-out', '');
+    }
+    return handle;
+  }, []);
+
   // Track whether reconnection succeeded
   const edgeReconnectSuccessful = useRef(true);
 
@@ -857,6 +869,10 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       // Mark as successful before updating
       edgeReconnectSuccessful.current = true;
 
+      // Convert handles back to sides for edge data
+      const newFromSide = handleToSide(newConnection.sourceHandle, true);
+      const newToSide = handleToSide(newConnection.targetHandle, false);
+
       // Update local edges - manually update the edge to preserve its type and id
       setLocalEdges((prev) =>
         prev.map((edge) => {
@@ -867,7 +883,28 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
               to: newConnection.target!,
               sourceHandle: newConnection.sourceHandle ?? undefined,
               targetHandle: newConnection.targetHandle ?? undefined,
+              data: {
+                ...edge.data,
+                fromSide: newFromSide,
+                toSide: newToSide,
+              },
               updatedAt: Date.now(),
+            };
+          }
+          return edge;
+        })
+      );
+
+      // Also update the visual edge state directly to reflect the reconnection immediately
+      setXyflowLocalEdges((prev) =>
+        prev.map((edge) => {
+          if (edge.id === oldEdge.id) {
+            return {
+              ...edge,
+              source: newConnection.source!,
+              target: newConnection.target!,
+              sourceHandle: newConnection.sourceHandle ?? undefined,
+              targetHandle: newConnection.targetHandle ?? undefined,
             };
           }
           return edge;
@@ -918,7 +955,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         return { ...prev, deletedEdges: newDeletedEdges, createdEdges: newCreatedEdges };
       });
     },
-    [editable, localEdges, nodes, configuration.allowedConnections, updateEditState]
+    [editable, localEdges, nodes, configuration.allowedConnections, updateEditState, handleToSide]
   );
 
   // Called when reconnection ends (whether successful or not)
@@ -1233,7 +1270,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     [editable, updateEditState]
   );
 
-  const xyflowEdges = useMemo(() => {
+  const xyflowEdgesBase = useMemo(() => {
     const converted = convertToXYFlowEdges(edges, configuration, violations);
 
     // Debug: Log edge counts to help diagnose disappearing edges
@@ -1278,6 +1315,31 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     });
   }, [edges, configuration, violations, animationState.edgeAnimations, showTooltips, selectedEdgeIds]);
 
+  // Local xyflow edges state for reconnection
+  const [xyflowLocalEdges, setXyflowLocalEdges] = useState<Edge<CustomEdgeData>[]>(xyflowEdgesBase);
+
+  // Sync when base edges change (structure changes like add/remove)
+  const prevBaseEdgesKeyRef2 = useRef(baseEdgesKey);
+  useEffect(() => {
+    if (prevBaseEdgesKeyRef2.current !== baseEdgesKey) {
+      prevBaseEdgesKeyRef2.current = baseEdgesKey;
+      setXyflowLocalEdges(xyflowEdgesBase);
+    }
+  }, [baseEdgesKey, xyflowEdgesBase]);
+
+  // Use local edges in edit mode, base edges otherwise
+  const xyflowEdges = editable ? xyflowLocalEdges : xyflowEdgesBase;
+
+  // Handle edge changes (selection, reconnection, etc.)
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      if (!editable) return;
+
+      setXyflowLocalEdges((eds) => applyEdgeChanges(changes, eds) as Edge<CustomEdgeData>[]);
+    },
+    [editable]
+  );
+
   // Fit view on mount and structure changes
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -1318,6 +1380,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         reconnectRadius={25}
         elevateEdgesOnSelect={true}
         onNodesChange={handleNodesChange}
+        onEdgesChange={handleEdgesChange}
         onConnect={handleConnect}
         onReconnectStart={handleReconnectStart}
         onReconnect={handleReconnect}

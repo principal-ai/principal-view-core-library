@@ -92,10 +92,11 @@ export function convertToXYFlowEdges(
     const edgeWithHandles = edge as EdgeStateWithHandles;
 
     // Get handle IDs from edge data (fromSide/toSide) or explicit handles
+    // If no side specified, default to right->left for left-to-right flow
     const fromSide = edge.data?.fromSide as string | undefined;
     const toSide = edge.data?.toSide as string | undefined;
-    const sourceHandle = edgeWithHandles.sourceHandle || sideToSourceHandle(fromSide);
-    const targetHandle = edgeWithHandles.targetHandle || sideToTargetHandle(toSide);
+    const sourceHandle = edgeWithHandles.sourceHandle || sideToSourceHandle(fromSide || 'right');
+    const targetHandle = edgeWithHandles.targetHandle || sideToTargetHandle(toSide || 'left');
 
     // Add arrow marker if edge type is directed
     // Color priority: edge data color > type definition color > default
