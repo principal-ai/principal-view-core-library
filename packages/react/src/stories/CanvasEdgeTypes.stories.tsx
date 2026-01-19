@@ -981,3 +981,315 @@ export const EdgeFieldsReference: Story = {
     },
   },
 };
+
+/**
+ * Canvas showing edge reconnection scenario from admin-dashboard
+ * Tests moving an edge from left to right of the same node
+ */
+const edgeReconnectionCanvas: ExtendedCanvas = {
+  nodes: [
+    {
+      id: 'client-components',
+      type: 'text' as const,
+      x: 100,
+      y: 200,
+      width: 200,
+      height: 100,
+      text: 'Client Components\n\nReact Query\nURL state (nuqs)\nReal-time updates',
+      color: '#06B6D4',
+    },
+    {
+      id: 'api-routes',
+      type: 'text' as const,
+      x: 400,
+      y: 200,
+      width: 220,
+      height: 180,
+      text: 'API Routes Layer\n\n• /api/otel/*\n• /api/dashboards/*\n• /api/teams/*\n• /api/github/*\n• /api/sentry/*\n• /api/billing/*\n• /api/bug-fix-agent/*',
+      color: '#F59E0B',
+    },
+    {
+      id: 'pages-layer',
+      type: 'text' as const,
+      x: 700,
+      y: 100,
+      width: 220,
+      height: 180,
+      text: 'Pages Layer\n\n• Dashboard (/, /dashboards)\n• Sessions (/sessions)\n• Events (/events)\n• Teams (/teams)\n• Integrations (/integrations)\n• Billing (/billing)',
+      color: '#10B981',
+    },
+  ],
+  edges: [
+    {
+      id: 'e8',
+      fromNode: 'client-components',
+      toNode: 'api-routes',
+      fromSide: 'right',
+      toSide: 'left',
+      label: 'React Query',
+      pv: {
+        edgeType: 'httpRest',
+      },
+    },
+    {
+      id: 'e4',
+      fromNode: 'pages-layer',
+      toNode: 'api-routes',
+      fromSide: 'left',
+      toSide: 'right',
+      label: 'SSR',
+      pv: {
+        edgeType: 'httpRest',
+      },
+    },
+  ],
+  pv: {
+    version: '1.0.0',
+    name: 'Edge Reconnection Test - Admin Dashboard Scenario',
+    description: 'Reproduces the httpRest edge reconnection issue when moving edge from left to right of same node',
+    edgeTypes: {
+      httpRest: {
+        style: 'solid',
+        color: '#3b82f6',
+        directed: true,
+      },
+    },
+  },
+};
+
+export const EdgeReconnectionScenario: Story = {
+  args: {
+    canvas: edgeReconnectionCanvas,
+    width: 1100,
+    height: 500,
+    editable: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Edge Reconnection Test - Admin Dashboard Scenario**
+
+This story reproduces the issue from the admin-dashboard.canvas file where:
+
+1. We have text nodes connected by httpRest edges
+2. Edge e8 connects client-components → api-routes (left → right)
+3. Edge e4 connects pages-layer → api-routes (left → right)
+
+**To Test the Bug:**
+Try to reconnect edge e8 or e4 to different sides of the api-routes node.
+You may see the error: "Cannot reconnect: httpRest edge not allowed from text to text"
+
+**Root Cause:**
+The validation checks \`allowedConnections\` which is built from existing edges.
+When nodes don't have \`pv.nodeType\`, the system uses node IDs instead of node types,
+causing validation to fail when reconnecting edges between different node pairs.
+
+**Expected Behavior:**
+Edges with edgeType "httpRest" should be allowed to reconnect between any text nodes,
+regardless of which specific nodes are connected.
+        `,
+      },
+    },
+  },
+};
+
+/**
+ * Full Admin Dashboard canvas data for comprehensive testing
+ * Includes multiple httpRest edges and various node types
+ */
+const adminDashboardFullCanvas: ExtendedCanvas = {
+  nodes: [
+    {
+      id: 'user-browser',
+      type: 'text' as const,
+      text: 'User Browser\n\nNext.js 16 React App',
+      x: 92,
+      y: 374,
+      width: 180,
+      height: 80,
+      color: '#3B82F6',
+    },
+    {
+      id: 'pages-layer',
+      type: 'text' as const,
+      text: 'Pages Layer\n\n• Dashboard (/, /dashboards)\n• Sessions (/sessions)\n• Events (/events)',
+      x: 400,
+      y: 100,
+      width: 220,
+      height: 180,
+      color: '#10B981',
+    },
+    {
+      id: 'api-routes',
+      type: 'text' as const,
+      text: 'API Routes Layer\n\n• /api/otel/*\n• /api/dashboards/*\n• /api/teams/*\n• /api/github/*',
+      x: 400,
+      y: 320,
+      width: 220,
+      height: 180,
+      color: '#F59E0B',
+    },
+    {
+      id: 'server-components',
+      type: 'text' as const,
+      text: 'Server Components\n\nSSR data fetching\nDirect DB queries',
+      x: 700,
+      y: 63,
+      width: 200,
+      height: 100,
+      color: '#06B6D4',
+    },
+    {
+      id: 'client-components',
+      type: 'text' as const,
+      text: 'Client Components\n\nReact Query\nURL state (nuqs)',
+      x: 700,
+      y: 230,
+      width: 200,
+      height: 100,
+      color: '#06B6D4',
+    },
+    {
+      id: 'postgresql',
+      type: 'text' as const,
+      text: 'PostgreSQL\n\nDrizzle ORM\nUsers, orgs, teams',
+      x: 1000,
+      y: 124,
+      width: 200,
+      height: 120,
+      color: '#336791',
+    },
+  ],
+  edges: [
+    {
+      id: 'e2',
+      fromNode: 'user-browser',
+      toNode: 'pages-layer',
+      fromSide: 'right',
+      toSide: 'left',
+      label: 'Navigate',
+      pv: { edgeType: 'httpRest' },
+    },
+    {
+      id: 'e3',
+      fromNode: 'user-browser',
+      toNode: 'api-routes',
+      fromSide: 'right',
+      toSide: 'left',
+      label: 'API calls',
+      pv: { edgeType: 'httpRest' },
+    },
+    {
+      id: 'e4',
+      fromNode: 'pages-layer',
+      toNode: 'server-components',
+      fromSide: 'right',
+      toSide: 'left',
+      label: 'SSR',
+      pv: { edgeType: 'httpRest' },
+    },
+    {
+      id: 'e5',
+      fromNode: 'pages-layer',
+      toNode: 'client-components',
+      fromSide: 'right',
+      toSide: 'left',
+      label: 'Hydrate',
+      pv: { edgeType: 'httpRest' },
+    },
+    {
+      id: 'e6',
+      fromNode: 'server-components',
+      toNode: 'postgresql',
+      fromSide: 'right',
+      toSide: 'left',
+      label: 'Drizzle ORM',
+      pv: { edgeType: 'postgresQuery' },
+    },
+    {
+      id: 'e8',
+      fromNode: 'client-components',
+      toNode: 'api-routes',
+      fromSide: 'left',
+      toSide: 'right',
+      label: 'React Query',
+      pv: { edgeType: 'httpRest' },
+    },
+    {
+      id: 'e9',
+      fromNode: 'api-routes',
+      toNode: 'postgresql',
+      fromSide: 'right',
+      toSide: 'left',
+      label: 'Drizzle ORM',
+      pv: { edgeType: 'postgresQuery' },
+    },
+  ],
+  pv: {
+    version: '1.0.0',
+    name: 'Admin Dashboard Architecture (Simplified)',
+    description: 'Simplified version of admin-dashboard.canvas to test edge reconnection issues',
+    edgeTypes: {
+      httpRest: {
+        style: 'solid',
+        color: '#3b82f6',
+        directed: true,
+      },
+      postgresQuery: {
+        style: 'solid',
+        color: '#336791',
+        directed: true,
+      },
+    },
+  },
+};
+
+export const AdminDashboardFull: Story = {
+  args: {
+    canvas: adminDashboardFullCanvas,
+    width: 1400,
+    height: 650,
+    editable: true,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Full Admin Dashboard Architecture Test**
+
+This is a simplified version of the actual admin-dashboard.canvas file from /Users/griever/Developer/observability.
+
+**Key Test Cases:**
+
+1. **Edge e8 (client-components → api-routes)**:
+   - Currently connects from LEFT side of client-components to RIGHT side of api-routes
+   - Try dragging the edge handle to connect from RIGHT side instead
+   - Expected: Should work seamlessly
+   - Actual: May fail with "Cannot reconnect: httpRest edge not allowed from text to text"
+
+2. **Multiple httpRest edges**:
+   - Notice that e2, e3, e4, e5, and e8 all use edgeType "httpRest"
+   - They connect various text nodes together
+   - Try reconnecting any of these edges to different nodes or different sides
+
+3. **Mixed edge types**:
+   - Some edges use "httpRest", others use "postgresQuery"
+   - This tests that the validation correctly distinguishes between different edge types
+
+**The Issue:**
+The \`allowedConnections\` array is built by mapping each edge to its specific source and target node IDs.
+This means edge e8's allowed connection is registered as:
+\`\`\`
+{ from: "client-components", to: "api-routes", via: "httpRest" }
+\`\`\`
+
+When you try to reconnect this edge to a different node pair (even with the same node types),
+the validation fails because it's checking node IDs, not node types.
+
+**Enable editing mode** to test the reconnection behavior.
+        `,
+      },
+    },
+  },
+};

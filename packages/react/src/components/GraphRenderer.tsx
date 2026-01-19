@@ -15,6 +15,7 @@ import {
   MiniMap,
   ReactFlowProvider,
   useReactFlow,
+  useUpdateNodeInternals,
   useViewport,
   applyNodeChanges,
   applyEdgeChanges,
@@ -368,6 +369,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   onSourceClick,
 }) => {
   const { fitView } = useReactFlow();
+  const updateNodeInternals = useUpdateNodeInternals();
   const { theme } = useTheme();
 
 
@@ -848,20 +850,21 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       const originalEdge = localEdges.find((e) => e.id === oldEdge.id);
       if (!originalEdge) return;
 
-      // Find source and target node types for validation
+      // Find source and target nodes for validation
       const sourceNode = nodes.find((n) => n.id === newConnection.source);
       const targetNode = nodes.find((n) => n.id === newConnection.target);
       if (!sourceNode || !targetNode) return;
 
       // Check if the new connection is valid for this edge type
+      // Note: allowedConnections uses node IDs as the from/to values
       const isValidConnection = configuration.allowedConnections.some(
         (ac) =>
-          ac.from === sourceNode.type && ac.to === targetNode.type && ac.via === originalEdge.type
+          ac.from === sourceNode.id && ac.to === targetNode.id && ac.via === originalEdge.type
       );
 
       if (!isValidConnection) {
         console.warn(
-          `Cannot reconnect: ${originalEdge.type} edge not allowed from ${sourceNode.type} to ${targetNode.type}`
+          `Cannot reconnect: ${originalEdge.type} edge not allowed from ${sourceNode.id} to ${targetNode.id}`
         );
         return;
       }
@@ -1181,9 +1184,17 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     if (editable && !prevEditableRef.current) {
       // Entering edit mode - sync positions
       setXyflowLocalNodes(xyflowNodesBase);
+
+      // Reset ReactFlow's internal state for all nodes to prevent NaN errors
+      // This ensures ReactFlow remeasures nodes and updates drag tracking
+      setTimeout(() => {
+        xyflowNodesBase.forEach((node) => {
+          updateNodeInternals(node.id);
+        });
+      }, 0);
     }
     prevEditableRef.current = editable;
-  }, [editable, xyflowNodesBase]);
+  }, [editable, xyflowNodesBase, updateNodeInternals]);
 
   const xyflowNodes = editable ? xyflowLocalNodes : xyflowNodesBase;
 
@@ -1656,15 +1667,10 @@ function useCanvasToLegacy(
         };
       }
 
-      // Find node types for from/to
-      const fromNode = canvas.nodes?.find((n) => n.id === edge.fromNode);
-      const toNode = canvas.nodes?.find((n) => n.id === edge.toNode);
-      const fromType = fromNode?.pv?.nodeType || edge.fromNode;
-      const toType = toNode?.pv?.nodeType || edge.toNode;
-
+      // Store allowed connections using node IDs
       allowedConnections.push({
-        from: fromType,
-        to: toType,
+        from: edge.fromNode,
+        to: edge.toNode,
         via: edgeType,
       });
     }
