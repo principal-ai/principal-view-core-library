@@ -1075,3 +1075,109 @@ Color coding:
     },
   },
 };
+
+const EditModeToggleTemplate = () => {
+  const [isEditMode, setIsEditMode] = React.useState(false);
+  const graphRef = React.useRef<GraphRendererHandle>(null);
+  const [hasChanges, setHasChanges] = React.useState(false);
+
+  const handleSave = () => {
+    if (graphRef.current) {
+      const changes = graphRef.current.getPendingChanges();
+      console.log('Saving changes:', changes);
+      alert('Changes saved! Check console for details.');
+      graphRef.current.resetEditState();
+    }
+  };
+
+  return (
+    <div>
+      <div
+        style={{
+          marginBottom: 16,
+          padding: 12,
+          backgroundColor: '#f0f9ff',
+          borderRadius: 4,
+          border: '1px solid #3b82f6',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={() => setIsEditMode(!isEditMode)}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: isEditMode ? '#ef4444' : '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: 14,
+            }}
+          >
+            {isEditMode ? '🔓 Exit Edit Mode' : '🔒 Enter Edit Mode'}
+          </button>
+          {isEditMode && hasChanges && (
+            <button
+              onClick={handleSave}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: 14,
+              }}
+            >
+              💾 Save Changes
+            </button>
+          )}
+          <div style={{ fontSize: 13, color: '#1e40af' }}>
+            Mode: <strong>{isEditMode ? 'Editable' : 'Read-only'}</strong>
+            {isEditMode && hasChanges && (
+              <span style={{ marginLeft: 8, color: '#f97316', fontWeight: 'bold' }}>
+                (unsaved changes)
+              </span>
+            )}
+          </div>
+        </div>
+        <div style={{ marginTop: 8, fontSize: 12, color: '#475569' }}>
+          Toggle between read-only and edit mode. Try dragging nodes after switching modes to verify
+          the NaN error fix.
+        </div>
+      </div>
+      <GraphRenderer
+        ref={graphRef}
+        canvas={sampleCanvas}
+        width={800}
+        height={500}
+        editable={isEditMode}
+        onPendingChangesChange={setHasChanges}
+      />
+    </div>
+  );
+};
+
+export const EditModeToggle: Story = {
+  render: () => <EditModeToggleTemplate />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Edit Mode Toggle** - Demonstrates toggling between read-only and editable modes without remounting.
+
+This story tests the fix for the NaN coordinate error that occurred when transitioning between modes:
+- Click "Enter Edit Mode" to enable editing
+- Try dragging nodes (should work without NaN errors)
+- Click "Exit Edit Mode" to return to read-only
+- Toggle back to edit mode and drag again (should still work)
+
+Previously, this would cause \`NaN\` errors in edge coordinates due to ReactFlow's internal state corruption.
+The fix uses \`updateNodeInternals()\` to reset ReactFlow's measurement tracking when entering edit mode.
+        `,
+      },
+    },
+  },
+};
