@@ -5,7 +5,8 @@
  * Ensures that emitted events match the schema defined in the canvas.
  */
 
-import type { ExtendedCanvas, PVEventSchema, PVEventFieldSchema } from '../types/canvas';
+import type { ExtendedCanvas, PVEventSchema } from '../types/canvas';
+import type { JsonValue, JsonObject } from '../types';
 
 /**
  * Validation error for telemetry events
@@ -58,7 +59,7 @@ export class EventValidator {
   validate(
     nodeId: string,
     eventName: string,
-    attributes: Record<string, any>
+    attributes: JsonObject
   ): ValidationResult {
     const errors: string[] = [];
 
@@ -123,7 +124,7 @@ export class EventValidator {
   /**
    * Get the type of a value
    */
-  private getValueType(value: any): string {
+  private getValueType(value: JsonValue): string {
     if (Array.isArray(value)) return 'array';
     if (value === null) return 'object';
     return typeof value;
@@ -169,10 +170,10 @@ export class EventValidator {
 export function createValidatedEmitter(
   validator: EventValidator,
   nodeId: string,
-  addEventFn: (eventName: string, attributes: Record<string, any>) => void,
+  addEventFn: (eventName: string, attributes: JsonObject) => void,
   options: { strict?: boolean } = {}
-): (eventName: string, attributes: Record<string, any>) => void {
-  return (eventName: string, attributes: Record<string, any>) => {
+): (eventName: string, attributes: JsonObject) => void {
+  return (eventName: string, attributes: JsonObject) => {
     // Validate against schema
     const result = validator.validate(nodeId, eventName, attributes);
 

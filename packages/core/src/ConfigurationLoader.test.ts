@@ -38,36 +38,6 @@ describe('ConfigurationLoader', () => {
     ],
   };
 
-  const architectureConfig: PathBasedGraphConfiguration = {
-    metadata: {
-      name: 'Architecture',
-      version: '1.0.0',
-    },
-    nodeTypes: {
-      component: {
-        shape: 'hexagon',
-        color: '#FF6B6B',
-        dataSchema: {
-          name: { type: 'string', required: true },
-        },
-        sources: ['src/**/*.ts'],
-      },
-    },
-    edgeTypes: {
-      dependency: {
-        style: 'dashed',
-        color: '#888',
-      },
-    },
-    allowedConnections: [
-      {
-        from: 'component',
-        to: 'component',
-        via: 'dependency',
-      },
-    ],
-  };
-
   beforeEach(() => {
     fsAdapter = new InMemoryFileSystemAdapter();
     loader = new ConfigurationLoader(fsAdapter);

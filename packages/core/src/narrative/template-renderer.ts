@@ -252,7 +252,7 @@ function renderLog(
   log: OtelEvent,
   scenario: NarrativeScenario,
   context: Record<string, unknown>,
-  formatting: FormattingOptions
+  _formatting: FormattingOptions
 ): string | undefined {
   // Check for severity-specific template
   if (scenario.template.logs) {

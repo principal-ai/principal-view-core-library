@@ -8,6 +8,7 @@
  */
 
 import type { ResourceMatch } from './resource-match';
+import type { JsonValue, JsonObject } from './index';
 
 /**
  * Log levels (matches logger package)
@@ -161,10 +162,10 @@ export interface PathBasedGraphConfiguration {
   }>;
 
   /** Optional validation rules */
-  validation?: any; // Reuse from base types
+  validation?: JsonObject; // Reuse from base types
 
   /** Display preferences */
-  display?: any; // Reuse from base types
+  display?: JsonObject; // Reuse from base types
 
   /** Path-based configuration options */
   pathBasedConfig?: PathBasedConfigOptions;
@@ -224,7 +225,7 @@ export interface ComponentActivityEvent {
   };
 
   /** Additional log arguments */
-  args?: any[];
+  args?: JsonValue[];
 }
 
 /**
@@ -254,7 +255,7 @@ export interface ComponentActionEvent {
   timestamp: number;
 
   /** Extracted metadata from capture groups */
-  metadata?: Record<string, any>;
+  metadata?: JsonObject;
 
   /** Source location */
   source: {

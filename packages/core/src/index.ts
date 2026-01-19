@@ -143,3 +143,17 @@ export type {
   NarrativeViolation,
   NarrativeValidationResult,
 } from './narrative';
+
+// Export canvas and execution discovery
+export { CanvasDiscovery } from './discovery/CanvasDiscovery';
+export type {
+  DiscoveredCanvas,
+  DiscoveredExecution,
+  CanvasDiscoveryResult,
+  DiscoveryOptions,
+  CanvasType,
+  ExecutionType,
+  DiscoveredCanvasWithContent,
+  DiscoveredExecutionWithContent,
+  CanvasDiscoveryResultWithContent,
+} from './discovery/types';

@@ -15,7 +15,21 @@ export type {
   GraphEvent,
   ComponentLibrary,
   LogLevel,
+  GraphMetrics,
+  Warning,
+  ValidationResult,
+  EventStream,
+  ConnectionRule,
+  LibraryNodeComponent,
+  LibraryEdgeComponent,
+  ComponentActivityEvent,
+  ComponentActionEvent,
+  EdgeAnimationEvent,
+  PathBasedEvent,
 } from './types';
+
+// Export types from ConfigurationLoader (interfaces only, no implementation)
+export type { ConfigurationFile, ConfigurationLoadResult } from './ConfigurationLoader';
 
 // Export Canvas types and converter
 export * from './types/canvas';
@@ -27,10 +41,10 @@ export { parseYaml, isYamlFile, getConfigNameFromFilename } from './utils/YamlPa
 export type { YamlParseResult } from './utils/YamlParser';
 
 // Export narrative template system (browser-safe)
+// Import directly from files to avoid pulling in Node.js validator
+export { renderNarrative } from './narrative/template-renderer';
+export { parseTemplate, evaluateExpression } from './narrative/template-parser';
 export {
-  renderNarrative,
-  parseTemplate,
-  evaluateExpression,
   selectScenario,
   matchesCondition,
   hasEventMatching,
@@ -38,7 +52,7 @@ export {
   evaluateAssertion,
   getNestedValue,
   setNestedValue,
-} from './narrative';
+} from './narrative/scenario-matcher';
 export type {
   NarrativeTemplate,
   NarrativeScenario,
@@ -55,7 +69,21 @@ export type {
   NarrativeResult,
   ScenarioMatchResult,
   SpanTreeNode,
-} from './narrative';
+} from './narrative/types';
+
+// Export canvas and execution discovery (browser-safe)
+export { CanvasDiscovery } from './discovery/CanvasDiscovery';
+export type {
+  DiscoveredCanvas,
+  DiscoveredExecution,
+  CanvasDiscoveryResult,
+  DiscoveryOptions,
+  CanvasType,
+  ExecutionType,
+  DiscoveredCanvasWithContent,
+  DiscoveredExecutionWithContent,
+  CanvasDiscoveryResultWithContent,
+} from './discovery/types';
 
 // NOTE: The following require Node.js dependencies and are NOT exported in browser bundle:
 // - ConfigurationLoader, LibraryLoader (file system)

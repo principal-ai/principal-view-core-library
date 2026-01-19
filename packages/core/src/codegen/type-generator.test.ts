@@ -5,7 +5,7 @@
 import { describe, test, expect } from 'bun:test';
 import fs from 'fs';
 import path from 'path';
-import { generateTypes, TypeScriptGenerator } from './type-generator';
+import { generateTypes } from './type-generator';
 import type { ExtendedCanvas } from '../types/canvas';
 
 // Load the example canvas

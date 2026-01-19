@@ -4,6 +4,55 @@
  */
 
 // ============================================================================
+// JSON-Serializable Types
+// ============================================================================
+
+/**
+ * Represents any valid JSON value
+ * Used for data that needs to be serialized/deserialized (events, telemetry, etc.)
+ */
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+/**
+ * JSON object type - a record with JSON-serializable values
+ */
+export type JsonObject = Record<string, JsonValue>;
+
+// ============================================================================
+// Domain-Specific Type Aliases
+// ============================================================================
+
+/**
+ * Runtime data/properties for a graph node
+ * Must conform to the schema defined in NodeTypeDefinition.dataSchema
+ */
+export type NodeData = JsonObject;
+
+/**
+ * Runtime data/properties for a graph edge
+ * Must conform to the schema defined in EdgeTypeDefinition.dataSchema
+ */
+export type EdgeData = JsonObject;
+
+/**
+ * Additional metadata attached to events for observability/debugging
+ * Examples: source location, stack trace, timing info, state transition details, etc.
+ */
+export type EventMetadata = JsonObject;
+
+/**
+ * Validation constraints for expected events
+ * Key-value pairs that define expected properties and their values
+ */
+export type ValidationConstraints = JsonObject;
+
+// ============================================================================
 // Graph Configuration Types
 // ============================================================================
 
@@ -199,7 +248,7 @@ export interface NodeEvent {
   operation: 'create' | 'update' | 'delete';
   nodeId: string;
   nodeType: string;
-  data?: Record<string, any>;
+  data?: NodeData;
   position?: { x: number; y: number };
 }
 
@@ -209,7 +258,7 @@ export interface EdgeEvent {
   edgeType: string;
   from: string;
   to: string;
-  data?: Record<string, any>;
+  data?: EdgeData;
   animation?: {
     duration?: number;
     direction?: 'forward' | 'backward' | 'bidirectional';
@@ -220,18 +269,18 @@ export interface StateEvent {
   nodeId: string;
   previousState?: string;
   newState: string;
-  data?: Record<string, any>;
+  data?: EventMetadata;
 }
 
 export interface DataEvent {
   targetId: string;
   targetType: 'node' | 'edge';
-  updates: Record<string, any>;
+  updates: JsonObject;
 }
 
 export interface SystemEvent {
   action: 'reset' | 'pause' | 'resume' | 'snapshot';
-  data?: any;
+  data?: JsonValue;
 }
 
 // ============================================================================
@@ -254,7 +303,7 @@ export interface EventStream {
   /** Optional expected events for validation */
   expectedEvents?: Array<{
     type: string;
-    constraints: Record<string, any>;
+    constraints: ValidationConstraints;
     timing?: { minTime: number; maxTime: number };
   }>;
 }
@@ -314,7 +363,7 @@ export interface NodeState {
   type: string;
   /** Display name for this node instance (required) */
   name: string;
-  data: Record<string, any>;
+  data: NodeData;
   state?: string;
   position?: { x: number; y: number };
   /** Node width (persisted from resize operations) */
@@ -330,7 +379,7 @@ export interface EdgeState {
   type: string;
   from: string;
   to: string;
-  data?: Record<string, any>;
+  data?: EdgeData;
   createdAt: number;
   updatedAt: number;
 }

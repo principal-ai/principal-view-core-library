@@ -20,7 +20,6 @@ import {
   type ComponentLibrary,
   createNarrativeValidator,
   type NarrativeTemplate,
-  type NarrativeValidationResult,
   type NarrativeViolation,
   type ExtendedCanvas,
 } from '@principal-ai/principal-view-core';
@@ -311,6 +310,21 @@ function formatJsonOutput(results: Map<string, GraphLintResult>): object {
 }
 
 // ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Count violations by rule ID
+ */
+function countByRule(violations: GraphRuleViolation[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const v of violations) {
+    counts[v.ruleId] = (counts[v.ruleId] || 0) + 1;
+  }
+  return counts;
+}
+
+// ============================================================================
 // Command Implementation
 // ============================================================================
 
@@ -433,15 +447,6 @@ export function createLintCommand(): Command {
           if (!library && !options.quiet) {
             console.log(chalk.yellow(`Warning: Could not load library from ${libraryPath}`));
           }
-        }
-
-        // Helper function to count violations by rule
-        function countByRule(violations: GraphRuleViolation[]): Record<string, number> {
-          const counts: Record<string, number> = {};
-          for (const v of violations) {
-            counts[v.ruleId] = (counts[v.ruleId] || 0) + 1;
-          }
-          return counts;
         }
 
         // Create validators

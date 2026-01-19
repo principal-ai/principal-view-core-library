@@ -3,9 +3,8 @@
  * Central orchestrator for configuration validation rules
  */
 
-import { trace, context, type Span, SpanStatusCode } from '@opentelemetry/api';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
 import type { GraphConfiguration } from '../types';
-import type { ComponentLibrary } from '../types/library';
 import type {
   GraphRule,
   GraphRuleContext,
@@ -19,7 +18,7 @@ import type {
   RuleConfig,
   RuleSeverity,
 } from './types';
-import { normalizeSeverity, isRuleDisabled } from './types';
+import { normalizeSeverity } from './types';
 
 // Get tracer for instrumentation
 const tracer = trace.getTracer('principal-view-core');

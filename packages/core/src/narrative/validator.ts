@@ -6,7 +6,7 @@
 import type { NarrativeTemplate } from './types';
 import type { ExtendedCanvas } from '../types/canvas';
 import { existsSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { resolve } from 'path';
 
 // ============================================================================
 // Validation Types
@@ -286,7 +286,7 @@ export class NarrativeValidator {
    * In the future, when canvas files include OTEL event schema definitions,
    * this will validate event references.
    */
-  private checkEventReferences(context: NarrativeValidationContext): NarrativeViolation[] {
+  private checkEventReferences(_context: NarrativeValidationContext): NarrativeViolation[] {
     const violations: NarrativeViolation[] = [];
     // const { narrative, narrativePath, canvas } = context;
 
@@ -609,7 +609,7 @@ export class NarrativeValidator {
   /**
    * Check attribute references (warning level)
    */
-  private checkAttributeReferences(context: NarrativeValidationContext): NarrativeViolation[] {
+  private checkAttributeReferences(_context: NarrativeValidationContext): NarrativeViolation[] {
     const violations: NarrativeViolation[] = [];
     // This would require parsing template expressions and checking against canvas schemas
     // Implementing as a warning-level check for future enhancement

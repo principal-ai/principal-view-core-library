@@ -409,7 +409,7 @@ export class EventRecorderService {
   /**
    * Handle ping message
    */
-  private handlePing(message: PingMessage): PongMessage {
+  private handlePing(_message: PingMessage): PongMessage {
     return {
       type: 'pong',
       timestamp: Date.now(),

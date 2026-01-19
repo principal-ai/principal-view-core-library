@@ -35,7 +35,7 @@ export const libraryNodeTypeMatch: GraphRule<LibraryNodeTypeMatchOptions> = {
     context: GraphRuleContext<LibraryNodeTypeMatchOptions>
   ): Promise<GraphRuleViolation[]> {
     const violations: GraphRuleViolation[] = [];
-    const { configuration, library, configPath, libraryPath, options } = context;
+    const { configuration, library, configPath, libraryPath: _libraryPath, options } = context;
 
     // Skip if no library is provided
     if (!library) {

@@ -18,6 +18,7 @@ import type {
   ActionPattern,
   LogLevel,
 } from './types/path-based-config';
+import type { JsonValue, JsonObject } from './types';
 
 /**
  * Log entry from logger (simplified interface to avoid circular dependency)
@@ -39,7 +40,7 @@ export interface LogEntry {
      */
     instanceId?: string;
   };
-  args?: any[];
+  args?: JsonValue[];
 }
 
 /**
@@ -200,8 +201,8 @@ export class PathBasedEventProcessor {
   private extractMetadata(
     match: RegExpMatchArray,
     template: Record<string, string>
-  ): Record<string, any> {
-    const metadata: Record<string, any> = {};
+  ): JsonObject {
+    const metadata: JsonObject = {};
 
     for (const [key, value] of Object.entries(template)) {
       // Value is a template like "$lockId" that references a named capture group

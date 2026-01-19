@@ -45,5 +45,8 @@
     "typescript": "^5.0.4",
     "vite": "^6.0.7"
   },
-  "version": "0.0.1"
+  "version": "0.0.1",
+  "dependencies": {
+    "@principal-ai/codebase-composition": "^0.2.40"
+  }
 }

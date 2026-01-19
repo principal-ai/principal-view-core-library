@@ -7,12 +7,15 @@
 import type {
   ExtendedCanvas,
   ExtendedCanvasNode,
+  ExtendedCanvasTextNode,
   ExtendedCanvasEdge,
   PVEdgeTypeDefinition,
   PVNodeShape,
   PVEdgeStyle,
   PVAnimationType,
+  CanvasSide,
 } from '../types/canvas';
+import type { JsonValue } from '../types';
 import { resolveCanvasColor } from '../types/canvas';
 import type { NodeState, EdgeState } from '../types';
 
@@ -33,12 +36,12 @@ export interface ReactFlowNode {
     height?: number;
     states?: Record<string, { color?: string; icon?: string; label?: string }>;
     sources?: string[];
-    actions?: any[];
+    actions?: JsonValue[];
     canvasType?: 'text' | 'file' | 'link' | 'group';
     text?: string;
     file?: string;
     url?: string;
-    [key: string]: any;
+    [key: string]: JsonValue;
   };
   style?: {
     width?: number;
@@ -67,8 +70,8 @@ export interface ReactFlowEdge {
       duration?: number;
       color?: string;
     };
-    activatedBy?: any[];
-    [key: string]: any;
+    activatedBy?: JsonValue[];
+    [key: string]: JsonValue;
   };
   style?: {
     stroke?: string;
@@ -417,7 +420,7 @@ export class CanvasConverter {
       if (node.data.canvasType === 'text' || !node.data.canvasType) {
         const name = node.data.name || node.data.label || node.id;
         const description = node.data.description;
-        (canvasNode as any).text = description ? `# ${name}\n\n${description}` : `# ${name}`;
+        (canvasNode as ExtendedCanvasTextNode).text = description ? `# ${name}\n\n${description}` : `# ${name}`;
       }
 
       canvas.nodes!.push(canvasNode);
@@ -429,8 +432,8 @@ export class CanvasConverter {
         id: edge.id,
         fromNode: edge.source,
         toNode: edge.target,
-        fromSide: edge.sourceHandle as any,
-        toSide: edge.targetHandle as any,
+        fromSide: edge.sourceHandle as CanvasSide | undefined,
+        toSide: edge.targetHandle as CanvasSide | undefined,
         label: edge.label as string | undefined,
       };
 

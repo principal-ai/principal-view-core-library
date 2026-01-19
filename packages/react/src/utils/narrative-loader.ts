@@ -2,7 +2,7 @@
  * Utilities for loading and managing narrative templates
  */
 
-import type { NarrativeTemplate } from '@principal-ai/principal-view-core';
+import type { NarrativeTemplate } from '@principal-ai/principal-view-core/browser';
 
 /**
  * Load a narrative template from a URL or file path

@@ -231,11 +231,6 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
  */
 const STANDARD_CANVAS_TYPES = ['text', 'group', 'file', 'link'] as const;
 
-/**
- * Valid node shapes for pv.shape
- */
-const VALID_NODE_SHAPES = ['circle', 'rectangle', 'hexagon', 'diamond', 'custom'] as const;
-
 // ============================================================================
 // Icon Validation
 // ============================================================================

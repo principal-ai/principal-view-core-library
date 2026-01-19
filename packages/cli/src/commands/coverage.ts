@@ -6,9 +6,9 @@
  */
 
 import { Command } from 'commander';
-import { resolve, relative } from 'node:path';
+import { resolve } from 'node:path';
 import chalk from 'chalk';
-import { analyzeCoverage, type CoverageMetrics, type NodeCoverage } from '@principal-ai/principal-view-core';
+import { analyzeCoverage, type CoverageMetrics } from '@principal-ai/principal-view-core';
 
 interface CoverageOptions {
   dir?: string;

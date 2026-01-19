@@ -15,6 +15,7 @@ import { createHooksCommand } from './commands/hooks.js';
 import { createCreateCommand } from './commands/create.js';
 import { createLintCommand } from './commands/lint.js';
 import { createCoverageCommand } from './commands/coverage.js';
+import { createNarrativeCommand } from './commands/narrative/index.js';
 
 // Version is injected at build time via package.json
 const VERSION = '0.1.28';
@@ -36,6 +37,7 @@ program.addCommand(createSchemaCommand());
 program.addCommand(createDoctorCommand());
 program.addCommand(createHooksCommand());
 program.addCommand(createCoverageCommand());
+program.addCommand(createNarrativeCommand());
 
 // Parse command line arguments
 program.parse(process.argv);

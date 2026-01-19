@@ -11,7 +11,7 @@
  */
 
 import { readFile, access } from 'fs/promises';
-import { join, relative, resolve, normalize } from 'path';
+import { relative, resolve } from 'path';
 import { glob } from 'glob';
 
 interface CanvasNode {
@@ -47,7 +47,7 @@ interface CoverageMetrics {
  * Extract file paths from a canvas node
  * REQUIRED: Nodes must have anchors with path property
  */
-function extractFilePaths(node: CanvasNode, rootDir: string): string[] {
+function extractFilePaths(node: CanvasNode, _rootDir: string): string[] {
   const paths = new Set<string>();
 
   // ONLY extract from anchors (required)
@@ -180,7 +180,7 @@ async function generateCoverageReport(rootDir: string): Promise<CoverageMetrics>
 /**
  * Print detailed coverage report
  */
-function printReport(metrics: CoverageMetrics, rootDir: string): void {
+function printReport(metrics: CoverageMetrics, _rootDir: string): void {
   console.log('\n' + '='.repeat(70));
   console.log('📈 TELEMETRY COVERAGE REPORT (Canvas-Based)');
   console.log('='.repeat(70));

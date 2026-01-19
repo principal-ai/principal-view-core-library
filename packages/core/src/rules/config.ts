@@ -3,7 +3,7 @@
  * Handles loading and validating privu config files
  */
 
-import type { PrivuConfig, RuleSeverity, RuleConfig } from './types';
+import type { PrivuConfig, RuleSeverity } from './types';
 
 // ============================================================================
 // Constants

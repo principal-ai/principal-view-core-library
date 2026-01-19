@@ -1,4 +1,4 @@
-import type { GraphConfiguration, GraphEvent, NodeEvent, EdgeEvent, StateEvent } from '../types';
+import type { GraphConfiguration, GraphEvent, NodeEvent, EdgeEvent, StateEvent, NodeData, EdgeData, EventMetadata } from '../types';
 
 /**
  * Helper class for instrumenting tests with graph events
@@ -27,11 +27,11 @@ export class GraphInstrumentationHelper {
   emitNodeCreated(
     id: string,
     type: string,
-    data: Record<string, any>,
+    data: NodeData,
     options: {
       expected?: boolean;
       position?: { x: number; y: number };
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     } = {}
   ): GraphEvent {
     const event: GraphEvent = {
@@ -60,8 +60,8 @@ export class GraphInstrumentationHelper {
    */
   emitNodeUpdated(
     id: string,
-    updates: Record<string, any>,
-    options: { expected?: boolean; metadata?: Record<string, any> } = {}
+    updates: NodeData,
+    options: { expected?: boolean; metadata?: EventMetadata } = {}
   ): GraphEvent {
     const event: GraphEvent = {
       id: this.generateEventId(),
@@ -88,7 +88,7 @@ export class GraphInstrumentationHelper {
    */
   emitNodeDeleted(
     id: string,
-    options: { expected?: boolean; metadata?: Record<string, any> } = {}
+    options: { expected?: boolean; metadata?: EventMetadata } = {}
   ): GraphEvent {
     const event: GraphEvent = {
       id: this.generateEventId(),
@@ -119,8 +119,8 @@ export class GraphInstrumentationHelper {
     to: string,
     options: {
       expected?: boolean;
-      data?: Record<string, any>;
-      metadata?: Record<string, any>;
+      data?: EdgeData;
+      metadata?: EventMetadata;
     } = {}
   ): GraphEvent {
     const event: GraphEvent = {
@@ -156,7 +156,7 @@ export class GraphInstrumentationHelper {
     options: {
       duration?: number;
       direction?: 'forward' | 'backward' | 'bidirectional';
-      metadata?: Record<string, any>;
+      metadata?: EventMetadata;
     } = {}
   ): GraphEvent {
     const event: GraphEvent = {
@@ -189,7 +189,7 @@ export class GraphInstrumentationHelper {
    */
   emitEdgeDeleted(
     id: string,
-    options: { expected?: boolean; metadata?: Record<string, any> } = {}
+    options: { expected?: boolean; metadata?: EventMetadata } = {}
   ): GraphEvent {
     const event: GraphEvent = {
       id: this.generateEventId(),
@@ -221,8 +221,8 @@ export class GraphInstrumentationHelper {
     options: {
       previousState?: string;
       expected?: boolean;
-      data?: Record<string, any>;
-      metadata?: Record<string, any>;
+      data?: EventMetadata;
+      metadata?: EventMetadata;
     } = {}
   ): GraphEvent {
     const event: GraphEvent = {

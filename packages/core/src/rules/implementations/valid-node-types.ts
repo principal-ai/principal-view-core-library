@@ -11,11 +11,6 @@ import type { GraphRule, GraphRuleContext, GraphRuleViolation } from '../types';
 const VALID_SHAPES = ['circle', 'rectangle', 'hexagon', 'diamond', 'custom'] as const;
 
 /**
- * Valid animation types
- */
-const VALID_ANIMATION_TYPES = ['flow', 'pulse', 'particle', 'glow'] as const;
-
-/**
  * Valid data schema field types
  */
 const VALID_DATA_TYPES = ['string', 'number', 'boolean', 'object', 'array'] as const;

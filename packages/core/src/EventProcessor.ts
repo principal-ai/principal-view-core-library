@@ -5,6 +5,11 @@ import type {
   ValidationResult,
   NodeState,
   EdgeState,
+  NodeEvent,
+  EdgeEvent,
+  StateEvent,
+  DataEvent,
+  SystemEvent,
 } from './types';
 import { ValidationEngine } from './ValidationEngine';
 import { ConfigurationValidator } from './ConfigurationValidator';
@@ -128,7 +133,7 @@ export class EventProcessor {
   }
 
   private handleNodeEvent(event: GraphEvent, timestamp: number): void {
-    const payload = event.payload as any;
+    const payload = event.payload as NodeEvent;
 
     switch (payload.operation) {
       case 'create':
@@ -161,7 +166,7 @@ export class EventProcessor {
   }
 
   private handleEdgeEvent(event: GraphEvent, timestamp: number): void {
-    const payload = event.payload as any;
+    const payload = event.payload as EdgeEvent;
 
     switch (payload.operation) {
       case 'create':
@@ -196,7 +201,7 @@ export class EventProcessor {
   }
 
   private handleStateEvent(event: GraphEvent, timestamp: number): void {
-    const payload = event.payload as any;
+    const payload = event.payload as StateEvent;
     const node = this.state.nodes.get(payload.nodeId);
     if (node) {
       this.state.nodes.set(payload.nodeId, {
@@ -209,7 +214,7 @@ export class EventProcessor {
   }
 
   private handleDataEvent(event: GraphEvent): void {
-    const payload = event.payload as any;
+    const payload = event.payload as DataEvent;
     if (payload.targetType === 'node') {
       const node = this.state.nodes.get(payload.targetId);
       if (node) {
@@ -232,7 +237,7 @@ export class EventProcessor {
   }
 
   private handleSystemEvent(event: GraphEvent): void {
-    const payload = event.payload as any;
+    const payload = event.payload as SystemEvent;
     if (payload.action === 'reset') {
       this.reset();
     }

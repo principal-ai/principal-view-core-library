@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useTheme } from '@principal-ade/industry-theme';
 import { HelpCircle } from 'lucide-react';
 import yaml from 'js-yaml';
-import type { NarrativeTemplate } from '@principal-ai/principal-view-core';
+import type { NarrativeTemplate } from '@principal-ai/principal-view-core/browser';
 import { NarrativeRenderer } from './NarrativeRenderer';
 import { convertToOtelEvents } from '../utils/narrative-converter';
 
