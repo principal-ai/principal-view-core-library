@@ -11,21 +11,21 @@ const window = new Window();
 const document = window.document;
 
 // Set up global DOM objects
-globalThis.document = document as any;
-globalThis.window = window as any;
-globalThis.navigator = window.navigator as any;
-globalThis.HTMLElement = window.HTMLElement as any;
-globalThis.Element = window.Element as any;
-globalThis.Node = window.Node as any;
-globalThis.Text = window.Text as any;
-globalThis.DocumentFragment = window.DocumentFragment as any;
-globalThis.Event = window.Event as any;
-globalThis.CustomEvent = window.CustomEvent as any;
-globalThis.MouseEvent = window.MouseEvent as any;
-globalThis.KeyboardEvent = window.KeyboardEvent as any;
-globalThis.getComputedStyle = window.getComputedStyle.bind(window) as any;
-globalThis.localStorage = window.localStorage as any;
-globalThis.sessionStorage = window.sessionStorage as any;
+globalThis.document = document as unknown as Document;
+globalThis.window = window as unknown as Window & typeof globalThis;
+globalThis.navigator = window.navigator as unknown as Navigator;
+globalThis.HTMLElement = window.HTMLElement as unknown as typeof HTMLElement;
+globalThis.Element = window.Element as unknown as typeof Element;
+globalThis.Node = window.Node as unknown as typeof Node;
+globalThis.Text = window.Text as unknown as typeof Text;
+globalThis.DocumentFragment = window.DocumentFragment as unknown as typeof DocumentFragment;
+globalThis.Event = window.Event as unknown as typeof Event;
+globalThis.CustomEvent = window.CustomEvent as unknown as typeof CustomEvent;
+globalThis.MouseEvent = window.MouseEvent as unknown as typeof MouseEvent;
+globalThis.KeyboardEvent = window.KeyboardEvent as unknown as typeof KeyboardEvent;
+globalThis.getComputedStyle = window.getComputedStyle.bind(window) as unknown as typeof getComputedStyle;
+globalThis.localStorage = window.localStorage as unknown as Storage;
+globalThis.sessionStorage = window.sessionStorage as unknown as Storage;
 
 // Mock ResizeObserver for ReactFlow
 globalThis.ResizeObserver = class ResizeObserver {
@@ -42,7 +42,7 @@ globalThis.matchMedia = mock(() => ({
   addEventListener: () => {},
   removeEventListener: () => {},
   dispatchEvent: () => false,
-})) as any;
+})) as unknown as typeof matchMedia;
 
 // Helper to wrap component with ThemeProvider
 const renderWithTheme = (ui: React.ReactElement) => {

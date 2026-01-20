@@ -7,7 +7,7 @@
  * @see docs/NARRATIVE_TEMPLATES_DESIGN.md
  */
 
-import type { OtelLog, OtelSpan } from '../types/otel';
+import type { OtelLog, OtelSpan, OtelAttributes } from '../types/otel';
 
 /**
  * Combined OTEL signal type for narrative processing
@@ -28,7 +28,7 @@ export interface OtelEvent {
   type?: 'span' | 'log' | 'metric';
 
   /** Event attributes */
-  attributes?: Record<string, string | number | boolean>;
+  attributes?: OtelAttributes;
 
   /** Trace correlation */
   traceId?: string;

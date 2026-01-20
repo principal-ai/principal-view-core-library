@@ -32,8 +32,12 @@ import type {
   EdgeState,
   Violation,
   GraphEvent,
+  NodeEvent,
+  EdgeEvent,
+  StateEvent,
   ExtendedCanvas,
   ComponentLibrary,
+  JsonValue,
 } from '@principal-ai/principal-view-core/browser';
 import { CanvasConverter } from '@principal-ai/principal-view-core/browser';
 import { useTheme } from '@principal-ade/industry-theme';
@@ -207,12 +211,12 @@ export interface GraphRendererProps extends GraphRendererBaseProps {
 
 // Define custom node types
 const nodeTypes = {
-  custom: CustomNode,
+  custom: CustomNode as any,
 };
 
 // Define custom edge types
 const edgeTypes = {
-  custom: CustomEdge,
+  custom: CustomEdge as any,
 };
 
 // Animation state for nodes and edges
@@ -372,6 +376,31 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   const updateNodeInternals = useUpdateNodeInternals();
   const { theme } = useTheme();
 
+  // Track shift key state for tooltip control
+  const [shiftKeyPressed, setShiftKeyPressed] = useState(false);
+
+  // Setup keyboard event listeners for shift key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') {
+        setShiftKeyPressed(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') {
+        setShiftKeyPressed(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
 
   // Track active animations
   const [animationState, setAnimationState] = useState<AnimationState>({
@@ -610,7 +639,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   // Handle node update (internal - updates local state only)
   const handleNodeUpdate = useCallback(
-    (nodeId: string, updates: { type?: string; data?: Record<string, unknown> }) => {
+    (nodeId: string, updates: { type?: string; data?: Record<string, JsonValue> }) => {
       if (!editable) return;
 
       // Update local nodes
@@ -880,17 +909,18 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       setLocalEdges((prev) =>
         prev.map((edge) => {
           if (edge.id === oldEdge.id) {
+            // Build data object, filtering out undefined values
+            const updatedData = { ...edge.data };
+            if (newFromSide !== undefined) updatedData.fromSide = newFromSide;
+            if (newToSide !== undefined) updatedData.toSide = newToSide;
+
             return {
               ...edge,
               from: newConnection.source!,
               to: newConnection.target!,
               sourceHandle: newConnection.sourceHandle ?? undefined,
               targetHandle: newConnection.targetHandle ?? undefined,
-              data: {
-                ...edge.data,
-                fromSide: newFromSide,
-                toSide: newToSide,
-              },
+              data: updatedData,
               updatedAt: Date.now(),
             };
           }
@@ -1015,7 +1045,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     const latestEvent = events[events.length - 1];
 
     if (latestEvent.operation === 'animate' && latestEvent.category === 'edge') {
-      const edgeEvent = latestEvent.payload as any;
+      const edgeEvent = latestEvent.payload as EdgeEvent;
       const edgeId = edgeEvent.edgeId;
       const animation = edgeEvent.animation;
 
@@ -1047,7 +1077,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     }
 
     if (latestEvent.category === 'state') {
-      const stateEvent = latestEvent.payload as any;
+      const stateEvent = latestEvent.payload as StateEvent;
       const nodeId = stateEvent.nodeId;
       const newState = stateEvent.newState;
 
@@ -1093,7 +1123,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     }
 
     if (latestEvent.category === 'node' && latestEvent.operation === 'create') {
-      const nodeEvent = latestEvent.payload as any;
+      const nodeEvent = latestEvent.payload as NodeEvent;
       const nodeId = nodeEvent.nodeId;
 
       if (nodeId) {
@@ -1140,6 +1170,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           ...node.data,
           editable,
           tooltipsEnabled: showTooltips,
+          shiftKeyPressed,
           isHighlighted: highlightedNodeId === node.id,
           ...(animation
             ? {
@@ -1150,7 +1181,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         } as CustomNodeData,
       };
     });
-  }, [localNodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, highlightedNodeId, editStateRef]);
+  }, [localNodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, highlightedNodeId, editStateRef, shiftKeyPressed]);
 
   const baseNodesKey = useMemo(() => {
     return nodes
@@ -1303,6 +1334,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         data: {
           ...edge.data,
           tooltipsEnabled: showTooltips,
+          shiftKeyPressed,
           ...(animation
             ? {
                 animationType: animation.type,
@@ -1324,7 +1356,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       if (!aSelected && bSelected) return -1; // b comes after a (rendered on top)
       return 0; // maintain original order
     });
-  }, [edges, configuration, violations, animationState.edgeAnimations, showTooltips, selectedEdgeIds]);
+  }, [edges, configuration, violations, animationState.edgeAnimations, showTooltips, selectedEdgeIds, shiftKeyPressed]);
 
   // Local xyflow edges state for reconnection
   const [xyflowLocalEdges, setXyflowLocalEdges] = useState<Edge<CustomEdgeData>[]>(xyflowEdgesBase);
@@ -1374,10 +1406,10 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     <>
       <ReactFlow
         key={`${baseNodesKey}-${baseEdgesKey}`}
-        nodes={xyflowNodes as any}
-        edges={xyflowEdges as any}
-        nodeTypes={nodeTypes as any}
-        edgeTypes={edgeTypes as any}
+        nodes={xyflowNodes}
+        edges={xyflowEdges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         minZoom={0.1}
         maxZoom={4}
         defaultEdgeOptions={{ type: 'custom' }}

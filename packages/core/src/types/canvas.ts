@@ -15,6 +15,7 @@
 
 import type { CanvasScope, CanvasAuditConfig } from './canvas-scope';
 import type { ResourceMatch } from './resource-match';
+import type { JsonValue } from './index';
 
 // ============================================================================
 // JSON Canvas Spec Types (1.0)
@@ -170,21 +171,8 @@ export type PVEdgeStyle = 'solid' | 'dashed' | 'dotted' | 'animated';
  */
 export type PVLogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-/**
- * Action pattern for extracting events from logs
- */
-export interface PVActionPattern {
-  /** Regex pattern with named capture groups */
-  pattern: string;
-  /** Event type to emit */
-  event: string;
-  /** State to transition to */
-  state?: string;
-  /** Metadata template using $captureGroup syntax */
-  metadata?: Record<string, string>;
-  /** Edge IDs to trigger animations on */
-  triggerEdges?: string[];
-}
+// PVActionPattern removed - see docs/LEGACY_PATH_BASED_PATTERNS.md
+// Superseded by OTEL event schemas (pv.events)
 
 /**
  * State definition for a node
@@ -198,19 +186,8 @@ export interface PVNodeState {
   label?: string;
 }
 
-/**
- * Edge activation trigger
- */
-export interface PVEdgeActivation {
-  /** Action that triggers this animation */
-  action: string;
-  /** Animation type */
-  animation: PVAnimationType;
-  /** Animation direction */
-  direction?: PVAnimationDirection;
-  /** Duration in milliseconds */
-  duration?: number;
-}
+// PVEdgeActivation removed - see docs/LEGACY_PATH_BASED_PATTERNS.md
+// Edge animations now triggered by OTEL events, not action patterns
 
 /**
  * OTEL node classification
@@ -256,6 +233,9 @@ export interface PVOtelExtension {
    * Whether this is part of the new OTEL integration (vs legacy path-based)
    */
   isNew?: boolean;
+
+  /** Allow additional properties */
+  [key: string]: JsonValue | undefined;
 }
 
 /**
@@ -337,8 +317,8 @@ export interface PVNodeExtension {
    */
   resourceMatch?: ResourceMatch;
 
-  /** Action patterns for event extraction */
-  actions?: PVActionPattern[];
+  // actions removed - see docs/LEGACY_PATH_BASED_PATTERNS.md
+  // Use pv.events for structured event schemas instead
 
   /**
    * Event schemas for type-safe telemetry validation
@@ -400,8 +380,7 @@ export interface PVEdgeExtension {
     duration?: number;
     color?: string;
   };
-  /** Activation triggers */
-  activatedBy?: PVEdgeActivation[];
+  // activatedBy removed - see docs/LEGACY_PATH_BASED_PATTERNS.md
 }
 
 /**
@@ -482,8 +461,7 @@ export interface PVEdgeTypeDefinition {
     field?: string;
     position?: 'start' | 'middle' | 'end';
   };
-  /** Activation triggers */
-  activatedBy?: PVEdgeActivation[];
+  // activatedBy removed - see docs/LEGACY_PATH_BASED_PATTERNS.md
 }
 
 /**

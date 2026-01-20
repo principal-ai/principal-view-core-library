@@ -16,7 +16,7 @@ import type {
   PVNodeShape,
   PVEdgeStyle,
   PVAnimationType,
-  PVActionPattern,
+  // PVActionPattern removed - see docs/LEGACY_PATH_BASED_PATTERNS.md
   PVNodeState,
 } from './canvas';
 
@@ -55,9 +55,6 @@ export interface LibraryNodeComponent {
 
   /** Source file patterns for log association */
   sources?: string[];
-
-  /** Action patterns for event extraction */
-  actions?: PVActionPattern[];
 
   /** Data schema for typed fields */
   dataSchema?: Record<

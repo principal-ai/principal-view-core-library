@@ -14,10 +14,14 @@ import type {
   PVEdgeStyle,
   PVAnimationType,
   CanvasSide,
+  PVNodeState,
+  PVOtelExtension,
+  PVEventSchema,
 } from '../types/canvas';
 import type { JsonValue } from '../types';
 import { resolveCanvasColor } from '../types/canvas';
 import type { NodeState, EdgeState } from '../types';
+import type { ResourceMatch } from '../types/resource-match';
 
 /**
  * React Flow node format
@@ -36,12 +40,20 @@ export interface ReactFlowNode {
     height?: number;
     states?: Record<string, { color?: string; icon?: string; label?: string }>;
     sources?: string[];
-    actions?: JsonValue[];
+    // actions removed - legacy path-based patterns
     canvasType?: 'text' | 'file' | 'link' | 'group';
     text?: string;
     file?: string;
     url?: string;
-    [key: string]: JsonValue;
+    description?: string;
+    otel?: PVOtelExtension;
+    resourceMatch?: ResourceMatch;
+    events?: Record<string, PVEventSchema>;
+    dataSchema?: Record<string, {
+      type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+      required?: boolean;
+      displayInLabel?: boolean;
+    }>;
   };
   style?: {
     width?: number;
@@ -70,8 +82,7 @@ export interface ReactFlowEdge {
       duration?: number;
       color?: string;
     };
-    activatedBy?: JsonValue[];
-    [key: string]: JsonValue;
+    // activatedBy removed - legacy path-based patterns
   };
   style?: {
     stroke?: string;
@@ -186,12 +197,10 @@ export class CanvasConverter {
 
     // Add PV extensions if present
     if (pv) {
-      data.states = pv.states;
-      data.sources = pv.sources;
-      data.actions = pv.actions;
-      if (pv.dataSchema) {
-        data.dataSchema = pv.dataSchema;
-      }
+      if (pv.states) data.states = pv.states;
+      if (pv.sources) data.sources = pv.sources;
+      // actions removed - legacy path-based
+      if (pv.dataSchema) data.dataSchema = pv.dataSchema;
     }
 
     return {
@@ -227,7 +236,7 @@ export class CanvasConverter {
         color,
         width: pv?.width || edgeTypeDef?.width || 2,
         animation: pv?.animation || edgeTypeDef?.animation,
-        activatedBy: pv?.activatedBy || edgeTypeDef?.activatedBy,
+        // activatedBy removed - legacy path-based
       },
       style: {
         stroke: color,
@@ -295,32 +304,35 @@ export class CanvasConverter {
         // pv.description takes priority over parsed description from text
         const finalDescription = pv?.description || nodeDescription;
 
+        // Build data object, filtering out undefined values
+        const nodeData: Record<string, JsonValue> = {
+          description: finalDescription || '',
+          shape: pv?.shape || 'rectangle',
+          color: pv?.fill || resolveCanvasColor(node.color) || '',
+          width: node.width,
+          height: node.height,
+          sources: pv?.sources || [],
+          // actions removed - legacy path-based
+          canvasType: node.type,
+        };
+
+        // Add optional properties only if defined
+        if (pv?.icon) nodeData.icon = pv.icon;
+        if (pv?.stroke) nodeData.stroke = pv.stroke;
+        if (pv?.states) nodeData.states = pv.states as JsonValue;
+        if (pv?.otel) nodeData.otel = pv.otel as JsonValue;
+        if (pv?.resourceMatch) nodeData.resourceMatch = pv.resourceMatch as JsonValue;
+
+        // Add type-specific data
+        if (node.type === 'text' && node.text) nodeData.text = node.text;
+        if (node.type === 'file' && node.file) nodeData.file = node.file;
+        if (node.type === 'link' && node.url) nodeData.url = node.url;
+
         nodes.push({
           id: node.id,
           type: pv?.nodeType || node.type,
           name: finalName,
-          data: {
-            description: finalDescription,
-            shape: pv?.shape || 'rectangle',
-            icon: pv?.icon,
-            // Color priority: pv.fill > node.color
-            color: pv?.fill || resolveCanvasColor(node.color),
-            // Stroke color for borders
-            stroke: pv?.stroke,
-            width: node.width,
-            height: node.height,
-            sources: pv?.sources || [],
-            actions: pv?.actions || [],
-            states: pv?.states,
-            // OTEL metadata for visualization
-            otel: pv?.otel,
-            // Resource matching for log association
-            resourceMatch: pv?.resourceMatch,
-            canvasType: node.type,
-            ...(node.type === 'text' ? { text: node.text } : {}),
-            ...(node.type === 'file' ? { file: node.file } : {}),
-            ...(node.type === 'link' ? { url: node.url } : {}),
-          },
+          data: nodeData,
           position: { x: node.x, y: node.y },
           // Persist node dimensions at top level for xyflow
           width: node.width,
@@ -339,21 +351,29 @@ export class CanvasConverter {
         const pv = edge.pv;
         const edgeTypeDef = pv?.edgeType ? canvas.pv?.edgeTypes?.[pv.edgeType] : undefined;
 
+        // Build data object, filtering out undefined values
+        const edgeData: Record<string, JsonValue> = {
+          style: pv?.style || edgeTypeDef?.style || 'solid',
+        };
+
+        // Add optional properties only if defined
+        if (edge.label) edgeData.label = edge.label;
+        const color = resolveCanvasColor(edge.color) || edgeTypeDef?.color;
+        if (color) edgeData.color = color;
+        const width = pv?.width || edgeTypeDef?.width;
+        if (width !== undefined) edgeData.width = width;
+        const animation = pv?.animation || edgeTypeDef?.animation;
+        if (animation) edgeData.animation = animation as JsonValue;
+        // activatedBy removed - legacy path-based
+        if (edge.fromSide) edgeData.fromSide = edge.fromSide;
+        if (edge.toSide) edgeData.toSide = edge.toSide;
+
         edges.push({
           id: edge.id,
           type: pv?.edgeType || 'default',
           from: edge.fromNode,
           to: edge.toNode,
-          data: {
-            label: edge.label,
-            style: pv?.style || edgeTypeDef?.style || 'solid',
-            color: resolveCanvasColor(edge.color) || edgeTypeDef?.color,
-            width: pv?.width || edgeTypeDef?.width,
-            animation: pv?.animation || edgeTypeDef?.animation,
-            activatedBy: pv?.activatedBy || edgeTypeDef?.activatedBy,
-            fromSide: edge.fromSide,
-            toSide: edge.toSide,
-          },
+          data: edgeData,
           createdAt: now,
           updatedAt: now,
         });
@@ -394,31 +414,31 @@ export class CanvasConverter {
         y: node.position.y,
         width: node.style?.width || node.data.width || 150,
         height: node.style?.height || node.data.height || 80,
-        text: node.data.text || node.data.label || '',
+        text: node.data.text || '',
       } as ExtendedCanvasNode;
 
       // Add color if present
-      if (node.data.color) {
+      if (node.data.color && typeof node.data.color === 'string') {
         canvasNode.color = node.data.color;
       }
 
       // Add PV extension if there's custom data
       if (node.data.nodeType || node.data.shape || node.data.sources?.length) {
         canvasNode.pv = {
-          nodeType: node.data.nodeType || node.id,
+          nodeType: (node.data.nodeType as string) || node.id,
           shape: node.data.shape as PVNodeShape | undefined,
-          icon: node.data.icon,
-          states: node.data.states,
-          sources: node.data.sources,
-          actions: node.data.actions,
-          dataSchema: node.data.dataSchema,
+          icon: node.data.icon as string | undefined,
+          states: node.data.states as Record<string, PVNodeState> | undefined,
+          sources: node.data.sources as string[] | undefined,
+          // actions removed - legacy path-based
+          dataSchema: node.data.dataSchema as Record<string, { type: 'string' | 'number' | 'boolean' | 'object' | 'array'; required?: boolean; displayInLabel?: boolean }> | undefined,
         };
       }
 
       // For text nodes, combine name and description into text field
       // Format: "# Name\n\nDescription" or just "# Name" if no description
       if (node.data.canvasType === 'text' || !node.data.canvasType) {
-        const name = node.data.name || node.data.label || node.id;
+        const name = node.data.name || node.id;
         const description = node.data.description;
         (canvasNode as ExtendedCanvasTextNode).text = description ? `# ${name}\n\n${description}` : `# ${name}`;
       }
@@ -445,13 +465,13 @@ export class CanvasConverter {
       // Add PV extension
       if (edge.data?.edgeType) {
         canvasEdge.pv = {
-          edgeType: edge.data.edgeType,
+          edgeType: edge.data.edgeType as string,
           style: edge.data.style as PVEdgeStyle | undefined,
-          width: edge.data.width,
+          width: edge.data.width as number | undefined,
           animation: edge.data.animation as
             | { type: PVAnimationType; duration?: number; color?: string }
             | undefined,
-          activatedBy: edge.data.activatedBy,
+          // activatedBy removed - legacy path-based
         };
 
         // Collect edge type definition
@@ -463,7 +483,7 @@ export class CanvasConverter {
             animation: edge.data.animation as
               | { type: PVAnimationType; duration?: number; color?: string }
               | undefined,
-            activatedBy: edge.data.activatedBy,
+            // activatedBy removed - legacy path-based
           });
         }
       }

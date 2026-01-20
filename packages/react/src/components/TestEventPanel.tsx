@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useTheme } from '@principal-ade/industry-theme';
 import { HelpCircle } from 'lucide-react';
 import yaml from 'js-yaml';
-import type { NarrativeTemplate } from '@principal-ai/principal-view-core/browser';
+import type { NarrativeTemplate, JsonValue } from '@principal-ai/principal-view-core/browser';
 import { NarrativeRenderer } from './NarrativeRenderer';
 import { convertToOtelEvents } from '../utils/narrative-converter';
 
@@ -32,7 +32,7 @@ export interface OtelLog {
   severity: OtelSeverity;
   body: string | Record<string, unknown>;
   resource: Record<string, string | number>;
-  attributes?: Record<string, any>;
+  attributes?: Record<string, JsonValue>;
   traceId?: string;
   spanId?: string;
 }
@@ -43,7 +43,7 @@ interface TimelineItem {
   time: number;
   // For events
   name?: string;
-  attributes?: Record<string, any>;
+  attributes?: Record<string, JsonValue>;
   // For logs
   severity?: OtelSeverity;
   body?: string | Record<string, unknown>;

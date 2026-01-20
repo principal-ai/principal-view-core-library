@@ -9,6 +9,17 @@
  */
 
 /**
+ * OpenTelemetry attribute value type per OTEL spec
+ * @see https://opentelemetry.io/docs/specs/otel/common/attribute-naming/
+ */
+export type OtelAttributeValue = string | number | boolean | string[] | number[] | boolean[];
+
+/**
+ * OpenTelemetry attributes (key-value pairs)
+ */
+export type OtelAttributes = Record<string, OtelAttributeValue>;
+
+/**
  * OTEL Resource - describes the entity producing telemetry
  *
  * Resources are immutable metadata about the source of telemetry.
@@ -151,7 +162,7 @@ export interface OtelLog {
   resource: OtelResource;
 
   /** Log attributes (structured data specific to this log) */
-  attributes?: Record<string, string | number | boolean>;
+  attributes?: OtelAttributes;
 
   /** Trace ID for correlation */
   traceId?: string;
@@ -233,7 +244,7 @@ export interface OtelSpan {
   resource: OtelResource;
 
   /** Span attributes */
-  attributes?: Record<string, string | number | boolean>;
+  attributes?: OtelAttributes;
 
   /** Span status */
   status?: OtelSpanStatus;
@@ -242,7 +253,7 @@ export interface OtelSpan {
   events?: Array<{
     name: string;
     timestamp: number | string;
-    attributes?: Record<string, string | number | boolean>;
+    attributes?: OtelAttributes;
   }>;
 }
 

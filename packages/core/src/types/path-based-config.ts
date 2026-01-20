@@ -68,29 +68,12 @@ export interface PathBasedNodeTypeDefinition {
    */
   resourceMatch?: ResourceMatch;
 
-  /** MILESTONE 2: Optional action patterns for refinement */
-  actions?: ActionPattern[];
+  // actions removed - see docs/LEGACY_PATH_BASED_PATTERNS.md
+  // MILESTONE 2 was superseded by OTEL event schemas
 }
 
-/**
- * Action pattern for extracting structured events from logs (Milestone 2)
- */
-export interface ActionPattern {
-  /** Regex pattern to match log message (with named capture groups) */
-  pattern: string;
-
-  /** Event type to emit when pattern matches */
-  event: string;
-
-  /** Component state to transition to (optional) */
-  state?: string;
-
-  /** Metadata template - extracts data from capture groups */
-  metadata?: Record<string, string>; // e.g., { lockId: "$lockId" }
-
-  /** Whether this action should trigger edge animations */
-  triggerEdges?: string[]; // Edge IDs or patterns
-}
+// ActionPattern removed - see docs/LEGACY_PATH_BASED_PATTERNS.md
+// Use OTEL event schemas in .otel.canvas files instead
 
 /**
  * Extended edge definition with action-based activation (Milestone 2)

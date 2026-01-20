@@ -7,6 +7,7 @@
 
 import { Command } from 'commander';
 import { createValidateCommand } from './commands/validate.js';
+import { createValidateExecutionCommand } from './commands/validate-execution.js';
 import { createInitCommand } from './commands/init.js';
 import { createListCommand } from './commands/list.js';
 import { createSchemaCommand } from './commands/schema.js';
@@ -31,6 +32,7 @@ program
 program.addCommand(createInitCommand());
 program.addCommand(createCreateCommand());
 program.addCommand(createValidateCommand());
+program.addCommand(createValidateExecutionCommand());
 program.addCommand(createLintCommand());
 program.addCommand(createListCommand());
 program.addCommand(createSchemaCommand());

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { NodeState, NodeTypeDefinition } from '@principal-ai/principal-view-core/browser';
+import type { NodeState, NodeTypeDefinition, JsonValue } from '@principal-ai/principal-view-core/browser';
 import { useTheme } from '@principal-ade/industry-theme';
 import { resolveIcon } from '../utils/iconResolver';
 
@@ -63,7 +63,7 @@ export interface NodeInfoPanelProps {
   /** Optional callback to delete the node. If not provided, delete button is hidden. */
   onDelete?: (nodeId: string) => void;
   /** Optional callback to update the node. If not provided, edit fields are disabled. */
-  onUpdate?: (nodeId: string, updates: { type?: string; data?: Record<string, unknown> }) => void;
+  onUpdate?: (nodeId: string, updates: { type?: string; data?: Record<string, JsonValue> }) => void;
   /** Optional callback when a source is clicked. Receives the node ID and source path. */
   onSourceClick?: (nodeId: string, source: string) => void;
 }

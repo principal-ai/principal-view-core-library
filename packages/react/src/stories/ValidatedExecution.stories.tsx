@@ -2,7 +2,7 @@ import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
 import { TestEventPanel } from '../components/TestEventPanel';
-import type { ExtendedCanvas } from '@principal-ai/principal-view-core/browser';
+import type { ExtendedCanvas, JsonValue } from '@principal-ai/principal-view-core/browser';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 import executionCanvas from '../../../../.principal-views/graph-converter-execution.otel.canvas';
 import validatedSpans from './data/graph-converter-validated-execution.json';
@@ -71,7 +71,7 @@ export const ValidatedEvents: Story = {
   render: () => (
     <div style={{ width: '800px', height: '100vh' }}>
       <TestEventPanel
-        spans={validatedSpans as any}
+        spans={validatedSpans as JsonValue[]}
         currentSpanIndex={0}
         currentEventIndex={10} // Show all events
         highlightedPhase={undefined}
@@ -115,7 +115,7 @@ export const FlowWithValidation: Story = {
           </p>
         </div>
         <TestEventPanel
-          spans={validatedSpans as any}
+          spans={validatedSpans as JsonValue[]}
           currentSpanIndex={0}
           currentEventIndex={10}
           highlightedPhase={undefined}

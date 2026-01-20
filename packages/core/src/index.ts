@@ -157,3 +157,11 @@ export type {
   DiscoveredExecutionWithContent,
   CanvasDiscoveryResultWithContent,
 } from './discovery/types';
+
+// Export execution validation
+export { ExecutionValidator, createExecutionValidator } from './execution/ExecutionValidator';
+export type {
+  ExecutionData,
+  ValidationError,
+  ExecutionValidationResult,
+} from './execution/ExecutionValidator';

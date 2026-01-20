@@ -58,20 +58,30 @@ function convertSpanEvents(span: TestSpan): OtelEvent[] {
  * Convert OtelLogs to OtelEvent logs
  */
 function convertLogs(logs: OtelLog[]): OtelEvent[] {
-  return logs.map((log) => ({
-    name: 'log',
-    timestamp: typeof log.timestamp === 'number' ? log.timestamp : new Date(log.timestamp).getTime(),
-    type: 'log' as const,
-    spanId: log.spanId,
-    traceId: log.traceId,
-    severityText: log.severity,
-    severityNumber: severityToNumber(log.severity),
-    body: typeof log.body === 'string' ? log.body : JSON.stringify(log.body),
-    attributes: {
-      ...log.attributes,
-      ...log.resource,
-    },
-  }));
+  return logs.map((log) => {
+    // Filter out null values from attributes (OtelAttributeValue doesn't include null)
+    const filterNullValues = (obj: Record<string, any> | undefined) => {
+      if (!obj) return {};
+      return Object.fromEntries(
+        Object.entries(obj).filter(([, value]) => value !== null)
+      );
+    };
+
+    return {
+      name: 'log',
+      timestamp: typeof log.timestamp === 'number' ? log.timestamp : new Date(log.timestamp).getTime(),
+      type: 'log' as const,
+      spanId: log.spanId,
+      traceId: log.traceId,
+      severityText: log.severity,
+      severityNumber: severityToNumber(log.severity),
+      body: typeof log.body === 'string' ? log.body : JSON.stringify(log.body),
+      attributes: {
+        ...filterNullValues(log.attributes),
+        ...filterNullValues(log.resource),
+      },
+    };
+  });
 }
 
 /**

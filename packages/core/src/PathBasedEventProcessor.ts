@@ -15,7 +15,7 @@ import type {
   ComponentActionEvent,
   EdgeAnimationEvent,
   PathBasedEvent,
-  ActionPattern,
+  // ActionPattern removed - see docs/LEGACY_PATH_BASED_PATTERNS.md
   LogLevel,
 } from './types/path-based-config';
 import type { JsonValue, JsonObject } from './types';
@@ -49,7 +49,6 @@ export interface LogEntry {
 interface ComponentSourceMap {
   componentId: string;
   sources: string[];
-  actions?: ActionPattern[];
 }
 
 /**
@@ -75,7 +74,7 @@ export class PathBasedEventProcessor {
         this.componentSourceMap.push({
           componentId,
           sources: nodeType.sources,
-          actions: nodeType.actions,
+          // actions removed - see docs/LEGACY_PATH_BASED_PATTERNS.md
         });
       }
     }
@@ -103,24 +102,7 @@ export class PathBasedEventProcessor {
       return events;
     }
 
-    // Milestone 2: Try to match action patterns first (if enabled)
-    if (this.config.pathBasedConfig?.enableActionPatterns && component.actions) {
-      const actionEvent = this.tryMatchActionPattern(log, component);
-      if (actionEvent) {
-        events.push(actionEvent);
-
-        // Check if this action triggers any edge animations
-        const edgeEvents = this.getEdgeAnimationsForAction(
-          component.componentId,
-          actionEvent.action
-        );
-        events.push(...edgeEvents);
-
-        return events; // Action pattern matched, don't create activity event
-      }
-    }
-
-    // Milestone 1: Fallback to generic component activity event
+    // Create generic component activity event
     const activityEvent: ComponentActivityEvent = {
       type: 'component-activity',
       componentId: component.componentId,
@@ -157,99 +139,6 @@ export class PathBasedEventProcessor {
   }
 
   /**
-   * Try to match log message against action patterns (Milestone 2)
-   */
-  private tryMatchActionPattern(
-    log: LogEntry,
-    component: ComponentSourceMap
-  ): ComponentActionEvent | null {
-    if (!component.actions) {
-      return null;
-    }
-
-    for (const actionPattern of component.actions) {
-      const regex = new RegExp(actionPattern.pattern);
-      const match = log.message.match(regex);
-
-      if (match) {
-        // Extract metadata from capture groups
-        const metadata = this.extractMetadata(match, actionPattern.metadata || {});
-
-        return {
-          type: 'component-action',
-          componentId: component.componentId,
-          instanceId: log.metadata.instanceId,
-          action: actionPattern.event,
-          state: actionPattern.state,
-          timestamp: log.metadata.timestamp,
-          metadata,
-          source: {
-            file: log.metadata.source!.file,
-            line: log.metadata.source!.line,
-            column: log.metadata.source!.column,
-          },
-        };
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Extract metadata from regex capture groups
-   */
-  private extractMetadata(
-    match: RegExpMatchArray,
-    template: Record<string, string>
-  ): JsonObject {
-    const metadata: JsonObject = {};
-
-    for (const [key, value] of Object.entries(template)) {
-      // Value is a template like "$lockId" that references a named capture group
-      if (value.startsWith('$') && match.groups) {
-        const groupName = value.slice(1);
-        metadata[key] = match.groups[groupName];
-      } else {
-        // Static value
-        metadata[key] = value;
-      }
-    }
-
-    return metadata;
-  }
-
-  /**
-   * Get edge animations triggered by a component action (Milestone 2)
-   */
-  private getEdgeAnimationsForAction(componentId: string, action: string): EdgeAnimationEvent[] {
-    const events: EdgeAnimationEvent[] = [];
-
-    // Check all edges to see if they're activated by this action
-    for (const [edgeId, edgeType] of Object.entries(this.config.edgeTypes)) {
-      if (edgeType.activatedBy) {
-        for (const trigger of edgeType.activatedBy) {
-          if (trigger.action === action) {
-            events.push({
-              type: 'edge-animation',
-              edgeId,
-              animation: trigger.animation,
-              direction: trigger.direction,
-              duration: trigger.duration || 2000,
-              timestamp: Date.now(),
-              triggeredBy: {
-                componentId,
-                action,
-              },
-            });
-          }
-        }
-      }
-    }
-
-    return events;
-  }
-
-  /**
    * Batch process multiple log entries
    */
   public processLogs(logs: LogEntry[]): PathBasedEvent[] {
@@ -268,21 +157,12 @@ export class PathBasedEventProcessor {
   public getStats(): {
     totalComponents: number;
     componentsWithSources: number;
-    componentsWithActions: number;
     totalSourcePatterns: number;
-    totalActionPatterns: number;
   } {
     return {
       totalComponents: Object.keys(this.config.nodeTypes).length,
       componentsWithSources: this.componentSourceMap.length,
-      componentsWithActions: this.componentSourceMap.filter(
-        (c) => c.actions && c.actions.length > 0
-      ).length,
       totalSourcePatterns: this.componentSourceMap.reduce((sum, c) => sum + c.sources.length, 0),
-      totalActionPatterns: this.componentSourceMap.reduce(
-        (sum, c) => sum + (c.actions?.length || 0),
-        0
-      ),
     };
   }
 
@@ -308,23 +188,6 @@ export class PathBasedEventProcessor {
                 componentId: comp1.componentId,
               });
             }
-          }
-        }
-      }
-    }
-
-    // Validate action patterns (check for valid regex)
-    for (const component of this.componentSourceMap) {
-      if (component.actions) {
-        for (const action of component.actions) {
-          try {
-            new RegExp(action.pattern);
-          } catch (error) {
-            issues.push({
-              type: 'error',
-              message: `Invalid regex pattern in action "${action.event}": ${action.pattern}`,
-              componentId: component.componentId,
-            });
           }
         }
       }

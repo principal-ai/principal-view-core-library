@@ -87,7 +87,7 @@ export class LibraryConverter {
       icon: component.icon,
       states: component.states,
       sources: component.sources,
-      actions: component.actions,
+      // actions removed - legacy path-based
       dataSchema: component.dataSchema,
       layout: component.layout,
     };

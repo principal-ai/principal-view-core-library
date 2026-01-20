@@ -42,9 +42,6 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
 
   if (!visible) return null;
 
-  // Don't show tooltip if no useful info
-  if (!description && !otel) return null;
-
   // If no nodeRef, render inline (for storybook demos)
   const usePortal = Boolean(nodeRef);
 
@@ -156,9 +153,9 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
       )}
 
       {/* Description */}
-      {description && (
-        <div style={{ lineHeight: '1.4', color: 'rgba(255,255,255,0.9)' }}>{description}</div>
-      )}
+      <div style={{ lineHeight: '1.4', color: description ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)' }}>
+        {description || 'No description'}
+      </div>
     </div>
   );
 

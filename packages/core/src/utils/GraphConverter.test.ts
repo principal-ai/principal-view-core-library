@@ -274,38 +274,6 @@ describe('GraphConverter', () => {
     }
   });
 
-  test('should include source paths and actions in node data', () => {
-    const config: PathBasedGraphConfiguration = {
-      metadata: {
-        name: 'Test Config',
-        version: '1.0.0',
-      },
-      nodeTypes: {
-        'node-a': {
-          shape: 'circle',
-          color: '#3b82f6',
-          dataSchema: {},
-          sources: ['src/api/**/*.ts'],
-          actions: [
-            {
-              pattern: 'Lock acquired: (?<lockId>.*)',
-              event: 'lock-acquired',
-              state: 'locked',
-            },
-          ],
-        },
-      },
-      edgeTypes: {},
-      allowedConnections: [],
-    };
-
-    const result = GraphConverter.configToGraph(config);
-
-    expect(result.nodes[0].data.sources).toEqual(['src/api/**/*.ts']);
-    expect(result.nodes[0].data.actions).toHaveLength(1);
-    expect(result.nodes[0].data.actions[0].event).toBe('lock-acquired');
-  });
-
   test('should handle edge animation config', () => {
     const config: PathBasedGraphConfiguration = {
       metadata: {

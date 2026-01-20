@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
 import { TestEventPanel } from '../components/TestEventPanel';
 import type { ViewMode } from '../components/TestEventPanel';
-import type { ExtendedCanvas, GraphEvent } from '@principal-ai/principal-view-core/browser';
+import type { ExtendedCanvas, GraphEvent, JsonObject, NarrativeTemplate } from '@principal-ai/principal-view-core/browser';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 import testSpans from './data/graph-converter-test-execution.json';
 import narrativeTemplate from './data/graph-converter-test.narrative.json';
@@ -196,7 +196,7 @@ const AnimatedTestExecution = () => {
   const [highlightedPhase, setHighlightedPhase] = useState<string | undefined>();
 
   // Extract spans and logs from test data
-  const testData = testSpans as any;
+  const testData = testSpans as JsonObject;
   const spans = Array.isArray(testData) ? testData : testData.spans || testData;
   const logs = testData.logs || [];
 
@@ -277,7 +277,7 @@ export const StaticView: Story = {
  */
 export const EventPanelOnly: StoryObj = {
   render: () => {
-    const testData = testSpans as any;
+    const testData = testSpans as JsonObject;
     const spans = Array.isArray(testData) ? testData : testData.spans || testData;
     const logs = testData.logs || [];
 
@@ -314,7 +314,7 @@ export const WithNarrativeToggle: StoryObj = {
     const [currentSpanIndex, setCurrentSpanIndex] = useState(0);
     const [showMetadata, setShowMetadata] = useState(false);
 
-    const testData = testSpans as any;
+    const testData = testSpans as JsonObject;
     const spans = Array.isArray(testData) ? testData : testData.spans || testData;
     const logs = testData.logs || [];
 
@@ -351,7 +351,7 @@ export const WithNarrativeToggle: StoryObj = {
             currentEventIndex={999}
             onSpanIndexChange={setCurrentSpanIndex}
             viewMode={viewMode}
-            narrativeTemplate={narrativeTemplate as any}
+            narrativeTemplate={narrativeTemplate as NarrativeTemplate}
             onViewModeChange={setViewMode}
             showNarrativeMetadata={showMetadata}
           />
@@ -373,7 +373,7 @@ export const NarrativeWithGraph: StoryObj = {
     const [currentSpanIndex, setCurrentSpanIndex] = useState(0);
     const [events] = useState<GraphEvent[]>([]);
 
-    const testData = testSpans as any;
+    const testData = testSpans as JsonObject;
     const spans = Array.isArray(testData) ? testData : testData.spans || testData;
     const logs = testData.logs || [];
 
@@ -388,7 +388,7 @@ export const NarrativeWithGraph: StoryObj = {
             currentEventIndex={999}
             onSpanIndexChange={setCurrentSpanIndex}
             viewMode={viewMode}
-            narrativeTemplate={narrativeTemplate as any}
+            narrativeTemplate={narrativeTemplate as NarrativeTemplate}
             onViewModeChange={setViewMode}
             showNarrativeMetadata={true}
           />

@@ -13,6 +13,9 @@ export type {
   EdgeTypeDefinition,
   Violation,
   GraphEvent,
+  NodeEvent,
+  EdgeEvent,
+  StateEvent,
   ComponentLibrary,
   LogLevel,
   GraphMetrics,
@@ -26,6 +29,8 @@ export type {
   ComponentActionEvent,
   EdgeAnimationEvent,
   PathBasedEvent,
+  JsonValue,
+  JsonObject,
 } from './types';
 
 // Export types from ConfigurationLoader (interfaces only, no implementation)
@@ -70,6 +75,20 @@ export type {
   ScenarioMatchResult,
   SpanTreeNode,
 } from './narrative/types';
+
+// Export OTEL types
+export type {
+  OtelAttributes,
+  OtelAttributeValue,
+  OtelLog,
+  OtelSpan,
+  OtelResource,
+  OtelSeverity,
+  OtelSeverityText,
+  OtelSeverityNumber,
+  OtelSpanKind,
+  OtelSpanStatus,
+} from './types/otel';
 
 // Export canvas and execution discovery (browser-safe)
 export { CanvasDiscovery } from './discovery/CanvasDiscovery';

@@ -14,6 +14,8 @@ export interface CustomEdgeData extends Record<string, unknown> {
   animationDirection?: 'forward' | 'backward' | 'bidirectional';
   // Whether tooltips are enabled (defaults to true)
   tooltipsEnabled?: boolean;
+  // Whether shift key is currently pressed (for tooltip control)
+  shiftKeyPressed?: boolean;
 }
 
 /**
@@ -42,6 +44,7 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
     animationDuration = 1000,
     animationDirection = 'forward',
     tooltipsEnabled = true,
+    shiftKeyPressed = false,
   } = edgeProps || ({} as CustomEdgeData);
 
   const [particlePosition, setParticlePosition] = useState(0);
@@ -285,8 +288,8 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
         </EdgeLabelRenderer>
       )}
 
-      {/* Hover tooltip showing edge type */}
-      {tooltipsEnabled && isHovered && (
+      {/* Hover tooltip showing edge type - only shown when shift key is pressed */}
+      {tooltipsEnabled && isHovered && shiftKeyPressed && (
         <EdgeLabelRenderer>
           <div
             style={{
