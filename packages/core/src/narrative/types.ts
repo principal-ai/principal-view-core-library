@@ -94,8 +94,7 @@ export interface NarrativeTemplate {
  */
 export type NarrativeMode =
   | 'span-tree' // Follow OTEL span hierarchy (uses parent-child relationships)
-  | 'timeline' // Chronological order (sorts all signals by timestamp)
-  | 'summary-only'; // Just show summary, skip event details
+  | 'timeline'; // Chronological order (sorts all signals by timestamp)
 
 /**
  * Narrative scenario definition

@@ -19,7 +19,7 @@ import { createCoverageCommand } from './commands/coverage.js';
 import { createNarrativeCommand } from './commands/narrative/index.js';
 
 // Version is injected at build time via package.json
-const VERSION = '0.1.28';
+const VERSION = '0.2.1';
 
 const program = new Command();
 

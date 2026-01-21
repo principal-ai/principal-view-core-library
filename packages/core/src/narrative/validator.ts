@@ -180,7 +180,7 @@ export class NarrativeValidator {
     }
 
     // Check mode
-    const validModes = ['span-tree', 'timeline', 'summary-only'];
+    const validModes = ['span-tree', 'timeline'];
     if (!narrative.mode) {
       violations.push({
         ruleId: 'narrative-schema-valid',
@@ -286,13 +286,75 @@ export class NarrativeValidator {
    * In the future, when canvas files include OTEL event schema definitions,
    * this will validate event references.
    */
-  private checkEventReferences(_context: NarrativeValidationContext): NarrativeViolation[] {
+  private checkEventReferences(context: NarrativeValidationContext): NarrativeViolation[] {
     const violations: NarrativeViolation[] = [];
-    // const { narrative, narrativePath, canvas } = context;
+    const { narrative, narrativePath, canvas } = context;
 
-    // TODO: Add event schema to canvas types and validate here
-    // For now, we skip this validation since canvas doesn't define events
-    // Event validation will happen at runtime when rendering narratives
+    if (!canvas || !canvas.nodes) {
+      return violations;
+    }
+
+    // Extract all event names from canvas nodes
+    const canvasEvents = new Set<string>();
+    for (const node of canvas.nodes) {
+      if (node.pv?.events) {
+        for (const eventName of Object.keys(node.pv.events)) {
+          canvasEvents.add(eventName);
+        }
+      }
+    }
+
+    // Extract all event names from narrative scenarios
+    const narrativeEvents = new Set<string>();
+    for (const scenario of narrative.scenarios) {
+      // From condition.requires
+      if (scenario.condition?.requires) {
+        for (const eventPattern of scenario.condition.requires) {
+          // Skip wildcard patterns for now
+          if (!eventPattern.includes('*')) {
+            narrativeEvents.add(eventPattern);
+          }
+        }
+      }
+      // From template.events
+      if (scenario.template?.events) {
+        for (const eventName of Object.keys(scenario.template.events)) {
+          narrativeEvents.add(eventName);
+        }
+      }
+    }
+
+    // Check for narrative events not in canvas
+    for (const eventName of narrativeEvents) {
+      if (!canvasEvents.has(eventName)) {
+        violations.push({
+          ruleId: 'narrative-event-sync',
+          severity: 'error',
+          file: narrativePath,
+          path: 'events',
+          message: `Narrative references event "${eventName}" which is not defined in canvas`,
+          impact: 'This event will never highlight a canvas node and may never match',
+          suggestion: `Add event "${eventName}" to a node in ${narrative.canvas} or remove it from the narrative`,
+          fixable: false,
+        });
+      }
+    }
+
+    // Check for canvas events not in narrative (warning only)
+    for (const eventName of canvasEvents) {
+      if (!narrativeEvents.has(eventName)) {
+        violations.push({
+          ruleId: 'narrative-event-coverage',
+          severity: 'warn',
+          file: narrativePath,
+          path: 'events',
+          message: `Canvas defines event "${eventName}" which is not used in any narrative scenario`,
+          impact: 'This canvas node may never be highlighted during narrative playback',
+          suggestion: `Add event "${eventName}" to a scenario's template.events or condition.requires`,
+          fixable: false,
+        });
+      }
+    }
 
     return violations;
   }

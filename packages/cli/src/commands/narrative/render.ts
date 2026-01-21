@@ -24,7 +24,7 @@ export function createRenderCommand(): Command {
     .description('Render narrative template using execution data')
     .argument('<narrative>', 'Path to .narrative.json file')
     .argument('<execution>', 'Path to .otel.json execution file')
-    .option('--mode <mode>', 'Override rendering mode: span-tree, timeline, summary-only')
+    .option('--mode <mode>', 'Override rendering mode: span-tree, timeline')
     .option('--scenario <id>', 'Force specific scenario (skip auto-selection)')
     .option('--json', 'Output structured result as JSON')
     .option('--format <format>', 'Output format: text (default), markdown, json', 'text')
@@ -37,7 +37,7 @@ export function createRenderCommand(): Command {
 
         // Override mode if specified
         if (options.mode) {
-          const validModes = ['span-tree', 'timeline', 'summary-only'];
+          const validModes = ['span-tree', 'timeline'];
           if (!validModes.includes(options.mode)) {
             throw new Error(
               `Invalid mode: ${options.mode}. Must be one of: ${validModes.join(', ')}`

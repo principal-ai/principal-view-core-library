@@ -220,7 +220,7 @@ describe('NarrativeValidator', () => {
     });
 
     it('should accept valid modes', async () => {
-      const modes = ['span-tree', 'timeline', 'summary-only'];
+      const modes = ['span-tree', 'timeline'];
 
       for (const mode of modes) {
         const context = createContext({ mode: mode as any });

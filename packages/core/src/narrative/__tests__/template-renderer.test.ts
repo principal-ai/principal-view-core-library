@@ -177,70 +177,6 @@ describe('renderNarrative', () => {
     });
   });
 
-  describe('summary-only mode', () => {
-    const template: NarrativeTemplate = {
-      version: '1.0.0',
-      canvas: 'test.otel.canvas',
-      name: 'Summary Test',
-      description: 'Test summary-only rendering',
-      mode: 'summary-only',
-      scenarioSelection: 'first-match',
-      scenarios: [
-        {
-          id: 'with-violations',
-          priority: 1,
-          description: 'Has violations',
-          condition: {
-            requires: ['test.complete'],
-            assertions: { 'result.violations.total': { $gt: 0 } },
-          },
-          template: {
-            introduction: '⚠️ Test Results',
-            summary: 'Found {result.violations.total} violations',
-          },
-        },
-        {
-          id: 'no-violations',
-          priority: 2,
-          description: 'No violations',
-          condition: {
-            requires: ['test.complete'],
-            assertions: { 'result.violations.total': { $eq: 0 } },
-          },
-          template: {
-            introduction: '✅ Test Results',
-            summary: 'All tests passed',
-          },
-        },
-        {
-          id: 'fallback',
-          priority: 99,
-          description: 'Fallback',
-          condition: { default: true },
-          template: {
-            summary: 'Unknown result',
-          },
-        },
-      ],
-    };
-
-    it('should only show introduction and summary', () => {
-      const events: OtelEvent[] = [
-        {
-          name: 'test.complete',
-          timestamp: 100,
-          type: 'span',
-          attributes: { 'result.violations.total': 5 },
-        },
-      ];
-
-      const result = renderNarrative(template, events);
-
-      expect(result.text).toContain('⚠️ Test Results');
-      expect(result.text).toContain('Found 5 violations');
-      expect(result.scenarioId).toBe('with-violations');
-    });
-  });
 
   describe('scenario selection', () => {
     const template: NarrativeTemplate = {
@@ -248,7 +184,7 @@ describe('renderNarrative', () => {
       canvas: 'test.otel.canvas',
       name: 'Scenario Test',
       description: 'Test scenario selection',
-      mode: 'summary-only',
+      mode: 'timeline',
       scenarioSelection: 'first-match',
       scenarios: [
         {
@@ -331,7 +267,7 @@ describe('renderNarrative', () => {
       canvas: 'test.otel.canvas',
       name: 'Metadata Test',
       description: 'Test metadata generation',
-      mode: 'summary-only',
+      mode: 'timeline',
       scenarioSelection: 'first-match',
       scenarios: [
         {

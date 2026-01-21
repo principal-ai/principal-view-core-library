@@ -1,8 +1,7 @@
 /**
  * Validate execution files command
  *
- * Validates .spans.json, .execution.json, .otel.json, and .events.json files
- * to ensure they conform to the expected ExecutionData structure.
+ * Validates .otel.json files to ensure they conform to the expected ExecutionData structure.
  */
 
 import { Command } from 'commander';
@@ -161,8 +160,8 @@ export function createValidateExecutionCommand(): Command {
   const command = new Command('validate-execution');
 
   command
-    .description('Validate execution files (.spans.json, .execution.json, .otel.json, .events.json)')
-    .argument('[files...]', 'Files or glob patterns to validate (defaults to **/__executions__/**/*.json)')
+    .description('Validate execution files (.otel.json)')
+    .argument('[files...]', 'Files or glob patterns to validate (defaults to **/__executions__/**/*.otel.json)')
     .option('--json', 'Output results as JSON')
     .option('-q, --quiet', 'Only show files with errors or warnings')
     .action(async (files: string[], options: ValidateExecutionOptions) => {
@@ -175,16 +174,10 @@ export function createValidateExecutionCommand(): Command {
         if (files.length > 0) {
           patterns = files;
         } else {
-          // Default: find all execution files in __executions__ directories
+          // Default: find all .otel.json files in __executions__ directories
           patterns = [
-            '**/__executions__/*.spans.json',
-            '**/__executions__/*.execution.json',
             '**/__executions__/*.otel.json',
-            '**/__executions__/*.events.json',
-            '.principal-views/__executions__/*.spans.json',
-            '.principal-views/__executions__/*.execution.json',
             '.principal-views/__executions__/*.otel.json',
-            '.principal-views/__executions__/*.events.json',
           ];
         }
 

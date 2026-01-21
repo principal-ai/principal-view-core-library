@@ -1,6 +1,6 @@
 {
   "name": "@principal-ai/principal-view-cli",
-  "version": "0.1.31",
+  "version": "0.2.1",
   "description": "Principal View CLI - Validate and manage .canvas configuration files",
   "main": "dist/index.cjs",
   "types": "dist/index.d.ts",
@@ -16,7 +16,8 @@
     "clean": "rm -rf dist",
     "dev": "tsx src/index.ts",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepack": "bun run build"
   },
   "keywords": [
     "principal-view",

@@ -116,10 +116,6 @@ function renderScenario(context: NarrativeContext): string {
     case 'timeline':
       parts.push(renderTimeline(events, scenario, evalContext, formatting));
       break;
-
-    case 'summary-only':
-      // Only introduction and summary, no event details
-      break;
   }
 
   // Flow directives

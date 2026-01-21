@@ -1,7 +1,9 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { resolve, dirname } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { NarrativeValidator } from '@principal-ai/principal-view-core';
+import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
 import { loadNarrative, resolvePath } from './utils.js';
 
 interface ValidateOptions {
@@ -31,11 +33,23 @@ export function createValidateCommand(): Command {
 
         // Resolve canvas path
         let canvasPath: string | undefined;
+        let canvas: ExtendedCanvas | undefined;
         if (options.canvas) {
           canvasPath = resolvePath(options.canvas, baseDir);
         } else if (narrative.canvas) {
           const narrativeDir = dirname(narrativePath);
           canvasPath = resolve(narrativeDir, narrative.canvas);
+        }
+
+        // Load canvas if path exists
+        if (canvasPath) {
+          try {
+            const canvasContent = readFileSync(canvasPath, 'utf-8');
+            canvas = JSON.parse(canvasContent) as ExtendedCanvas;
+          } catch (error) {
+            // Canvas not found or invalid - will be flagged by validator
+            canvas = undefined;
+          }
         }
 
         // Create validator
@@ -46,6 +60,7 @@ export function createValidateCommand(): Command {
           narrative,
           narrativePath,
           canvasPath,
+          canvas,
           basePath: baseDir,
         };
 
