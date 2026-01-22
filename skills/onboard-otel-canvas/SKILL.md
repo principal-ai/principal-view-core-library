@@ -182,6 +182,11 @@ Use the `setup-otel-testing` skill to set up OTEL in tests:
    bun add -d @opentelemetry/api @opentelemetry/sdk-trace-base
    ```
 
+   **Note**: These are the official OpenTelemetry JavaScript libraries:
+   - `@opentelemetry/api` - Core tracing API for instrumentation
+   - `@opentelemetry/sdk-trace-base` - SDK for test infrastructure (tracers, exporters)
+   - See References section for GitHub repos if you need troubleshooting help
+
 3. **Create `test/otel-setup.ts`** (or similar):
    - Set up tracer with InMemorySpanExporter
    - Create helper functions: `startTestSpan()`, `createValidatedSpanEmitter()`
@@ -193,40 +198,66 @@ Use the `setup-otel-testing` skill to set up OTEL in tests:
 
 **Goal**: Working OTEL test infrastructure ready to use.
 
-### Phase 5: Instrument One Test
+### Phase 5: Instrument Source Code and Create Test
 
-Instrument a test for the chosen feature:
+Instrument the actual source code, then create a test that captures its telemetry:
 
-1. **Find or create a test file** for the feature
-
-2. **Add OTEL instrumentation**:
+1. **Instrument the source code** for the feature:
    ```typescript
-   import { test, expect } from 'bun:test';
-   import { startTestSpan, createValidatedSpanEmitter } from './otel-setup';
-   import canvas from '../.principal-views/data-validator.otel.canvas';
+   // src/data-validator.ts
+   import { trace } from '@opentelemetry/api';
 
-   test('data validator emits correct telemetry', async () => {
-     const span = startTestSpan('test: data validator');
-     const emit = createValidatedSpanEmitter(canvas, 'data-validator', span);
+   const tracer = trace.getTracer('data-validator');
+
+   export async function validateData(data: any[]) {
+     const span = tracer.startSpan('data.validation');
 
      // Emit start event
-     emit('validation.started', {
-       'input.recordCount': 100,
+     span.addEvent('validation.started', {
+       'input.recordCount': data.length,
      });
 
-     // Run the feature
+     try {
+       // Actual validation logic
+       const results = performValidation(data);
+
+       // Emit completion event
+       span.addEvent('validation.complete', {
+         'result.validCount': results.valid,
+         'result.invalidCount': results.invalid,
+         'duration.ms': results.duration,
+       });
+
+       span.end();
+       return results;
+     } catch (error) {
+       // Emit error event
+       span.addEvent('validation.error', {
+         'error.type': error.name,
+         'error.message': error.message,
+       });
+       span.end();
+       throw error;
+     }
+   }
+   ```
+
+2. **Create test that calls instrumented code**:
+   ```typescript
+   import { test, expect } from 'bun:test';
+   import { validateData } from '../src/data-validator';
+   // OTEL setup from test/otel-setup.ts ensures events are captured
+
+   test('data validator success case', async () => {
+     const testData = [/* test records */];
+
+     // Call the instrumented code - it will emit OTEL events
      const result = await validateData(testData);
 
-     // Emit completion event
-     emit('validation.complete', {
-       'result.validCount': result.valid,
-       'result.invalidCount': result.invalid,
-       'duration.ms': result.duration,
-     });
-
-     span.end();
-
+     // Verify the business logic
      expect(result.valid).toBeGreaterThan(0);
+
+     // Events are automatically validated against canvas and exported
    });
    ```
 
@@ -235,7 +266,10 @@ Instrument a test for the chosen feature:
    bun test
    ```
 
-4. **Verify validation** - Test should pass and validate events match schema
+4. **Verify**:
+   - Test should pass (business logic works)
+   - Events are validated against canvas schema (strict mode in tests)
+   - No validation errors means events match your canvas
 
 5. **Check exported file**:
    ```bash
@@ -245,7 +279,7 @@ Instrument a test for the chosen feature:
 
    **Format reference**: Execution files are OpenTelemetry span data in JSON format. Run `npx @principal-ai/principal-view-cli validate-execution __executions__/*.otel.json` to validate execution files
 
-**Goal**: One passing test that emits validated OTEL events and exports execution data.
+**Goal**: Instrumented source code with one passing test that captures real telemetry and exports execution data.
 
 ### Phase 6: Add Failure Test
 
@@ -253,27 +287,19 @@ Add a test for the failure scenario:
 
 1. **Create test for error case**:
    ```typescript
-   test('data validator emits error telemetry', async () => {
-     const span = startTestSpan('test: data validator error');
-     const emit = createValidatedSpanEmitter(canvas, 'data-validator', span);
+   test('data validator error case', async () => {
+     const invalidData = [/* malformed test records */];
 
-     emit('validation.started', {
-       'input.recordCount': 10,
-     });
+     // Call the instrumented code with invalid data
+     // The source code will emit error events automatically
+     await expect(validateData(invalidData)).rejects.toThrow();
 
-     try {
-       await validateData(invalidTestData);
-     } catch (error) {
-       // Emit error event
-       emit('validation.error', {
-         'error.type': error.name,
-         'error.message': error.message,
-       });
-     }
-
-     span.end();
+     // Error events are automatically captured and validated
    });
    ```
+
+   **Note**: The error event emission is already in the source code (Phase 5 step 1).
+   The test just needs to trigger the error path - the instrumented code handles the rest.
 
 2. **Run both tests**:
    ```bash
@@ -284,7 +310,7 @@ Add a test for the failure scenario:
    - Success execution → success narrative
    - Failure execution → failure narrative
 
-**Goal**: Two tests covering success and failure scenarios.
+**Goal**: Two tests covering success and failure scenarios, both capturing real telemetry from instrumented source code.
 
 ### Phase 7: Verify the Complete Workflow
 
@@ -398,11 +424,12 @@ A: Only the essential ones:
 
 Don't add attributes "just in case" - add them when you need them.
 
-**Q: "Do I need to instrument my production code?"**
-A: Not yet! Start with tests:
-- Tests use `strict: true` validation (catches issues early)
-- Production can use `strict: false` (permissive, won't break)
-- Onboarding focuses on test instrumentation
+**Q: "Do I instrument my production code or my tests?"**
+A: **Instrument your actual source code**, then write tests that call it:
+- Add OTEL emit calls to your feature's source code (src/index.ts, src/commands/*.ts, etc.)
+- Tests call the instrumented code and capture the real telemetry
+- This documents what your actual code does, not simulated behavior
+- Tests use `strict: true` validation to ensure events match your canvas schema
 
 **Q: "Where do execution files go?"**
 A: Always `__executions__/` directory:
@@ -431,10 +458,14 @@ After completing onboarding, user should have:
 - Helper functions
 - Export to __executions__/
 
-✅ **Instrumented tests** (2+ tests)
+✅ **Instrumented source code** (feature implementation)
+- Source code emits OTEL events as it executes
+- Events validated against canvas schema in strict mode
+
+✅ **Tests that capture telemetry** (2+ tests)
 - Success case test
 - Failure case test
-- Both emit validated OTEL
+- Both call instrumented code and capture real telemetry
 - Both export execution data
 
 ✅ **Execution files** (__executions__/*.otel.json)
@@ -459,10 +490,10 @@ After completing onboarding, user should have:
 - Canvas viewers need these files
 - Remove from .gitignore if present
 
-❌ **Don't instrument production first**:
-- Start with tests
-- Tests have strict validation
-- Production can come later
+❌ **Don't emit fake events in tests**:
+- Instrument your actual source code, not test files
+- Tests should call instrumented code and capture real telemetry
+- Simulated events in tests don't reflect actual behavior
 
 ## Example Session
 
@@ -526,16 +557,19 @@ Next, let's add narrative scenarios. I'll create:
 
 ✅ Scenarios created!
 
-Now let's instrument a test. What test framework are you using?"
+Now let's instrument your import command source code. What test framework
+are you using?"
 
 User: "Bun"
 
-Claude: [Sets up otel-setup.ts, shows test example]
+Claude: [Sets up otel-setup.ts, instruments src/commands/import.ts]
 
-"I've created test/otel-setup.ts with helpers. Here's how to instrument
-your import command test to capture the full workflow:
+"I've created test/otel-setup.ts for OTEL infrastructure, and I've
+instrumented your src/commands/import.ts to emit events as it executes.
 
-[Shows instrumented test code]
+Now here's a test that calls your instrumented code and captures the telemetry:
+
+[Shows test code that calls the instrumented import command]
 
 Would you like me to create this test file, or would you prefer to
 update your existing test?"
@@ -579,14 +613,15 @@ After successful onboarding:
 You now have:
 ✅ Canvas documenting your CSV parser telemetry
 ✅ Scenarios for success/failure narratives
-✅ Instrumented tests emitting validated OTEL
+✅ Instrumented source code emitting validated OTEL
+✅ Tests that capture real telemetry from your code
 ✅ Execution data exported for visualization
 
 Next steps:
 1. View your executions in Storybook ExecutionViewerPanel
 2. Add more scenarios as you find edge cases
 3. Onboard another feature using the same workflow
-4. Eventually add OTEL to production code (tests first proved it works!)
+4. Your instrumented code is ready for production use!
 
 Resources:
 - create-otel-canvas skill: Add more features
@@ -612,5 +647,10 @@ Resources:
 - **CLI validation commands**:
   - `validate` - Validate .canvas configuration files
   - `validate-execution` - Validate .otel.json execution files
+- **OpenTelemetry JavaScript Libraries**:
+  - Main repository: https://github.com/open-telemetry/opentelemetry-js
+  - API repository: https://github.com/open-telemetry/opentelemetry-js-api
+  - Packages used: `@opentelemetry/api` (core tracing API) and `@opentelemetry/sdk-trace-base` (SDK for test infrastructure)
+  - If you encounter issues with OTEL instrumentation, configuration, or API usage, refer to these repositories for documentation and troubleshooting
 - **Example files**: See `.principal-views/*.otel.canvas` and `.principal-views/*.narrative.json` in the repository
 - docs/guides/adding-opentelemetry-to-tests.md: OTEL patterns and test setup
