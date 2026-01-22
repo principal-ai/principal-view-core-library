@@ -104,6 +104,14 @@ export type {
   CanvasDiscoveryResultWithContent,
 } from './discovery/types';
 
+// Export execution validation (browser-safe - no Node.js dependencies)
+export { ExecutionValidator, createExecutionValidator } from './execution/ExecutionValidator';
+export type {
+  ExecutionData,
+  ValidationError,
+  ExecutionValidationResult,
+} from './execution/ExecutionValidator';
+
 // NOTE: The following require Node.js dependencies and are NOT exported in browser bundle:
 // - ConfigurationLoader, LibraryLoader (file system)
 // - Rules engine (OpenTelemetry dependency)
