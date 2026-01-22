@@ -34,7 +34,7 @@ export interface ValidationResult {
  * Event validator that checks events against canvas schema
  */
 export class EventValidator {
-  private eventSchemas: Map<string, Record<string, PVEventSchema>> = new Map();
+  private eventSchemas: Map<string, PVEventSchema> = new Map();
 
   constructor(canvas: ExtendedCanvas) {
     this.indexEventSchemas(canvas);
@@ -47,8 +47,8 @@ export class EventValidator {
     if (!canvas.nodes) return;
 
     for (const node of canvas.nodes) {
-      if (node.pv?.events) {
-        this.eventSchemas.set(node.id, node.pv.events);
+      if (node.pv?.event) {
+        this.eventSchemas.set(node.id, node.pv.event);
       }
     }
   }
@@ -64,16 +64,15 @@ export class EventValidator {
     const errors: string[] = [];
 
     // Get schema for this node
-    const nodeSchema = this.eventSchemas.get(nodeId);
-    if (!nodeSchema) {
+    const eventSchema = this.eventSchemas.get(nodeId);
+    if (!eventSchema) {
       // No schema defined - allow all events (permissive mode)
       return { valid: true, errors: [] };
     }
 
-    // Get schema for this specific event
-    const eventSchema = nodeSchema[eventName];
-    if (!eventSchema) {
-      errors.push(`Event '${eventName}' is not defined in schema for node '${nodeId}'`);
+    // Verify event name matches
+    if (eventSchema.name !== eventName) {
+      errors.push(`Event '${eventName}' does not match schema event name '${eventSchema.name}' for node '${nodeId}'`);
       return { valid: false, errors };
     }
 
@@ -131,18 +130,18 @@ export class EventValidator {
   }
 
   /**
-   * Get all event schemas for a node
+   * Get event schema for a node
    */
-  getNodeSchema(nodeId: string): Record<string, PVEventSchema> | undefined {
+  getNodeSchema(nodeId: string): PVEventSchema | undefined {
     return this.eventSchemas.get(nodeId);
   }
 
   /**
-   * Get all defined event names for a node
+   * Get event name for a node
    */
-  getNodeEventNames(nodeId: string): string[] {
+  getNodeEventName(nodeId: string): string | undefined {
     const schema = this.eventSchemas.get(nodeId);
-    return schema ? Object.keys(schema) : [];
+    return schema?.name;
   }
 
   /**

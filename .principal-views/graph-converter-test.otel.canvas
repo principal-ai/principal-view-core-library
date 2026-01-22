@@ -3,7 +3,7 @@
     {
       "id": "test-setup",
       "type": "text",
-      "text": "# Test Setup\n\nCreate test configuration",
+      "text": "# Test Setup\n\nCreate test configuration\n\n**Event:** setup.started",
       "x": -300,
       "y": 0,
       "width": 250,
@@ -11,7 +11,7 @@
       "pv": {
         "nodeType": "setup",
         "name": "Test Setup",
-        "description": "Prepare test configuration and data",
+        "description": "Begin test setup phase",
         "shape": "hexagon",
         "fill": "#8b5cf6",
         "otel": {
@@ -19,37 +19,56 @@
             "span.kind": "test.case"
           }
         },
-        "events": {
-          "setup.started": {
-            "name": "Setup Started",
-            "description": "Begin test setup phase",
-            "attributes": {
-              "description": {
-                "type": "string",
-                "description": "Description of what is being set up",
-                "required": false
-              }
+        "event": {
+          "name": "setup.started",
+          "description": "Begin test setup phase",
+          "attributes": {
+            "description": {
+              "type": "string",
+              "description": "Description of what is being set up",
+              "required": false
             }
-          },
-          "setup.complete": {
-            "name": "Setup Complete",
-            "description": "Test setup completed successfully",
-            "attributes": {
-              "config.nodes": {
-                "type": "number",
-                "description": "Number of nodes in test config",
-                "required": false
-              },
-              "config.edges": {
-                "type": "number",
-                "description": "Number of edges in test config",
-                "required": false
-              },
-              "positions.defined": {
-                "type": "boolean",
-                "description": "Whether node positions are defined",
-                "required": false
-              }
+          }
+        }
+      }
+    },
+    {
+      "id": "test-setup-2",
+      "type": "text",
+      "text": "# Test Setup\n\nCreate test configuration\n\n**Event:** setup.complete",
+      "x": -300,
+      "y": 150,
+      "width": 250,
+      "height": 140,
+      "pv": {
+        "nodeType": "setup",
+        "name": "Test Setup",
+        "description": "Test setup completed successfully",
+        "shape": "hexagon",
+        "fill": "#8b5cf6",
+        "otel": {
+          "resourceMatch": {
+            "span.kind": "test.case"
+          }
+        },
+        "event": {
+          "name": "setup.complete",
+          "description": "Test setup completed successfully",
+          "attributes": {
+            "config.nodes": {
+              "type": "number",
+              "description": "Number of nodes in test config",
+              "required": false
+            },
+            "config.edges": {
+              "type": "number",
+              "description": "Number of edges in test config",
+              "required": false
+            },
+            "positions.defined": {
+              "type": "boolean",
+              "description": "Whether node positions are defined",
+              "required": false
             }
           }
         }
@@ -58,57 +77,82 @@
     {
       "id": "graph-converter",
       "type": "text",
-      "text": "# Graph Converter\n\nConvert configuration to graph nodes and edges",
+      "text": "# Graph Converter\n\nConvert configuration to graph nodes and edges\n\n**Event:** execution.started",
       "x": 0,
       "y": 0,
       "width": 280,
       "height": 140,
-      "anchors": [
-        {
-          "path": "packages/core/src/utils/GraphConverter.ts"
-        }
-      ],
       "pv": {
         "nodeType": "converter",
         "name": "Graph Converter",
-        "description": "Converts configuration to graph structure",
+        "description": "Graph conversion begins",
         "shape": "rectangle",
         "fill": "#3b82f6",
-        "events": {
-          "execution.started": {
-            "name": "Execution Started",
-            "description": "Graph conversion begins",
-            "attributes": {
-              "action": {
-                "type": "string",
-                "description": "Name of the action being executed",
-                "required": true
-              }
-            }
-          },
-          "execution.complete": {
-            "name": "Execution Complete",
-            "description": "Graph conversion finished successfully",
-            "attributes": {
-              "result.nodes.count": {
-                "type": "number",
-                "description": "Number of nodes in result graph",
-                "required": true
-              },
-              "result.edges.count": {
-                "type": "number",
-                "description": "Number of edges in result graph",
-                "required": false
-              }
+        "event": {
+          "name": "execution.started",
+          "description": "Graph conversion begins",
+          "attributes": {
+            "action": {
+              "type": "string",
+              "description": "Name of the action being executed",
+              "required": true
             }
           }
-        }
+        },
+        "otel": {
+          "kind": "event",
+          "category": "lifecycle",
+          "isNew": true
+        },
+        "sources": [
+          "packages/core/src/utils/GraphConverter.ts"
+        ]
+      }
+    },
+    {
+      "id": "graph-converter-2",
+      "type": "text",
+      "text": "# Graph Converter\n\nConvert configuration to graph nodes and edges\n\n**Event:** execution.complete",
+      "x": 0,
+      "y": 150,
+      "width": 280,
+      "height": 140,
+      "pv": {
+        "nodeType": "converter",
+        "name": "Graph Converter",
+        "description": "Graph conversion finished successfully",
+        "shape": "rectangle",
+        "fill": "#3b82f6",
+        "event": {
+          "name": "execution.complete",
+          "description": "Graph conversion finished successfully",
+          "attributes": {
+            "result.nodes.count": {
+              "type": "number",
+              "description": "Number of nodes in result graph",
+              "required": true
+            },
+            "result.edges.count": {
+              "type": "number",
+              "description": "Number of edges in result graph",
+              "required": false
+            }
+          }
+        },
+        "otel": {
+          "kind": "event",
+          "category": "lifecycle",
+          "isNew": true
+        },
+        "sources": [
+          "packages/core/src/utils/GraphConverter.ts"
+        ]
       }
     },
     {
       "id": "assertions",
       "type": "text",
-      "text": "# Assertions\n\nVerify conversion results",
+      "text": "# Assertions\n\nVerify conversion results\n\n**Event:** assertion.started",
       "x": 330,
       "y": 0,
       "width": 250,
@@ -116,37 +160,61 @@
       "pv": {
         "nodeType": "validator",
         "name": "Assertions",
-        "description": "Verify test results against expectations",
+        "description": "Begin verifying results",
         "shape": "diamond",
         "fill": "#10b981",
-        "events": {
-          "assertion.started": {
-            "name": "Assertion Started",
-            "description": "Begin verifying results",
-            "attributes": {
-              "assertions": {
-                "type": "string",
-                "description": "Description of assertions being checked",
-                "required": true
-              }
-            }
-          },
-          "assertion.complete": {
-            "name": "Assertion Complete",
-            "description": "All assertions verified",
-            "attributes": {
-              "assertions.passed": {
-                "type": "number",
-                "description": "Number of assertions that passed",
-                "required": true
-              },
-              "assertions.failed": {
-                "type": "number",
-                "description": "Number of assertions that failed",
-                "required": true
-              }
+        "event": {
+          "name": "assertion.started",
+          "description": "Begin verifying results",
+          "attributes": {
+            "assertions": {
+              "type": "string",
+              "description": "Description of assertions being checked",
+              "required": true
             }
           }
+        },
+        "otel": {
+          "kind": "event",
+          "category": "lifecycle",
+          "isNew": true
+        }
+      }
+    },
+    {
+      "id": "assertions-2",
+      "type": "text",
+      "text": "# Assertions\n\nVerify conversion results\n\n**Event:** assertion.complete",
+      "x": 330,
+      "y": 150,
+      "width": 250,
+      "height": 160,
+      "pv": {
+        "nodeType": "validator",
+        "name": "Assertions",
+        "description": "All assertions verified",
+        "shape": "diamond",
+        "fill": "#10b981",
+        "event": {
+          "name": "assertion.complete",
+          "description": "All assertions verified",
+          "attributes": {
+            "assertions.passed": {
+              "type": "number",
+              "description": "Number of assertions that passed",
+              "required": true
+            },
+            "assertions.failed": {
+              "type": "number",
+              "description": "Number of assertions that failed",
+              "required": true
+            }
+          }
+        },
+        "otel": {
+          "kind": "event",
+          "category": "lifecycle",
+          "isNew": true
         }
       }
     }

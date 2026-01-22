@@ -254,6 +254,8 @@ export interface PVEventFieldSchema {
  * Event schema definition for a specific event type
  */
 export interface PVEventSchema {
+  /** Event name (e.g., 'conversion.started', 'user.login') */
+  name: string;
   /** Description of what this event represents */
   description: string;
   /** Expected attributes/fields for this event */
@@ -318,35 +320,28 @@ export interface PVNodeExtension {
   resourceMatch?: ResourceMatch;
 
   // actions removed - see docs/LEGACY_PATH_BASED_PATTERNS.md
-  // Use pv.events for structured event schemas instead
+  // Use pv.event for structured event schema instead
 
   /**
-   * Event schemas for type-safe telemetry validation
+   * Event schema for type-safe telemetry validation
    *
-   * Defines the events that this node should emit during execution.
+   * Defines the single event that this node emits during execution.
    * Used for compile-time and runtime validation of telemetry events.
+   * Each node should emit exactly one event type.
    *
    * @example
    * ```typescript
-   * events: {
-   *   'conversion.started': {
-   *     description: 'Graph conversion begins',
-   *     attributes: {
-   *       'config.nodeTypes': { type: 'number', required: true },
-   *       'config.edgeTypes': { type: 'number', required: true }
-   *     }
-   *   },
-   *   'conversion.complete': {
-   *     description: 'Graph conversion completes',
-   *     attributes: {
-   *       'result.nodes.count': { type: 'number', required: true },
-   *       'result.edges.count': { type: 'number', required: true }
-   *     }
+   * event: {
+   *   name: 'conversion.started',
+   *   description: 'Graph conversion begins',
+   *   attributes: {
+   *     'config.nodeTypes': { type: 'number', required: true },
+   *     'config.edgeTypes': { type: 'number', required: true }
    *   }
    * }
    * ```
    */
-  events?: Record<string, PVEventSchema>;
+  event?: PVEventSchema;
 
   /** Data schema for typed fields */
   dataSchema?: Record<

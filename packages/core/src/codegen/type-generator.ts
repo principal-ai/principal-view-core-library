@@ -94,11 +94,11 @@ export class TypeScriptGenerator implements CodeGenerator {
       lines.push(`export namespace ${opts.namespace} {`);
     }
 
-    // Generate types for each node with event schemas
+    // Generate types for each node with event schema
     if (canvas.nodes) {
       for (const node of canvas.nodes) {
-        if (node.pv?.events) {
-          lines.push(...this.generateNodeTypes(node.id, node.pv.events, opts));
+        if (node.pv?.event) {
+          lines.push(...this.generateNodeTypes(node.id, node.pv.event, opts));
           lines.push('');
         }
       }
@@ -128,7 +128,7 @@ export class TypeScriptGenerator implements CodeGenerator {
 
   private generateNodeTypes(
     nodeId: string,
-    events: Record<string, PVEventSchema>,
+    eventSchema: PVEventSchema,
     opts: { readonly: boolean; strictNullChecks: boolean; includeDocComments: boolean }
   ): string[] {
     const lines: string[] = [];
@@ -136,33 +136,29 @@ export class TypeScriptGenerator implements CodeGenerator {
 
     if (opts.includeDocComments) {
       lines.push(`/**`);
-      lines.push(` * Event types for node: ${nodeId}`);
+      lines.push(` * Event type for node: ${nodeId}`);
       lines.push(` */`);
     }
 
     lines.push(`export namespace ${typeName} {`);
 
-    // Generate interface for each event
-    for (const [eventName, eventSchema] of Object.entries(events)) {
-      lines.push(...this.generateEventInterface(eventName, eventSchema, opts));
-      lines.push('');
-    }
-
-    // Generate union type of all events
-    const eventNames = Object.keys(events);
-    const interfaceNames = eventNames.map(name => this.eventNameToTypeName(name));
-
-    lines.push('  /**');
-    lines.push(`   * Union of all event types for ${nodeId}`);
-    lines.push('   */');
-    lines.push(`  export type Event = ${interfaceNames.join(' | ')};`);
+    // Generate interface for the single event
+    lines.push(...this.generateEventInterface(eventSchema.name, eventSchema, opts));
     lines.push('');
 
-    // Generate event name literal union
+    // Export the event type directly (no union needed for single event)
+    const interfaceName = this.eventNameToTypeName(eventSchema.name);
     lines.push('  /**');
-    lines.push(`   * Literal union of event names for ${nodeId}`);
+    lines.push(`   * Event type for ${nodeId}`);
     lines.push('   */');
-    lines.push(`  export type EventName = ${eventNames.map(n => `'${n}'`).join(' | ')};`);
+    lines.push(`  export type Event = ${interfaceName};`);
+    lines.push('');
+
+    // Generate event name literal
+    lines.push('  /**');
+    lines.push(`   * Event name for ${nodeId}`);
+    lines.push('   */');
+    lines.push(`  export type EventName = '${eventSchema.name}';`);
 
     lines.push('}');
 
@@ -218,8 +214,8 @@ export class TypeScriptGenerator implements CodeGenerator {
 
     if (canvas.nodes) {
       for (const node of canvas.nodes) {
-        if (node.pv?.events) {
-          Object.keys(node.pv.events).forEach(name => allEventNames.add(name));
+        if (node.pv?.event?.name) {
+          allEventNames.add(node.pv.event.name);
         }
       }
     }

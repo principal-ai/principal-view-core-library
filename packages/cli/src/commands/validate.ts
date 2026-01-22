@@ -342,7 +342,7 @@ const ALLOWED_CANVAS_FIELDS = {
     'name',
     'description',
     'otel',
-    'events',
+    'event',
     'shape',
     'icon',
     'fill',
@@ -471,7 +471,7 @@ function findSimilarField(field: string, allowedFields: string[]): string | null
  * Check if a canvas has OTEL-related features
  * Returns true if the canvas contains any of:
  * 1. Nodes with pv.otel extension (kind, category)
- * 2. Event schemas (pv.events with validation)
+ * 2. Event schema (pv.event with validation)
  * 3. Canvas scope/audit config (OTEL log routing)
  * 4. Resource matching for OTEL logs
  */
@@ -503,8 +503,8 @@ function hasOtelFeatures(canvas: unknown): boolean {
             return true;
           }
 
-          // Check for event schemas (pv.events)
-          if (nodePv.events !== undefined) {
+          // Check for event schema (pv.event)
+          if (nodePv.event !== undefined) {
             return true;
           }
 
@@ -858,7 +858,7 @@ function validateCanvas(
         }
 
         // Validate source file references for OTEL event nodes
-        const hasOtelFeatures = nodePv.otel !== undefined || nodePv.events !== undefined;
+        const hasOtelFeatures = nodePv.otel !== undefined || nodePv.event !== undefined;
         if (hasOtelFeatures) {
           // OTEL nodes must have at least one source file reference
           if (!Array.isArray(nodePv.sources) || nodePv.sources.length === 0) {
@@ -867,6 +867,16 @@ function validateCanvas(
               message: `Node "${nodeLabel}" has OTEL features but is missing required "pv.sources" field`,
               path: `${nodePath}.pv.sources`,
               suggestion: 'Add at least one source file reference, e.g.: "sources": ["src/services/MyService.ts"]',
+            });
+          }
+
+          // For .otel.canvas files: nodes with event must have pv.otel for UI rendering
+          if (filePath.endsWith('.otel.canvas') && nodePv.event !== undefined && nodePv.otel === undefined) {
+            issues.push({
+              type: 'error',
+              message: `Node "${nodeLabel}" in .otel.canvas file has event but is missing "pv.otel" field required for UI badges`,
+              path: `${nodePath}.pv.otel`,
+              suggestion: 'Add OTEL metadata for UI rendering, e.g.: "otel": { "kind": "event", "category": "lifecycle", "isNew": true }',
             });
           }
         }

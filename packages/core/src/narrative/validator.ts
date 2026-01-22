@@ -297,10 +297,8 @@ export class NarrativeValidator {
     // Extract all event names from canvas nodes
     const canvasEvents = new Set<string>();
     for (const node of canvas.nodes) {
-      if (node.pv?.events) {
-        for (const eventName of Object.keys(node.pv.events)) {
-          canvasEvents.add(eventName);
-        }
+      if (node.pv?.event?.name) {
+        canvasEvents.add(node.pv.event.name);
       }
     }
 

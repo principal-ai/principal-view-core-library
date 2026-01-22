@@ -3,142 +3,271 @@
     {
       "id": "graph-converter",
       "type": "text",
-      "text": "# Graph Converter\n\nConverts configuration to graph nodes and edges",
+      "text": "# Graph Converter\n\nConverts configuration to graph nodes and edges\n\n**Event:** conversion.started",
       "x": -150,
       "y": -50,
       "width": 300,
       "height": 120,
-      "anchors": [
-        {
-          "path": "packages/core/src/utils/GraphConverter.ts"
-        }
-      ],
       "pv": {
         "nodeType": "converter",
         "name": "Graph Converter",
-        "description": "Converts configuration to graph nodes and edges",
+        "description": "Graph conversion begins",
         "shape": "rectangle",
         "fill": "#3b82f6",
-        "events": {
-          "conversion.started": {
-            "description": "Graph conversion begins",
-            "attributes": {
-              "config.nodeTypes": {
-                "type": "number",
-                "required": true,
-                "description": "Number of node types in configuration"
-              },
-              "config.edgeTypes": {
-                "type": "number",
-                "required": true,
-                "description": "Number of edge types in configuration"
-              }
-            }
-          },
-          "conversion.processingNodes": {
-            "description": "Processing node definitions",
-            "attributes": {
-              "nodes.count": {
-                "type": "number",
-                "required": true,
-                "description": "Number of nodes being processed"
-              }
-            }
-          },
-          "conversion.processingEdges": {
-            "description": "Processing edge definitions",
-            "attributes": {
-              "edges.count": {
-                "type": "number",
-                "required": true,
-                "description": "Number of edges being processed"
-              }
-            }
-          },
-          "conversion.complete": {
-            "description": "Graph conversion completes successfully",
-            "attributes": {
-              "result.nodes.count": {
-                "type": "number",
-                "required": true,
-                "description": "Number of nodes in result"
-              },
-              "result.edges.count": {
-                "type": "number",
-                "required": true,
-                "description": "Number of edges in result"
-              },
-              "duration.ms": {
-                "type": "number",
-                "required": false,
-                "description": "Conversion duration in milliseconds"
-              }
-            }
-          },
-          "conversion.error": {
-            "description": "Error during conversion",
-            "attributes": {
-              "error.message": {
-                "type": "string",
-                "required": true,
-                "description": "Error message"
-              },
-              "error.phase": {
-                "type": "string",
-                "required": false,
-                "description": "Phase where error occurred"
-              }
+        "event": {
+          "name": "conversion.started",
+          "description": "Graph conversion begins",
+          "attributes": {
+            "config.nodeTypes": {
+              "type": "number",
+              "required": true,
+              "description": "Number of node types in configuration"
+            },
+            "config.edgeTypes": {
+              "type": "number",
+              "required": true,
+              "description": "Number of edge types in configuration"
             }
           }
-        }
+        },
+        "otel": {
+          "kind": "event",
+          "category": "lifecycle",
+          "isNew": true
+        },
+        "sources": [
+          "packages/core/src/utils/GraphConverter.ts"
+        ]
+      }
+    },
+    {
+      "id": "graph-converter-2",
+      "type": "text",
+      "text": "# Graph Converter\n\nConverts configuration to graph nodes and edges\n\n**Event:** conversion.processingNodes",
+      "x": -150,
+      "y": 100,
+      "width": 300,
+      "height": 120,
+      "pv": {
+        "nodeType": "converter",
+        "name": "Graph Converter",
+        "description": "Processing node definitions",
+        "shape": "rectangle",
+        "fill": "#3b82f6",
+        "event": {
+          "name": "conversion.processingNodes",
+          "description": "Processing node definitions",
+          "attributes": {
+            "nodes.count": {
+              "type": "number",
+              "required": true,
+              "description": "Number of nodes being processed"
+            }
+          }
+        },
+        "otel": {
+          "kind": "event",
+          "category": "build",
+          "isNew": true
+        },
+        "sources": [
+          "packages/core/src/utils/GraphConverter.ts"
+        ]
+      }
+    },
+    {
+      "id": "graph-converter-3",
+      "type": "text",
+      "text": "# Graph Converter\n\nConverts configuration to graph nodes and edges\n\n**Event:** conversion.processingEdges",
+      "x": -150,
+      "y": 250,
+      "width": 300,
+      "height": 120,
+      "pv": {
+        "nodeType": "converter",
+        "name": "Graph Converter",
+        "description": "Processing edge definitions",
+        "shape": "rectangle",
+        "fill": "#3b82f6",
+        "event": {
+          "name": "conversion.processingEdges",
+          "description": "Processing edge definitions",
+          "attributes": {
+            "edges.count": {
+              "type": "number",
+              "required": true,
+              "description": "Number of edges being processed"
+            }
+          }
+        },
+        "otel": {
+          "kind": "event",
+          "category": "build",
+          "isNew": true
+        },
+        "sources": [
+          "packages/core/src/utils/GraphConverter.ts"
+        ]
+      }
+    },
+    {
+      "id": "graph-converter-4",
+      "type": "text",
+      "text": "# Graph Converter\n\nConverts configuration to graph nodes and edges\n\n**Event:** conversion.complete",
+      "x": -150,
+      "y": 400,
+      "width": 300,
+      "height": 120,
+      "pv": {
+        "nodeType": "converter",
+        "name": "Graph Converter",
+        "description": "Graph conversion completes successfully",
+        "shape": "rectangle",
+        "fill": "#3b82f6",
+        "event": {
+          "name": "conversion.complete",
+          "description": "Graph conversion completes successfully",
+          "attributes": {
+            "result.nodes.count": {
+              "type": "number",
+              "required": true,
+              "description": "Number of nodes in result"
+            },
+            "result.edges.count": {
+              "type": "number",
+              "required": true,
+              "description": "Number of edges in result"
+            },
+            "duration.ms": {
+              "type": "number",
+              "required": false,
+              "description": "Conversion duration in milliseconds"
+            }
+          }
+        },
+        "otel": {
+          "kind": "event",
+          "category": "lifecycle",
+          "isNew": true
+        },
+        "sources": [
+          "packages/core/src/utils/GraphConverter.ts"
+        ]
+      }
+    },
+    {
+      "id": "graph-converter-5",
+      "type": "text",
+      "text": "# Graph Converter\n\nConverts configuration to graph nodes and edges\n\n**Event:** conversion.error",
+      "x": -150,
+      "y": 550,
+      "width": 300,
+      "height": 120,
+      "pv": {
+        "nodeType": "converter",
+        "name": "Graph Converter",
+        "description": "Error during conversion",
+        "shape": "rectangle",
+        "fill": "#3b82f6",
+        "event": {
+          "name": "conversion.error",
+          "description": "Error during conversion",
+          "attributes": {
+            "error.message": {
+              "type": "string",
+              "required": true,
+              "description": "Error message"
+            },
+            "error.phase": {
+              "type": "string",
+              "required": false,
+              "description": "Phase where error occurred"
+            }
+          }
+        },
+        "otel": {
+          "kind": "event",
+          "category": "error",
+          "isNew": true
+        },
+        "sources": [
+          "packages/core/src/utils/GraphConverter.ts"
+        ]
       }
     },
     {
       "id": "validation",
       "type": "text",
-      "text": "# Validation\n\nValidates configuration structure",
+      "text": "# Validation\n\nValidates configuration structure\n\n**Event:** validation.started",
       "x": -477,
       "y": -39,
       "width": 250,
       "height": 100,
-      "anchors": [
-        {
-          "path": "packages/core/src/ConfigurationValidator.ts"
-        }
-      ],
       "pv": {
         "nodeType": "validator",
         "name": "Configuration Validator",
-        "description": "Validates configuration structure before conversion",
+        "description": "Validation begins",
         "shape": "hexagon",
         "fill": "#10b981",
-        "events": {
-          "validation.started": {
-            "description": "Validation begins",
-            "attributes": {
-              "config.size": {
-                "type": "number",
-                "required": true,
-                "description": "Size of configuration object"
-              }
-            }
-          },
-          "validation.complete": {
-            "description": "Validation completes",
-            "attributes": {
-              "validation.passed": {
-                "type": "boolean",
-                "required": true,
-                "description": "Whether validation passed"
-              },
-              "errors.count": {
-                "type": "number",
-                "required": true,
-                "description": "Number of validation errors"
-              }
+        "event": {
+          "name": "validation.started",
+          "description": "Validation begins",
+          "attributes": {
+            "config.size": {
+              "type": "number",
+              "required": true,
+              "description": "Size of configuration object"
             }
           }
-        }
+        },
+        "otel": {
+          "kind": "event",
+          "category": "lifecycle",
+          "isNew": true
+        },
+        "sources": [
+          "packages/core/src/ConfigurationValidator.ts"
+        ]
+      }
+    },
+    {
+      "id": "validation-2",
+      "type": "text",
+      "text": "# Validation\n\nValidates configuration structure\n\n**Event:** validation.complete",
+      "x": -477,
+      "y": 111,
+      "width": 250,
+      "height": 100,
+      "pv": {
+        "nodeType": "validator",
+        "name": "Configuration Validator",
+        "description": "Validation completes",
+        "shape": "hexagon",
+        "fill": "#10b981",
+        "event": {
+          "name": "validation.complete",
+          "description": "Validation completes",
+          "attributes": {
+            "validation.passed": {
+              "type": "boolean",
+              "required": true,
+              "description": "Whether validation passed"
+            },
+            "errors.count": {
+              "type": "number",
+              "required": true,
+              "description": "Number of validation errors"
+            }
+          }
+        },
+        "otel": {
+          "kind": "event",
+          "category": "lifecycle",
+          "isNew": true
+        },
+        "sources": [
+          "packages/core/src/ConfigurationValidator.ts"
+        ]
       }
     },
     {
@@ -155,17 +284,21 @@
         "description": "The resulting graph with nodes and edges",
         "shape": "rectangle",
         "fill": "#8b5cf6",
-        "events": {
-          "output.created": {
-            "description": "Graph output is created",
-            "attributes": {
-              "output.type": {
-                "type": "string",
-                "required": true,
-                "description": "Type of output (NodeState[] | EdgeState[])"
-              }
+        "event": {
+          "name": "output.created",
+          "description": "Graph output is created",
+          "attributes": {
+            "output.type": {
+              "type": "string",
+              "required": true,
+              "description": "Type of output (NodeState[] | EdgeState[])"
             }
           }
+        },
+        "otel": {
+          "kind": "event",
+          "category": "operation",
+          "isNew": true
         }
       }
     }
