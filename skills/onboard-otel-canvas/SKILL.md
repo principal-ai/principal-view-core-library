@@ -42,33 +42,53 @@ This skill provides an **interactive, step-by-step workflow** to:
 
 ## Interactive Workflow
 
-### Phase 1: Choose What to Onboard
+### Phase 0: Discover Options
 
-**Ask the user:**
+**Proactively explore the codebase** to find good candidates for onboarding:
 
-1. **"What existing feature or function would you like to start with?"**
-   - Look for something small and well-understood
-   - **A canvas should capture encompassing, complete functionality** - a full unit of work from start to finish
-   - Good examples:
-     - **API route** - the full request/response cycle for an endpoint
-     - **CLI command/tool call** - from invocation to completion
-     - **Complete business operation** - like "validate and transform data"
-     - **Data processing pipeline** - input through output
-   - Avoid:
-     - Individual helper functions or utilities
-     - Complex multi-service flows (too complex)
-     - New unimplemented features (don't know telemetry yet)
+1. **Use the Task tool with subagent_type=Explore** to discover potential features:
+   - Search for CLI commands (e.g., files in `src/commands/`, `cli/`, or files with command patterns)
+   - Search for API routes (e.g., files in `src/routes/`, `api/`, or files with route handlers)
+   - Search for complete operations (e.g., main exported functions, service classes, workflow functions)
+   - Search for data processing pipelines (e.g., parser, processor, converter, transformer functions)
+   - Look for existing tests to understand what functionality exists
+
+2. **Analyze discovered candidates** for suitability:
+   - **Good candidates** are encompassing, complete functionality:
+     - **API routes** - Full request/response cycle for an endpoint
+     - **CLI commands** - From invocation to completion
+     - **Complete operations** - End-to-end workflows like "validate and transform data"
+     - **Processing pipelines** - Input through output
+   - **Avoid**:
+     - Individual helper functions or utilities (too granular)
+     - Complex multi-service flows (too complex for first canvas)
+     - New unimplemented features (no telemetry yet)
      - Fragmented operations without clear boundaries
 
-2. **"Can you point me to the code for this feature?"**
-   - Get the file path(s) to read the implementation
-   - Understand inputs, outputs, and what it does
+3. **Present 3-5 options to the user** using AskUserQuestion:
+   - Show feature name and brief description
+   - Include file location
+   - Explain why it's a good candidate
+   - Let user choose or specify their own
 
-3. **"What are the success and failure cases for this feature?"**
+**Goal**: Present user with curated options rather than asking them to know what to pick.
+
+### Phase 1: Choose What to Onboard
+
+**Based on discovered options:**
+
+1. **User selects from presented options** or specifies their own feature
+
+2. **Read the implementation** to understand:
+   - Get the file path(s) for the selected feature
+   - Understand inputs, outputs, and what it does
+   - Identify entry and exit points
+
+3. **Ask about scenarios**: "What are the success and failure cases for this feature?"
    - Success: Happy path execution
    - Failure: Common error scenarios (1-2 examples)
 
-**Goal**: Identify a single, concrete feature to document.
+**Goal**: Identify a single, concrete feature to document with full context.
 
 ### Phase 2: Create the Canvas
 
@@ -85,12 +105,18 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
    - **Optional attributes**: Nice-to-have data (duration, debug info)
    - Keep it minimal - don't over-engineer
 
-3. **Create the canvas file**:
+3. **Create the canvas file** with proper structure:
    ```bash
    # Example: .principal-views/data-validator.otel.canvas
    ```
 
-   **Format reference**: Canvas files use JSON Canvas format with `pv` (Principal View) extensions. The canvas defines nodes (your feature components) with their OTEL event schemas in the `pv.events` field. Run `npx @principal-ai/principal-view-cli schema examples` to see example canvas files, or look at existing `.otel.canvas` files in `.principal-views/` directory.
+   **IMPORTANT: Canvas Structure**
+   - **One node per event type** - Each event gets its own node in the canvas
+   - Example: If you have 4 events (`validation.started`, `validation.complete`, `validation.error`, `validation.progress`), create 4 nodes
+   - Each node contains ONE event schema in its `pv.events` field
+   - Connect nodes with edges to show the event flow (start → progress → complete/error)
+
+   **Format reference**: Canvas files use JSON Canvas format with `pv` (Principal View) extensions. Run `npx @principal-ai/principal-view-cli schema examples` to see example canvas files, or look at existing `.otel.canvas` files in `.principal-views/` directory.
 
 4. **Validate immediately**:
    ```bash
@@ -307,6 +333,7 @@ Walk through the end-to-end flow:
 ### Keep It Minimal
 - **One feature**: Don't try to document everything
 - **Basic events**: Start event, end event, error event (2-4 total)
+- **One node per event**: Each event type gets its own canvas node
 - **Simple scenarios**: Success, failure, fallback
 - **Two tests**: Happy path + error case
 
@@ -317,7 +344,9 @@ Walk through the end-to-end flow:
 - Test data that makes sense
 
 ### Be Interactive
-- Ask questions to understand their code
+- Explore the codebase proactively to find candidates
+- Present curated options with explanations
+- Ask questions to understand selected code
 - Show examples from their codebase
 - Get confirmation before creating files
 - Explain WHY, not just WHAT
@@ -329,21 +358,23 @@ Walk through the end-to-end flow:
 
 ## Common Questions to Answer
 
-**Q: "What should I pick for my first canvas?"**
-A: Something you understand well, that's small and self-contained. **A canvas should represent encompassing, complete functionality** - a cohesive unit of work with clear start and end boundaries.
+**Q: "How do you know what to recommend for my first canvas?"**
+A: I explore your codebase using the Task tool with the Explore agent to find features that match good canvas criteria. **A canvas should represent encompassing, complete functionality** - a cohesive unit of work with clear start and end boundaries.
 
-Good examples:
-- **API route** - Full request handling: `POST /api/users` from request validation through response
-- **CLI command** - Complete tool execution: `validate --input data.json` from args parsing to exit
-- **Complete operation** - End-to-end workflow: "validate and transform data", not just "validate" alone
-- **Processing pipeline** - Full data flow: CSV input → parsing → validation → output
+I look for:
+- **API routes** - Full request handling: `POST /api/users` from request validation through response
+- **CLI commands** - Complete tool execution: `validate --input data.json` from args parsing to exit
+- **Complete operations** - End-to-end workflows: "validate and transform data", not just "validate" alone
+- **Processing pipelines** - Full data flow: CSV input → parsing → validation → output
 
-Avoid:
+I avoid recommending:
 - Individual helper functions (too granular - these are steps WITHIN a canvas)
 - Multi-service workflows (too complex for first canvas)
 - New unimplemented features (don't know telemetry yet)
 - Core infrastructure (too broad)
 - Partial operations without clear completion (where does it end?)
+
+After exploring, I present you with 3-5 curated options to choose from.
 
 **Q: "How many events should I define?"**
 A: Start with 2-4:
@@ -351,6 +382,13 @@ A: Start with 2-4:
 - 1 completion event (feature.complete)
 - 1 error event (feature.error)
 - Optional: 1 progress event if feature has clear steps
+
+**Q: "How should I structure the canvas nodes?"**
+A: **One node per event type**. Each event gets its own node in the canvas:
+- If you have 3 events (`started`, `complete`, `error`), create 3 nodes
+- Each node has ONE event schema defined in its `pv.events` field
+- Connect nodes with edges to show the flow (started → complete/error)
+- This keeps the visual structure clear and matches the event emission pattern
 
 **Q: "What attributes should each event have?"**
 A: Only the essential ones:
@@ -431,18 +469,29 @@ After completing onboarding, user should have:
 ```
 User: "I want to get started with Principal View OTEL"
 
-Claude: "Great! I'll guide you through onboarding one feature. Let's start simple.
+Claude: "Great! I'll guide you through onboarding one feature. Let me explore
+your codebase to find good candidates for your first canvas."
 
-What existing feature or function would you like to document first?
-Remember, a canvas should capture complete, encompassing functionality - like
-an API route, CLI command, or end-to-end operation with clear boundaries."
+[Uses Task tool with subagent_type=Explore to discover features]
 
-User: "I have a data import CLI command that reads and validates CSV files"
+Claude: "I've explored your codebase and found several good candidates for
+onboarding. Here are the best options:
 
-Claude: "Perfect! That's a great fit - it's a complete operation from command
-invocation to completion. Can you point me to the code for this command?"
+1. **Data Import Command** (src/commands/import.ts)
+   - Reads and validates CSV files, complete workflow from file input to results
+   - Good fit: CLI command with clear start/end boundaries
 
-User: "It's in src/commands/import.ts"
+2. **User Authentication API** (src/api/auth.ts)
+   - Handles login requests with validation and token generation
+   - Good fit: API route with success/error paths
+
+3. **PDF Generator Service** (src/services/pdf-generator.ts)
+   - Converts documents to PDF with validation
+   - Good fit: Complete operation with input/output transformation
+
+Which would you like to start with?"
+
+User: "Let's do the data import command"
 
 Claude: [Reads file, analyzes function]
 
