@@ -540,6 +540,8 @@ export class ExecutionValidator {
 
   /**
    * Validate and throw if invalid
+   *
+   * Returns converted ExecutionData (OTLP format is automatically converted)
    */
   validateOrThrow(data: unknown, filePath?: string): ExecutionData {
     const result = this.validate(data, filePath);
@@ -551,6 +553,11 @@ export class ExecutionValidator {
       throw new Error(
         `Invalid execution data:\n${errorMessages.join('\n')}`
       );
+    }
+
+    // Convert OTLP format if needed
+    if (isOtlpFormat(data)) {
+      return convertOtlpToExecutionData(data);
     }
 
     return data as ExecutionData;

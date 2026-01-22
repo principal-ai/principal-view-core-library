@@ -165,3 +165,10 @@ export type {
   ValidationError,
   ExecutionValidationResult,
 } from './execution/ExecutionValidator';
+
+// Export execution loading
+export { ExecutionLoader, createExecutionLoader } from './execution/ExecutionLoader';
+export type {
+  ExecutionFile,
+  ExecutionLoadResult,
+} from './execution/ExecutionLoader';
