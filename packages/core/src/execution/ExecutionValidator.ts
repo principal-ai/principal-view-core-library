@@ -1,9 +1,27 @@
 /**
  * Execution File Validator
  *
- * Validates execution files (.spans.json, .execution.json, .otel.json, .events.json)
- * to ensure they conform to the expected structure before loading in UI components.
+ * Validates execution files in OTLP (OpenTelemetry Protocol) JSON format.
+ * Accepts standard OTLP format and converts it to internal ExecutionData structure.
  */
+
+import type {
+  IExportTraceServiceRequest,
+  IResourceSpans,
+  IScopeSpans,
+  ISpan,
+  IEvent,
+} from '@opentelemetry/otlp-transformer/build/src/trace/internal-types';
+import type {
+  IAnyValue,
+  IKeyValue,
+  Fixed64,
+} from '@opentelemetry/otlp-transformer/build/src/common/internal-types';
+
+/**
+ * OTLP data format (standard OpenTelemetry Protocol format)
+ */
+export type OtlpData = IExportTraceServiceRequest;
 
 /**
  * Execution data structure (as expected by ExecutionLoader and UI components)
@@ -19,10 +37,15 @@ export interface ExecutionData {
     exportedAt?: string;
     source?: string;
     framework?: string;
+    serviceName?: string;
+    scopeName?: string;
+    scopeVersion?: string;
   };
   spans: Array<{
     id: string;
     name: string;
+    traceId?: string;
+    parentSpanId?: string;
     startTime?: number;
     endTime?: number;
     duration?: number;
@@ -56,11 +79,186 @@ export interface ExecutionValidationResult {
 }
 
 /**
+ * Convert OTLP IAnyValue to simple JavaScript value
+ */
+function convertOtlpValue(value: IAnyValue): unknown {
+  if (value.stringValue !== undefined) return value.stringValue;
+  if (value.intValue !== undefined) return value.intValue;
+  if (value.doubleValue !== undefined) return value.doubleValue;
+  if (value.boolValue !== undefined) return value.boolValue;
+  if (value.arrayValue) {
+    return value.arrayValue.values.map(convertOtlpValue);
+  }
+  if (value.kvlistValue) {
+    const obj: Record<string, unknown> = {};
+    value.kvlistValue.values.forEach(({ key, value: v }) => {
+      obj[key] = convertOtlpValue(v);
+    });
+    return obj;
+  }
+  if (value.bytesValue !== undefined) return value.bytesValue;
+  return null;
+}
+
+/**
+ * Convert OTLP IKeyValue array to simple key-value object
+ */
+function convertOtlpAttributes(attributes?: IKeyValue[]): Record<string, unknown> {
+  if (!attributes) return {};
+  const result: Record<string, unknown> = {};
+  attributes.forEach(({ key, value }) => {
+    result[key] = convertOtlpValue(value);
+  });
+  return result;
+}
+
+/**
+ * Convert Fixed64 (nanoseconds) to milliseconds
+ */
+function convertNanoToMilli(nano?: Fixed64): number | undefined {
+  if (!nano) return undefined;
+
+  // Handle different Fixed64 formats
+  if (typeof nano === 'string') {
+    const bigNano = BigInt(nano);
+    return Number(bigNano / BigInt(1_000_000));
+  }
+  if (typeof nano === 'number') {
+    return Math.floor(nano / 1_000_000);
+  }
+  // LongBits format: { low: number, high: number }
+  if (typeof nano === 'object' && 'low' in nano && 'high' in nano) {
+    // Convert high/low to full number (high is upper 32 bits, low is lower 32 bits)
+    const fullNano = (nano.high * 0x100000000) + nano.low;
+    return Math.floor(fullNano / 1_000_000);
+  }
+  return undefined;
+}
+
+/**
+ * Convert OTLP status to simple status string
+ */
+function convertOtlpStatus(status?: { code?: string | number }): 'OK' | 'ERROR' | undefined {
+  if (!status || status.code === undefined) return undefined;
+
+  const code = typeof status.code === 'string' ? status.code : status.code.toString();
+
+  // OTLP status codes: 0 = UNSET, 1 = OK, 2 = ERROR
+  if (code === '1' || code === 'OK' || code === 'STATUS_CODE_OK') return 'OK';
+  if (code === '2' || code === 'ERROR' || code === 'STATUS_CODE_ERROR') return 'ERROR';
+
+  return undefined;
+}
+
+/**
+ * Convert span ID from string or Uint8Array to hex string
+ */
+function convertSpanId(id: string | Uint8Array): string {
+  if (typeof id === 'string') return id;
+  // Convert Uint8Array to hex string
+  return Array.from(id)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
+ * Convert OTLP format to ExecutionData format
+ */
+export function convertOtlpToExecutionData(otlp: OtlpData): ExecutionData {
+  const allSpans: ExecutionData['spans'] = [];
+  let serviceName: string | undefined;
+  let scopeName: string | undefined;
+  let scopeVersion: string | undefined;
+  let minStartTime: number | undefined;
+  let maxEndTime: number | undefined;
+
+  if (!otlp.resourceSpans) {
+    return { spans: [] };
+  }
+
+  // Extract data from nested OTLP structure
+  otlp.resourceSpans.forEach((resourceSpan: IResourceSpans) => {
+    // Extract service name from resource attributes
+    if (resourceSpan.resource?.attributes) {
+      const attrs = convertOtlpAttributes(resourceSpan.resource.attributes);
+      serviceName = serviceName || (attrs['service.name'] as string);
+    }
+
+    resourceSpan.scopeSpans.forEach((scopeSpan: IScopeSpans) => {
+      // Extract scope information
+      scopeName = scopeName || scopeSpan.scope?.name;
+      scopeVersion = scopeVersion || scopeSpan.scope?.version;
+
+      (scopeSpan.spans || []).forEach((span: ISpan) => {
+        const startTime = convertNanoToMilli(span.startTimeUnixNano);
+        const endTime = convertNanoToMilli(span.endTimeUnixNano);
+
+        // Track overall execution time range
+        if (startTime !== undefined) {
+          minStartTime = minStartTime === undefined ? startTime : Math.min(minStartTime, startTime);
+        }
+        if (endTime !== undefined) {
+          maxEndTime = maxEndTime === undefined ? endTime : Math.max(maxEndTime, endTime);
+        }
+
+        const duration = startTime !== undefined && endTime !== undefined
+          ? endTime - startTime
+          : undefined;
+
+        allSpans.push({
+          id: convertSpanId(span.spanId),
+          name: span.name,
+          traceId: convertSpanId(span.traceId),
+          parentSpanId: span.parentSpanId ? convertSpanId(span.parentSpanId) : undefined,
+          startTime,
+          endTime,
+          duration,
+          status: convertOtlpStatus(span.status),
+          attributes: convertOtlpAttributes(span.attributes),
+          events: (span.events || []).map((event: IEvent) => ({
+            time: convertNanoToMilli(event.timeUnixNano) || 0,
+            name: event.name,
+            attributes: convertOtlpAttributes(event.attributes),
+          })),
+        });
+      });
+    });
+  });
+
+  return {
+    metadata: {
+      serviceName,
+      scopeName,
+      scopeVersion,
+      startTime: minStartTime,
+      endTime: maxEndTime,
+      exportedAt: new Date().toISOString(),
+    },
+    spans: allSpans,
+  };
+}
+
+/**
+ * Check if data is in OTLP format
+ */
+function isOtlpFormat(data: unknown): data is OtlpData {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'resourceSpans' in data &&
+    Array.isArray((data as any).resourceSpans)
+  );
+}
+
+/**
  * Validator for execution files
  */
 export class ExecutionValidator {
   /**
    * Validate execution data structure
+   *
+   * Accepts both OTLP format (standard OpenTelemetry Protocol) and internal ExecutionData format.
+   * OTLP format will be automatically converted to ExecutionData format before validation.
    */
   validate(data: unknown, filePath?: string): ExecutionValidationResult {
     const errors: ValidationError[] = [];
@@ -72,7 +270,7 @@ export class ExecutionValidator {
         path: filePath || 'root',
         message: 'Execution data must be an object',
         severity: 'error',
-        suggestion: 'Expected: { spans: [...], metadata?: {...} }',
+        suggestion: 'Expected OTLP format: { "resourceSpans": [...] }',
       });
       return { valid: false, errors, warnings };
     }
@@ -83,13 +281,28 @@ export class ExecutionValidator {
         path: filePath || 'root',
         message: 'Execution data should be an object, not an array',
         severity: 'error',
-        suggestion:
-          'Wrap array in object: { "spans": [...], "metadata": {...} }',
+        suggestion: 'Use OTLP format: { "resourceSpans": [...] }',
       });
       return { valid: false, errors, warnings };
     }
 
-    const execution = data as Partial<ExecutionData>;
+    // Detect and convert OTLP format to ExecutionData format
+    let execution: Partial<ExecutionData>;
+    if (isOtlpFormat(data)) {
+      try {
+        execution = convertOtlpToExecutionData(data);
+      } catch (error) {
+        errors.push({
+          path: filePath || 'root',
+          message: `Failed to convert OTLP format: ${(error as Error).message}`,
+          severity: 'error',
+          suggestion: 'Ensure the OTLP data is properly formatted',
+        });
+        return { valid: false, errors, warnings };
+      }
+    } else {
+      execution = data as Partial<ExecutionData>;
+    }
 
     // Check required fields
     if (!execution.spans) {
