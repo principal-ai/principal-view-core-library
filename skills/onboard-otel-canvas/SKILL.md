@@ -11,6 +11,16 @@ Guide users through onboarding existing functionality into the Principal View OT
 
 This skill provides a **focused onboarding experience** for users who want to start using Principal View OTEL canvases with their existing code. It's designed for the first-time user who needs a complete, working example.
 
+## What is Principal View OTEL?
+
+Principal View OTEL is a workflow for documenting and validating OpenTelemetry event schemas using three file types:
+
+1. **`.otel.canvas`** - Defines your feature and its OTEL event schemas (what events should be emitted and their attributes)
+2. **`.narrative.json`** - Defines how to render execution traces as human-readable narratives
+3. **`.otel.json`** - Actual execution data captured from instrumented tests (stored in `__executions__/`)
+
+These files work together: the canvas defines the schema, narratives define how to present executions, and execution files contain actual telemetry data that gets validated against the canvas and rendered using narratives.
+
 ## When to Use This Skill
 
 Use this skill when the user wants to:
@@ -80,7 +90,7 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
    # Example: .principal-views/data-validator.otel.canvas
    ```
 
-   **Format reference**: Run `npx @principal-ai/principal-view-cli formats canvas` for detailed format specification
+   **Format reference**: Canvas files use JSON Canvas format with `pv` (Principal View) extensions. The canvas defines nodes (your feature components) with their OTEL event schemas in the `pv.events` field. Run `npx @principal-ai/principal-view-cli schema examples` to see example canvas files, or look at existing `.otel.canvas` files in `.principal-views/` directory.
 
 4. **Validate immediately**:
    ```bash
@@ -98,7 +108,7 @@ Use the `create-narrative-scenarios` skill to create scenarios:
    # Example: .principal-views/data-validator.narrative.json
    ```
 
-   **Format reference**: Run `npx @principal-ai/principal-view-cli formats narrative` for detailed format specification
+   **Format reference**: See existing narrative files in `.principal-views/` for examples. Run `npx @principal-ai/principal-view-cli narrative validate <file>` to validate your narrative file
 
    **IMPORTANT: Naming and Description Guidelines**
    - ❌ **Don't** append "Narratives" to the name: `"Package Processor Narratives"`
@@ -207,7 +217,7 @@ Instrument a test for the chosen feature:
    # Should see: data-validator.otel.json (or test-run.otel.json)
    ```
 
-   **Format reference**: Run `npx @principal-ai/principal-view-cli formats execution` to see the execution file format
+   **Format reference**: Execution files are OpenTelemetry span data in JSON format. Run `npx @principal-ai/principal-view-cli validate-execution __executions__/*.otel.json` to validate execution files
 
 **Goal**: One passing test that emits validated OTEL events and exports execution data.
 
@@ -540,9 +550,18 @@ Resources:
 - **create-otel-canvas**: Canvas creation details
 - **create-narrative-scenarios**: Scenario creation details
 - **setup-otel-testing**: Test instrumentation details
-- **CLI formats command**: `npx @principal-ai/principal-view-cli formats` - Up-to-date file format specifications
-  - `formats canvas` - .otel.canvas format and event schemas
-  - `formats narrative` - .narrative.json format and scenarios
-  - `formats execution` - .otel.json format for captured spans
-  - `formats examples` - Complete example files
+- **CLI schema command**: `npx @principal-ai/principal-view-cli schema` - Canvas format documentation
+  - `schema nodes` - Node types and properties
+  - `schema edges` - Edge properties
+  - `schema vv` - Principal View extension fields (the `pv` field in canvas files)
+  - `schema examples` - Complete example canvas files
+- **CLI narrative commands**: `npx @principal-ai/principal-view-cli narrative` - Narrative tools
+  - `narrative validate <file>` - Validate narrative template syntax and schema
+  - `narrative render <narrative> <execution>` - Render narrative with execution data
+  - `narrative test <narrative> <execution>` - Test scenario matching
+  - `narrative list` - List all narrative files in project
+- **CLI validation commands**:
+  - `validate` - Validate .canvas configuration files
+  - `validate-execution` - Validate .otel.json execution files
+- **Example files**: See `.principal-views/*.otel.canvas` and `.principal-views/*.narrative.json` in the repository
 - docs/guides/adding-opentelemetry-to-tests.md: OTEL patterns and test setup
