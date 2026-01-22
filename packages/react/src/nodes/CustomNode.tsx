@@ -49,6 +49,9 @@ export interface CustomNodeData extends Record<string, unknown> {
   shiftKeyPressed?: boolean;
   // Whether this node is highlighted (e.g., during execution playback)
   isHighlighted?: boolean;
+  // Whether this node is active (involved in current execution scenario)
+  // If false, node will be dimmed to de-emphasize it
+  isActive?: boolean;
 }
 
 /**
@@ -70,6 +73,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
     tooltipsEnabled = true,
     shiftKeyPressed = false,
     isHighlighted = false,
+    isActive = true, // Default to active if not specified
   } = nodeProps;
 
   // Only show tooltip when hovering, not dragging, and shift key is pressed
@@ -88,6 +92,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         return '#7ED321'; // Green
       case 'instance':
         return '#9B59B6'; // Purple
+      case 'event':
+        return '#F59E0B'; // Amber
       default:
         return '#888';
     }
@@ -117,10 +123,43 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
           justifyContent: 'center',
           boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
           zIndex: 10,
+          opacity: isActive ? 1 : 0.1,
         }}
         title={`${otelInfo.kind}${otelInfo.category ? ` (${otelInfo.category})` : ''}`}
       >
         {label}
+      </div>
+    );
+  };
+
+  // Render Sources badge
+  const renderSourcesBadge = () => {
+    const sources = nodeData?.sources as string[] | undefined;
+    if (!sources || sources.length === 0) return null;
+
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          top: -6,
+          left: -6,
+          width: 18,
+          height: 18,
+          borderRadius: '50%',
+          backgroundColor: '#10b981', // Green for sources
+          color: 'white',
+          fontSize: '10px',
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+          zIndex: 10,
+          opacity: isActive ? 1 : 0.1,
+        }}
+        title={`Sources: ${sources.join(', ')}`}
+      >
+        S
       </div>
     );
   };
@@ -208,7 +247,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         : selected
         ? `0 0 0 2px ${strokeColor}`
         : '0 2px 4px rgba(0,0,0,0.1)',
-      transition: 'box-shadow 0.2s ease',
+      opacity: isActive ? 1 : 0.1,
+      transition: 'box-shadow 0.2s ease, opacity 0.3s ease',
       animationDuration: animationType ? `${animationDuration}ms` : undefined,
       boxSizing: 'border-box' as const,
     };
@@ -284,7 +324,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         minWidth: 20,
         minHeight: 20,
         boxShadow: selected ? `0 0 0 2px ${strokeColor}` : '0 2px 4px rgba(0,0,0,0.1)',
-        transition: 'box-shadow 0.2s ease',
+        opacity: isActive ? 1 : 0.1,
+        transition: 'box-shadow 0.2s ease, opacity 0.3s ease',
         boxSizing: 'border-box',
       }
     : {};
@@ -326,7 +367,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         minWidth: 20,
         minHeight: 20,
         boxShadow: selected ? `0 0 0 2px ${strokeColor}` : '0 2px 4px rgba(0,0,0,0.1)',
-        transition: 'box-shadow 0.2s ease',
+        opacity: isActive ? 1 : 0.1,
+        transition: 'box-shadow 0.2s ease, opacity 0.3s ease',
         boxSizing: 'border-box',
       }
     : {};
@@ -352,7 +394,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
       }
     : {};
 
-  // Handle styles - larger and more visible in edit mode
+  // Handle styles - larger and more visible in edit mode, hidden otherwise
   const baseHandleStyle = editable
     ? {
         background: color,
@@ -365,6 +407,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         background: color,
         width: 8,
         height: 8,
+        opacity: 0,
+        pointerEvents: 'none' as const,
       };
 
   const getHandleStyle = (_position: 'top' | 'bottom' | 'left' | 'right') => {
@@ -422,6 +466,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
+          {renderSourcesBadge()}
           {renderOtelBadge()}
           <div style={hexagonBorderStyle} className={animationClass}>
             <div style={hexagonInnerStyle}>
@@ -474,6 +519,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
+          {renderSourcesBadge()}
           {renderOtelBadge()}
           <div style={diamondBorderStyle} className={animationClass}>
             <div style={diamondInnerStyle}>
@@ -526,6 +572,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
+          {renderSourcesBadge()}
           {renderOtelBadge()}
           <div style={getShapeStyles()} className={animationClass}>
             {/* Inner content */}

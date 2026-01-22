@@ -38,8 +38,17 @@ This skill provides an **interactive, step-by-step workflow** to:
 
 1. **"What existing feature or function would you like to start with?"**
    - Look for something small and well-understood
-   - Good examples: data validator, API endpoint, converter function
-   - Avoid: Complex multi-service flows, new unimplemented features
+   - **A canvas should capture encompassing, complete functionality** - a full unit of work from start to finish
+   - Good examples:
+     - **API route** - the full request/response cycle for an endpoint
+     - **CLI command/tool call** - from invocation to completion
+     - **Complete business operation** - like "validate and transform data"
+     - **Data processing pipeline** - input through output
+   - Avoid:
+     - Individual helper functions or utilities
+     - Complex multi-service flows (too complex)
+     - New unimplemented features (don't know telemetry yet)
+     - Fragmented operations without clear boundaries
 
 2. **"Can you point me to the code for this feature?"**
    - Get the file path(s) to read the implementation
@@ -71,6 +80,8 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
    # Example: .principal-views/data-validator.otel.canvas
    ```
 
+   **Format reference**: Run `npx @principal-ai/principal-view-cli formats canvas` for detailed format specification
+
 4. **Validate immediately**:
    ```bash
    npx @principal-ai/principal-view-cli validate
@@ -86,6 +97,8 @@ Use the `create-narrative-scenarios` skill to create scenarios:
    ```bash
    # Example: .principal-views/data-validator.narrative.json
    ```
+
+   **Format reference**: Run `npx @principal-ai/principal-view-cli formats narrative` for detailed format specification
 
    **IMPORTANT: Naming and Description Guidelines**
    - ❌ **Don't** append "Narratives" to the name: `"Package Processor Narratives"`
@@ -136,7 +149,7 @@ Use the `setup-otel-testing` skill to set up OTEL in tests:
 3. **Create `test/otel-setup.ts`** (or similar):
    - Set up tracer with InMemorySpanExporter
    - Create helper functions: `startTestSpan()`, `createValidatedSpanEmitter()`
-   - Add afterAll hook to export spans to `__executions__/*.spans.json`
+   - Add afterAll hook to export spans to `__executions__/*.otel.json`
 
 4. **IMPORTANT: Ensure `__executions__/` is NOT gitignored**:
    - Check .gitignore - remove `__executions__` if present
@@ -191,8 +204,10 @@ Instrument a test for the chosen feature:
 5. **Check exported file**:
    ```bash
    ls __executions__/
-   # Should see: data-validator.spans.json (or test-run.spans.json)
+   # Should see: data-validator.otel.json (or test-run.otel.json)
    ```
+
+   **Format reference**: Run `npx @principal-ai/principal-view-cli formats execution` to see the execution file format
 
 **Goal**: One passing test that emits validated OTEL events and exports execution data.
 
@@ -257,7 +272,7 @@ Walk through the end-to-end flow:
 
 4. **Execution files exist**: ✅
    ```bash
-   ls __executions__/*.spans.json
+   ls __executions__/*.otel.json
    ```
 
 5. **Show next steps**:
@@ -305,16 +320,20 @@ Walk through the end-to-end flow:
 ## Common Questions to Answer
 
 **Q: "What should I pick for my first canvas?"**
-A: Something you understand well, that's small and self-contained. Good examples:
-- A validation function
-- A data transformer
-- A single API endpoint
-- A converter/parser
+A: Something you understand well, that's small and self-contained. **A canvas should represent encompassing, complete functionality** - a cohesive unit of work with clear start and end boundaries.
+
+Good examples:
+- **API route** - Full request handling: `POST /api/users` from request validation through response
+- **CLI command** - Complete tool execution: `validate --input data.json` from args parsing to exit
+- **Complete operation** - End-to-end workflow: "validate and transform data", not just "validate" alone
+- **Processing pipeline** - Full data flow: CSV input → parsing → validation → output
 
 Avoid:
-- Multi-service workflows (too complex)
+- Individual helper functions (too granular - these are steps WITHIN a canvas)
+- Multi-service workflows (too complex for first canvas)
 - New unimplemented features (don't know telemetry yet)
 - Core infrastructure (too broad)
+- Partial operations without clear completion (where does it end?)
 
 **Q: "How many events should I define?"**
 A: Start with 2-4:
@@ -370,7 +389,7 @@ After completing onboarding, user should have:
 - Both emit validated OTEL
 - Both export execution data
 
-✅ **Execution files** (__executions__/*.spans.json)
+✅ **Execution files** (__executions__/*.otel.json)
 - Exported from test runs
 - Committed to git
 - Ready for visualization
@@ -405,26 +424,31 @@ User: "I want to get started with Principal View OTEL"
 Claude: "Great! I'll guide you through onboarding one feature. Let's start simple.
 
 What existing feature or function would you like to document first?
-Something small and well-understood works best - like a validator,
-converter, or single API endpoint."
+Remember, a canvas should capture complete, encompassing functionality - like
+an API route, CLI command, or end-to-end operation with clear boundaries."
 
-User: "I have a CSV parser function"
+User: "I have a data import CLI command that reads and validates CSV files"
 
-Claude: "Perfect! Can you point me to the code for the CSV parser?"
+Claude: "Perfect! That's a great fit - it's a complete operation from command
+invocation to completion. Can you point me to the code for this command?"
 
-User: "It's in src/parsers/csv-parser.ts"
+User: "It's in src/commands/import.ts"
 
 Claude: [Reads file, analyzes function]
 
-"I see your parseCSV() function. It:
-- Takes a CSV string
-- Returns parsed rows
-- Can throw errors for malformed CSV
+"I see your import command. It:
+- Takes a CSV file path as input
+- Parses the CSV
+- Validates each row
+- Returns import results or errors
 
-Let me create a canvas for this. I'll define these events:
-- csv.parsing.started (input.size)
-- csv.parsing.complete (rows.count, columns.count)
-- csv.parsing.error (error.type, error.message)
+This is encompassing functionality - a complete workflow! Let me create a canvas.
+I'll define these events:
+- import.started (input.file, expected.rows)
+- import.parsing.complete (rows.parsed)
+- import.validation.complete (rows.valid, rows.invalid)
+- import.complete (rows.imported, duration.ms)
+- import.error (error.type, error.message, stage)
 
 Sound good?"
 
@@ -450,7 +474,7 @@ User: "Bun"
 Claude: [Sets up otel-setup.ts, shows test example]
 
 "I've created test/otel-setup.ts with helpers. Here's how to instrument
-your CSV parser test:
+your import command test to capture the full workflow:
 
 [Shows instrumented test code]
 
@@ -465,10 +489,11 @@ Claude: [Creates test file]
   bun test
 
 This will:
-1. Validate events match your canvas schema
-2. Export execution to __executions__/csv-parser.spans.json
+1. Validate events match your canvas schema across the full import workflow
+2. Export execution to __executions__/import-command.otel.json
 
-After running, you can visualize the execution in Storybook or ADE!"
+After running, you can visualize the complete import operation execution
+in Storybook or ADE!"
 ```
 
 ## Integration with Other Skills
@@ -515,5 +540,9 @@ Resources:
 - **create-otel-canvas**: Canvas creation details
 - **create-narrative-scenarios**: Scenario creation details
 - **setup-otel-testing**: Test instrumentation details
-- EVENT-SCHEMA-VALIDATION-GUIDE.md: Validation reference
-- docs/guides/adding-opentelemetry-to-tests.md: OTEL patterns
+- **CLI formats command**: `npx @principal-ai/principal-view-cli formats` - Up-to-date file format specifications
+  - `formats canvas` - .otel.canvas format and event schemas
+  - `formats narrative` - .narrative.json format and scenarios
+  - `formats execution` - .otel.json format for captured spans
+  - `formats examples` - Complete example files
+- docs/guides/adding-opentelemetry-to-tests.md: OTEL patterns and test setup

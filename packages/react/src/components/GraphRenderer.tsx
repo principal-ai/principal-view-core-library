@@ -126,6 +126,13 @@ interface GraphRendererBaseProps {
    */
   highlightedNodeId?: string | null;
 
+  /**
+   * Optional list of active node IDs (nodes involved in current execution scenario).
+   * Nodes NOT in this list will be dimmed (reduced opacity).
+   * If undefined or empty, all nodes are shown at full opacity.
+   */
+  activeNodeIds?: string[] | null;
+
   /** Optional configuration name for identification (used with multi-config setups) */
   configName?: string;
 
@@ -193,6 +200,12 @@ interface GraphRendererBaseProps {
    * Receives the node ID and the source path that was clicked.
    */
   onSourceClick?: (nodeId: string, source: string) => void;
+
+  /**
+   * Callback when a node is clicked.
+   * Receives the node ID and the click event. If provided, overrides default node selection behavior.
+   */
+  onNodeClick?: (nodeId: string, event: React.MouseEvent) => void;
 
 }
 
@@ -337,6 +350,7 @@ interface GraphRendererInnerProps {
   showTooltips?: boolean;
   fitViewDuration?: number;
   highlightedNodeId?: string | null;
+  activeNodeIds?: string[] | null;
   events?: GraphEvent[];
   onEventProcessed?: (event: GraphEvent) => void;
   editable?: boolean;
@@ -344,6 +358,7 @@ interface GraphRendererInnerProps {
   onEditStateChange?: (editState: EditState) => void;
   editStateRef: React.MutableRefObject<EditState>;
   onSourceClick?: (nodeId: string, source: string) => void;
+  onNodeClick?: (nodeId: string, event: React.MouseEvent) => void;
 }
 
 /**
@@ -364,6 +379,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   showTooltips = true,
   fitViewDuration = 200,
   highlightedNodeId,
+  activeNodeIds,
   events = [],
   onEventProcessed,
   editable = false,
@@ -371,6 +387,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   onEditStateChange,
   editStateRef,
   onSourceClick,
+  onNodeClick: onNodeClickProp,
 }) => {
   const { fitView } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
@@ -552,6 +569,12 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   // Handle node click (toggle selection, supports Shift for multi-select)
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
+      // If custom node click handler is provided, use it instead of default behavior
+      if (onNodeClickProp) {
+        onNodeClickProp(node.id, event);
+        return;
+      }
+
       if (event.shiftKey && editable) {
         // Shift+click: toggle node in selection
         setSelectedNodeIds((prev) => {
@@ -578,7 +601,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         setShowEdgePanel(false);
       }
     },
-    [editable, selectedNodeIds]
+    [editable, selectedNodeIds, onNodeClickProp]
   );
 
   // Handle close edge info panel
@@ -1172,6 +1195,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           tooltipsEnabled: showTooltips,
           shiftKeyPressed,
           isHighlighted: highlightedNodeId === node.id,
+          isActive: !activeNodeIds || activeNodeIds.length === 0 || activeNodeIds.includes(node.id),
           ...(animation
             ? {
                 animationType: animation.type,
@@ -1181,7 +1205,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         } as CustomNodeData,
       };
     });
-  }, [localNodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, highlightedNodeId, editStateRef, shiftKeyPressed]);
+  }, [localNodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, highlightedNodeId, activeNodeIds, editStateRef, shiftKeyPressed]);
 
   const baseNodesKey = useMemo(() => {
     return nodes
@@ -1315,18 +1339,28 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   const xyflowEdgesBase = useMemo(() => {
     const converted = convertToXYFlowEdges(edges, configuration, violations);
 
+    // Filter out edges connected to inactive nodes
+    const filtered = activeNodeIds && activeNodeIds.length > 0
+      ? converted.filter(edge => {
+          const sourceActive = activeNodeIds.includes(edge.source);
+          const targetActive = activeNodeIds.includes(edge.target);
+          return sourceActive && targetActive;
+        })
+      : converted;
+
     // Debug: Log edge counts to help diagnose disappearing edges
     if (process.env.NODE_ENV === 'development') {
       console.log('[GraphRenderer] xyflowEdges computed:', {
         inputEdges: edges.length,
         convertedEdges: converted.length,
+        filteredEdges: filtered.length,
         editable,
         propEdgesCount: propEdges.length,
         localEdgesCount: localEdges.length,
       });
     }
 
-    const mappedEdges = converted.map((edge) => {
+    const mappedEdges = filtered.map((edge) => {
       const animation = animationState.edgeAnimations[edge.id];
       const isSelected = selectedEdgeIds.has(edge.id);
       return {
@@ -1356,7 +1390,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       if (!aSelected && bSelected) return -1; // b comes after a (rendered on top)
       return 0; // maintain original order
     });
-  }, [edges, configuration, violations, animationState.edgeAnimations, showTooltips, selectedEdgeIds, shiftKeyPressed]);
+  }, [edges, configuration, violations, animationState.edgeAnimations, showTooltips, selectedEdgeIds, shiftKeyPressed, activeNodeIds]);
 
   // Local xyflow edges state for reconnection
   const [xyflowLocalEdges, setXyflowLocalEdges] = useState<Edge<CustomEdgeData>[]>(xyflowEdgesBase);
@@ -1869,11 +1903,13 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     showTooltips,
     fitViewDuration,
     highlightedNodeId,
+    activeNodeIds,
     events,
     onEventProcessed,
     editable,
     onPendingChangesChange,
     onSourceClick,
+    onNodeClick,
   } = props;
 
   return (
@@ -1894,12 +1930,14 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           showTooltips={showTooltips}
           fitViewDuration={fitViewDuration}
           highlightedNodeId={highlightedNodeId}
+          activeNodeIds={activeNodeIds}
           events={events}
           onEventProcessed={onEventProcessed}
           editable={editable}
           onPendingChangesChange={onPendingChangesChange}
           editStateRef={editStateRef}
           onSourceClick={onSourceClick}
+          onNodeClick={onNodeClick}
         />
       </ReactFlowProvider>
     </div>

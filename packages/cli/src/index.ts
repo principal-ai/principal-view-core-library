@@ -11,6 +11,7 @@ import { createValidateExecutionCommand } from './commands/validate-execution.js
 import { createInitCommand } from './commands/init.js';
 import { createListCommand } from './commands/list.js';
 import { createSchemaCommand } from './commands/schema.js';
+import { createFormatsCommand } from './commands/formats.js';
 import { createDoctorCommand } from './commands/doctor.js';
 import { createHooksCommand } from './commands/hooks.js';
 import { createCreateCommand } from './commands/create.js';
@@ -19,7 +20,7 @@ import { createCoverageCommand } from './commands/coverage.js';
 import { createNarrativeCommand } from './commands/narrative/index.js';
 
 // Version is injected at build time via package.json
-const VERSION = '0.2.1';
+const VERSION = '0.2.3';
 
 const program = new Command();
 
@@ -36,6 +37,7 @@ program.addCommand(createValidateExecutionCommand());
 program.addCommand(createLintCommand());
 program.addCommand(createListCommand());
 program.addCommand(createSchemaCommand());
+program.addCommand(createFormatsCommand());
 program.addCommand(createDoctorCommand());
 program.addCommand(createHooksCommand());
 program.addCommand(createCoverageCommand());

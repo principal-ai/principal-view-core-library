@@ -529,11 +529,13 @@ function hasOtelFeatures(canvas: unknown): boolean {
  * - Edge types reference defined types in pv.edgeTypes or library.edgeComponents
  * - Node types reference defined types in pv.nodeTypes or library.nodeComponents
  * - Canvas has pv extension with name and version
+ * - OTEL nodes have source file references and the files exist
  */
 function validateCanvas(
   canvas: unknown,
   filePath: string,
-  library: LoadedLibrary | null
+  library: LoadedLibrary | null,
+  repositoryPath?: string
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
@@ -855,6 +857,40 @@ function validateCanvas(
           );
         }
 
+        // Validate source file references for OTEL event nodes
+        const hasOtelFeatures = nodePv.otel !== undefined || nodePv.events !== undefined;
+        if (hasOtelFeatures) {
+          // OTEL nodes must have at least one source file reference
+          if (!Array.isArray(nodePv.sources) || nodePv.sources.length === 0) {
+            issues.push({
+              type: 'error',
+              message: `Node "${nodeLabel}" has OTEL features but is missing required "pv.sources" field`,
+              path: `${nodePath}.pv.sources`,
+              suggestion: 'Add at least one source file reference, e.g.: "sources": ["src/services/MyService.ts"]',
+            });
+          }
+        }
+
+        // Validate that all source files exist (if repository path is provided)
+        if (Array.isArray(nodePv.sources) && repositoryPath) {
+          nodePv.sources.forEach((source: unknown, sourceIndex: number) => {
+            if (typeof source === 'string') {
+              // Remove glob patterns (* characters) to get the base path
+              const cleanPath = source.replace(/\*/g, '');
+              const fullPath = resolve(repositoryPath, cleanPath);
+
+              if (!existsSync(fullPath)) {
+                issues.push({
+                  type: 'error',
+                  message: `Node "${nodeLabel}" references non-existent source file: ${source}`,
+                  path: `${nodePath}.pv.sources[${sourceIndex}]`,
+                  suggestion: `Verify the file path is correct relative to repository root: ${repositoryPath}`,
+                });
+              }
+            }
+          });
+        }
+
         if (Array.isArray(nodePv.actions)) {
           nodePv.actions.forEach((action: unknown, actionIndex: number) => {
             if (action && typeof action === 'object') {
@@ -1112,7 +1148,11 @@ function validateCanvas(
 /**
  * Validate a single .canvas file
  */
-function validateFile(filePath: string, library: LoadedLibrary | null): ValidationResult {
+function validateFile(
+  filePath: string,
+  library: LoadedLibrary | null,
+  repositoryPath?: string
+): ValidationResult {
   const absolutePath = resolve(filePath);
   const relativePath = relative(process.cwd(), absolutePath);
 
@@ -1127,7 +1167,7 @@ function validateFile(filePath: string, library: LoadedLibrary | null): Validati
   try {
     const content = readFileSync(absolutePath, 'utf8');
     const canvas = JSON.parse(content);
-    const issues = validateCanvas(canvas, relativePath, library);
+    const issues = validateCanvas(canvas, relativePath, library, repositoryPath);
     const hasErrors = issues.some((i) => i.type === 'error');
 
     return {
@@ -1156,6 +1196,10 @@ export function createValidateCommand(): Command {
     )
     .option('-q, --quiet', 'Only output errors')
     .option('--json', 'Output results as JSON')
+    .option(
+      '-r, --repository <path>',
+      'Repository root path for validating source file references (defaults to current directory)'
+    )
     .action(async (files: string[], options) => {
       try {
         // Default to .principal-views/*.canvas if no files specified
@@ -1181,6 +1225,11 @@ export function createValidateCommand(): Command {
         const principalViewsDir = resolve(process.cwd(), '.principal-views');
         const library = loadLibrary(principalViewsDir);
 
+        // Determine repository path for source file validation
+        const repositoryPath = options.repository
+          ? resolve(options.repository)
+          : process.cwd();
+
         // Validate library if present
         let libraryResult: ValidationResult | null = null;
         if (library && Object.keys(library.raw).length > 0) {
@@ -1194,7 +1243,9 @@ export function createValidateCommand(): Command {
         }
 
         // Validate all canvas files
-        const results: ValidationResult[] = matchedFiles.map((f) => validateFile(f, library));
+        const results: ValidationResult[] = matchedFiles.map((f) =>
+          validateFile(f, library, repositoryPath)
+        );
 
         // Combine results
         const allResults = libraryResult ? [libraryResult, ...results] : results;
