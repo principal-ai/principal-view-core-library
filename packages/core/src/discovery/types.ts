@@ -11,8 +11,9 @@ export type CanvasType = 'otel' | 'regular';
 
 /**
  * Execution file type discriminator based on extension
+ * Only .otel.json files are supported
  */
-export type ExecutionType = 'spans' | 'execution' | 'events' | 'otel';
+export type ExecutionType = 'otel';
 
 /**
  * Discovered canvas file with package metadata
@@ -46,7 +47,7 @@ export interface DiscoveredExecution {
   name: string;
   /** Full relative path from repo root */
   path: string;
-  /** Execution basename (without .spans.json/.execution.json/etc) */
+  /** Execution basename (without .otel.json extension) */
   basename: string;
   /** Execution file type */
   type: ExecutionType;

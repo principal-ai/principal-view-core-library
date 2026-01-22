@@ -147,8 +147,8 @@ describe('CanvasDiscovery', () => {
   describe('discover() - Execution Files', () => {
     test('discovers execution files in .principal-views/__executions__', async () => {
       const fileTree = createMockFileTree([
-        '.principal-views/__executions__/test-run.spans.json',
-        '.principal-views/__executions__/api-test.execution.json',
+        '.principal-views/__executions__/test-run.otel.json',
+        '.principal-views/__executions__/api-test.otel.json',
       ]);
 
       const result = await discovery.discover(fileTree);
@@ -156,13 +156,13 @@ describe('CanvasDiscovery', () => {
       expect(result.executions).toHaveLength(2);
       expect(result.executions[0]).toMatchObject({
         id: 'api-test',
-        type: 'execution',
+        type: 'otel',
         canvasBasename: 'api-test',
         scope: 'root',
       });
       expect(result.executions[1]).toMatchObject({
         id: 'test-run',
-        type: 'spans',
+        type: 'otel',
         canvasBasename: 'test-run',
         scope: 'root',
       });
@@ -170,8 +170,8 @@ describe('CanvasDiscovery', () => {
 
     test('discovers execution files in packages with package prefix', async () => {
       const fileTree = createMockFileTree([
-        'packages/core/.principal-views/__executions__/auth.spans.json',
-        'packages/api/.principal-views/__executions__/request.spans.json',
+        'packages/core/.principal-views/__executions__/auth.otel.json',
+        'packages/api/.principal-views/__executions__/request.otel.json',
         'packages/core/package.json',
         'packages/api/package.json',
       ]);
@@ -197,7 +197,7 @@ describe('CanvasDiscovery', () => {
 
     test('discovers execution files in root __executions__', async () => {
       const fileTree = createMockFileTree([
-        '__executions__/integration-test.spans.json',
+        '__executions__/integration-test.otel.json',
       ]);
 
       const result = await discovery.discover(fileTree);
@@ -209,7 +209,7 @@ describe('CanvasDiscovery', () => {
       });
     });
 
-    test('handles all execution file types', async () => {
+    test('only discovers .otel.json execution files', async () => {
       const fileTree = createMockFileTree([
         '__executions__/test.spans.json',
         '__executions__/test.execution.json',
@@ -219,13 +219,13 @@ describe('CanvasDiscovery', () => {
 
       const result = await discovery.discover(fileTree);
 
-      expect(result.executions).toHaveLength(4);
-      expect(result.executions.map(e => e.type).sort()).toEqual([
-        'events',
-        'execution',
-        'otel',
-        'spans',
-      ]);
+      // Only .otel.json files should be discovered
+      expect(result.executions).toHaveLength(1);
+      expect(result.executions[0]).toMatchObject({
+        id: 'test',
+        type: 'otel',
+        canvasBasename: 'test',
+      });
     });
   });
 
@@ -233,7 +233,7 @@ describe('CanvasDiscovery', () => {
     test('finds matching canvas in same scope', async () => {
       const fileTree = createMockFileTree([
         '.principal-views/test-flow.otel.canvas',
-        '.principal-views/__executions__/test-flow.spans.json',
+        '.principal-views/__executions__/test-flow.otel.json',
       ]);
 
       const result = await discovery.discover(fileTree);

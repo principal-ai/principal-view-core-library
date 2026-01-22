@@ -19,7 +19,7 @@ This skill provides an **interactive, step-by-step workflow** to:
 3. Set up OTEL test infrastructure (tracer, helpers, exporters)
 4. Instrument tests to emit spans and events
 5. Validate that emitted events match canvas schemas
-6. Export test data to `__executions__/*.spans.json` format
+6. Export test data to `__executions__/*.otel.json` format
 7. Troubleshoot common issues
 
 ## Interactive Workflow
@@ -254,13 +254,13 @@ Set up validation to ensure tests emit correct events:
 
 ### Phase 6: Export Configuration
 
-Set up export to `__executions__/*.spans.json`:
+Set up export to `__executions__/*.otel.json`:
 
 1. **Add afterAll hook to otel-setup.ts:**
    ```typescript
    afterAll(() => {
      const spans = memoryExporter.getFinishedSpans();
-     const outputPath = join(__dirname, '../__executions__/test-run.spans.json');
+     const outputPath = join(__dirname, '../__executions__/test-run.otel.json');
 
      mkdirSync(dirname(outputPath), { recursive: true });
 
@@ -293,12 +293,12 @@ Set up export to `__executions__/*.spans.json`:
    - Canvas viewers need to find these files in the repository
    - The execution artifacts must be git-tracked for visualization
    - If `__executions__` is currently gitignored, remove it from .gitignore
-   - Use `git add -f __executions__/*.spans.json` if needed to force-add
+   - Use `git add -f __executions__/*.otel.json` if needed to force-add
 
 3. **Show how to use exported data:**
    ```typescript
    // In Storybook stories
-   import testSpans from '../__executions__/test-run.spans.json';
+   import testSpans from '../__executions__/test-run.otel.json';
 
    export const RealTestExecution: Story = {
      args: {
@@ -354,7 +354,7 @@ Offer to help with common issues:
 
 5. **Export Organization:**
    - Use `__executions__/` directory for all execution artifacts
-   - Name files to match canvas names: `my-feature.otel.canvas` → `my-feature.spans.json`
+   - Name files to match canvas names: `my-feature.otel.canvas` → `my-feature.otel.json`
    - **DO NOT gitignore** - canvas viewers need these files tracked in git
    - Files should be committed so visualization works for all team members
 
@@ -429,7 +429,7 @@ Claude: [Shows specific changes to make to existing test files]
   bun test
 
 The tests will validate events against your canvas and export to:
-  __executions__/data-pipeline.spans.json
+  __executions__/data-pipeline.otel.json
 
 You can then load this in Storybook for visualization!"
 ```

@@ -335,15 +335,16 @@ export class CanvasDiscovery {
     if (!parts.includes(CanvasDiscovery.EXECUTIONS_DIR)) return false;
 
     // Valid patterns:
-    // 1. .principal-views/__executions__/file.spans.json
-    // 2. packages/core/.principal-views/__executions__/file.spans.json
-    // 3. __executions__/file.spans.json (root level)
+    // 1. .principal-views/__executions__/file.otel.json
+    // 2. packages/core/.principal-views/__executions__/file.otel.json
+    // 3. __executions__/file.otel.json (root level)
 
     return true;
   }
 
   /**
    * Parse execution file path to extract metadata
+   * Only .otel.json files are supported
    */
   private parseExecutionPath(path: string): {
     basename: string;
@@ -353,24 +354,15 @@ export class CanvasDiscovery {
     const filename = path.split('/').pop();
     if (!filename) return null;
 
-    // Pattern: name.{spans|execution|events|otel}.json
-    const patterns = [
-      { regex: /^(.+)\.spans\.json$/, type: 'spans' as ExecutionType },
-      { regex: /^(.+)\.execution\.json$/, type: 'execution' as ExecutionType },
-      { regex: /^(.+)\.events\.json$/, type: 'events' as ExecutionType },
-      { regex: /^(.+)\.otel\.json$/, type: 'otel' as ExecutionType },
-    ];
-
-    for (const { regex, type } of patterns) {
-      const match = filename.match(regex);
-      if (match) {
-        const basename = match[1];
-        return {
-          basename,
-          type,
-          canvasBasename: basename, // Same as basename for linking
-        };
-      }
+    // Pattern: name.otel.json
+    const match = filename.match(/^(.+)\.otel\.json$/);
+    if (match) {
+      const basename = match[1];
+      return {
+        basename,
+        type: 'otel',
+        canvasBasename: basename, // Same as basename for linking
+      };
     }
 
     return null;
