@@ -461,6 +461,9 @@ export class NarrativeValidator {
           suggestion: 'Add a condition or set default: true',
           fixable: false,
         });
+      } else {
+        // Validate condition structure
+        violations.push(...this.checkConditionStructure(scenario.condition, narrativePath, idx));
       }
 
       // Check template
@@ -475,6 +478,9 @@ export class NarrativeValidator {
           suggestion: 'Add a template with introduction, events, or flow',
           fixable: false,
         });
+      } else {
+        // Validate template structure
+        violations.push(...this.checkTemplateStructure(scenario.template, narrativePath, idx));
       }
     });
 
@@ -490,6 +496,118 @@ export class NarrativeValidator {
         suggestion: 'Add a scenario with "condition.default: true" as a fallback',
         fixable: false,
       });
+    }
+
+    return violations;
+  }
+
+  /**
+   * Check that condition uses valid fields (not legacy format)
+   */
+  private checkConditionStructure(
+    condition: any,
+    file: string,
+    scenarioIdx: number
+  ): NarrativeViolation[] {
+    const violations: NarrativeViolation[] = [];
+    const validFields = ['requires', 'excludes', 'assertions', 'default', 'any'];
+    const conditionKeys = Object.keys(condition);
+
+    // Check for invalid/legacy fields
+    for (const key of conditionKeys) {
+      if (!validFields.includes(key)) {
+        // Check for common legacy format fields
+        if (key === 'event') {
+          violations.push({
+            ruleId: 'narrative-condition-structure',
+            severity: 'error',
+            file,
+            path: `scenarios[${scenarioIdx}].condition.${key}`,
+            message: `Invalid condition field "${key}" (legacy format detected)`,
+            impact: 'Condition will not work - "event" field is not supported',
+            suggestion: 'Use "requires: [...]" array instead of "event: ..." field',
+            fixable: false,
+          });
+        } else if (key === 'attributes') {
+          violations.push({
+            ruleId: 'narrative-condition-structure',
+            severity: 'error',
+            file,
+            path: `scenarios[${scenarioIdx}].condition.${key}`,
+            message: `Invalid condition field "${key}" (legacy format detected)`,
+            impact: 'Condition will not work - "attributes" field is not supported',
+            suggestion: 'Use "assertions: { ... }" instead of "attributes: { ... }" field',
+            fixable: false,
+          });
+        } else {
+          violations.push({
+            ruleId: 'narrative-condition-structure',
+            severity: 'error',
+            file,
+            path: `scenarios[${scenarioIdx}].condition.${key}`,
+            message: `Unknown condition field "${key}"`,
+            impact: 'This field will be ignored and may cause unexpected behavior',
+            suggestion: `Valid fields are: ${validFields.join(', ')}`,
+            fixable: false,
+          });
+        }
+      }
+    }
+
+    return violations;
+  }
+
+  /**
+   * Check that template uses valid fields (not legacy format)
+   */
+  private checkTemplateStructure(
+    template: any,
+    file: string,
+    scenarioIdx: number
+  ): NarrativeViolation[] {
+    const violations: NarrativeViolation[] = [];
+    const validFields = ['introduction', 'events', 'logs', 'flow', 'summary', 'span', 'children'];
+    const templateKeys = Object.keys(template);
+
+    // Check for invalid/legacy fields
+    for (const key of templateKeys) {
+      if (!validFields.includes(key)) {
+        // Check for common legacy format fields
+        if (key === 'steps') {
+          violations.push({
+            ruleId: 'narrative-template-structure',
+            severity: 'error',
+            file,
+            path: `scenarios[${scenarioIdx}].template.${key}`,
+            message: `Invalid template field "${key}" (legacy format detected)`,
+            impact: 'Template will not render - "steps" field is not supported',
+            suggestion: 'Use "events: { eventName: template }" to map event names to templates',
+            fixable: false,
+          });
+        } else if (key === 'details') {
+          violations.push({
+            ruleId: 'narrative-template-structure',
+            severity: 'error',
+            file,
+            path: `scenarios[${scenarioIdx}].template.${key}`,
+            message: `Invalid template field "${key}" (legacy format detected)`,
+            impact: 'Template will not render - "details" field is not supported',
+            suggestion: 'Remove "details" field - use template variables in "events" or "summary" instead',
+            fixable: false,
+          });
+        } else {
+          violations.push({
+            ruleId: 'narrative-template-structure',
+            severity: 'error',
+            file,
+            path: `scenarios[${scenarioIdx}].template.${key}`,
+            message: `Unknown template field "${key}"`,
+            impact: 'This field will be ignored and may cause unexpected behavior',
+            suggestion: `Valid fields are: ${validFields.join(', ')}`,
+            fixable: false,
+          });
+        }
+      }
     }
 
     return violations;
