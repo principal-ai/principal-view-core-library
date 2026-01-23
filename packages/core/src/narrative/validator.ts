@@ -91,6 +91,11 @@ export class NarrativeValidator {
     // Run all validation rules
     violations.push(...this.checkSchema(context));
     violations.push(...this.checkCanvasExists(context));
+    violations.push(...this.checkScenarios(context));
+
+    // Check event name syntax BEFORE checking event references
+    // This ensures we catch unsupported syntax before trying to match events
+    violations.push(...this.checkEventNameSyntax(context));
 
     // Only run canvas-dependent checks if canvas was loaded
     if (context.canvas) {
@@ -98,7 +103,6 @@ export class NarrativeValidator {
       violations.push(...this.checkAttributeReferences(context));
     }
 
-    violations.push(...this.checkScenarios(context));
     violations.push(...this.checkTemplateSyntax(context));
     violations.push(...this.checkFormattingOptions(context));
 
@@ -614,6 +618,72 @@ export class NarrativeValidator {
   }
 
   /**
+   * Check that event names don't use attribute filter syntax
+   */
+  private checkEventNameSyntax(context: NarrativeValidationContext): NarrativeViolation[] {
+    const violations: NarrativeViolation[] = [];
+    const { narrative, narrativePath } = context;
+
+    narrative.scenarios.forEach((scenario, scenarioIdx) => {
+      // Check condition.requires
+      if (scenario.condition?.requires) {
+        scenario.condition.requires.forEach((eventPattern, idx) => {
+          if (eventPattern.includes('[') && eventPattern.includes(']')) {
+            violations.push({
+              ruleId: 'narrative-event-name-syntax',
+              severity: 'error',
+              file: narrativePath,
+              path: `scenarios[${scenarioIdx}].condition.requires[${idx}]`,
+              message: `Event name uses unsupported [attribute=value] syntax: "${eventPattern}"`,
+              impact: 'Attribute filter syntax is not supported - event will not match',
+              suggestion: `Use a distinct event name instead (e.g., "${this.extractBaseEventName(eventPattern)}.${this.extractAttributeValue(eventPattern)}")`,
+              fixable: false,
+            });
+          }
+        });
+      }
+
+      // Check condition.excludes
+      if (scenario.condition?.excludes) {
+        scenario.condition.excludes.forEach((eventPattern, idx) => {
+          if (eventPattern.includes('[') && eventPattern.includes(']')) {
+            violations.push({
+              ruleId: 'narrative-event-name-syntax',
+              severity: 'error',
+              file: narrativePath,
+              path: `scenarios[${scenarioIdx}].condition.excludes[${idx}]`,
+              message: `Event name uses unsupported [attribute=value] syntax: "${eventPattern}"`,
+              impact: 'Attribute filter syntax is not supported - event will not match',
+              suggestion: `Use a distinct event name instead (e.g., "${this.extractBaseEventName(eventPattern)}.${this.extractAttributeValue(eventPattern)}")`,
+              fixable: false,
+            });
+          }
+        });
+      }
+
+      // Check template.events
+      if (scenario.template?.events) {
+        Object.keys(scenario.template.events).forEach((eventName) => {
+          if (eventName.includes('[') && eventName.includes(']')) {
+            violations.push({
+              ruleId: 'narrative-event-name-syntax',
+              severity: 'error',
+              file: narrativePath,
+              path: `scenarios[${scenarioIdx}].template.events["${eventName}"]`,
+              message: `Event name uses unsupported [attribute=value] syntax: "${eventName}"`,
+              impact: 'Attribute filter syntax is not supported - template will never render',
+              suggestion: `Use a distinct event name instead (e.g., "${this.extractBaseEventName(eventName)}.${this.extractAttributeValue(eventName)}")`,
+              fixable: false,
+            });
+          }
+        });
+      }
+    });
+
+    return violations;
+  }
+
+  /**
    * Check template syntax (balanced braces, valid expressions)
    */
   private checkTemplateSyntax(context: NarrativeValidationContext): NarrativeViolation[] {
@@ -879,6 +949,38 @@ export class NarrativeValidator {
     const regex = new RegExp(`^${pattern}$`);
 
     return availableEvents.some((e) => regex.test(e));
+  }
+
+  /**
+   * Extract base event name from event pattern
+   *
+   * Examples:
+   * - "installation.started" -> "installation.started"
+   * - "installation.progress[stage=skills_discovered]" -> "installation.progress"
+   * - "error.*[severity=high]" -> "error.*"
+   */
+  private extractBaseEventName(eventPattern: string): string {
+    const bracketIndex = eventPattern.indexOf('[');
+    if (bracketIndex === -1) {
+      return eventPattern;
+    }
+    return eventPattern.substring(0, bracketIndex);
+  }
+
+  /**
+   * Extract attribute value from event pattern for suggestion
+   *
+   * Examples:
+   * - "installation.progress[stage=skills_discovered]" -> "skills_discovered"
+   * - "error.*[severity=high]" -> "high"
+   * - "installation.started" -> ""
+   */
+  private extractAttributeValue(eventPattern: string): string {
+    const match = eventPattern.match(/\[.*?=(.*?)\]/);
+    if (!match) {
+      return '';
+    }
+    return match[1];
   }
 }
 
