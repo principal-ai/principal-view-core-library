@@ -2,12 +2,13 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { resolve, dirname } from 'node:path';
 import { readFileSync } from 'node:fs';
-import { NarrativeValidator } from '@principal-ai/principal-view-core';
+import { NarrativeValidator, computeAggregates } from '@principal-ai/principal-view-core';
 import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
-import { loadNarrative, resolvePath } from './utils.js';
+import { loadNarrative, resolvePath, loadExecution, executionToEvents } from './utils.js';
 
 interface ValidateOptions {
   canvas?: string;
+  execution?: string;
   json?: boolean;
   quiet?: boolean;
   dir?: string;
@@ -20,6 +21,7 @@ export function createValidateCommand(): Command {
     .description('Validate narrative template syntax, schema, and references')
     .argument('<file>', 'Path to .narrative.json file')
     .option('--canvas <path>', 'Override canvas file path for validation')
+    .option('--execution <path>', 'Execution file (.otel.json) for validating attribute references')
     .option('--json', 'Output violations as JSON')
     .option('-q, --quiet', 'Only show errors, suppress warnings')
     .option('-d, --dir <path>', 'Project directory (default: cwd)')
@@ -52,6 +54,42 @@ export function createValidateCommand(): Command {
           }
         }
 
+        // Load execution data if provided
+        let executionData: {
+          aggregates: Record<string, unknown>;
+          eventAttributes: Map<string, Record<string, unknown>>;
+        } | undefined;
+
+        if (options.execution) {
+          try {
+            const executionPath = resolvePath(options.execution, baseDir);
+            const execution = await loadExecution(executionPath);
+            const events = executionToEvents(execution);
+            const aggregates = computeAggregates(events);
+
+            // Build event-specific attribute map
+            const eventAttributes = new Map<string, Record<string, unknown>>();
+            for (const event of events) {
+              if (!eventAttributes.has(event.name)) {
+                eventAttributes.set(event.name, {});
+              }
+              const attrs = eventAttributes.get(event.name)!;
+              // Merge attributes from this event occurrence
+              if (event.attributes) {
+                Object.assign(attrs, event.attributes);
+              }
+            }
+
+            executionData = { aggregates, eventAttributes };
+          } catch (error) {
+            console.error(
+              chalk.yellow('Warning:'),
+              `Failed to load execution file: ${(error as Error).message}`
+            );
+            console.error(chalk.gray('  Attribute validation will be skipped'));
+          }
+        }
+
         // Create validator
         const validator = new NarrativeValidator();
 
@@ -62,6 +100,7 @@ export function createValidateCommand(): Command {
           canvasPath,
           canvas,
           basePath: baseDir,
+          executionData,
         };
 
         const result = await validator.validate(context);
@@ -94,6 +133,7 @@ export function createValidateCommand(): Command {
               warnings: warnings.length,
               scenarioCount: narrative.scenarios.length,
               hasDefault: narrative.scenarios.some((s) => s.condition.default),
+              attributeValidation: executionData ? 'enabled' : 'skipped',
             },
           };
           console.log(JSON.stringify(output, null, 2));
@@ -167,6 +207,18 @@ export function createValidateCommand(): Command {
 
           if (canvasPath) {
             console.log(chalk.gray(`  • Canvas: ${narrative.canvas || canvasPath}`));
+          }
+
+          if (executionData) {
+            console.log(
+              chalk.gray('  • Attribute validation:'),
+              chalk.green('enabled')
+            );
+          } else {
+            console.log(
+              chalk.gray('  • Attribute validation:'),
+              chalk.gray('skipped (use --execution to enable)')
+            );
           }
 
           console.log();

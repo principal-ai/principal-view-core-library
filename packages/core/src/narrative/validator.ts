@@ -30,6 +30,14 @@ export interface NarrativeValidationContext {
 
   /** Raw narrative content for line number lookup */
   rawContent?: string;
+
+  /** Execution data for validating attribute references (optional) */
+  executionData?: {
+    /** Aggregated attributes available in templates */
+    aggregates: Record<string, unknown>;
+    /** Attributes grouped by event name */
+    eventAttributes: Map<string, Record<string, unknown>>;
+  };
 }
 
 export interface NarrativeViolation {
@@ -855,13 +863,193 @@ export class NarrativeValidator {
   }
 
   /**
-   * Check attribute references (warning level)
+   * Check attribute references against execution data
+   *
+   * Validates that:
+   * - Attributes referenced in templates exist in execution data
+   * - Object attributes are accessed via properties (not used directly)
+   * - Attribute names are correct (catches typos)
    */
-  private checkAttributeReferences(_context: NarrativeValidationContext): NarrativeViolation[] {
+  private checkAttributeReferences(context: NarrativeValidationContext): NarrativeViolation[] {
     const violations: NarrativeViolation[] = [];
-    // This would require parsing template expressions and checking against canvas schemas
-    // Implementing as a warning-level check for future enhancement
+    const { narrative, narrativePath, executionData } = context;
+
+    // Skip if no execution data provided
+    if (!executionData) {
+      return violations;
+    }
+
+    const { aggregates, eventAttributes } = executionData;
+
+    // Check each scenario's template
+    for (const scenario of narrative.scenarios) {
+      const scenarioPath = `scenarios[${scenario.id}]`;
+
+      // Check introduction template
+      if (scenario.template.introduction) {
+        const attrs = this.extractAttributeReferences(scenario.template.introduction);
+        violations.push(
+          ...this.validateAttributes(
+            attrs,
+            aggregates,
+            null, // introduction doesn't have specific event context
+            narrativePath,
+            `${scenarioPath}.template.introduction`
+          )
+        );
+      }
+
+      // Check event templates
+      if (scenario.template.events) {
+        for (const [eventName, eventTemplate] of Object.entries(scenario.template.events)) {
+          const attrs = this.extractAttributeReferences(eventTemplate);
+          const eventAttrs = eventAttributes.get(eventName);
+
+          violations.push(
+            ...this.validateAttributes(
+              attrs,
+              aggregates,
+              eventAttrs || null,
+              narrativePath,
+              `${scenarioPath}.template.events.${eventName}`,
+              eventName
+            )
+          );
+        }
+      }
+
+      // Check summary template
+      if (scenario.template.summary) {
+        const attrs = this.extractAttributeReferences(scenario.template.summary);
+        violations.push(
+          ...this.validateAttributes(
+            attrs,
+            aggregates,
+            null, // summary uses global aggregates
+            narrativePath,
+            `${scenarioPath}.template.summary`
+          )
+        );
+      }
+    }
+
     return violations;
+  }
+
+  /**
+   * Validate a list of attribute references against available data
+   *
+   * @param attributes - Attribute paths to validate
+   * @param aggregates - Global aggregate attributes
+   * @param eventAttributes - Event-specific attributes (if validating event template)
+   * @param file - File path for violation reporting
+   * @param path - JSON path for violation reporting
+   * @param eventName - Event name (if validating event template)
+   * @returns Array of violations found
+   */
+  private validateAttributes(
+    attributes: string[],
+    aggregates: Record<string, unknown>,
+    eventAttributes: Record<string, unknown> | null,
+    file: string,
+    path: string,
+    eventName?: string
+  ): NarrativeViolation[] {
+    const violations: NarrativeViolation[] = [];
+
+    for (const attr of attributes) {
+      // Check if attribute exists in global aggregates
+      const globalValue = aggregates[attr];
+      const eventValue = eventAttributes?.[attr];
+
+      // Attribute doesn't exist anywhere
+      if (globalValue === undefined && eventValue === undefined) {
+        // Try to find similar attributes for helpful suggestions
+        const allKeys = [
+          ...Object.keys(aggregates),
+          ...(eventAttributes ? Object.keys(eventAttributes) : []),
+        ];
+        const similar = this.findSimilarAttributes(attr, allKeys);
+
+        violations.push({
+          ruleId: 'narrative-attribute-undefined',
+          severity: 'warn',
+          file,
+          path,
+          message: eventName
+            ? `Attribute "{{${attr}}}" not found in event "${eventName}" or global aggregates`
+            : `Attribute "{{${attr}}}" not found in execution data`,
+          impact: 'Template will render as empty or "undefined"',
+          suggestion: similar.length > 0 ? `Did you mean: ${similar.join(', ')}?` : undefined,
+          fixable: false,
+        });
+        continue;
+      }
+
+      // Check if object is used directly (should use property access)
+      const value = eventValue !== undefined ? eventValue : globalValue;
+      if (this.isObjectType(value)) {
+        const objectKeys = Object.keys(value as Record<string, unknown>);
+        const suggestions = objectKeys.slice(0, 3).map((k) => `{{${attr}.${k}}}`);
+
+        violations.push({
+          ruleId: 'narrative-attribute-object',
+          severity: 'warn',
+          file,
+          path,
+          message: `Attribute "{{${attr}}}" is an object and will render as "[object Object]"`,
+          impact: 'Template will show "[object Object]" instead of useful data',
+          suggestion: `Access a property instead: ${suggestions.join(', ')}`,
+          fixable: false,
+        });
+      }
+    }
+
+    return violations;
+  }
+
+  /**
+   * Find similar attribute names for helpful suggestions
+   *
+   * Uses simple string similarity (Levenshtein-like) to find typos
+   *
+   * @param target - The attribute being searched for
+   * @param available - Available attribute names
+   * @returns Array of similar attribute names (max 3)
+   */
+  private findSimilarAttributes(target: string, available: string[]): string[] {
+    const similar: Array<{ attr: string; score: number }> = [];
+
+    for (const attr of available) {
+      // Check for prefix match
+      if (attr.startsWith(target) || target.startsWith(attr)) {
+        similar.push({ attr, score: 10 });
+        continue;
+      }
+
+      // Check for substring match
+      if (attr.includes(target) || target.includes(attr)) {
+        similar.push({ attr, score: 5 });
+        continue;
+      }
+
+      // Check for similar structure (same number of dots)
+      const targetParts = target.split('.');
+      const attrParts = attr.split('.');
+      if (targetParts.length === attrParts.length) {
+        // Check if any parts match
+        const matchingParts = targetParts.filter((p, i) => p === attrParts[i]).length;
+        if (matchingParts > 0) {
+          similar.push({ attr, score: matchingParts });
+        }
+      }
+    }
+
+    // Sort by score and return top 3
+    return similar
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((s) => s.attr);
   }
 
   /**
@@ -981,6 +1169,104 @@ export class NarrativeValidator {
       return '';
     }
     return match[1];
+  }
+
+  /**
+   * Extract attribute references from Handlebars template
+   *
+   * Parses template strings like:
+   * - "{{source}}" -> ["source"]
+   * - "{{source.url}}" -> ["source.url"]
+   * - "{{#if options.global}}" -> ["options.global"]
+   * - "{{#if (eq install.mode 'symlink')}}" -> ["install.mode"]
+   *
+   * @param template - Handlebars template string
+   * @returns Array of attribute paths referenced in the template
+   */
+  private extractAttributeReferences(template: string): string[] {
+    const attributes = new Set<string>();
+
+    // Match all Handlebars expressions: {{...}}
+    const expressionPattern = /\{\{([^}]+)\}\}/g;
+    let match;
+
+    while ((match = expressionPattern.exec(template)) !== null) {
+      const expression = match[1].trim();
+
+      // Skip block helpers closing tags
+      if (expression.startsWith('/')) {
+        continue;
+      }
+
+      // Handle block helpers: #if, #each, #unless, etc.
+      if (expression.startsWith('#')) {
+        // Extract the condition/expression after the helper
+        const helperMatch = expression.match(/^#\w+\s+(.+)$/);
+        if (helperMatch) {
+          this.extractAttributesFromExpression(helperMatch[1], attributes);
+        }
+        continue;
+      }
+
+      // Handle regular expressions
+      this.extractAttributesFromExpression(expression, attributes);
+    }
+
+    return Array.from(attributes);
+  }
+
+  /**
+   * Extract attribute references from a single Handlebars expression
+   *
+   * Handles:
+   * - Simple references: source.url
+   * - Helper calls: (eq install.mode 'symlink')
+   * - Nested expressions
+   *
+   * @param expression - The expression to parse
+   * @param attributes - Set to add found attributes to
+   */
+  private extractAttributesFromExpression(expression: string, attributes: Set<string>): void {
+    // Remove helper parentheses: (eq install.mode 'symlink') -> eq install.mode 'symlink'
+    const cleaned = expression.replace(/^\(|\)$/g, '').trim();
+
+    // Split on spaces to handle helper arguments
+    const parts = cleaned.split(/\s+/);
+
+    for (const part of parts) {
+      // Skip helper names, string literals, numbers, and boolean literals
+      if (
+        part.match(/^(if|unless|each|with|eq|ne|lt|gt|lte|gte|and|or|not)$/) ||
+        part.match(/^['"].*['"]$/) ||
+        part.match(/^\d+$/) ||
+        part.match(/^(true|false|null|undefined)$/)
+      ) {
+        continue;
+      }
+
+      // Remove any remaining quotes or parentheses
+      const cleanPart = part.replace(/['"()]/g, '');
+
+      // If it looks like an attribute path (contains letters/dots/underscores)
+      if (cleanPart && cleanPart.match(/^[a-zA-Z_][a-zA-Z0-9_.]*$/)) {
+        attributes.add(cleanPart);
+      }
+    }
+  }
+
+  /**
+   * Check if an attribute is an object type
+   *
+   * @param value - The attribute value to check
+   * @returns true if value is a plain object (not array, not null)
+   */
+  private isObjectType(value: unknown): boolean {
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      !Array.isArray(value) &&
+      !(value instanceof Date)
+    );
   }
 }
 
