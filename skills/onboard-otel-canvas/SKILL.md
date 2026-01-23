@@ -113,7 +113,7 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
    **IMPORTANT: Canvas Structure**
    - **One node per event type** - Each event gets its own node in the canvas
    - Example: If you have 4 events (`validation.started`, `validation.complete`, `validation.error`, `validation.progress`), create 4 nodes
-   - Each node contains ONE event schema in its `pv.events` field
+   - Each node contains ONE event schema in its `pv.event` field
    - Connect nodes with edges to show the event flow (start → progress → complete/error)
 
    **REQUIRED: Sources Field**
@@ -422,7 +422,7 @@ A: Start with 2-4:
 **Q: "How should I structure the canvas nodes?"**
 A: **One node per event type**. Each event gets its own node in the canvas:
 - If you have 3 events (`started`, `complete`, `error`), create 3 nodes
-- Each node has ONE event schema defined in its `pv.events` field
+- Each node has ONE event schema defined in its `pv.event` field
 - Connect nodes with edges to show the flow (started → complete/error)
 - This keeps the visual structure clear and matches the event emission pattern
 
