@@ -48,7 +48,7 @@ export type { YamlParseResult } from './utils/YamlParser';
 // Export narrative template system (browser-safe)
 // Import directly from files to avoid pulling in Node.js validator
 export { renderNarrative } from './narrative/template-renderer';
-export { parseTemplate, evaluateExpression } from './narrative/template-parser';
+export { parseTemplate } from './narrative/template-parser';
 export {
   selectScenario,
   matchesCondition,

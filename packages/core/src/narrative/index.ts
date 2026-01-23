@@ -29,7 +29,7 @@ export type {
 export { selectScenario, matchesCondition, hasEventMatching, computeAggregates, evaluateAssertion, getNestedValue, setNestedValue } from './scenario-matcher';
 
 // Template Parsing
-export { parseTemplate, evaluateExpression } from './template-parser';
+export { parseTemplate } from './template-parser';
 
 // Template Rendering
 export { renderNarrative } from './template-renderer';

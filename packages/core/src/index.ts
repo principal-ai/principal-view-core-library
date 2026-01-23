@@ -112,7 +112,6 @@ export * from './rules';
 export {
   renderNarrative,
   parseTemplate,
-  evaluateExpression,
   selectScenario,
   matchesCondition,
   hasEventMatching,

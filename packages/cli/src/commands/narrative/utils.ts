@@ -1,30 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { NarrativeTemplate, OtelEvent } from '@principal-ai/principal-view-core';
-
-export interface ExecutionData {
-  metadata?: {
-    status?: string;
-    testName?: string;
-    sessionId?: string;
-    startTime?: number;
-    endTime?: number;
-  };
-  spans: Array<{
-    id: string;
-    name: string;
-    startTime?: number;
-    endTime?: number;
-    duration?: number;
-    status?: 'OK' | 'ERROR';
-    attributes?: Record<string, unknown>;
-    events: Array<{
-      time: number;
-      name: string;
-      attributes: Record<string, unknown>;
-    }>;
-  }>;
-}
+import { ExecutionValidator, type ExecutionData } from '@principal-ai/principal-view-core';
 
 /**
  * Load a narrative template from a file
@@ -43,11 +20,17 @@ export async function loadNarrative(filePath: string): Promise<NarrativeTemplate
 
 /**
  * Load execution data from a .otel.json file
+ *
+ * Automatically handles OTLP standard format conversion via ExecutionValidator.
  */
 export async function loadExecution(filePath: string): Promise<ExecutionData> {
   try {
     const content = await readFile(filePath, 'utf-8');
-    return JSON.parse(content) as ExecutionData;
+    const parsed = JSON.parse(content);
+
+    // Use ExecutionValidator to handle OTLP format conversion
+    const validator = new ExecutionValidator();
+    return validator.validateOrThrow(parsed, filePath);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       throw new Error(`Execution file not found: ${filePath}`);

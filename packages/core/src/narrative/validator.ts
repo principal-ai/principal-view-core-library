@@ -618,7 +618,7 @@ export class NarrativeValidator {
               path,
               message: 'Unbalanced braces: closing } without opening {',
               impact: 'Template will fail to render',
-              suggestion: 'Ensure all {expressions} have matching braces',
+              suggestion: 'Ensure all {{variables}} and {expressions} have matching braces',
               fixable: false,
             });
             break;
@@ -635,7 +635,7 @@ export class NarrativeValidator {
         path,
         message: 'Unbalanced braces: missing closing }',
         impact: 'Template will fail to render',
-        suggestion: 'Ensure all {expressions} have matching braces',
+        suggestion: 'Ensure all {{variables}} and {expressions} have matching braces',
         fixable: false,
       });
     }
