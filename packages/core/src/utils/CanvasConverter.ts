@@ -153,7 +153,7 @@ export class CanvasConverter {
   /**
    * Convert a single canvas node to React Flow node
    */
-  private static convertNode(node: ExtendedCanvasNode, canvas: ExtendedCanvas): ReactFlowNode {
+  private static convertNode(node: ExtendedCanvasNode, _canvas: ExtendedCanvas): ReactFlowNode {
     const pv = node.pv;
     const color = resolveCanvasColor(node.color);
 

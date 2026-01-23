@@ -7,7 +7,6 @@ import {
   endSpan,
   markTestPassed,
   markTestFailed,
-  setSpanAttribute,
   exportSpans,
 } from '../../test/otel-setup';
 

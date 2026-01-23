@@ -12,13 +12,11 @@ import { PathMatcher } from './utils/PathMatcher';
 import type {
   PathBasedGraphConfiguration,
   ComponentActivityEvent,
-  ComponentActionEvent,
-  EdgeAnimationEvent,
   PathBasedEvent,
   // ActionPattern removed - see docs/LEGACY_PATH_BASED_PATTERNS.md
   LogLevel,
 } from './types/path-based-config';
-import type { JsonValue, JsonObject } from './types';
+import type { JsonValue } from './types';
 
 /**
  * Log entry from logger (simplified interface to avoid circular dependency)

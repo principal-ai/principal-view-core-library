@@ -5,7 +5,7 @@
 import { describe, test, expect } from 'bun:test';
 import fs from 'fs';
 import path from 'path';
-import { generateTypes } from './type-generator';
+import { generateTypes, generatorRegistry } from './type-generator';
 import type { ExtendedCanvas } from '../types/canvas';
 
 // Load the example canvas
@@ -192,22 +192,17 @@ describe('TypeScript Type Generator', () => {
 
 describe('Code Generator Registry', () => {
   test('should list available generators', () => {
-    const { generatorRegistry } = require('./type-generator');
-
     const languages = generatorRegistry.list();
     expect(languages).toContain('typescript');
   });
 
   test('should get TypeScript generator', () => {
-    const { generatorRegistry } = require('./type-generator');
-
     const generator = generatorRegistry.get('typescript');
     expect(generator).toBeDefined();
     expect(generator?.language).toBe('typescript');
   });
 
   test('should allow registering custom generators', () => {
-    const { generatorRegistry } = require('./type-generator');
 
     const customGenerator = {
       language: 'custom',

@@ -40,7 +40,6 @@
     "@opentelemetry/sdk-trace-base": "2.2.0",
     "@opentelemetry/semantic-conventions": "1.38.0",
     "@principal-ai/codebase-composition": "^0.2.41",
-    "@principal-ai/principal-view-core": "^0.9.3",
     "@principal-ai/repository-abstraction": "0.2.6",
     "date-fns": "3.0.0",
     "handlebars": "^4.7.8",

@@ -153,7 +153,7 @@ export class WebSocketTransport {
           this.handleDisconnect();
         };
 
-        this.ws.onerror = (event) => {
+        this.ws.onerror = (_event) => {
           const error = new Error('WebSocket error');
           this.options.onError?.(error);
           if (this.state === 'connecting') {

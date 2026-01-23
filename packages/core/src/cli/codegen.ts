@@ -75,9 +75,11 @@ function parseArgs(args: string[]): { options: CliOptions; canvasFiles: string[]
       case '-h':
         printHelp();
         process.exit(0);
+        break;
       case '--list-generators':
         listGenerators();
         process.exit(0);
+        break;
       default:
         if (!arg.startsWith('--')) {
           canvasFiles.push(arg);

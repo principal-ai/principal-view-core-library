@@ -21,6 +21,7 @@
  * For this example file, we define the types inline to avoid import errors.
  */
 
+/* eslint-disable @typescript-eslint/no-namespace, @typescript-eslint/no-explicit-any */
 // Types that would be imported from generated file
 namespace GraphConverter {
   export interface ConversionStarted {
