@@ -116,6 +116,16 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
    - Each node contains ONE event schema in its `pv.events` field
    - Connect nodes with edges to show the event flow (start → progress → complete/error)
 
+   **REQUIRED: Sources Field**
+   - **All OTEL nodes MUST have a `pv.sources` field** with at least one source file path
+   - Sources are exact file paths (relative to repository root) - **NO glob patterns, NO line numbers**
+   - Examples:
+     - ✅ Good: `"sources": ["src/commands/validate.ts"]`
+     - ✅ Good: `"sources": ["lib/data-validator.ts", "lib/validator-utils.ts"]`
+     - ❌ Bad: `"sources": ["src/**/*.ts"]` (glob pattern not supported)
+     - ❌ Bad: `"sources": ["src/validator.ts:123"]` (line numbers not supported)
+   - This tells the system which source files emit the events for this node
+
    **Format reference**: Canvas files use JSON Canvas format with `pv` (Principal View) extensions. Run `npx @principal-ai/principal-view-cli schema examples` to see example canvas files, or look at existing `.otel.canvas` files in `.principal-views/` directory.
 
 4. **Validate immediately**:
@@ -424,6 +434,15 @@ A: Only the essential ones:
 
 Don't add attributes "just in case" - add them when you need them.
 
+**Q: "What is the sources field and why is it required?"**
+A: The `pv.sources` field is **required for all OTEL nodes**. It tells the system which source files emit the events for this node:
+- **Must be exact file paths** (relative to repository root)
+- **No glob patterns allowed** (e.g., `src/**/*.ts` is invalid)
+- **No line numbers allowed** (e.g., `src/file.ts:123` is invalid)
+- Example: `"sources": ["src/commands/validate.ts"]`
+- For features spanning multiple files, list all relevant files: `"sources": ["src/validator.ts", "src/validator-helpers.ts"]`
+- Validation will fail if OTEL nodes don't have sources defined
+
 **Q: "Do I instrument my production code or my tests?"**
 A: **Instrument your actual source code**, then write tests that call it:
 - Add OTEL emit calls to your feature's source code (src/index.ts, src/commands/*.ts, etc.)
@@ -444,6 +463,7 @@ After completing onboarding, user should have:
 
 ✅ **One working canvas** (.otel.canvas)
 - 2-4 event schemas defined
+- All OTEL nodes have required `pv.sources` field with exact file paths
 - Validates with CLI
 - Documents real feature
 
@@ -540,6 +560,7 @@ I'll define these events:
 - import.complete (rows.imported, duration.ms)
 - import.error (error.type, error.message, stage)
 
+Each node will include the required sources field pointing to src/commands/import.ts.
 Sound good?"
 
 User: "Yes, let's do it"

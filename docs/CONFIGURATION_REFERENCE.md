@@ -207,7 +207,7 @@ Add a `vv` object to any node for rich visualization:
     "nodeType": "lock-manager",
     "shape": "hexagon",
     "icon": "lock",
-    "sources": ["lib/lock-manager.ts", "lib/locks/**/*.ts"],
+    "sources": ["lib/lock-manager.ts", "lib/branch-aware-lock-manager.ts"],
     "states": {
       "idle": { "color": "#94a3b8", "icon": "unlock" },
       "acquired": { "color": "#22c55e", "icon": "lock" },
@@ -238,7 +238,7 @@ Add a `vv` object to any node for rich visualization:
 | `nodeType`   | string   | Semantic type identifier                              |
 | `shape`      | string   | `circle`, `rectangle`, `hexagon`, `diamond`, `custom` |
 | `icon`       | string   | Lucide icon name                                      |
-| `sources`    | string[] | Glob patterns for log association                     |
+| `sources`    | string[] | Exact file paths for log association (no globs or line numbers) |
 | `states`     | object   | State definitions with visual properties              |
 | `actions`    | object[] | Regex patterns for event extraction                   |
 | `dataSchema` | object   | Typed data field definitions                          |
@@ -358,7 +358,7 @@ The root `vv` object configures the entire canvas:
         "nodeType": "client",
         "shape": "circle",
         "icon": "user",
-        "sources": ["src/client/**/*.ts"]
+        "sources": ["src/client/index.ts"]
       }
     },
     {
@@ -374,7 +374,7 @@ The root `vv` object configures the entire canvas:
         "nodeType": "api-server",
         "shape": "rectangle",
         "icon": "server",
-        "sources": ["src/api/**/*.ts"],
+        "sources": ["src/api/server.ts"],
         "states": {
           "idle": { "color": "#94a3b8" },
           "processing": { "color": "#3b82f6" },
@@ -395,7 +395,7 @@ The root `vv` object configures the entire canvas:
         "nodeType": "database",
         "shape": "hexagon",
         "icon": "database",
-        "sources": ["src/db/**/*.ts"]
+        "sources": ["src/db/connection.ts"]
       }
     }
   ],

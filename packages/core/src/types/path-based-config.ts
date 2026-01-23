@@ -49,8 +49,11 @@ export interface PathBasedNodeTypeDefinition {
   /** Manual position for 'manual' layout mode */
   position?: { x: number; y: number };
 
-  /** MILESTONE 1: Source path mapping */
-  sources?: string[]; // e.g., ["lib/lock-manager.ts", "lib/**/*.ts"]
+  /**
+   * MILESTONE 1: Source path mapping
+   * Exact file paths for log association (glob patterns and line numbers are not supported)
+   */
+  sources?: string[]; // e.g., ["lib/lock-manager.ts", "lib/branch-aware-lock-manager.ts"]
 
   /**
    * Resource-based matching for OTEL logs

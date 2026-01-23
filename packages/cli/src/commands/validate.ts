@@ -857,6 +857,18 @@ function validateCanvas(
           );
         }
 
+        // For .otel.canvas files: require event field on nodes with pv extension (except groups)
+        if (filePath.endsWith('.otel.canvas') && nodeType !== 'group') {
+          if (nodePv.event === undefined) {
+            issues.push({
+              type: 'error',
+              message: `Node "${nodeLabel}" in .otel.canvas file must have "pv.event" field`,
+              path: `${nodePath}.pv.event`,
+              suggestion: 'Add event name, e.g.: "event": "user.login" or "event": "order.created"',
+            });
+          }
+        }
+
         // Validate source file references for OTEL event nodes
         const hasOtelFeatures = nodePv.otel !== undefined || nodePv.event !== undefined;
         if (hasOtelFeatures) {
@@ -881,21 +893,42 @@ function validateCanvas(
           }
         }
 
-        // Validate that all source files exist (if repository path is provided)
-        if (Array.isArray(nodePv.sources) && repositoryPath) {
+        // Validate source file paths
+        if (Array.isArray(nodePv.sources)) {
           nodePv.sources.forEach((source: unknown, sourceIndex: number) => {
             if (typeof source === 'string') {
-              // Remove glob patterns (* characters) to get the base path
-              const cleanPath = source.replace(/\*/g, '');
-              const fullPath = resolve(repositoryPath, cleanPath);
-
-              if (!existsSync(fullPath)) {
+              // Check for glob patterns
+              if (/[*?[\]{}]/.test(source)) {
                 issues.push({
                   type: 'error',
-                  message: `Node "${nodeLabel}" references non-existent source file: ${source}`,
+                  message: `Node "${nodeLabel}" has glob pattern in sources: ${source}`,
                   path: `${nodePath}.pv.sources[${sourceIndex}]`,
-                  suggestion: `Verify the file path is correct relative to repository root: ${repositoryPath}`,
+                  suggestion: 'Use exact file paths only. Glob patterns (*, ?, [], {}) are not supported in sources.',
                 });
+              }
+
+              // Check for line number suffix (e.g., "file.ts:123")
+              if (/:\d+$/.test(source)) {
+                issues.push({
+                  type: 'error',
+                  message: `Node "${nodeLabel}" has line number suffix in sources: ${source}`,
+                  path: `${nodePath}.pv.sources[${sourceIndex}]`,
+                  suggestion: 'Remove line number suffix. Use exact file paths only (e.g., "src/file.ts" not "src/file.ts:123").',
+                });
+              }
+
+              // Validate that source file exists (if repository path is provided)
+              if (repositoryPath) {
+                const fullPath = resolve(repositoryPath, source);
+
+                if (!existsSync(fullPath)) {
+                  issues.push({
+                    type: 'error',
+                    message: `Node "${nodeLabel}" references non-existent source file: ${source}`,
+                    path: `${nodePath}.pv.sources[${sourceIndex}]`,
+                    suggestion: `Verify the file path is correct relative to repository root: ${repositoryPath}`,
+                  });
+                }
               }
             }
           });

@@ -300,7 +300,11 @@ export interface PVNodeExtension {
   stroke?: string;
   /** State definitions */
   states?: Record<string, PVNodeState>;
-  /** Source file patterns for log association */
+  /**
+   * Exact source file paths for log association
+   * (glob patterns and line numbers are not supported)
+   * @example ["src/services/order-service.ts", "lib/lock-manager.ts"]
+   */
   sources?: string[];
 
   /**
