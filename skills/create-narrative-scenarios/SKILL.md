@@ -33,9 +33,9 @@ This skill helps create properly structured .narrative.json files that:
 4. **Extract variables** - Pull attribute values from events for use in templates
 5. **Show flow** - Present execution as a step-by-step narrative
 
-## Narrative File Structure
+## File Structure
 
-A .narrative.json file contains scenarios with matching conditions and output templates.
+A .narrative.json file contains metadata, rendering configuration, and multiple scenarios.
 
 ### File Naming Convention
 
@@ -44,247 +44,406 @@ A .narrative.json file contains scenarios with matching conditions and output te
 - Be co-located with their corresponding .otel.canvas file
 - Have a matching base name (e.g., `order-processing.otel.canvas` ↔ `order-processing.narrative.json`)
 
-### Basic Structure
+### Complete Structure
 
 ```json
 {
-  "name": "Narrative Name",
-  "description": "What this narrative describes",
   "version": "1.0.0",
-  "canvasPath": "./relative-path-to.otel.canvas",
+  "canvas": "order-processing.otel.canvas",
+  "name": "Order Processing",
+  "description": "Order processing execution scenarios",
+  "mode": "span-tree",
+  "scenarioSelection": "first-match",
+  "showLogsPerSpan": true,
   "scenarios": [
     {
       "id": "success",
-      "description": "Successful execution",
       "priority": 1,
-      "condition": {/* matching rules */},
-      "template": {/* narrative output */}
+      "description": "Successful order completion",
+      "condition": {
+        "requires": ["order.completed"],
+        "assertions": {
+          "order.status": { "$eq": "completed" }
+        }
+      },
+      "template": {
+        "introduction": "✅ Order Processing Complete",
+        "events": {
+          "order.started": "📦 Order {{order.id}} received",
+          "payment.completed": "💳 Payment processed: ${{payment.amount}}",
+          "order.completed": "✅ Order completed successfully"
+        },
+        "summary": "Order {{order.id}} completed in {{duration.ms}}ms"
+      }
     }
   ]
 }
 ```
 
+## Required Top-Level Fields
+
+### Metadata
+- `version` (string, required) - Semver version (e.g., "1.0.0")
+- `canvas` (string, required) - Relative path to .otel.canvas file
+- `name` (string, required) - Human-readable name
+- `description` (string, required) - What this narrative describes
+
+### Rendering Configuration
+- `mode` (string, required) - Either `"span-tree"` or `"timeline"`
+  - `"span-tree"` - Follow OTEL span hierarchy (parent-child relationships)
+  - `"timeline"` - Chronological order (sorted by timestamp)
+- `scenarioSelection` (string, optional) - Either `"first-match"` (default) or `"manual"`
+
+### Optional Configuration
+- `showLogsPerSpan` (boolean) - Show logs grouped by span (span-tree mode)
+- `interleaveSignals` (boolean) - Mix spans/logs by timestamp (timeline mode)
+- `formatting` (object) - Display formatting options
+
+### Scenarios
+- `scenarios` (array, required) - List of scenario definitions (see below)
+
 ## Scenario Structure
 
-Each scenario has:
+Each scenario consists of four parts:
 
-### 1. Metadata
+### 1. Identification
 ```json
 {
-  "id": "success",                      // Unique scenario identifier
-  "description": "Order completed successfully",  // Human-readable description
-  "priority": 1                         // Lower = higher priority (1 is checked first)
+  "id": "success",                           // Required: Unique identifier (kebab-case)
+  "priority": 1,                             // Required: Lower = higher priority
+  "description": "Successful order completion" // Optional: Human-readable description
 }
 ```
 
-### 2. Condition (What OTEL data triggers this scenario)
+**Priority Rules:**
+- Lower numbers = higher priority (checked first)
+- First matching scenario wins
+- Use 1-10 for specific scenarios, 999 for fallback
+- Each priority must be unique
 
-Conditions use logical operators to match against OTEL events:
+### 2. Condition - What triggers this scenario
 
-#### Event Condition
+Conditions use three types of checks:
+
+#### Event Requirements (`requires`)
+Array of event name patterns (supports wildcards):
 ```json
 {
-  "type": "event",
-  "event": "order.completed"  // Matches if this event exists
+  "condition": {
+    "requires": ["order.completed"]  // Must have this event
+  }
 }
 ```
 
-#### Attribute Condition
+Wildcard patterns:
 ```json
 {
-  "type": "attribute",
-  "key": "order.status",
-  "value": "completed"        // Matches if attribute equals value
+  "requires": ["order.*"]      // Matches order.started, order.completed, etc.
+  "requires": ["*.error"]      // Matches any error event
+  "requires": ["conversion.*"] // Matches conversion.started, conversion.complete
 }
 ```
 
-#### Span Condition
+#### Event Exclusions (`excludes`)
+Array of event patterns that must NOT be present:
 ```json
 {
-  "type": "span",
-  "name": "process_order"     // Matches if span with this name exists
+  "condition": {
+    "requires": ["order.completed"],
+    "excludes": ["*.error"]  // No error events allowed
+  }
+}
+```
+
+#### Attribute Assertions (`assertions`)
+MongoDB-style operators on aggregated attributes:
+```json
+{
+  "condition": {
+    "requires": ["order.completed"],
+    "assertions": {
+      "order.status": { "$eq": "completed" },
+      "order.total": { "$gt": 0 },
+      "error.count": { "$eq": 0 }
+    }
+  }
+}
+```
+
+**Assertion Operators:**
+- `$eq` - Equal to (string, number, boolean)
+- `$ne` - Not equal to
+- `$gt` - Greater than (number)
+- `$gte` - Greater than or equal (number)
+- `$lt` - Less than (number)
+- `$lte` - Less than or equal (number)
+- `$in` - Value in array
+- `$nin` - Value not in array
+- `$exists` - Attribute exists (boolean)
+
+Examples:
+```json
+{
+  "assertions": {
+    "result.errors": { "$eq": 0 },           // No errors
+    "result.warnings": { "$gt": 0 },         // Has warnings
+    "order.status": { "$in": ["pending", "processing"] },
+    "payment.verified": { "$exists": true }
+  }
 }
 ```
 
 #### Logical Operators
+Use `any: true` for OR logic on `requires`:
 ```json
 {
-  "type": "and",
-  "conditions": [
-    {"type": "event", "event": "order.completed"},
-    {"type": "attribute", "key": "order.status", "value": "completed"}
-  ]
+  "condition": {
+    "requires": ["timeout.error", "network.error"],
+    "any": true  // Matches if ANY event is present
+  }
 }
 ```
 
+Default (without `any`) is AND - all `requires` must be present.
+
+#### Default/Fallback Condition
 ```json
 {
-  "type": "or",
-  "conditions": [
-    {"type": "attribute", "key": "error.type", "value": "timeout"},
-    {"type": "attribute", "key": "error.type", "value": "network_error"}
-  ]
+  "condition": {
+    "default": true  // Always matches (use for fallback scenario)
+  }
 }
 ```
 
-### 3. Template (How to render the narrative)
+### 3. Template - How to render the narrative
 
-Templates define the human-readable output:
+Templates consist of three optional parts:
 
+#### Introduction (optional)
+Opening text shown before events:
 ```json
 {
   "template": {
-    "summary": "Order {{order.id}} completed successfully",
-    "steps": [
-      "→ Received order for {{item.name}} ({{item.quantity}} units)",
-      "→ Validated inventory: {{inventory.available}} units available",
-      "→ Processed payment: ${{payment.amount}}",
-      "→ Generated tracking number: {{shipping.tracking}}"
-    ],
-    "details": {
-      "Order ID": "{{order.id}}",
-      "Customer": "{{customer.name}}",
-      "Total": "${{order.total}}",
-      "Duration": "{{duration_ms}}ms"
+    "introduction": "✅ Order Processing Complete\n━━━━━━━━━━━━━━━━━━━━━━"
+  }
+}
+```
+
+Use `\n` for line breaks, emojis for visual cues.
+
+#### Events (required for meaningful output)
+Map event names to template strings:
+```json
+{
+  "template": {
+    "events": {
+      "order.started": "📦 Order {{order.id}} received from {{customer.name}}",
+      "payment.initiated": "💳 Processing payment: ${{payment.amount}}",
+      "payment.completed": "✅ Payment confirmed: {{payment.method}}",
+      "shipping.scheduled": "🚚 Shipping via {{shipping.carrier}} - tracking: {{tracking.number}}",
+      "order.completed": "✅ Order completed successfully"
     }
   }
 }
 ```
 
-#### Template Variables
+Events are rendered in chronological order based on their timestamps.
 
-Variables are extracted from OTEL event attributes using `{{variable.name}}` syntax:
+#### Summary (optional)
+Closing text shown after all events:
+```json
+{
+  "template": {
+    "summary": "━━━━━━━━━━━━━━━━━━━━━━\n\n✅ SUCCESS\n\nOrder {{order.id}} completed in {{duration.ms}}ms"
+  }
+}
+```
 
-- `{{order.id}}` - Extracts attribute `order.id` from events
-- `{{error.message}}` - Extracts attribute `error.message`
-- `{{duration_ms}}` - Special variable for span duration
+### 4. Template Variables
 
-Variables are automatically populated from event attributes. If a variable isn't found, it remains as-is (e.g., `{{missing.var}}`).
+Use Handlebars syntax `{{variable}}` to insert values from event attributes:
 
-## Common Scenario Types
+```json
+{
+  "events": {
+    "order.completed": "Order {{order.id}} total: ${{order.total}}"
+  }
+}
+```
 
-### Success Scenario (Priority 1)
+**Variable Sources:**
+1. **Event attributes** - Extracted from the specific event
+2. **Aggregated values** - Computed from all events (see below)
+
+**Special Aggregated Variables:**
+- `{{events.count}}` - Total number of events
+- `{{events.length}}` - Same as events.count
+- `{{spans.count}}` - Number of spans
+- `{{logs.count}}` - Number of log records
+- `{{errorLogs.count}}` - Number of error-level logs
+- `{{warnLogs.count}}` - Number of warning logs
+- `{{debugLogs.count}}` - Number of debug logs
+
+**Handling Missing Variables:**
+If a variable isn't found, it remains as-is: `{{missing.var}}`
+
+A warning banner appears in the UI when variables can't be resolved.
+
+### Span-Tree Mode Specific Fields
+
+When using `"mode": "span-tree"`, you can add:
+
+#### Span Template
+How to render span nodes:
+```json
+{
+  "template": {
+    "span": "→ {{span.name}}"
+  }
+}
+```
+
+#### Children Handling
+```json
+{
+  "template": {
+    "span": "→ {{span.name}}",
+    "children": "recurse"  // or "ignore"
+  }
+}
+```
+
+#### Log Templates by Severity
+```json
+{
+  "template": {
+    "logs": {
+      "trace": "🔍 {{log.body}}",
+      "debug": "🔍 {{log.body}}",
+      "info": "ℹ️  {{log.body}}",
+      "warn": "⚠️  {{log.body}}",
+      "error": "❌ {{log.body}}",
+      "fatal": "💀 {{log.body}}",
+      "default": "📝 {{log.body}}"
+    }
+  }
+}
+```
+
+## Complete Examples
+
+### Success Scenario
 ```json
 {
   "id": "success",
-  "description": "Successful order completion",
   "priority": 1,
+  "description": "Successful order completion",
   "condition": {
-    "type": "and",
-    "conditions": [
-      {"type": "event", "event": "order.completed"},
-      {"type": "attribute", "key": "order.status", "value": "completed"}
-    ]
+    "requires": ["order.completed"],
+    "assertions": {
+      "order.status": { "$eq": "completed" },
+      "error.count": { "$eq": 0 }
+    }
   },
   "template": {
-    "summary": "✅ Order {{order.id}} completed successfully",
-    "steps": [
-      "→ Order received: {{order.created_at}}",
-      "→ Payment processed: ${{payment.amount}}",
-      "→ Shipped via {{shipping.carrier}}"
-    ],
-    "details": {
-      "Order ID": "{{order.id}}",
-      "Customer": "{{customer.email}}",
-      "Total": "${{order.total}}"
-    }
+    "introduction": "✅ Order Processing Complete\n━━━━━━━━━━━━━━━━━━━━━━",
+    "events": {
+      "order.started": "📦 Order {{order.id}} received",
+      "inventory.checked": "📊 Inventory verified: {{inventory.available}} units",
+      "payment.completed": "💳 Payment processed: ${{payment.amount}}",
+      "shipping.scheduled": "🚚 Shipping via {{shipping.carrier}}",
+      "order.completed": "✅ Order completed successfully"
+    },
+    "summary": "━━━━━━━━━━━━━━━━━━━━━━\n\n✅ SUCCESS\n\nOrder {{order.id}} completed\nTotal: ${{order.total}}\nDuration: {{duration.ms}}ms"
   }
 }
 ```
 
-### Failure Scenario (Priority 2)
+### Failure Scenario
 ```json
 {
   "id": "failure",
-  "description": "Order processing failed",
   "priority": 2,
+  "description": "Order failed due to payment error",
   "condition": {
-    "type": "and",
-    "conditions": [
-      {"type": "event", "event": "order.failed"},
-      {"type": "attribute", "key": "error.type", "value": "payment_error"}
-    ]
+    "requires": ["order.failed"],
+    "assertions": {
+      "error.type": { "$eq": "payment_error" }
+    }
   },
   "template": {
-    "summary": "❌ Order {{order.id}} failed: Payment error",
-    "steps": [
-      "→ Order received: {{order.created_at}}",
-      "→ ❌ Payment failed: {{error.message}}",
-      "→ Refund initiated: {{refund.id}}"
-    ],
-    "details": {
-      "Order ID": "{{order.id}}",
-      "Error Type": "{{error.type}}",
-      "Error Message": "{{error.message}}"
-    }
+    "introduction": "❌ Order Processing Failed\n━━━━━━━━━━━━━━━━━━━━━━",
+    "events": {
+      "order.started": "📦 Order {{order.id}} received",
+      "payment.failed": "❌ Payment failed: {{error.message}}",
+      "order.failed": "❌ Order processing failed"
+    },
+    "summary": "━━━━━━━━━━━━━━━━━━━━━━\n\n❌ FAILED\n\nOrder {{order.id}}\nError: {{error.message}}\nType: {{error.type}}"
   }
 }
 ```
 
-### Timeout Scenario (Priority 3)
+### Timeout Scenario
 ```json
 {
   "id": "timeout",
-  "description": "Order processing timed out",
   "priority": 3,
+  "description": "Processing exceeded timeout limit",
   "condition": {
-    "type": "or",
-    "conditions": [
-      {"type": "attribute", "key": "error.type", "value": "timeout"},
-      {"type": "attribute", "key": "duration_ms", "value": "> 30000"}
-    ]
+    "requires": ["order.*"],
+    "excludes": ["order.completed"],
+    "assertions": {
+      "duration.ms": { "$gt": 30000 }
+    }
   },
   "template": {
-    "summary": "⚠️ Order {{order.id}} timed out after {{duration_ms}}ms",
-    "steps": [
-      "→ Order received: {{order.created_at}}",
-      "→ ⚠️ Processing exceeded timeout limit",
-      "→ Marked for retry: {{retry.scheduled_at}}"
-    ]
+    "introduction": "⚠️ Order Processing Timeout\n━━━━━━━━━━━━━━━━━━━━━━",
+    "events": {
+      "order.started": "📦 Order {{order.id}} received",
+      "timeout.exceeded": "⚠️ Processing exceeded 30s timeout"
+    },
+    "summary": "━━━━━━━━━━━━━━━━━━━━━━\n\n⚠️ TIMEOUT\n\nOrder {{order.id}}\nDuration: {{duration.ms}}ms\nStatus: Pending retry"
   }
 }
 ```
 
-### Partial Success Scenario (Priority 4)
+### Partial Success Scenario
 ```json
 {
   "id": "partial",
-  "description": "Order partially completed",
   "priority": 4,
+  "description": "Order partially completed",
   "condition": {
-    "type": "and",
-    "conditions": [
-      {"type": "event", "event": "order.completed"},
-      {"type": "attribute", "key": "items.failed", "value": "> 0"}
-    ]
+    "requires": ["order.completed"],
+    "assertions": {
+      "items.failed": { "$gt": 0 }
+    }
   },
   "template": {
-    "summary": "⚠️ Order {{order.id}} partially completed ({{items.failed}} items failed)",
-    "steps": [
-      "→ Order received with {{items.total}} items",
-      "→ {{items.succeeded}} items processed successfully",
-      "→ ⚠️ {{items.failed}} items failed: {{failure.reason}}"
-    ]
+    "introduction": "⚠️ Order Partially Completed\n━━━━━━━━━━━━━━━━━━━━━━",
+    "events": {
+      "order.started": "📦 Order {{order.id}} with {{items.total}} items",
+      "items.processed": "✅ {{items.succeeded}} items succeeded",
+      "items.failed": "❌ {{items.failed}} items failed",
+      "order.completed": "⚠️ Order completed with failures"
+    },
+    "summary": "━━━━━━━━━━━━━━━━━━━━━━\n\n⚠️ PARTIAL SUCCESS\n\nSucceeded: {{items.succeeded}}\nFailed: {{items.failed}}\nReason: {{failure.reason}}"
   }
 }
 ```
 
-### Fallback Scenario (Always Last)
+### Default Fallback Scenario
 ```json
 {
   "id": "default",
-  "description": "Generic execution summary",
   "priority": 999,
+  "description": "Generic execution summary",
   "condition": {
-    "type": "event",
-    "event": "*"  // Matches any event
+    "default": true
   },
   "template": {
-    "summary": "📋 Order {{order.id}} execution recorded",
-    "steps": [
-      "→ Execution captured with {{event.count}} events",
-      "→ Duration: {{duration_ms}}ms"
-    ]
+    "introduction": "📋 Execution Summary\n━━━━━━━━━━━━━━━━━━━━━━",
+    "summary": "━━━━━━━━━━━━━━━━━━━━━━\n\nCaptured {{events.count}} events\nSpans: {{spans.count}}\nLogs: {{logs.count}}"
   }
 }
 ```
@@ -293,46 +452,50 @@ Variables are automatically populated from event attributes. If a variable isn't
 
 When creating a .narrative.json file:
 
-1. **Start with the canvas** - Identify the .otel.canvas file you want to add narratives to
+1. **Start with the canvas** - Identify the .otel.canvas file
    - Example: `order-processing.otel.canvas`
 
-2. **Identify execution scenarios** - What are the different outcomes?
+2. **Inspect execution data** - Look at actual .otel.json files to see:
+   - What events are emitted
+   - What attributes are available
+   - Use CLI: `privu narrative inspect execution.otel.json`
+
+3. **Identify scenarios** - What are the different outcomes?
    - Success: Order completed
    - Failure: Payment error, inventory error
    - Timeout: Processing took too long
    - Partial: Some items succeeded, some failed
 
-3. **Map OTEL events to scenarios** - What events/attributes indicate each scenario?
-   - Success: `order.completed` event + `status='completed'` attribute
-   - Failure: `order.failed` event + `error.type` attribute
-   - Timeout: `duration_ms > 30000` or `error.type='timeout'`
+4. **Map events to scenarios** - Define conditions:
+   - Success: `requires: ["order.completed"]` + `order.status == "completed"`
+   - Failure: `requires: ["order.failed"]` + `error.type` exists
+   - Timeout: `duration.ms > 30000`
 
-4. **Design narrative templates** - How should each scenario read?
-   - Use emojis for visual cues (✅ ❌ ⚠️ 📋)
-   - Use → for steps to show flow
-   - Extract meaningful attribute values with {{variables}}
+5. **Design narrative templates** - How should each read?
+   - Use emojis for visual cues (✅ ❌ ⚠️ 📋 →)
+   - Extract meaningful values with `{{variables}}`
    - Keep it concise and scannable
 
-5. **Set priorities correctly**:
-   - Most specific scenarios = lowest priority number (1, 2, 3)
-   - Fallback/generic = highest priority number (999)
-   - The first matching scenario wins
+6. **Set priorities correctly**:
+   - Most specific scenarios = lowest number (1, 2, 3)
+   - Fallback/generic = highest number (999)
+   - Must be unique
 
-6. **Create the file**:
+7. **Create the file**:
    ```bash
    # Same directory and base name as canvas
    touch order-processing.narrative.json
    ```
 
-7. **Validate** using the CLI:
+8. **Validate** using the CLI:
    ```bash
-   npx @principal-ai/principal-view-cli validate
+   privu narrative validate order-processing.narrative.json
    ```
 
-8. **Test with real execution data** - Load an actual execution to verify:
-   - Correct scenario matches
-   - Variables populate correctly
-   - Narrative is readable and helpful
+9. **Test with real data**:
+   ```bash
+   privu narrative render order-processing.narrative.json execution.otel.json
+   ```
 
 ## Template Best Practices
 
@@ -341,284 +504,252 @@ When creating a .narrative.json file:
 - ❌ Failed actions
 - ⚠️ Warnings, timeouts, partial failures
 - 📋 Generic/informational
-- → Flow steps
+- 📦 Order/item operations
+- 💳 Payment operations
+- 🚚 Shipping operations
+- → Flow arrows (for span-tree templates)
 
 ### Keep It Scannable
 ```json
-// Good - Easy to scan
-"steps": [
-  "→ Payment processed: ${{amount}}",
-  "→ Inventory reserved: {{quantity}} units",
-  "→ Shipping scheduled: {{carrier}}"
-]
+// Good - Clear event-based flow
+"events": {
+  "payment.completed": "💳 Payment: ${{amount}}",
+  "inventory.reserved": "📊 Reserved: {{quantity}} units",
+  "shipping.scheduled": "🚚 Carrier: {{carrier}}"
+}
 
-// Bad - Wall of text
-"steps": [
-  "The payment was processed successfully in the amount of ${{amount}} and then the inventory was reserved for {{quantity}} units and finally shipping was scheduled via {{carrier}}"
-]
+// Bad - Long template strings
+"events": {
+  "order.completed": "The payment was processed successfully for ${{amount}} and inventory was reserved for {{quantity}} units and shipping was scheduled"
+}
 ```
 
-### Extract Meaningful Values
+### Use Meaningful Event Names
+```json
+// Good - Maps to actual OTEL events
+"events": {
+  "order.started": "...",
+  "payment.initiated": "...",
+  "payment.completed": "..."
+}
+
+// Bad - Generic or non-existent events
+"events": {
+  "step1": "...",
+  "step2": "...",
+  "step3": "..."
+}
+```
+
+### Extract Key Values
 ```json
 // Good - Shows actionable details
-"summary": "Order {{order.id}} failed: {{error.message}}",
-"details": {
-  "Error Type": "{{error.type}}",
-  "Failed At": "{{failed.step}}",
-  "Retry Available": "{{retry.enabled}}"
+"events": {
+  "order.failed": "❌ Failed: {{error.message}} ({{error.code}})"
 }
 
 // Bad - Generic
-"summary": "Order failed",
-"details": {
-  "Status": "failed"
+"events": {
+  "order.failed": "Order failed"
 }
 ```
-
-### Organize by Sections
-```json
-{
-  "summary": "High-level outcome (1 line)",
-  "steps": [
-    "→ Chronological flow (3-7 steps)",
-    "→ What happened in order"
-  ],
-  "details": {
-    "Key metadata": "Values that matter",
-    "For debugging": "Or auditing"
-  }
-}
-```
-
-## Variable Extraction
-
-Variables are pulled from OTEL event attributes using dot notation:
-
-### Simple Attributes
-```
-Event attribute: order.id = "ORD-12345"
-Template: {{order.id}}
-Output: ORD-12345
-```
-
-### Nested Attributes
-```
-Event attribute: customer.billing.address.city = "San Francisco"
-Template: {{customer.billing.address.city}}
-Output: San Francisco
-```
-
-### Special Variables
-- `{{duration_ms}}` - Span duration in milliseconds
-- `{{event.count}}` - Number of events in execution
-- `{{span.count}}` - Number of spans in execution
-
-### Missing Variables
-If a variable isn't found in the event data:
-```
-Template: Order {{order.id}} for {{customer.name}}
-Data: {order.id: "ORD-123"}
-Output: Order ORD-123 for {{customer.name}}
-```
-
-The UI shows a warning banner when variables can't be resolved, allowing users to click "Raw Events" to see available data.
-
-## Condition Matching Logic
-
-Scenarios are evaluated in priority order (lowest number first):
-
-```json
-{
-  "scenarios": [
-    {
-      "id": "success",
-      "priority": 1,  // ← Checked first
-      "condition": {"type": "attribute", "key": "status", "value": "completed"}
-    },
-    {
-      "id": "failure",
-      "priority": 2,  // ← Checked second
-      "condition": {"type": "attribute", "key": "status", "value": "failed"}
-    },
-    {
-      "id": "default",
-      "priority": 999,  // ← Fallback, checked last
-      "condition": {"type": "event", "event": "*"}
-    }
-  ]
-}
-```
-
-**First match wins** - Once a scenario's condition matches, that's the one used.
 
 ## Validation
 
 **MANDATORY STEP:** After creating or updating a .narrative.json file, you MUST validate it:
 
 ```bash
-npx @principal-ai/principal-view-cli validate
+privu narrative validate path/to/narrative.json
 ```
 
-This checks:
-- JSON syntax
-- Required fields (name, scenarios, conditions, templates)
-- Scenario structure (id, priority, condition, template)
-- Condition syntax (valid types, required fields)
-- Template structure (summary, steps, details)
-- Canvas path reference exists
+The validator checks:
+- ✅ JSON syntax is valid
+- ✅ Required fields present (`version`, `canvas`, `name`, `description`, `mode`, `scenarios`)
+- ✅ Canvas file exists
+- ✅ Scenario structure valid (`id`, `priority`, `condition`, `template`)
+- ✅ **No invalid fields** (rejects `steps`, `details`, `event`, `attributes`)
+- ✅ Condition uses valid fields (`requires`, `excludes`, `assertions`, `default`, `any`)
+- ✅ Template uses valid fields (`introduction`, `events`, `logs`, `summary`, `span`, `children`)
+- ✅ Priorities are unique
+- ✅ At least one default scenario exists
+- ✅ Template syntax valid (balanced braces)
 
-**Do not consider the skill complete until validation passes.**
+**Common Validation Errors:**
 
-Common validation fixes:
-- Ensure all scenarios have unique IDs
-- Add priority to all scenarios
-- Verify condition types are valid ("event", "attribute", "span", "and", "or")
-- Check template has at least a summary
-- Confirm canvasPath points to existing .otel.canvas file
+### ❌ Invalid condition field "event"
+```json
+// Wrong - Legacy format
+"condition": {
+  "event": "order.completed"
+}
+
+// Correct
+"condition": {
+  "requires": ["order.completed"]
+}
+```
+
+### ❌ Invalid condition field "attributes"
+```json
+// Wrong - Legacy format
+"condition": {
+  "attributes": {
+    "order.status": "completed"
+  }
+}
+
+// Correct
+"condition": {
+  "assertions": {
+    "order.status": { "$eq": "completed" }
+  }
+}
+```
+
+### ❌ Invalid template field "steps"
+```json
+// Wrong - Legacy format
+"template": {
+  "steps": [
+    "Step 1",
+    "Step 2"
+  ]
+}
+
+// Correct
+"template": {
+  "events": {
+    "event.name": "Step 1",
+    "other.event": "Step 2"
+  }
+}
+```
+
+### ❌ Invalid template field "details"
+```json
+// Wrong - Legacy format
+"template": {
+  "details": {
+    "Order ID": "{{order.id}}"
+  }
+}
+
+// Correct - Use summary with variables
+"template": {
+  "summary": "Order ID: {{order.id}}\nCustomer: {{customer.name}}"
+}
+```
 
 ## Testing Narratives
 
-After creating a narrative file, test it with real execution data:
+After validation passes, test with actual execution data:
 
-1. **Find or create execution data** (`.otel.json` files in `__executions__/`)
-2. **Load in ExecutionViewerPanel** - Opens in Storybook or ADE
-3. **Verify scenario matching** - Correct scenario selected for the execution
-4. **Check variable population** - All {{variables}} filled with actual values
-5. **Review readability** - Narrative makes sense and is helpful
+```bash
+# Inspect execution to see available attributes
+privu narrative inspect execution.otel.json
+
+# Render narrative with execution data
+privu narrative render narrative.json execution.otel.json
+
+# Test scenario matching
+privu narrative test narrative.json execution.otel.json
+```
+
+**Verification checklist:**
+- ✅ Correct scenario selected
+- ✅ All `{{variables}}` populated
+- ✅ No `{{missing.vars}}` shown
+- ✅ Narrative is readable and helpful
+- ✅ Events appear in logical order
 
 If variables show as `{{missing.var}}`:
-- Click "Raw Events" to see available attributes
-- Update template to use correct attribute names
-- Re-validate and re-test
+1. Run `privu narrative inspect execution.otel.json`
+2. Check available attributes
+3. Update template to use correct names
+4. Re-validate and re-test
 
 ## File Organization
-
-Narrative files live alongside their canvases:
 
 ```
 .principal-views/
 ├── order-processing.otel.canvas       # Canvas definition
 ├── order-processing.narrative.json    # Narrative scenarios
 └── __executions__/
-    ├── order-success.otel.json        # Success execution data
-    ├── order-failure.otel.json        # Failure execution data
-    └── order-timeout.otel.json        # Timeout execution data
+    ├── order-success.otel.json        # Test execution data
+    ├── order-failure.otel.json
+    └── order-timeout.otel.json
 ```
 
-This co-location makes it clear which narratives apply to which canvases.
+## CLI Commands Reference
+
+```bash
+# Validate narrative structure
+privu narrative validate <narrative.json>
+
+# Inspect execution data (see available attributes)
+privu narrative inspect <execution.otel.json>
+
+# Render narrative with execution data
+privu narrative render <narrative.json> <execution.otel.json>
+
+# Test scenario matching (see which scenario matches and why)
+privu narrative test <narrative.json> <execution.otel.json>
+
+# List all narratives in project
+privu narrative list
+```
 
 ## Integration with ExecutionViewerPanel
 
 When narratives are available, ExecutionViewerPanel:
-- Auto-selects the narrative on canvas load
-- Shows scenario mapping panel (which executions match which scenarios)
-- Allows clicking execution files to view rendered narratives
-- Provides "Raw Events / Narrative" toggle
-- Shows warning banner when template variables can't be resolved
+- Auto-loads narrative on canvas load
+- Shows narrative text with event highlighting
+- Provides "Narrative / Raw Events" toggle
+- Syncs event selection between canvas and narrative
+- Shows warning when variables can't be resolved
+- Allows clicking events to see source data
 
-## Examples in the Codebase
+## Real Examples in Codebase
 
-See these files for complete examples:
-- `.principal-views/order-processing.narrative.json` - E-commerce order scenarios
+See working examples at:
 - `.principal-views/graph-converter.narrative.json` - Canvas conversion scenarios
-- `.principal-views/forge-otel-events.narrative.json` - Jira integration scenarios
-
-## Tips
-
-1. **Start simple**: Begin with just success and failure scenarios
-2. **One outcome per scenario**: Don't try to handle multiple outcomes in one scenario
-3. **Use priority wisely**: Most specific (1-3), moderate (4-10), fallback (999)
-4. **Test with real data**: Don't guess at attribute names - use actual execution data
-5. **Keep narratives short**: 3-7 steps is ideal, use details for more info
-6. **Use emojis consistently**: Pick a set and stick with it
-7. **Show the flow**: Use → to indicate progression through steps
-8. **Extract key values**: Pull out IDs, amounts, timestamps that help debugging
-9. **Provide context**: Don't just say "failed" - say why it failed
-10. **Update with canvas**: When canvas events change, update narrative templates
-
-## CLI Commands
-
-### Validate narratives
-```bash
-npx @principal-ai/principal-view-cli validate
-```
-
-### Generate TypeScript types (future)
-```bash
-npx @principal-ai/principal-view-cli generate-types
-```
+- Look for `.narrative.json` files in other projects
 
 ## Common Pitfalls
 
-### ❌ Don't: Overly complex conditions
-```json
-{
-  "condition": {
-    "type": "and",
-    "conditions": [
-      {"type": "and", "conditions": [
-        {"type": "or", "conditions": [
-          {"type": "attribute", "key": "a", "value": "1"},
-          {"type": "attribute", "key": "b", "value": "2"}
-        ]},
-        {"type": "attribute", "key": "c", "value": "3"}
-      ]},
-      {"type": "event", "event": "foo"}
-    ]
-  }
-}
-```
+### ❌ Don't: Use legacy format
+The old format with `steps`, `details`, `event`, `attributes` is no longer supported.
 
-### ✅ Do: Simple, clear conditions
+### ❌ Don't: Hardcode values
 ```json
 {
-  "condition": {
-    "type": "and",
-    "conditions": [
-      {"type": "event", "event": "order.completed"},
-      {"type": "attribute", "key": "status", "value": "success"}
-    ]
+  "events": {
+    "order.completed": "Order ORD-12345 completed"
   }
-}
-```
-
-### ❌ Don't: Hardcode values in templates
-```json
-{
-  "summary": "Order ORD-12345 completed"  // Hardcoded ID
 }
 ```
 
 ### ✅ Do: Use variables
 ```json
 {
-  "summary": "Order {{order.id}} completed"  // Dynamic
+  "events": {
+    "order.completed": "Order {{order.id}} completed"
+  }
 }
 ```
 
-### ❌ Don't: Generic, unhelpful narratives
-```json
-{
-  "summary": "Execution complete",
-  "steps": ["Step 1", "Step 2", "Step 3"]
-}
-```
+### ❌ Don't: Forget mode and scenarioSelection
+These are required fields.
 
-### ✅ Do: Specific, actionable narratives
-```json
-{
-  "summary": "✅ Order {{order.id}} shipped to {{customer.city}}",
-  "steps": [
-    "→ Payment: ${{payment.amount}} via {{payment.method}}",
-    "→ Inventory: {{items.count}} items reserved",
-    "→ Shipping: {{carrier}} tracking {{tracking.number}}"
-  ]
-}
-```
+### ❌ Don't: Use duplicate priorities
+Each scenario must have a unique priority value.
 
-## References
+### ❌ Don't: Forget default scenario
+Always include a fallback with `"condition": { "default": true }` at priority 999.
 
-- ExecutionViewerPanel - Renders narratives in the UI
-- NarrativeRenderer - Component that displays narrative output
-- renderNarrative() - Core function that evaluates scenarios and templates
-- principal-view-core - Library with narrative rendering logic
+## Type Definitions Reference
+
+For complete type definitions, see:
+- `packages/core/src/narrative/types.ts` - All TypeScript types
+- `packages/core/src/narrative/example.ts` - Working code examples
+- `packages/core/src/narrative/validator.ts` - Validation rules

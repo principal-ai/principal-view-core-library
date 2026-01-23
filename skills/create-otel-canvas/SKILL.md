@@ -68,7 +68,7 @@ The CLI validates this naming convention. Canvas files with OTEL features that d
 
 A canvas is considered an "OTEL canvas" if it contains ANY of:
 - **pv.otel**: Node-level OTEL metadata (kind, category, isNew)
-- **pv.events**: Event schemas with attributes and validation rules
+- **pv.event**: Event schema with attributes and validation rules
 - **pv.scope**: Canvas-level scope for log routing
 - **pv.audit**: Canvas-level audit configuration
 - **resourceMatch**: Node-level resource matching for OTEL logs
@@ -123,18 +123,17 @@ A canvas is considered an "OTEL canvas" if it contains ANY of:
 }
 ```
 
-#### Event Schemas
+#### Event Schema
 ```json
 "pv": {
-  "events": {
-    "event.name": {
-      "description": "What this event represents",
-      "attributes": {
-        "attribute.name": {
-          "type": "string",        // "string" | "number" | "boolean" | "object" | "array"
-          "required": true,        // true | false
-          "description": "What this attribute represents"
-        }
+  "event": {
+    "name": "event.name",
+    "description": "What this event represents",
+    "attributes": {
+      "attribute.name": {
+        "type": "string",        // "string" | "number" | "boolean" | "object" | "array"
+        "required": true,        // true | false
+        "description": "What this attribute represents"
       }
     }
   }
@@ -186,17 +185,44 @@ A canvas is considered an "OTEL canvas" if it contains ANY of:
     "nodeType": "integration",
     "name": "forge.function.invocation",
     "description": "Tracks Forge function executions with performance and outcome",
-    "events": [
-      {
-        "name": "forge.function.invocation",
-        "attributes": [
-          "forge.function.name",
-          "forge.issue.key",
-          "duration_ms",
-          "success",
-          "error.message"
-        ]
+    "event": {
+      "name": "forge.function.invocation",
+      "description": "Tracks Forge function executions with performance and outcome",
+      "attributes": {
+        "forge.function.name": {
+          "type": "string",
+          "required": true,
+          "description": "Name of the Forge function being invoked"
+        },
+        "forge.issue.key": {
+          "type": "string",
+          "required": true,
+          "description": "Jira issue key"
+        },
+        "duration_ms": {
+          "type": "number",
+          "required": true,
+          "description": "Execution duration in milliseconds"
+        },
+        "success": {
+          "type": "boolean",
+          "required": true,
+          "description": "Whether the function execution succeeded"
+        },
+        "error.message": {
+          "type": "string",
+          "required": false,
+          "description": "Error message if execution failed"
+        }
       }
+    },
+    "otel": {
+      "kind": "event",
+      "category": "integration",
+      "isNew": true
+    },
+    "sources": [
+      "src/forge-function.ts"
     ]
   }
 }
@@ -439,7 +465,7 @@ Common validation fixes:
 Event schemas in .otel.canvas files can generate TypeScript types:
 
 ```typescript
-// Generated from canvas event schemas
+// Generated from canvas event schema (pv.event)
 type ConversionStartedAttributes = {
   'config.nodeTypes': number;
   'config.edgeTypes': number;
