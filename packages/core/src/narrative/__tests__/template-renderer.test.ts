@@ -22,7 +22,7 @@ describe('renderNarrative', () => {
           condition: { default: true },
           template: {
             introduction: '✅ Execution Trace',
-            span: '→ {span.name}',
+            span: '→ {{span.name}}',
             children: 'recurse',
             summary: '✅ Complete',
           },
@@ -84,8 +84,8 @@ describe('renderNarrative', () => {
             template: {
               ...template.scenarios[0].template,
               logs: {
-                info: '  📝 {log.body}',
-                error: '  ❌ {log.body}',
+                info: '  📝 {{log.body}}',
+                error: '  ❌ {{log.body}}',
               },
             },
           },
@@ -143,7 +143,7 @@ describe('renderNarrative', () => {
             events: {
               'test.started': '🔵 Started',
               'test.complete': '🔵 Completed',
-              'log.info': '📝 {log.body}',
+              'log.info': '📝 {{log.body}}',
             },
             summary: 'Done',
           },
@@ -258,6 +258,113 @@ describe('renderNarrative', () => {
       const result = renderNarrative(template, events);
       expect(result.scenarioId).toBe('fallback');
       expect(result.text).toContain('Unknown');
+    });
+  });
+
+  describe('event-specific attributes override aggregates', () => {
+    const template: NarrativeTemplate = {
+      version: '1.0.0',
+      canvas: 'skill-installation.otel.canvas',
+      name: 'Skill Installation',
+      description: 'Test event attribute override',
+      mode: 'timeline',
+      scenarioSelection: 'first-match',
+      scenarios: [
+        {
+          id: 'success',
+          priority: 1,
+          description: 'Success',
+          condition: {
+            requires: ['installation.complete'],
+            assertions: { 'install.failure_count': { $eq: 0 } }
+          },
+          template: {
+            events: {
+              'installation.started': 'Starting installation ({{install.scope}})',
+              'skill.installing': 'Installing {{skill.name}} to {{agent.name}} (Mode: {{install.mode}})',
+              'skill.installed': 'Installed successfully',
+              'installation.complete': '{{install.success_count}} successful installations'
+            }
+          },
+        },
+      ],
+    };
+
+    it('should use event-specific attributes not aggregates', () => {
+      const events: OtelEvent[] = [
+        {
+          name: 'installation.started',
+          timestamp: 1000,
+          type: 'span',
+          attributes: {
+            'install.scope': 'global',
+            'install.mode': 'copy', // Summary event has 'copy'
+          }
+        },
+        {
+          name: 'skill.installing',
+          timestamp: 2000,
+          type: 'span',
+          attributes: {
+            'skill.name': 'demo-skill',
+            'agent.name': 'Amp',
+            'install.mode': 'symlink', // Event-specific has 'symlink' - should override!
+            'install.scope': 'global',
+          }
+        },
+        {
+          name: 'skill.installed',
+          timestamp: 2500,
+          type: 'span',
+          attributes: {
+            'skill.name': 'demo-skill',
+            'agent.name': 'Amp',
+          }
+        },
+        {
+          name: 'skill.installing',
+          timestamp: 3000,
+          type: 'span',
+          attributes: {
+            'skill.name': 'demo-skill',
+            'agent.name': 'Cursor',
+            'install.mode': 'symlink', // Different agent
+            'install.scope': 'global',
+          }
+        },
+        {
+          name: 'skill.installed',
+          timestamp: 3500,
+          type: 'span',
+          attributes: {
+            'skill.name': 'demo-skill',
+            'agent.name': 'Cursor',
+          }
+        },
+        {
+          name: 'installation.complete',
+          timestamp: 4000,
+          type: 'span',
+          attributes: {
+            'install.success_count': 2,
+            'install.failure_count': 0,
+          }
+        },
+      ];
+
+      const result = renderNarrative(template, events);
+
+      // Should show event-specific values, not aggregate values
+      expect(result.text).toContain('Installing demo-skill to Amp (Mode: symlink)');
+      expect(result.text).toContain('Installing demo-skill to Cursor (Mode: symlink)');
+
+      // Should NOT show aggregate value
+      expect(result.text).not.toContain('Installing demo-skill to Amp (Mode: copy)');
+      expect(result.text).not.toContain('Installing demo-skill to Cursor (Mode: copy)');
+
+      // Should show both installations with different agent names
+      expect(result.text).toContain('to Amp');
+      expect(result.text).toContain('to Cursor');
     });
   });
 

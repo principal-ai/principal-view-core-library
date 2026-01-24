@@ -153,7 +153,32 @@ function renderSpanTree(
 
   for (const node of tree) {
     const indent = (formatting.indentPerLevel || '  ').repeat(node.depth);
-    const eventContext = { ...context, ...node.span.attributes, span: node.span };
+
+    // Build context with span attributes as nested objects for Handlebars
+    const eventContext = { ...context };
+
+    // Convert flat dot-notation keys to nested objects
+    if (node.span.attributes) {
+      for (const [key, value] of Object.entries(node.span.attributes)) {
+        if (key.includes('.')) {
+          // Nested key: convert "skill.name" -> { skill: { name: value } }
+          const parts = key.split('.');
+          let current: any = eventContext;
+          for (let i = 0; i < parts.length - 1; i++) {
+            if (!current[parts[i]] || typeof current[parts[i]] !== 'object') {
+              current[parts[i]] = {};
+            }
+            current = current[parts[i]];
+          }
+          current[parts[parts.length - 1]] = value;
+        } else {
+          // Simple key
+          eventContext[key] = value;
+        }
+      }
+    }
+
+    eventContext.span = node.span;
 
     // Render span
     if (scenario.template.span) {
@@ -213,7 +238,30 @@ function renderTimeline(
   });
 
   for (const event of sorted) {
-    const eventContext = { ...context, ...event.attributes };
+    // Build context with event attributes as nested objects for Handlebars
+    const eventContext = { ...context };
+
+    // Convert flat dot-notation keys to nested objects
+    if (event.attributes) {
+      for (const [key, value] of Object.entries(event.attributes)) {
+        if (key.includes('.')) {
+          // Nested key: convert "skill.name" -> { skill: { name: value } }
+          const parts = key.split('.');
+          let current: any = eventContext;
+          for (let i = 0; i < parts.length - 1; i++) {
+            if (!current[parts[i]] || typeof current[parts[i]] !== 'object') {
+              current[parts[i]] = {};
+            }
+            current = current[parts[i]];
+          }
+          current[parts[parts.length - 1]] = value;
+        } else {
+          // Simple key
+          eventContext[key] = value;
+        }
+      }
+    }
+
     let eventText: string | undefined;
 
     if (event.type === 'log') {

@@ -310,19 +310,20 @@ export function computeAggregates(events: OtelEvent[]): Record<string, unknown> 
     ).length,
   };
 
-  // Extract common attributes from events (for easy access in conditions)
-  for (const event of events) {
+  // Extract attributes from summary/completion events for scenario matching
+  // These events contain execution-level data (not per-event varying data)
+  // Store ONLY as flat keys to avoid conflicts with event-specific attributes
+  const summaryEventPatterns = ['.complete', '.summary', '.error', '.started'];
+  const summaryEvents = events.filter((e) =>
+    summaryEventPatterns.some((pattern) => e.name.endsWith(pattern))
+  );
+
+  for (const event of summaryEvents) {
     if (event.attributes) {
       for (const [key, value] of Object.entries(event.attributes)) {
-        // Store first occurrence using nested value setter
-        // This handles both flat keys and dot-notation keys (e.g., "result.violations.total")
-        if (getNestedValue(aggregates, key) === undefined) {
-          // Store both as nested structure (for getNestedValue) and flat key (for direct access)
-          setNestedValue(aggregates, key, value);
-          if (key.includes('.')) {
-            aggregates[key] = value; // Also store flat version
-          }
-        }
+        // Store only in flat structure to match event attribute keys
+        // This prevents nested structures from shadowing event-specific attributes
+        aggregates[key] = value;
       }
     }
   }
