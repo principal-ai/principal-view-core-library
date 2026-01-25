@@ -190,7 +190,14 @@ ${chalk.cyan('3. Template syntax (Handlebars):')}
    - eq, ne, lt, gt, lte, gte, and, or, not
    - Example: {{#if (gt count 10)}}Many{{/if}}
 
-${chalk.cyan('4. Template style:')}
+${chalk.cyan('4. Template requirements:')}
+   ${chalk.bold('IMPORTANT:')} The ${chalk.yellow('"events"')} field is ${chalk.bold('REQUIRED')} in all templates
+   - Must be a non-empty object mapping event names to templates
+   - All event names must exist in the canvas
+   - Use to customize how each event type is displayed
+   - Example: { "event.name": "Template with {{variables}}" }
+
+${chalk.cyan('5. Template style:')}
    - Clear, concise summary line
    - 3-5 detail steps showing workflow
    - Use emojis for visual scanning (✅ ❌ 📋)
