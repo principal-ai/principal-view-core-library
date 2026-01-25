@@ -309,8 +309,8 @@ export class NarrativeValidator {
     // Extract all event names from canvas nodes
     const canvasEvents = new Set<string>();
     for (const node of canvas.nodes) {
-      if (node.pv?.event?.name) {
-        canvasEvents.add(node.pv.event.name);
+      if (node.pv?.event && typeof node.pv.event === 'string') {
+        canvasEvents.add(node.pv.event);
       }
     }
 
@@ -329,7 +329,10 @@ export class NarrativeValidator {
       // From template.events
       if (scenario.template?.events) {
         for (const eventName of Object.keys(scenario.template.events)) {
-          narrativeEvents.add(eventName);
+          // Skip wildcard patterns
+          if (!eventName.includes('*')) {
+            narrativeEvents.add(eventName);
+          }
         }
       }
     }
@@ -853,7 +856,7 @@ export class NarrativeValidator {
           path,
           message: `Incomplete conditional expression: ${expr}`,
           impact: 'Template will fail to render',
-          suggestion: 'Conditional format: {condition ? "true" : "false"}',
+          suggestion: 'Use Handlebars syntax: {{#if condition}}true{{else}}false{{/if}}',
           fixable: false,
         });
       }

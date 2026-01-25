@@ -51,13 +51,18 @@ ${chalk.dim('│')}       ${chalk.yellow('"type"')}: "text",                    
 ${chalk.dim('│')}       ${chalk.yellow('"text"')}: "# Event Name", ${chalk.dim('// Markdown description')}     ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"x"')}: 0, ${chalk.yellow('"y"')}: 0, ${chalk.yellow('"width"')}: 200, ${chalk.yellow('"height"')}: 100,                   ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.green('"pv"')}: {                                                        ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"otelEvent"')}: {          ${chalk.dim('// OTEL event definition')}    ${chalk.dim('│')}
-${chalk.dim('│')}           ${chalk.yellow('"name"')}: "feature.event.name",                          ${chalk.dim('│')}
-${chalk.dim('│')}           ${chalk.cyan('"attributes"')}: {       ${chalk.dim('// Required & optional attrs')} ${chalk.dim('│')}
-${chalk.dim('│')}             ${chalk.green('"required"')}: ["attr.name", ...],                     ${chalk.dim('│')}
-${chalk.dim('│')}             ${chalk.green('"optional"')}: ["attr.name", ...]                      ${chalk.dim('│')}
-${chalk.dim('│')}           }                                                            ${chalk.dim('│')}
-${chalk.dim('│')}         }                                                              ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"event"')}: "feature.event.name",  ${chalk.dim('// Event name')}          ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"sources"')}: ["src/file.ts"],     ${chalk.dim('// Source files')}        ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"otel"')}: {                       ${chalk.dim('// OTEL metadata')}       ${chalk.dim('│')}
+${chalk.dim('│')}           ${chalk.yellow('"kind"')}: "event",                                       ${chalk.dim('│')}
+${chalk.dim('│')}           ${chalk.yellow('"category"')}: "lifecycle"                               ${chalk.dim('│')}
+${chalk.dim('│')}         },                                                           ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"dataSchema"')}: {                 ${chalk.dim('// Attribute definitions')} ${chalk.dim('│')}
+${chalk.dim('│')}           ${chalk.yellow('"attr.name"')}: {                                         ${chalk.dim('│')}
+${chalk.dim('│')}             ${chalk.green('"type"')}: "string",                                    ${chalk.dim('│')}
+${chalk.dim('│')}             ${chalk.green('"required"')}: true                                     ${chalk.dim('│')}
+${chalk.dim('│')}           }                                                          ${chalk.dim('│')}
+${chalk.dim('│')}         }                                                            ${chalk.dim('│')}
 ${chalk.dim('│')}       }                                                                ${chalk.dim('│')}
 ${chalk.dim('│')}     }                                                                  ${chalk.dim('│')}
 ${chalk.dim('│')}   ],                                                                   ${chalk.dim('│')}
@@ -165,12 +170,26 @@ ${chalk.cyan('2. Standard scenario set:')}
    - ${chalk.yellow('Failure')} (priority 2): Feature encountered error
    - ${chalk.dim('Fallback')} (priority 999): Generic execution captured
 
-${chalk.cyan('3. Template interpolation:')}
-   Use {{path.to.value}} to reference event attributes
-   Examples:
-   - {{record.count}}
-   - {{error.message}}
-   - {{result.invalidCount}}
+${chalk.cyan('3. Template syntax (Handlebars):')}
+   Templates use Handlebars syntax for dynamic content:
+
+   ${chalk.bold('Variables:')}
+   - {{variable}}           Simple variable
+   - {{result.count}}       Nested property
+   - {{error.message}}      Deeply nested
+
+   ${chalk.bold('Conditionals:')}
+   - {{#if condition}}...{{/if}}                    If block
+   - {{#if condition}}...{{else}}...{{/if}}         If-else
+   - {{#if (eq status "ok")}}✅{{else}}❌{{/if}}    Comparison
+
+   ${chalk.bold('Loops:')}
+   - {{#each items}}{{this}}{{/each}}               Iterate array
+   - {{#each items}}{{@index}}: {{this}}{{/each}}   With index
+
+   ${chalk.bold('Comparison helpers:')}
+   - eq, ne, lt, gt, lte, gte, and, or, not
+   - Example: {{#if (gt count 10)}}Many{{/if}}
 
 ${chalk.cyan('4. Template style:')}
    - Clear, concise summary line
@@ -298,11 +317,20 @@ ${chalk.yellow('.principal-views/data-validator.otel.canvas')}
       "text": "# validation.started\\n\\nEmitted when validation begins",
       "x": 0, "y": 0, "width": 200, "height": 100,
       "pv": {
-        "otelEvent": {
-          "name": "validation.started",
-          "attributes": {
-            "required": ["input.recordCount"],
-            "optional": ["input.source"]
+        "event": "validation.started",
+        "sources": ["src/validator.ts"],
+        "otel": {
+          "kind": "event",
+          "category": "lifecycle"
+        },
+        "dataSchema": {
+          "input.recordCount": {
+            "type": "number",
+            "required": true
+          },
+          "input.source": {
+            "type": "string",
+            "required": false
           }
         }
       }
@@ -313,11 +341,24 @@ ${chalk.yellow('.principal-views/data-validator.otel.canvas')}
       "text": "# validation.complete\\n\\nEmitted when validation succeeds",
       "x": 250, "y": 0, "width": 200, "height": 100,
       "pv": {
-        "otelEvent": {
-          "name": "validation.complete",
-          "attributes": {
-            "required": ["result.validCount", "result.invalidCount"],
-            "optional": ["duration.ms"]
+        "event": "validation.complete",
+        "sources": ["src/validator.ts"],
+        "otel": {
+          "kind": "event",
+          "category": "lifecycle"
+        },
+        "dataSchema": {
+          "result.validCount": {
+            "type": "number",
+            "required": true
+          },
+          "result.invalidCount": {
+            "type": "number",
+            "required": true
+          },
+          "duration.ms": {
+            "type": "number",
+            "required": false
           }
         }
       }
@@ -328,11 +369,24 @@ ${chalk.yellow('.principal-views/data-validator.otel.canvas')}
       "text": "# validation.error\\n\\nEmitted when validation fails",
       "x": 500, "y": 0, "width": 200, "height": 100,
       "pv": {
-        "otelEvent": {
-          "name": "validation.error",
-          "attributes": {
-            "required": ["error.type", "error.message"],
-            "optional": ["error.stage"]
+        "event": "validation.error",
+        "sources": ["src/validator.ts"],
+        "otel": {
+          "kind": "event",
+          "category": "error"
+        },
+        "dataSchema": {
+          "error.type": {
+            "type": "string",
+            "required": true
+          },
+          "error.message": {
+            "type": "string",
+            "required": true
+          },
+          "error.stage": {
+            "type": "string",
+            "required": false
           }
         }
       }

@@ -75,7 +75,41 @@ describe('NarrativeValidator', () => {
 
   function createValidCanvas(): ExtendedCanvas {
     return {
-      nodes: [],
+      nodes: [
+        {
+          id: 'test-started',
+          type: 'text',
+          x: 0,
+          y: 0,
+          width: 200,
+          height: 100,
+          pv: {
+            event: 'test.started',
+          },
+        },
+        {
+          id: 'test-complete',
+          type: 'text',
+          x: 250,
+          y: 0,
+          width: 200,
+          height: 100,
+          pv: {
+            event: 'test.complete',
+          },
+        },
+        {
+          id: 'test-error',
+          type: 'text',
+          x: 500,
+          y: 0,
+          width: 200,
+          height: 100,
+          pv: {
+            event: 'test.error',
+          },
+        },
+      ],
       edges: [],
       pv: {
         version: '1.0.0',
@@ -818,7 +852,7 @@ describe('NarrativeValidator', () => {
             template: {
               introduction: '❌ Error Occurred\n{"━".repeat(50)}',
               events: {
-                '*.error': 'Error: {error.message}',
+                'test.error': 'Error: {error.message}',
               },
               summary: '❌ Failed',
             },
