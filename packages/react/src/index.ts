@@ -71,3 +71,8 @@ export {
 export type { EdgeStateWithHandles } from './utils/graphConverter';
 export { Icon, resolveIcon } from './utils/iconResolver';
 export type { IconProps } from './utils/iconResolver';
+export {
+  swapGraphOrientation,
+  swapNodePositions,
+  swapEdgeSides,
+} from './utils/orientationUtils';

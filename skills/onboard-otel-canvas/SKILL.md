@@ -116,6 +116,47 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
    - Each node contains ONE event schema in its `pv.event` field
    - Connect nodes with edges to show the event flow (start → progress → complete/error)
 
+   **RECOMMENDED: Node Sizing and Layout**
+   - **Use consistent dimensions** for all event nodes: `width: 200, height: 100`
+   - This creates a clean, compact layout that's easy to scan
+
+   **Layout Options:**
+
+   **Option 1: Vertical/Top-Down Layout (RECOMMENDED for linear workflows)**
+   - Main flow in a single column, flowing downward
+   - Error/alternative paths branched to the right
+   - Vertical spacing: 200px between nodes (100px height + 100px gap)
+   - Horizontal offset for branches: 350px
+   - Example positioning:
+     ```
+     Main flow (x: 100):
+       started:    x: 100, y:  50   (top)
+       step-1:     x: 100, y: 250   (200px down)
+       step-2:     x: 100, y: 450   (200px down)
+       complete:   x: 100, y: 650   (200px down)
+
+     Error branch (x: 450, offset 350px right):
+       error:      x: 450, y:  50   (aligned with start)
+     ```
+   - Edges: Connect `fromSide: "bottom"` → `toSide: "top"` for vertical flow
+   - Best for: Sequential operations, pipelines, CLI commands
+
+   **Option 2: Horizontal/Left-Right Layout (for parallel operations)**
+   - Main flow left-to-right across the top
+   - Error/alternative paths below
+   - Horizontal spacing: ~300px between nodes (200px width + 100px gap)
+   - Vertical spacing: ~220px for branches
+   - Example positioning:
+     ```
+     started:    x: 100, y: 100  (top-left)
+     step-1:     x: 400, y: 100  (300px right)
+     step-2:     x: 700, y: 100  (300px right)
+     complete:   x: 700, y: 320  (220px down)
+     error:      x: 100, y: 320  (below start)
+     ```
+   - Edges: Connect `fromSide: "right"` → `toSide: "left"` for horizontal flow
+   - Best for: Parallel processes, service architectures
+
    **REQUIRED: Sources Field**
    - **All OTEL nodes MUST have a `pv.sources` field** with at least one source file path
    - Sources are exact file paths (relative to repository root) - **NO glob patterns, NO line numbers**
@@ -425,6 +466,13 @@ A: **One node per event type**. Each event gets its own node in the canvas:
 - Each node has ONE event schema defined in its `pv.event` field
 - Connect nodes with edges to show the flow (started → complete/error)
 - This keeps the visual structure clear and matches the event emission pattern
+
+**Q: "What size should I make the nodes?"**
+A: Use **consistent dimensions** for all event nodes:
+- **Recommended**: `width: 200, height: 100`
+- This creates a clean, compact layout that's easy to scan
+- Keep all nodes the same size for visual consistency
+- Use consistent spacing between nodes (e.g., 300px horizontal, 220px vertical gaps)
 
 **Q: "What attributes should each event have?"**
 A: Only the essential ones:
