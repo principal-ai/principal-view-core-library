@@ -134,11 +134,10 @@ ${chalk.dim('│')}     {                                                       
 ${chalk.dim('│')}       ${chalk.yellow('"priority"')}: 1,           ${chalk.dim('// Lower = higher priority')}   ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"condition"')}: "...",      ${chalk.dim('// JSONPath/logic expression')} ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"template"')}: {            ${chalk.dim('// Narrative template')}        ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"summary"')}: "...",    ${chalk.dim('// One-line summary')}          ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"details"')}: [        ${chalk.dim('// Step-by-step details')}      ${chalk.dim('│')}
-${chalk.dim('│')}           "Step 1: ...",                                          ${chalk.dim('│')}
-${chalk.dim('│')}           "Step 2: ...",                                          ${chalk.dim('│')}
-${chalk.dim('│')}         ]                                                          ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"summary"')}: "Completed {{count}} items",  ${chalk.dim('// Handlebars template')} ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"events"')}: {                ${chalk.dim('// Per-event templates')}       ${chalk.dim('│')}
+${chalk.dim('│')}           "event.name": "Event {{attribute}} occurred"           ${chalk.dim('│')}
+${chalk.dim('│')}         }                                                          ${chalk.dim('│')}
 ${chalk.dim('│')}       }                                                            ${chalk.dim('│')}
 ${chalk.dim('│')}     }                                                              ${chalk.dim('│')}
 ${chalk.dim('│')}   ]                                                                ${chalk.dim('│')}
@@ -411,36 +410,29 @@ ${chalk.yellow('.principal-views/data-validator.narrative.json')}
       "priority": 1,
       "condition": "events[?name=='validation.complete']",
       "template": {
-        "summary": "✅ Validated {{result.validCount}} records successfully",
-        "details": [
-          "🔍 Started validation",
-          "📊 Processed {{input.recordCount}} records",
-          "✅ {{result.validCount}} valid",
-          "❌ {{result.invalidCount}} invalid"
-        ]
+        "summary": "Validated {{result.validCount}} records successfully",
+        "events": {
+          "validation.started": "Started validation of {{input.recordCount}} records",
+          "validation.complete": "Processed {{result.validCount}} valid and {{result.invalidCount}} invalid records"
+        }
       }
     },
     {
       "priority": 2,
       "condition": "events[?name=='validation.error']",
       "template": {
-        "summary": "❌ Validation failed: {{error.message}}",
-        "details": [
-          "🔍 Started validation",
-          "💥 Error occurred: {{error.message}}",
-          "🏷️  Error type: {{error.type}}"
-        ]
+        "summary": "Validation failed: {{error.message}}",
+        "events": {
+          "validation.started": "Started validation",
+          "validation.error": "Error occurred: {{error.message}} (type: {{error.type}})"
+        }
       }
     },
     {
       "priority": 999,
       "condition": "true",
       "template": {
-        "summary": "📋 Validation execution captured",
-        "details": [
-          "📦 Captured {{spans.length}} events",
-          "⏱️  Duration: {{duration.ms}}ms"
-        ]
+        "summary": "Validation execution captured ({{spans.length}} events, {{duration.ms}}ms)"
       }
     }
   ]
