@@ -271,7 +271,7 @@ describe('End-to-End: Full Development Workflow', () => {
     // PHASE 1: Design (Canvas with event schemas)
     console.log('📐 Phase 1: Design canvas with event schemas');
     expect(canvas.nodes).toBeDefined();
-    expect(canvas.nodes![0].pv?.events).toBeDefined();
+    expect(canvas.nodes![0].pv?.event).toBeDefined();
 
     // PHASE 2: Code Generation
     console.log('⚙️  Phase 2: Generate TypeScript types');

@@ -211,10 +211,9 @@ describe('CanvasDiscovery', () => {
 
     test('only discovers .otel.json execution files', async () => {
       const fileTree = createMockFileTree([
-        '__executions__/test.spans.json',
+        '__executions__/test.otel.json',
         '__executions__/test.execution.json',
         '__executions__/test.events.json',
-        '__executions__/test.otel.json',
       ]);
 
       const result = await discovery.discover(fileTree);
@@ -248,7 +247,7 @@ describe('CanvasDiscovery', () => {
     test('finds matching canvas in same package', async () => {
       const fileTree = createMockFileTree([
         'packages/core/.principal-views/auth.otel.canvas',
-        'packages/core/.principal-views/__executions__/auth.spans.json',
+        'packages/core/.principal-views/__executions__/auth.otel.json',
         'packages/core/package.json',
       ]);
 
@@ -271,7 +270,7 @@ describe('CanvasDiscovery', () => {
     test('does not match canvas in different package', async () => {
       const fileTree = createMockFileTree([
         'packages/core/.principal-views/auth.canvas',
-        'packages/api/.principal-views/__executions__/auth.spans.json',
+        'packages/api/.principal-views/__executions__/auth.otel.json',
         'packages/core/package.json',
         'packages/api/package.json',
       ]);
@@ -300,8 +299,7 @@ describe('CanvasDiscovery', () => {
     test('finds all executions for a canvas', async () => {
       const fileTree = createMockFileTree([
         '.principal-views/test-flow.otel.canvas',
-        '.principal-views/__executions__/test-flow.spans.json',
-        '.principal-views/__executions__/test-flow.execution.json',
+        '.principal-views/__executions__/test-flow.otel.json',
       ]);
 
       const result = await discovery.discover(fileTree);
@@ -309,15 +307,15 @@ describe('CanvasDiscovery', () => {
 
       const executions = discovery.findExecutionsForCanvas(canvas, result.executions);
 
-      expect(executions).toHaveLength(2);
-      expect(executions.every(e => e.canvasBasename === 'test-flow')).toBe(true);
+      expect(executions).toHaveLength(1);
+      expect(executions[0].canvasBasename).toBe('test-flow');
     });
 
     test('only returns executions in same package', async () => {
       const fileTree = createMockFileTree([
         'packages/core/.principal-views/auth.canvas',
-        'packages/core/.principal-views/__executions__/auth.spans.json',
-        'packages/api/.principal-views/__executions__/auth.spans.json',
+        'packages/core/.principal-views/__executions__/auth.otel.json',
+        'packages/api/.principal-views/__executions__/auth.otel.json',
         'packages/core/package.json',
         'packages/api/package.json',
       ]);

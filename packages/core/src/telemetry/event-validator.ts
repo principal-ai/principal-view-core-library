@@ -34,7 +34,9 @@ export interface ValidationResult {
  * Event validator that checks events against canvas schema
  */
 export class EventValidator {
-  private eventSchemas: Map<string, PVEventSchema> = new Map();
+  private eventSchemasByNode: Map<string, PVEventSchema> = new Map();
+  private eventSchemasByName: Map<string, PVEventSchema> = new Map();
+  private nodeIdsByBaseId: Map<string, Set<string>> = new Map();
 
   constructor(canvas: ExtendedCanvas) {
     this.indexEventSchemas(canvas);
@@ -48,7 +50,18 @@ export class EventValidator {
 
     for (const node of canvas.nodes) {
       if (node.pv?.event) {
-        this.eventSchemas.set(node.id, node.pv.event);
+        // Index by node ID
+        this.eventSchemasByNode.set(node.id, node.pv.event);
+
+        // Index by event name
+        this.eventSchemasByName.set(node.pv.event.name, node.pv.event);
+
+        // Index by base node ID (strip numeric suffixes like '-2', '-3')
+        const baseId = node.id.replace(/-\d+$/, '');
+        if (!this.nodeIdsByBaseId.has(baseId)) {
+          this.nodeIdsByBaseId.set(baseId, new Set());
+        }
+        this.nodeIdsByBaseId.get(baseId)!.add(node.id);
       }
     }
   }
@@ -63,14 +76,22 @@ export class EventValidator {
   ): ValidationResult {
     const errors: string[] = [];
 
-    // Get schema for this node
-    const eventSchema = this.eventSchemas.get(nodeId);
+    // First try to find schema by event name (supports multiple events per component)
+    let eventSchema = this.eventSchemasByName.get(eventName);
+
+    // If not found by event name, check if the specific node has a schema
     if (!eventSchema) {
-      // No schema defined - allow all events (permissive mode)
+      const nodeSchema = this.eventSchemasByNode.get(nodeId);
+      if (nodeSchema) {
+        // Node has a schema, but this event doesn't exist anywhere
+        errors.push(`Event '${eventName}' is not defined in schema for node '${nodeId}'`);
+        return { valid: false, errors };
+      }
+      // No schema defined at all - allow all events (permissive mode)
       return { valid: true, errors: [] };
     }
 
-    // Verify event name matches
+    // Verify event name matches (this should always be true now, but keeping for safety)
     if (eventSchema.name !== eventName) {
       errors.push(`Event '${eventName}' does not match schema event name '${eventSchema.name}' for node '${nodeId}'`);
       return { valid: false, errors };
@@ -133,22 +154,44 @@ export class EventValidator {
    * Get event schema for a node
    */
   getNodeSchema(nodeId: string): PVEventSchema | undefined {
-    return this.eventSchemas.get(nodeId);
+    return this.eventSchemasByNode.get(nodeId);
   }
 
   /**
    * Get event name for a node
    */
   getNodeEventName(nodeId: string): string | undefined {
-    const schema = this.eventSchemas.get(nodeId);
+    const schema = this.eventSchemasByNode.get(nodeId);
     return schema?.name;
+  }
+
+  /**
+   * Get all event names for a node (including related nodes with same base ID)
+   */
+  getNodeEventNames(nodeId: string): string[] {
+    const baseId = nodeId.replace(/-\d+$/, '');
+    const relatedNodeIds = this.nodeIdsByBaseId.get(baseId);
+
+    if (!relatedNodeIds) {
+      const schema = this.eventSchemasByNode.get(nodeId);
+      return schema ? [schema.name] : [];
+    }
+
+    const eventNames: string[] = [];
+    for (const id of relatedNodeIds) {
+      const schema = this.eventSchemasByNode.get(id);
+      if (schema) {
+        eventNames.push(schema.name);
+      }
+    }
+    return eventNames;
   }
 
   /**
    * Check if a node has event schema defined
    */
   hasSchema(nodeId: string): boolean {
-    return this.eventSchemas.has(nodeId);
+    return this.eventSchemasByNode.has(nodeId);
   }
 }
 

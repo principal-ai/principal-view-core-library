@@ -67,6 +67,9 @@ describe('NarrativeValidator', () => {
           },
           template: {
             introduction: 'Default narrative',
+            events: {
+              'test.started': 'Test started',
+            },
           },
         },
       ],
@@ -897,6 +900,9 @@ describe('NarrativeValidator', () => {
             },
             template: {
               introduction: 'Test execution',
+              events: {
+                'test.started': 'Test started',
+              },
             },
           },
         ],

@@ -103,9 +103,9 @@ describe('TypeScript Type Generator', () => {
     // Should still have file header comment
     expect(result.code).toContain('DO NOT EDIT MANUALLY');
 
-    // But fewer JSDoc blocks overall
+    // But fewer JSDoc blocks overall (updated for per-node-instance namespaces)
     const commentBlocks = result.code.match(/\/\*\*/g) || [];
-    expect(commentBlocks.length).toBeLessThan(10);
+    expect(commentBlocks.length).toBeLessThan(25);
   });
 
   test('should support readonly modifier', () => {
