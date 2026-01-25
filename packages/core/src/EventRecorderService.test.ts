@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { EventRecorderService } from './EventRecorderService';
+import type { ComponentActivityEvent } from './types/path-based-config';
 import type {
   SessionStartMessage,
   SessionEndMessage,
@@ -124,7 +125,7 @@ describe('EventRecorderService', () => {
 
         expect(events).toHaveLength(1);
         expect(events[0].type).toBe('component-activity');
-        expect((events[0] as any).componentId).toBe('lock-manager');
+        expect((events[0] as ComponentActivityEvent).componentId).toBe('lock-manager');
       });
 
       it('should add processed events to active session', () => {

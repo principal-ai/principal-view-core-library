@@ -239,15 +239,22 @@ export function convertOtlpToExecutionData(otlp: OtlpData): ExecutionData {
 }
 
 /**
+ * Type guard helper: shape of potential OTLP data before validation
+ */
+interface PotentialOtlpData {
+  resourceSpans?: unknown;
+}
+
+/**
  * Check if data is in OTLP format
  */
 function isOtlpFormat(data: unknown): data is OtlpData {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'resourceSpans' in data &&
-    Array.isArray((data as any).resourceSpans)
-  );
+  if (typeof data !== 'object' || data === null) {
+    return false;
+  }
+
+  const potentialOtlp = data as PotentialOtlpData;
+  return 'resourceSpans' in data && Array.isArray(potentialOtlp.resourceSpans);
 }
 
 /**

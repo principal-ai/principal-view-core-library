@@ -1,5 +1,14 @@
 import { GraphInstrumentationHelper } from './GraphInstrumentationHelper';
-import type { GraphConfiguration, GraphEvent } from '../types';
+import type {
+  GraphConfiguration,
+  GraphEvent,
+  NodeEvent,
+  EdgeEvent,
+  StateEvent,
+  SystemEvent,
+} from '../types';
+
+type EventPayload = NodeEvent | EdgeEvent | StateEvent | SystemEvent;
 
 describe('GraphInstrumentationHelper', () => {
   let testConfig: GraphConfiguration;
@@ -77,7 +86,7 @@ describe('GraphInstrumentationHelper', () => {
       expect(event.type).toBe('node_created');
       expect(event.expected).toBe(true);
 
-      const payload = event.payload as any;
+      const payload = event.payload as EventPayload;
       expect(payload.nodeId).toBe('user-1');
       expect(payload.nodeType).toBe('user');
       expect(payload.data.userId).toBe('alice');
@@ -97,7 +106,7 @@ describe('GraphInstrumentationHelper', () => {
         }
       );
 
-      const payload = event.payload as any;
+      const payload = event.payload as EventPayload;
       expect(payload.position).toEqual({ x: 100, y: 200 });
     });
 
@@ -112,7 +121,7 @@ describe('GraphInstrumentationHelper', () => {
       expect(event.operation).toBe('update');
       expect(event.type).toBe('node_updated');
 
-      const payload = event.payload as any;
+      const payload = event.payload as EventPayload;
       expect(payload.nodeId).toBe('user-1');
       expect(payload.data.status).toBe('online');
     });
@@ -128,7 +137,7 @@ describe('GraphInstrumentationHelper', () => {
       expect(event.operation).toBe('delete');
       expect(event.type).toBe('node_deleted');
 
-      const payload = event.payload as any;
+      const payload = event.payload as EventPayload;
       expect(payload.nodeId).toBe('user-1');
     });
 
@@ -162,7 +171,7 @@ describe('GraphInstrumentationHelper', () => {
       expect(event.operation).toBe('create');
       expect(event.type).toBe('edge_created');
 
-      const payload = event.payload as any;
+      const payload = event.payload as EventPayload;
       expect(payload.edgeId).toBe('conn-1');
       expect(payload.edgeType).toBe('connection');
       expect(payload.from).toBe('user-1');
@@ -178,7 +187,7 @@ describe('GraphInstrumentationHelper', () => {
         data: { bandwidth: '1gbps' },
       });
 
-      const payload = event.payload as any;
+      const payload = event.payload as EventPayload;
       expect(payload.data.bandwidth).toBe('1gbps');
     });
 
@@ -196,7 +205,7 @@ describe('GraphInstrumentationHelper', () => {
       expect(event.operation).toBe('animate');
       expect(event.type).toBe('edge_animated');
 
-      const payload = event.payload as any;
+      const payload = event.payload as EventPayload;
       expect(payload.animation?.duration).toBe(500);
       expect(payload.animation?.direction).toBe('forward');
     });
@@ -225,7 +234,7 @@ describe('GraphInstrumentationHelper', () => {
       expect(event.category).toBe('state');
       expect(event.type).toBe('state_changed');
 
-      const payload = event.payload as any;
+      const payload = event.payload as EventPayload;
       expect(payload.nodeId).toBe('user-1');
       expect(payload.newState).toBe('online');
     });
@@ -239,7 +248,7 @@ describe('GraphInstrumentationHelper', () => {
         previousState: 'offline',
       });
 
-      const payload = event.payload as any;
+      const payload = event.payload as EventPayload;
       expect(payload.previousState).toBe('offline');
       expect(payload.newState).toBe('online');
     });
@@ -253,7 +262,7 @@ describe('GraphInstrumentationHelper', () => {
         data: { lastSeen: Date.now() },
       });
 
-      const payload = event.payload as any;
+      const payload = event.payload as EventPayload;
       expect(payload.data.lastSeen).toBeDefined();
     });
   });
@@ -269,7 +278,7 @@ describe('GraphInstrumentationHelper', () => {
       expect(event.category).toBe('system');
       expect(event.type).toBe('system_reset');
 
-      const payload = event.payload as any;
+      const payload = event.payload as EventPayload;
       expect(payload.action).toBe('reset');
     });
 
@@ -283,7 +292,7 @@ describe('GraphInstrumentationHelper', () => {
       expect(event.category).toBe('system');
       expect(event.type).toBe('system_pause');
 
-      const payload = event.payload as any;
+      const payload = event.payload as EventPayload;
       expect(payload.action).toBe('pause');
     });
 
@@ -297,7 +306,7 @@ describe('GraphInstrumentationHelper', () => {
       expect(event.category).toBe('system');
       expect(event.type).toBe('system_resume');
 
-      const payload = event.payload as any;
+      const payload = event.payload as EventPayload;
       expect(payload.action).toBe('resume');
     });
   });

@@ -3,6 +3,7 @@
  */
 
 import type { ExtendedCanvas } from '../types/canvas';
+import type { ExecutionData } from '../execution/ExecutionValidator';
 
 /**
  * Canvas file type discriminator
@@ -116,7 +117,7 @@ export interface DiscoveredCanvasWithContent extends DiscoveredCanvas {
  */
 export interface DiscoveredExecutionWithContent extends DiscoveredExecution {
   /** Parsed execution artifact (only when includeContent: true) */
-  content: any; // ExecutionArtifact type from ExecutionLoader
+  content: ExecutionData;
 }
 
 /**

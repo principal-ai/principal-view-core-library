@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { SessionManager } from './SessionManager';
+import { SessionManager, type EventSession } from './SessionManager';
 import type { GraphEvent } from './types';
 
 describe('SessionManager', () => {
@@ -325,7 +325,7 @@ describe('SessionManager', () => {
     it('should call listener immediately with current sessions', () => {
       manager.createSession({ name: 'Existing' });
 
-      let received: any[] = [];
+      let received: EventSession[] = [];
       manager.onSessionChange((sessions) => {
         received = sessions;
       });

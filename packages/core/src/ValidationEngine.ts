@@ -1,6 +1,8 @@
 import type {
+  EdgeEvent,
   GraphEvent,
   GraphState,
+  StateEvent,
   ValidationResult,
   ValidationRules,
   Violation,
@@ -99,7 +101,7 @@ export class ValidationEngine {
    */
   private validateConnection(event: GraphEvent, state: GraphState): Violation[] {
     const violations: Violation[] = [];
-    const payload = event.payload as any;
+    const payload = event.payload as EdgeEvent;
 
     // Get the nodes being connected
     const fromNode = state.nodes.get(payload.from);
@@ -147,7 +149,7 @@ export class ValidationEngine {
    */
   private validateStateTransition(event: GraphEvent, state: GraphState): Violation[] {
     const violations: Violation[] = [];
-    const payload = event.payload as any;
+    const payload = event.payload as StateEvent;
 
     const node = state.nodes.get(payload.nodeId);
     if (!node) {

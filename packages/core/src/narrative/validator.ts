@@ -520,12 +520,18 @@ export class NarrativeValidator {
    * Check that condition uses valid fields (not legacy format)
    */
   private checkConditionStructure(
-    condition: any,
+    condition: unknown,
     file: string,
     scenarioIdx: number
   ): NarrativeViolation[] {
     const violations: NarrativeViolation[] = [];
     const validFields = ['requires', 'excludes', 'assertions', 'default', 'any'];
+
+    // Type guard: ensure condition is an object
+    if (typeof condition !== 'object' || condition === null) {
+      return violations;
+    }
+
     const conditionKeys = Object.keys(condition);
 
     // Check for invalid/legacy fields

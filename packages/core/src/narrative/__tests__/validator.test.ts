@@ -163,7 +163,7 @@ describe('NarrativeValidator', () => {
     });
 
     it('should flag missing version', async () => {
-      const context = createContext({ version: undefined as any });
+      const context = createContext({ version: undefined as unknown });
       const result = await validator.validate(context);
 
       expect(result.errorCount).toBeGreaterThan(0);
@@ -191,7 +191,7 @@ describe('NarrativeValidator', () => {
     });
 
     it('should flag missing canvas reference', async () => {
-      const context = createContext({ canvas: undefined as any });
+      const context = createContext({ canvas: undefined as unknown });
       const result = await validator.validate(context);
 
       expect(result.errorCount).toBeGreaterThan(0);
@@ -205,7 +205,7 @@ describe('NarrativeValidator', () => {
     });
 
     it('should flag missing name', async () => {
-      const context = createContext({ name: undefined as any });
+      const context = createContext({ name: undefined as unknown });
       const result = await validator.validate(context);
 
       expect(result.errorCount).toBeGreaterThan(0);
@@ -219,7 +219,7 @@ describe('NarrativeValidator', () => {
     });
 
     it('should flag missing description', async () => {
-      const context = createContext({ description: undefined as any });
+      const context = createContext({ description: undefined as unknown });
       const result = await validator.validate(context);
 
       expect(result.errorCount).toBeGreaterThan(0);
@@ -232,7 +232,7 @@ describe('NarrativeValidator', () => {
     });
 
     it('should flag missing mode', async () => {
-      const context = createContext({ mode: undefined as any });
+      const context = createContext({ mode: undefined as unknown });
       const result = await validator.validate(context);
 
       expect(result.errorCount).toBeGreaterThan(0);
@@ -246,7 +246,7 @@ describe('NarrativeValidator', () => {
     });
 
     it('should flag invalid mode', async () => {
-      const context = createContext({ mode: 'invalid-mode' as any });
+      const context = createContext({ mode: 'invalid-mode' as unknown });
       const result = await validator.validate(context);
 
       expect(result.errorCount).toBeGreaterThan(0);
@@ -263,7 +263,7 @@ describe('NarrativeValidator', () => {
       const modes = ['span-tree', 'timeline'];
 
       for (const mode of modes) {
-        const context = createContext({ mode: mode as any });
+        const context = createContext({ mode: mode as unknown });
         const result = await validator.validate(context);
 
         const modeViolations = result.violations.filter((v) => v.path === 'mode');
@@ -272,7 +272,7 @@ describe('NarrativeValidator', () => {
     });
 
     it('should flag invalid scenarioSelection', async () => {
-      const context = createContext({ scenarioSelection: 'invalid' as any });
+      const context = createContext({ scenarioSelection: 'invalid' as unknown });
       const result = await validator.validate(context);
 
       expect(result.errorCount).toBeGreaterThan(0);
@@ -359,7 +359,7 @@ describe('NarrativeValidator', () => {
       const context = createContext({
         scenarios: [
           {
-            id: undefined as any,
+            id: undefined as unknown,
             priority: 1,
             description: 'Test',
             condition: { default: true },
@@ -413,7 +413,7 @@ describe('NarrativeValidator', () => {
         scenarios: [
           {
             id: 'test',
-            priority: undefined as any,
+            priority: undefined as unknown,
             description: 'Test',
             condition: { default: true },
             template: { introduction: 'Test' },
@@ -514,7 +514,7 @@ describe('NarrativeValidator', () => {
             id: 'test',
             priority: 1,
             description: 'Test',
-            condition: undefined as any,
+            condition: undefined as unknown,
             template: { introduction: 'Test' },
           },
         ],
@@ -538,7 +538,7 @@ describe('NarrativeValidator', () => {
             priority: 1,
             description: 'Test',
             condition: { default: true },
-            template: undefined as any,
+            template: undefined as unknown,
           },
         ],
       });
@@ -769,7 +769,7 @@ describe('NarrativeValidator', () => {
     it('should flag invalid showAttributes value', async () => {
       const context = createContext({
         formatting: {
-          showAttributes: 'invalid' as any,
+          showAttributes: 'invalid' as unknown,
         },
       });
       const result = await validator.validate(context);
@@ -790,7 +790,7 @@ describe('NarrativeValidator', () => {
       for (const value of values) {
         const context = createContext({
           formatting: {
-            showAttributes: value as any,
+            showAttributes: value as unknown,
           },
         });
         const result = await validator.validate(context);
@@ -810,10 +810,10 @@ describe('NarrativeValidator', () => {
   describe('aggregateResults', () => {
     it('should correctly count errors and warnings', async () => {
       const context = createContext({
-        version: undefined as any,
-        name: undefined as any,
+        version: undefined as unknown,
+        name: undefined as unknown,
         formatting: {
-          showAttributes: 'invalid' as any,
+          showAttributes: 'invalid' as unknown,
         },
       });
       const result = await validator.validate(context);

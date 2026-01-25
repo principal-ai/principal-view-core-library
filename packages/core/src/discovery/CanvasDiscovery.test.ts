@@ -1,5 +1,6 @@
 import { describe, expect, test, beforeEach } from 'bun:test';
 import { CanvasDiscovery } from './CanvasDiscovery';
+import type { DiscoveredCanvasWithContent } from './types';
 import type { FileTree, FileInfo, DirectoryInfo } from '@principal-ai/repository-abstraction';
 
 describe('CanvasDiscovery', () => {
@@ -113,7 +114,7 @@ describe('CanvasDiscovery', () => {
       });
 
       expect(result.canvases[0]).toHaveProperty('content');
-      expect((result.canvases[0] as any).content).toEqual(mockCanvas);
+      expect((result.canvases[0] as DiscoveredCanvasWithContent).content).toEqual(mockCanvas);
     });
 
     test('handles parse errors gracefully', async () => {

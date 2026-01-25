@@ -163,12 +163,12 @@ function renderSpanTree(
         if (key.includes('.')) {
           // Nested key: convert "skill.name" -> { skill: { name: value } }
           const parts = key.split('.');
-          let current: any = eventContext;
+          let current: Record<string, unknown> = eventContext;
           for (let i = 0; i < parts.length - 1; i++) {
             if (!current[parts[i]] || typeof current[parts[i]] !== 'object') {
               current[parts[i]] = {};
             }
-            current = current[parts[i]];
+            current = current[parts[i]] as Record<string, unknown>;
           }
           current[parts[parts.length - 1]] = value;
         } else {
@@ -247,12 +247,12 @@ function renderTimeline(
         if (key.includes('.')) {
           // Nested key: convert "skill.name" -> { skill: { name: value } }
           const parts = key.split('.');
-          let current: any = eventContext;
+          let current: Record<string, unknown> = eventContext;
           for (let i = 0; i < parts.length - 1; i++) {
             if (!current[parts[i]] || typeof current[parts[i]] !== 'object') {
               current[parts[i]] = {};
             }
-            current = current[parts[i]];
+            current = current[parts[i]] as Record<string, unknown>;
           }
           current[parts[parts.length - 1]] = value;
         } else {

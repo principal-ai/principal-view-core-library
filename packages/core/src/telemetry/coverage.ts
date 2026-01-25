@@ -13,12 +13,12 @@ export interface CanvasNode {
   id: string;
   text?: string;
   anchors?: Array<{ path?: string }>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface Canvas {
   nodes?: CanvasNode[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface NodeCoverage {

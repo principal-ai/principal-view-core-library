@@ -10,7 +10,7 @@ export class PathMatcher {
    * Supports:
    * - Exact matches: "lib/lock-manager.ts"
    * - Wildcards: "lib/*.ts"
-   * - Double wildcards: "lib/**​/*.ts"
+   * - Double wildcards: "lib/ ** /*.ts" (without spaces)
    * - Character sets: "lib/[abc].ts"
    *
    * @param path File path to test
@@ -92,7 +92,7 @@ export class PathMatcher {
           i++;
           break;
 
-        case '[':
+        case '[': {
           // [...] matches character set
           let j = i + 1;
           while (j < pattern.length && pattern[j] !== ']') {
@@ -107,6 +107,7 @@ export class PathMatcher {
             i++;
           }
           break;
+        }
 
         case '{':
           // {a,b,c} matches alternatives

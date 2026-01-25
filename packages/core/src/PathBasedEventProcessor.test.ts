@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'bun:test';
 import { PathBasedEventProcessor, type LogEntry } from './PathBasedEventProcessor';
-import type { PathBasedGraphConfiguration } from './types/path-based-config';
+import type {
+  PathBasedGraphConfiguration,
+  ComponentActivityEvent,
+} from './types/path-based-config';
 
 describe('PathBasedEventProcessor', () => {
   // Sample configuration
@@ -56,7 +59,7 @@ describe('PathBasedEventProcessor', () => {
 
       expect(events).toHaveLength(1);
       expect(events[0].type).toBe('component-activity');
-      const activityEvent = events[0] as any;
+      const activityEvent = events[0] as ComponentActivityEvent;
       expect(activityEvent.componentId).toBe('lock-manager');
       expect(activityEvent.level).toBe('info');
       expect(activityEvent.message).toBe('Lock acquired');
@@ -80,7 +83,7 @@ describe('PathBasedEventProcessor', () => {
       const events = processor.processLog(log);
 
       expect(events).toHaveLength(1);
-      const activityEvent = events[0] as any;
+      const activityEvent = events[0] as ComponentActivityEvent;
       expect(activityEvent.componentId).toBe('github-api');
     });
 
@@ -102,7 +105,7 @@ describe('PathBasedEventProcessor', () => {
       const events = processor.processLog(log);
 
       expect(events).toHaveLength(1);
-      const activityEvent = events[0] as any;
+      const activityEvent = events[0] as ComponentActivityEvent;
       expect(activityEvent.componentId).toBe('request-handler');
     });
 
@@ -160,7 +163,7 @@ describe('PathBasedEventProcessor', () => {
 
         const events = processor.processLog(log);
         expect(events).toHaveLength(1);
-        const activityEvent = events[0] as any;
+        const activityEvent = events[0] as ComponentActivityEvent;
         expect(activityEvent.level).toBe(level);
       }
     });
@@ -197,7 +200,7 @@ describe('PathBasedEventProcessor', () => {
 
       const events = processor.processLogs(logs);
       expect(events).toHaveLength(3);
-      expect((events[0] as any).componentId).toBe('lock-manager');
+      expect((events[0] as ComponentActivityEvent).componentId).toBe('lock-manager');
       expect((events[1] as any).componentId).toBe('github-api');
       expect((events[2] as any).componentId).toBe('request-handler');
     });
@@ -262,7 +265,7 @@ describe('PathBasedEventProcessor', () => {
 
       expect(events).toHaveLength(1);
       expect(events[0].type).toBe('component-activity');
-      const activityEvent = events[0] as any;
+      const activityEvent = events[0] as ComponentActivityEvent;
       expect(activityEvent.componentId).toBe('lock-manager');
       expect(activityEvent.instanceId).toBe('client-1');
     });
@@ -286,7 +289,7 @@ describe('PathBasedEventProcessor', () => {
       const events = processor.processLog(log);
 
       expect(events).toHaveLength(1);
-      const activityEvent = events[0] as any;
+      const activityEvent = events[0] as ComponentActivityEvent;
       expect(activityEvent.instanceId).toBeUndefined();
     });
 
@@ -325,7 +328,7 @@ describe('PathBasedEventProcessor', () => {
       const events = processor.processLogs(logs);
 
       expect(events).toHaveLength(3);
-      expect((events[0] as any).instanceId).toBe('client-1');
+      expect((events[0] as ComponentActivityEvent).instanceId).toBe('client-1');
       expect((events[1] as any).instanceId).toBe('client-2');
       expect((events[2] as any).instanceId).toBeUndefined();
     });

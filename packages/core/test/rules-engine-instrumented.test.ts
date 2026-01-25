@@ -84,7 +84,7 @@ const validConfig: GraphConfiguration = {
 };
 
 describe('Rules Engine with Telemetry', () => {
-  const collectedSpans: any[] = [];
+  const collectedSpans: unknown[] = [];
 
   test('lint configuration with violations', async () => {
     const span = startTestSpan('rules.lint.with.violations');

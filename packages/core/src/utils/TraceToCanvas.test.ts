@@ -5,6 +5,7 @@ import {
   type TraceExport,
   type TraceSpan,
 } from './TraceToCanvas';
+import type { ExtendedCanvasTextNode } from '../types/canvas';
 
 describe('TraceToCanvas', () => {
   const createSpan = (overrides: Partial<TraceSpan> = {}): TraceSpan => ({
@@ -55,9 +56,9 @@ describe('TraceToCanvas', () => {
       const spanNode = result.canvas.nodes?.find((n) => n.id === span.spanId);
       expect(spanNode).toBeDefined();
       expect(spanNode?.type).toBe('text');
-      expect((spanNode as any).text).toBe('HTTP GET /api/users');
-      expect((spanNode as any).pv?.shape).toBe('hexagon'); // SERVER shape
-      expect((spanNode as any).pv?.description).toBe('42.50ms');
+      expect((spanNode as ExtendedCanvasTextNode).text).toBe('HTTP GET /api/users');
+      expect((spanNode as ExtendedCanvasTextNode).pv?.shape).toBe('hexagon'); // SERVER shape
+      expect((spanNode as ExtendedCanvasTextNode).pv?.description).toBe('42.50ms');
     });
 
     test('empty spans returns empty canvas', () => {
@@ -187,7 +188,7 @@ describe('TraceToCanvas', () => {
       const result = traceToCanvas(traceExport);
 
       const spanNode = result.canvas.nodes?.find((n) => n.id === span.spanId);
-      expect((spanNode as any).pv?.shape).toBe(expectedShape);
+      expect((spanNode as ExtendedCanvasTextNode).pv?.shape).toBe(expectedShape);
     });
   });
 
@@ -201,8 +202,8 @@ describe('TraceToCanvas', () => {
       const result = traceToCanvas(traceExport);
 
       const spanNode = result.canvas.nodes?.find((n) => n.id === span.spanId);
-      expect((spanNode as any).pv?.fill).toBe('#ef4444');
-      expect((spanNode as any).color).toBe(1); // Red preset
+      expect((spanNode as ExtendedCanvasTextNode).pv?.fill).toBe('#ef4444');
+      expect((spanNode as ExtendedCanvasTextNode).color).toBe(1); // Red preset
     });
   });
 
@@ -260,8 +261,8 @@ describe('TraceToCanvas', () => {
       const result = traceToCanvas(traceExport, { includeAttributes: true });
 
       const spanNode = result.canvas.nodes?.find((n) => n.id === span.spanId);
-      expect((spanNode as any).pv?.dataSchema).toBeDefined();
-      expect((spanNode as any).pv?.dataSchema?.['http.method']).toBeDefined();
+      expect((spanNode as ExtendedCanvasTextNode).pv?.dataSchema).toBeDefined();
+      expect((spanNode as ExtendedCanvasTextNode).pv?.dataSchema?.['http.method']).toBeDefined();
     });
 
     test('excludes attributes when disabled', () => {
@@ -273,7 +274,7 @@ describe('TraceToCanvas', () => {
       const result = traceToCanvas(traceExport, { includeAttributes: false });
 
       const spanNode = result.canvas.nodes?.find((n) => n.id === span.spanId);
-      expect((spanNode as any).pv?.dataSchema).toBeUndefined();
+      expect((spanNode as ExtendedCanvasTextNode).pv?.dataSchema).toBeUndefined();
     });
   });
 

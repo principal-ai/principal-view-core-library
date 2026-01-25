@@ -257,7 +257,7 @@ export class CanvasDiscovery {
         : metadata.basename;
 
       // Create discovered execution
-      const execution: DiscoveredExecution = {
+      let execution: DiscoveredExecution = {
         id,
         name: this.toDisplayName(metadata.basename),
         path,
@@ -273,7 +273,7 @@ export class CanvasDiscovery {
       if (options.includeContent && options.fileReader) {
         try {
           const content = await options.fileReader(path);
-          (execution as any).content = JSON.parse(content);
+          execution = { ...execution, content: JSON.parse(content) };
         } catch (error) {
           errors.push({
             path,

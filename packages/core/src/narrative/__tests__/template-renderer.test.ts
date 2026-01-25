@@ -70,8 +70,8 @@ describe('renderNarrative', () => {
 
       // Check for proper indentation (2 spaces per level)
       expect(lines).toContainEqual(expect.stringMatching(/^→ root$/));
-      expect(lines).toContainEqual(expect.stringMatching(/^  → child1$/));
-      expect(lines).toContainEqual(expect.stringMatching(/^    → grandchild$/));
+      expect(lines).toContainEqual(expect.stringMatching(/^ {2}→ child1$/));
+      expect(lines).toContainEqual(expect.stringMatching(/^ {4}→ grandchild$/));
     });
 
     it('should attach logs to spans when showLogsPerSpan is true', () => {
