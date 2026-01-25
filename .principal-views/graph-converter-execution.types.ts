@@ -9,7 +9,7 @@
  */
 
 /**
- * Event types for node: graph-converter
+ * Event type for node: graph-converter
  */
 export namespace GraphConverter {
   /**
@@ -26,6 +26,21 @@ export namespace GraphConverter {
   }
 
   /**
+   * Event type for graph-converter
+   */
+  export type Event = ConversionStarted;
+
+  /**
+   * Event name for graph-converter
+   */
+  export type EventName = 'conversion.started';
+}
+
+/**
+ * Event type for node: graph-converter-2
+ */
+export namespace GraphConverter2 {
+  /**
    * Processing node definitions
    */
   export interface ConversionProcessingNodes {
@@ -37,6 +52,21 @@ export namespace GraphConverter {
   }
 
   /**
+   * Event type for graph-converter-2
+   */
+  export type Event = ConversionProcessingNodes;
+
+  /**
+   * Event name for graph-converter-2
+   */
+  export type EventName = 'conversion.processingNodes';
+}
+
+/**
+ * Event type for node: graph-converter-3
+ */
+export namespace GraphConverter3 {
+  /**
    * Processing edge definitions
    */
   export interface ConversionProcessingEdges {
@@ -47,6 +77,21 @@ export namespace GraphConverter {
     };
   }
 
+  /**
+   * Event type for graph-converter-3
+   */
+  export type Event = ConversionProcessingEdges;
+
+  /**
+   * Event name for graph-converter-3
+   */
+  export type EventName = 'conversion.processingEdges';
+}
+
+/**
+ * Event type for node: graph-converter-4
+ */
+export namespace GraphConverter4 {
   /**
    * Graph conversion completes successfully
    */
@@ -63,6 +108,21 @@ export namespace GraphConverter {
   }
 
   /**
+   * Event type for graph-converter-4
+   */
+  export type Event = ConversionComplete;
+
+  /**
+   * Event name for graph-converter-4
+   */
+  export type EventName = 'conversion.complete';
+}
+
+/**
+ * Event type for node: graph-converter-5
+ */
+export namespace GraphConverter5 {
+  /**
    * Error during conversion
    */
   export interface ConversionError {
@@ -76,18 +136,18 @@ export namespace GraphConverter {
   }
 
   /**
-   * Union of all event types for graph-converter
+   * Event type for graph-converter-5
    */
-  export type Event = ConversionStarted | ConversionProcessingNodes | ConversionProcessingEdges | ConversionComplete | ConversionError;
+  export type Event = ConversionError;
 
   /**
-   * Literal union of event names for graph-converter
+   * Event name for graph-converter-5
    */
-  export type EventName = 'conversion.started' | 'conversion.processingNodes' | 'conversion.processingEdges' | 'conversion.complete' | 'conversion.error';
+  export type EventName = 'conversion.error';
 }
 
 /**
- * Event types for node: validation
+ * Event type for node: validation
  */
 export namespace Validation {
   /**
@@ -102,6 +162,21 @@ export namespace Validation {
   }
 
   /**
+   * Event type for validation
+   */
+  export type Event = ValidationStarted;
+
+  /**
+   * Event name for validation
+   */
+  export type EventName = 'validation.started';
+}
+
+/**
+ * Event type for node: validation-2
+ */
+export namespace Validation2 {
+  /**
    * Validation completes
    */
   export interface ValidationComplete {
@@ -115,18 +190,18 @@ export namespace Validation {
   }
 
   /**
-   * Union of all event types for validation
+   * Event type for validation-2
    */
-  export type Event = ValidationStarted | ValidationComplete;
+  export type Event = ValidationComplete;
 
   /**
-   * Literal union of event names for validation
+   * Event name for validation-2
    */
-  export type EventName = 'validation.started' | 'validation.complete';
+  export type EventName = 'validation.complete';
 }
 
 /**
- * Event types for node: graph-output
+ * Event type for node: graph-output
  */
 export namespace GraphOutput {
   /**
@@ -141,12 +216,12 @@ export namespace GraphOutput {
   }
 
   /**
-   * Union of all event types for graph-output
+   * Event type for graph-output
    */
   export type Event = OutputCreated;
 
   /**
-   * Literal union of event names for graph-output
+   * Event name for graph-output
    */
   export type EventName = 'output.created';
 }

@@ -6,6 +6,7 @@ import type { FileTree } from '@principal-ai/repository-abstraction';
 import { PackageLayerModule, type PackageLayer } from '@principal-ai/codebase-composition';
 import type {
   DiscoveredCanvas,
+  DiscoveredCanvasWithContent,
   DiscoveredExecution,
   CanvasDiscoveryResult,
   DiscoveryOptions,
@@ -202,7 +203,16 @@ export class CanvasDiscovery {
       if (options.includeContent && options.fileReader) {
         try {
           const content = await options.fileReader(path);
-          (canvas as any).content = JSON.parse(content);
+          const parsedContent = JSON.parse(content);
+
+          // Cast to DiscoveredCanvasWithContent when adding content
+          const canvasWithContent = canvas as DiscoveredCanvasWithContent;
+          canvasWithContent.content = parsedContent;
+
+          // Extract markdown path from canvas pv metadata if it exists
+          if (parsedContent.pv?.markdown) {
+            canvas.markdownPath = parsedContent.pv.markdown;
+          }
         } catch (error) {
           errors.push({
             path,

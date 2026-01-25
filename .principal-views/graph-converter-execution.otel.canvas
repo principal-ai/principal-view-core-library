@@ -332,6 +332,7 @@
   "pv": {
     "version": "1.0.0",
     "name": "Graph Converter Execution",
-    "description": "Execution flow for graph conversion with event schema validation"
+    "description": "Execution flow for graph conversion with event schema validation",
+    "markdown": ".principal-views/graph-converter-execution.md"
   }
 }

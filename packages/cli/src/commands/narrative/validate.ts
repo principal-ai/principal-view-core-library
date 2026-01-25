@@ -2,7 +2,10 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { resolve, dirname } from 'node:path';
 import { readFileSync } from 'node:fs';
-import { NarrativeValidator, computeAggregates } from '@principal-ai/principal-view-core';
+// Node.js-specific imports (validator)
+import { NarrativeValidator } from '@principal-ai/principal-view-core/node';
+// Browser-safe imports
+import { computeAggregates } from '@principal-ai/principal-view-core';
 import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
 import { loadNarrative, resolvePath, loadExecution, executionToEvents } from './utils.js';
 

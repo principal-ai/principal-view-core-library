@@ -114,6 +114,7 @@ describe('NarrativeValidator', () => {
       pv: {
         version: '1.0.0',
         name: 'Test Canvas',
+        markdown: 'test.md',
       },
     };
   }
@@ -147,7 +148,9 @@ describe('NarrativeValidator', () => {
     it('should pass for valid narrative template', async () => {
       // Create canvas file so canvas-exists check passes
       const canvasPath = join(tempDir, 'test.otel.canvas');
+      const markdownPath = join(tempDir, 'test.md');
       writeFileSync(canvasPath, JSON.stringify(createValidCanvas()));
+      writeFileSync(markdownPath, '# Test Documentation');
 
       const context = createContext({}, { canvasPath });
       const result = await validator.validate(context);
@@ -301,7 +304,9 @@ describe('NarrativeValidator', () => {
     it('should pass when canvas file exists', async () => {
       // Create a canvas file in temp directory
       const canvasPath = join(tempDir, 'test.otel.canvas');
+      const markdownPath = join(tempDir, 'test.md');
       writeFileSync(canvasPath, JSON.stringify(createValidCanvas()));
+      writeFileSync(markdownPath, '# Test Documentation');
 
       const context = createContext(
         { canvas: 'test.otel.canvas' },
@@ -832,7 +837,9 @@ describe('NarrativeValidator', () => {
   describe('integration tests', () => {
     it('should validate a complete valid narrative template', async () => {
       const canvasPath = join(tempDir, 'test.otel.canvas');
+      const markdownPath = join(tempDir, 'test.md');
       writeFileSync(canvasPath, JSON.stringify(createValidCanvas()));
+      writeFileSync(markdownPath, '# Test Documentation');
 
       const narrative: NarrativeTemplate = {
         version: '1.0.0',

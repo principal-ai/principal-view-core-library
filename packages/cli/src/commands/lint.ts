@@ -8,20 +8,24 @@ import { resolve, relative, dirname, basename } from 'node:path';
 import chalk from 'chalk';
 import { globby } from 'globby';
 import yaml from 'js-yaml';
+// Node.js-specific imports (rules engine, config management, validators)
 import {
   createDefaultRulesEngine,
   validatePrivuConfig,
   mergeConfigs,
   getDefaultConfig,
-  type GraphConfiguration,
   type GraphLintResult,
   type GraphRuleViolation,
   type PrivuConfig,
-  type ComponentLibrary,
   createNarrativeValidator,
-  type NarrativeTemplate,
   type NarrativeViolation,
-  type ExtendedCanvas,
+} from '@principal-ai/principal-view-core/node';
+// Browser-safe type imports
+import type {
+  GraphConfiguration,
+  ComponentLibrary,
+  NarrativeTemplate,
+  ExtendedCanvas,
 } from '@principal-ai/principal-view-core';
 
 // ============================================================================

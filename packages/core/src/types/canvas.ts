@@ -473,6 +473,18 @@ export interface PVCanvasExtension {
   name: string;
   /** Description */
   description?: string;
+
+  /**
+   * Associated markdown documentation file
+   *
+   * For .otel.canvas files, this field is required and must point to a markdown file
+   * that documents the canvas. The path must be relative to the git repository root.
+   *
+   * @example ".principal-views/graph-converter-execution.md"
+   * @example "docs/architecture/execution-flow.md"
+   */
+  markdown?: string;
+
   /** Node type definitions (shared across nodes) */
   nodeTypes?: Record<string, PVNodeTypeDefinition>;
   /** Edge type definitions (shared across edges) */

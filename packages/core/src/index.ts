@@ -1,61 +1,137 @@
 /**
  * @principal-ai/principal-view-core
- * Core logic and types for graph-based principal view framework
+ * Browser-safe exports (no Node.js dependencies)
+ *
+ * This is the main entry point for the package and only includes browser-compatible code.
+ * Includes types, canvas utilities, YAML parsing, and narrative rendering.
+ *
+ * BREAKING CHANGE (v0.12.0):
+ * The main export now only includes browser-safe functionality.
+ *
+ * For Node.js-specific functionality (file system, code generation, rules engine, etc.), use:
+ * import { ... } from '@principal-ai/principal-view-core/node'
+ *
+ * For explicit browser usage (same as main export):
+ * import { ... } from '@principal-ai/principal-view-core/browser'
  */
 
-// Export all types
-export * from './types';
-
-// Export core classes
-export { EventProcessor } from './EventProcessor';
-export type { ProcessingResult } from './EventProcessor';
-
-export { ValidationEngine } from './ValidationEngine';
-
-export { ConfigurationValidator } from './ConfigurationValidator';
+// Export essential types only
 export type {
-  ConfigurationValidationError,
-  ConfigurationValidationResult,
-} from './ConfigurationValidator';
+  GraphConfiguration,
+  NodeState,
+  EdgeState,
+  NodeTypeDefinition,
+  EdgeTypeDefinition,
+  Violation,
+  GraphEvent,
+  NodeEvent,
+  EdgeEvent,
+  StateEvent,
+  ComponentLibrary,
+  LogLevel,
+  GraphMetrics,
+  Warning,
+  ValidationResult,
+  EventStream,
+  ConnectionRule,
+  LibraryNodeComponent,
+  LibraryEdgeComponent,
+  ComponentActivityEvent,
+  ComponentActionEvent,
+  EdgeAnimationEvent,
+  PathBasedEvent,
+  JsonValue,
+  JsonObject,
+} from './types';
 
-// Export helpers
-export { GraphInstrumentationHelper } from './helpers/GraphInstrumentationHelper';
+// Export path-based configuration types (browser-safe)
+export type { PathBasedGraphConfiguration } from './types/path-based-config';
 
-// Export path-based processing (Milestone 1 & 2)
-export { PathBasedEventProcessor } from './PathBasedEventProcessor';
-export type { LogEntry } from './PathBasedEventProcessor';
-
-// Export path utilities
-export { PathMatcher } from './utils/PathMatcher';
-export { GraphConverter } from './utils/GraphConverter';
+// Export configuration loading (browser-safe - uses FileSystemAdapter abstraction)
+export { ConfigurationLoader } from './ConfigurationLoader';
+export type { ConfigurationFile, ConfigurationLoadResult } from './ConfigurationLoader';
 
 // Export Canvas types and converter
 export * from './types/canvas';
 export { CanvasConverter } from './utils/CanvasConverter';
 export type { ReactFlowNode, ReactFlowEdge } from './utils/CanvasConverter';
 
-// Export telemetry event validation
-export { EventValidator, createValidatedEmitter, EventValidationError } from './telemetry/event-validator';
-export type { ValidationResult } from './telemetry/event-validator';
+// Export YAML parsing (browser-compatible)
+export { parseYaml, isYamlFile, getConfigNameFromFilename } from './utils/YamlParser';
+export type { YamlParseResult } from './utils/YamlParser';
 
-// Export telemetry coverage analysis
-export { analyzeCoverage } from './telemetry/coverage';
-export type { CoverageMetrics, NodeCoverage, CanvasNode as CoverageCanvasNode } from './telemetry/coverage';
-
-// Export code generation
-export { generateTypes, TypeScriptGenerator, generatorRegistry } from './codegen/type-generator';
-export type { CodegenOptions, CodegenResult, CodeGenerator } from './codegen/type-generator';
-
-// Export trace-to-canvas conversion
-export { traceToCanvas, traceToCanvasJson } from './utils/TraceToCanvas';
+// Export narrative template system (browser-safe)
+// Import directly from files to avoid pulling in Node.js validator
+export { renderNarrative } from './narrative/template-renderer';
+export { parseTemplate } from './narrative/template-parser';
+export {
+  selectScenario,
+  matchesCondition,
+  hasEventMatching,
+  computeAggregates,
+  evaluateAssertion,
+  getNestedValue,
+  setNestedValue,
+} from './narrative/scenario-matcher';
 export type {
-  TraceSpan,
-  TraceExport,
-  TraceToCanvasOptions,
-  TraceCanvasResult,
-} from './utils/TraceToCanvas';
+  NarrativeTemplate,
+  NarrativeScenario,
+  NarrativeMode,
+  ScenarioCondition,
+  ScenarioTemplate,
+  Assertion,
+  FlowDirective,
+  LogTemplates,
+  FormattingOptions,
+  OtelEvent,
+  OtelSignal,
+  NarrativeContext,
+  NarrativeResult,
+  ScenarioMatchResult,
+  SpanTreeNode,
+} from './narrative/types';
 
-// Export session management (Event Recording System)
+// Export OTEL types
+export type {
+  OtelAttributes,
+  OtelAttributeValue,
+  OtelLog,
+  OtelSpan,
+  OtelResource,
+  OtelSeverity,
+  OtelSeverityText,
+  OtelSeverityNumber,
+  OtelSpanKind,
+  OtelSpanStatus,
+} from './types/otel';
+
+// Export canvas and execution discovery (browser-safe)
+export { CanvasDiscovery } from './discovery/CanvasDiscovery';
+export type {
+  DiscoveredCanvas,
+  DiscoveredExecution,
+  CanvasDiscoveryResult,
+  DiscoveryOptions,
+  CanvasType,
+  ExecutionType,
+  DiscoveredCanvasWithContent,
+  DiscoveredExecutionWithContent,
+  CanvasDiscoveryResultWithContent,
+} from './discovery/types';
+
+// Export execution validation (browser-safe - no Node.js dependencies)
+export { ExecutionValidator, createExecutionValidator } from './execution/ExecutionValidator';
+export type {
+  ExecutionData,
+  ValidationError,
+  ExecutionValidationResult,
+} from './execution/ExecutionValidator';
+
+// Export path-based processing (browser-safe - Milestone 1 & 2)
+export { PathBasedEventProcessor } from './PathBasedEventProcessor';
+export type { LogEntry } from './PathBasedEventProcessor';
+
+// Export session management (browser-safe - Event Recording System)
 export { SessionManager } from './SessionManager';
 export type {
   SessionStatus,
@@ -68,7 +144,7 @@ export type {
   SessionManagerConfig,
 } from './SessionManager';
 
-// Export event recorder service
+// Export event recorder service (browser-safe)
 export { EventRecorderService } from './EventRecorderService';
 export type {
   ProtocolMessageType,
@@ -90,84 +166,28 @@ export type {
   EventRecorderServiceConfig,
 } from './EventRecorderService';
 
-// Export configuration loading (Phase 2: Multi-config support)
-export { ConfigurationLoader } from './ConfigurationLoader';
-export type { ConfigurationFile, ConfigurationLoadResult } from './ConfigurationLoader';
-export { parseYaml, isYamlFile, getConfigNameFromFilename } from './utils/YamlParser';
-export type { YamlParseResult } from './utils/YamlParser';
-
-// Export component library support
+// Export component library support (browser-safe - uses FileSystemAdapter abstraction)
 export { LibraryLoader } from './LibraryLoader';
 export { LibraryConverter } from './utils/LibraryConverter';
 export type { CreateNodeOptions, CreateEdgeOptions } from './utils/LibraryConverter';
 
-// Re-export FileSystemAdapter from repository-abstraction
+// Re-export FileSystemAdapter type from repository-abstraction (for custom adapter implementations)
 export type { FileSystemAdapter } from '@principal-ai/repository-abstraction';
 export { InMemoryFileSystemAdapter } from '@principal-ai/repository-abstraction';
 
-// Export rules engine
-export * from './rules';
-
-// Export narrative template system
-export {
-  renderNarrative,
-  parseTemplate,
-  selectScenario,
-  matchesCondition,
-  hasEventMatching,
-  computeAggregates,
-  evaluateAssertion,
-  getNestedValue,
-  setNestedValue,
-  createNarrativeValidator,
-  NarrativeValidator,
-} from './narrative';
-export type {
-  NarrativeTemplate,
-  NarrativeScenario,
-  NarrativeMode,
-  ScenarioCondition,
-  ScenarioTemplate,
-  Assertion,
-  FlowDirective,
-  LogTemplates,
-  FormattingOptions,
-  OtelEvent,
-  OtelSignal,
-  NarrativeContext,
-  NarrativeResult,
-  ScenarioMatchResult,
-  SpanTreeNode,
-  NarrativeValidationContext,
-  NarrativeViolation,
-  NarrativeValidationResult,
-} from './narrative';
-
-// Export canvas and execution discovery
-export { CanvasDiscovery } from './discovery/CanvasDiscovery';
-export type {
-  DiscoveredCanvas,
-  DiscoveredExecution,
-  CanvasDiscoveryResult,
-  DiscoveryOptions,
-  CanvasType,
-  ExecutionType,
-  DiscoveredCanvasWithContent,
-  DiscoveredExecutionWithContent,
-  CanvasDiscoveryResultWithContent,
-} from './discovery/types';
-
-// Export execution validation
-export { ExecutionValidator, createExecutionValidator } from './execution/ExecutionValidator';
-export type {
-  ExecutionData,
-  ValidationError,
-  ExecutionValidationResult,
-} from './execution/ExecutionValidator';
-
-// Export execution loading
-export { ExecutionLoader, createExecutionLoader } from './execution/ExecutionLoader';
-export type {
-  ExecutionFile,
-  ExecutionLoadResult,
-} from './execution/ExecutionLoader';
+// NOTE: The following require Node.js dependencies and are NOT exported in the main bundle.
+// Use '@principal-ai/principal-view-core/node' for Node.js-specific functionality:
+//
+// - EventProcessor, ValidationEngine, ConfigurationValidator (Node.js processing)
+// - GraphInstrumentationHelper (Node.js utilities)
+// - PathMatcher, GraphConverter (Node.js utilities)
+// - EventValidator, createValidatedEmitter (Node.js telemetry)
+// - analyzeCoverage (file system - uses fs/promises, path, glob)
+// - generateTypes, TypeScriptGenerator, generatorRegistry (code generation - file system)
+// - traceToCanvas, traceToCanvasJson (trace utilities)
+// - Rules engine (OpenTelemetry dependencies)
+// - NarrativeValidator, createNarrativeValidator (Node.js validator)
+// - ExecutionLoader, createExecutionLoader (file system loader)
+//
+// Example:
+// import { analyzeCoverage, NarrativeValidator } from '@principal-ai/principal-view-core/node';

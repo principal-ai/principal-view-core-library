@@ -249,6 +249,7 @@
     "version": "1.0.0",
     "name": "Graph Converter Tests",
     "description": "Test execution flow for the GraphConverter component. This canvas visualizes the test lifecycle: setup test data, execute the converter, and verify results through assertions.",
+    "markdown": ".principal-views/graph-converter-test.md",
     "otel": {
       "defaultScope": "span.kind",
       "audit": {

@@ -473,6 +473,7 @@
     "version": "1.0.0",
     "name": "Rules Engine Execution",
     "description": "Execution flow for the Principal View rules engine validation system. This canvas shows how configuration files are validated through a series of rules, with violations detected and aggregated.",
+    "markdown": ".principal-views/rules-engine-execution.md",
     "otel": {
       "defaultScope": "span.kind",
       "audit": {

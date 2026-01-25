@@ -1,6 +1,6 @@
 {
   "name": "@principal-ai/principal-view-core",
-  "version": "0.11.9",
+  "version": "0.12.2",
   "description": "Core logic and types for graph-based principal view framework",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -16,6 +16,12 @@
       "import": "./dist/browser.js",
       "require": "./dist/browser.js",
       "default": "./dist/browser.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js",
+      "require": "./dist/node.js",
+      "default": "./dist/node.js"
     }
   },
   "files": [

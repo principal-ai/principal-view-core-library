@@ -35,6 +35,11 @@ export interface DiscoveredCanvas {
   packagePath?: string;
   /** Whether this is from repo root vs package */
   scope: 'root' | 'package';
+  /**
+   * Associated markdown documentation file path (relative to repo root)
+   * Only populated for otel.canvas files when canvas content is loaded
+   */
+  markdownPath?: string;
 }
 
 /**

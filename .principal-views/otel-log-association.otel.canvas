@@ -470,6 +470,7 @@
     "version": "1.0.0",
     "name": "OTEL Log Association Architecture",
     "description": "Shows how OtelLog flows through LogRouter to Canvas Nodes, with audit tracking",
+    "markdown": ".principal-views/otel-log-association.md",
     "nodeTypes": {
       "service": {
         "label": "Component",

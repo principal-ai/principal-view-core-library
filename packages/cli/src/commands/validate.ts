@@ -299,6 +299,7 @@ const ALLOWED_CANVAS_FIELDS = {
     'version',
     'name',
     'description',
+    'markdown',
     'nodeTypes',
     'edgeTypes',
     'pathConfig',
@@ -1183,6 +1184,32 @@ function validateCanvas(
       suggestion:
         'Either add OTEL features (pv.otel, pv.events, pv.scope, pv.audit, resourceMatch) or rename to .canvas',
     });
+  }
+
+  // Validate markdown field for .otel.canvas files
+  if (isOtelCanvas) {
+    const pv = c.pv as Record<string, unknown> | undefined;
+    if (!pv || typeof pv.markdown !== 'string' || !pv.markdown) {
+      issues.push({
+        type: 'error',
+        message: 'OTEL canvas files must have a "pv.markdown" field pointing to documentation',
+        path: 'pv.markdown',
+        suggestion: 'Add: "markdown": ".principal-views/graph-name.md" (path relative to repository root)',
+      });
+    } else {
+      // Validate that the markdown file exists (if repository path is provided)
+      if (repositoryPath) {
+        const markdownPath = resolve(repositoryPath, pv.markdown as string);
+        if (!existsSync(markdownPath)) {
+          issues.push({
+            type: 'error',
+            message: `Referenced markdown file does not exist: ${pv.markdown}`,
+            path: 'pv.markdown',
+            suggestion: `Create the markdown file at: ${markdownPath}`,
+          });
+        }
+      }
+    }
   }
 
   return issues;
