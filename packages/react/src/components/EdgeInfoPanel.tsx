@@ -59,7 +59,7 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
           borderBottom: `2px solid ${edgeColor}`,
         }}
       >
-        <div style={{ fontWeight: 'bold', fontSize: '14px', color: edgeColor }}>
+        <div style={{ fontWeight: theme.fontWeights.bold, fontSize: theme.fontSizes[1], fontFamily: theme.fonts.body, color: edgeColor }}>
           Edge Information
         </div>
         <button
@@ -68,7 +68,8 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
             border: 'none',
             background: 'none',
             cursor: 'pointer',
-            fontSize: '18px',
+            fontSize: theme.fontSizes[3],
+            fontFamily: theme.fonts.body,
             color: theme.colors.textSecondary,
             padding: '0',
             width: '24px',
@@ -84,12 +85,13 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
 
       {/* Edge Type */}
       <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '4px' }}>
+        <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
           Type
         </div>
         <div
           style={{
-            fontSize: '12px',
+            fontSize: theme.fontSizes[0],
+            fontFamily: theme.fonts.body,
             padding: '4px 8px',
             backgroundColor: edgeColor,
             color: theme.colors.background,
@@ -103,10 +105,10 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
 
       {/* Connection Info */}
       <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '4px' }}>
+        <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
           Connection
         </div>
-        <div style={{ fontSize: '12px' }}>
+        <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body }}>
           <span
             style={{
               fontFamily: theme.fonts.monospace,
@@ -133,12 +135,12 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
 
       {/* Connection Sides */}
       <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: '10px', color: theme.colors.textSecondary, marginBottom: '8px' }}>
+        <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '8px' }}>
           Connection Sides
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '10px', color: theme.colors.textMuted, marginBottom: '4px' }}>
+            <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textMuted, marginBottom: '4px' }}>
               From Side
             </div>
             <select
@@ -152,7 +154,8 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
               style={{
                 width: '100%',
                 padding: '6px 8px',
-                fontSize: '12px',
+                fontSize: theme.fontSizes[0],
+                fontFamily: theme.fonts.body,
                 borderRadius: '4px',
                 border: `1px solid ${theme.colors.border}`,
                 backgroundColor: theme.colors.background,
@@ -169,7 +172,7 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
             </select>
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '10px', color: theme.colors.textMuted, marginBottom: '4px' }}>
+            <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textMuted, marginBottom: '4px' }}>
               To Side
             </div>
             <select
@@ -187,7 +190,8 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
               style={{
                 width: '100%',
                 padding: '6px 8px',
-                fontSize: '12px',
+                fontSize: theme.fontSizes[0],
+                fontFamily: theme.fonts.body,
                 borderRadius: '4px',
                 border: `1px solid ${theme.colors.border}`,
                 backgroundColor: theme.colors.background,
@@ -209,7 +213,8 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
       {/* Metadata */}
       <div
         style={{
-          fontSize: '10px',
+          fontSize: theme.fontSizes[0],
+          fontFamily: theme.fonts.body,
           color: theme.colors.textMuted,
           marginTop: '12px',
           paddingTop: '8px',
@@ -235,8 +240,9 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
             border: 'none',
             borderRadius: '4px',
             cursor: 'pointer',
-            fontSize: '12px',
-            fontWeight: 'bold',
+            fontSize: theme.fontSizes[0],
+            fontFamily: theme.fonts.body,
+            fontWeight: theme.fontWeights.bold,
           }}
         >
           Delete Edge

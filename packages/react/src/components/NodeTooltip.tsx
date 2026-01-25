@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTheme } from '@principal-ade/industry-theme';
 
 export interface OtelInfo {
   kind: 'type' | 'service' | 'instance';
@@ -25,6 +26,7 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
   visible,
   nodeRef,
 }) => {
+  const { theme } = useTheme();
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
@@ -83,7 +85,8 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
         backgroundColor: 'rgba(0, 0, 0, 0.9)',
         color: 'white',
         borderRadius: '6px',
-        fontSize: '11px',
+        fontSize: theme.fontSizes[0],
+        fontFamily: theme.fonts.body,
         maxWidth: '250px',
         zIndex: 99999,
         pointerEvents: 'none',
@@ -123,15 +126,16 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
               color: 'white',
               padding: '2px 6px',
               borderRadius: '3px',
-              fontSize: '9px',
-              fontWeight: 600,
+              fontSize: theme.fontSizes[0],
+              fontWeight: theme.fontWeights.semibold,
+              fontFamily: theme.fonts.body,
               textTransform: 'uppercase',
             }}
           >
             {getKindLabel(otel.kind)}
           </span>
           {otel.category && (
-            <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '10px' }}>
+            <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body }}>
               {otel.category}
             </span>
           )}
@@ -142,8 +146,9 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
                 color: 'white',
                 padding: '1px 4px',
                 borderRadius: '3px',
-                fontSize: '8px',
-                fontWeight: 600,
+                fontSize: theme.fontSizes[0],
+                fontWeight: theme.fontWeights.semibold,
+                fontFamily: theme.fonts.body,
               }}
             >
               NEW

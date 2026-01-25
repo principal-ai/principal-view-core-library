@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { NodeTypeDefinition } from '@principal-ai/principal-view-core/browser';
+import { useTheme } from '@principal-ade/industry-theme';
 import { resolveIcon } from '../utils/iconResolver';
 import { NodeTooltip } from '../components/NodeTooltip';
 import type { OtelInfo } from '../components/NodeTooltip';
@@ -59,6 +60,7 @@ export interface CustomNodeData extends Record<string, unknown> {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging }) => {
+  const { theme } = useTheme();
   const [isHovered, setIsHovered] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
   const nodeProps = data as CustomNodeData;
@@ -116,8 +118,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
           borderRadius: '50%',
           backgroundColor: badgeColor,
           color: 'white',
-          fontSize: '10px',
-          fontWeight: 700,
+          fontSize: theme.fontSizes[0],
+          fontWeight: theme.fontWeights.bold,
+          fontFamily: theme.fonts.body,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -148,8 +151,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
           borderRadius: '50%',
           backgroundColor: '#10b981', // Green for sources
           color: 'white',
-          fontSize: '10px',
-          fontWeight: 700,
+          fontSize: theme.fontSizes[0],
+          fontWeight: theme.fontWeights.bold,
+          fontFamily: theme.fonts.body,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -229,8 +233,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
       backgroundColor: isGroup ? 'rgba(255, 255, 255, 0.7)' : hexToLightColor(fillColor),
       color: '#000',
       border: `2px solid ${hasViolations ? '#D0021B' : strokeColor}`,
-      fontSize: '12px',
-      fontWeight: 500,
+      fontSize: theme.fontSizes[0],
+      fontWeight: theme.fontWeights.medium,
+      fontFamily: theme.fonts.body,
       // Use 100% width/height to fill the node container (for resizing support)
       width: '100%',
       height: '100%',
@@ -345,8 +350,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: '12px',
-        fontWeight: 500,
+        fontSize: theme.fontSizes[0],
+        fontWeight: theme.fontWeights.medium,
+        fontFamily: theme.fonts.body,
         gap: '4px',
       }
     : {};
@@ -388,8 +394,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: '12px',
-        fontWeight: 500,
+        fontSize: theme.fontSizes[0],
+        fontWeight: theme.fontWeights.medium,
+        fontFamily: theme.fonts.body,
         gap: '4px',
       }
     : {};
@@ -479,7 +486,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
               {state && (
                 <div
                   style={{
-                    fontSize: '10px',
+                    fontSize: theme.fontSizes[0],
+                    fontFamily: theme.fonts.body,
                     backgroundColor: color,
                     color: 'white',
                     padding: '2px 6px',
@@ -493,9 +501,10 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
               {hasViolations && (
                 <div
                   style={{
-                    fontSize: '10px',
+                    fontSize: theme.fontSizes[0],
+                    fontFamily: theme.fonts.body,
                     color: '#D0021B',
-                    fontWeight: 'bold',
+                    fontWeight: theme.fontWeights.bold,
                   }}
                 >
                   ⚠️
@@ -532,7 +541,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
               {state && (
                 <div
                   style={{
-                    fontSize: '10px',
+                    fontSize: theme.fontSizes[0],
+                    fontFamily: theme.fonts.body,
                     backgroundColor: color,
                     color: 'white',
                     padding: '2px 6px',
@@ -546,9 +556,10 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
               {hasViolations && (
                 <div
                   style={{
-                    fontSize: '10px',
+                    fontSize: theme.fontSizes[0],
+                    fontFamily: theme.fonts.body,
                     color: '#D0021B',
-                    fontWeight: 'bold',
+                    fontWeight: theme.fontWeights.bold,
                   }}
                 >
                   ⚠️
@@ -610,7 +621,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
               {state && (
                 <div
                   style={{
-                    fontSize: '10px',
+                    fontSize: theme.fontSizes[0],
+                    fontFamily: theme.fonts.body,
                     backgroundColor: color,
                     color: 'white',
                     padding: '2px 6px',
@@ -624,9 +636,10 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
               {hasViolations && (
                 <div
                   style={{
-                    fontSize: '10px',
+                    fontSize: theme.fontSizes[0],
+                    fontFamily: theme.fonts.body,
                     color: '#D0021B',
-                    fontWeight: 'bold',
+                    fontWeight: theme.fontWeights.bold,
                   }}
                 >
                   ⚠️

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
 import type { EdgeProps } from '@xyflow/react';
 import type { EdgeTypeDefinition } from '@principal-ai/principal-view-core/browser';
+import { useTheme } from '@principal-ade/industry-theme';
 
 export interface CustomEdgeData extends Record<string, unknown> {
   typeDefinition: EdgeTypeDefinition;
@@ -34,6 +35,7 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
   markerEnd,
   selected,
 }) => {
+  const { theme } = useTheme();
   const edgeProps = data as CustomEdgeData | undefined;
   const {
     typeDefinition,
@@ -276,8 +278,9 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
               backgroundColor: 'white',
               padding: '2px 6px',
               borderRadius: '4px',
-              fontSize: '10px',
-              fontWeight: 500,
+              fontSize: theme.fontSizes[0],
+              fontWeight: theme.fontWeights.medium,
+              fontFamily: theme.fonts.body,
               border: `1px solid ${color}`,
               pointerEvents: 'all',
             }}
@@ -299,8 +302,9 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
               color: 'white',
               padding: '4px 8px',
               borderRadius: '4px',
-              fontSize: '11px',
-              fontWeight: 500,
+              fontSize: theme.fontSizes[0],
+              fontWeight: theme.fontWeights.medium,
+              fontFamily: theme.fonts.body,
               whiteSpace: 'nowrap',
               pointerEvents: 'none',
               zIndex: 1000,

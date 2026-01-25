@@ -91,7 +91,7 @@ export const SelectionSidebar: React.FC<SelectionSidebarProps> = ({
           borderBottom: `2px solid ${theme.colors.primary}`,
         }}
       >
-        <div style={{ fontWeight: 'bold', fontSize: '14px', color: theme.colors.primary }}>
+        <div style={{ fontWeight: theme.fontWeights.bold, fontSize: theme.fontSizes[1], fontFamily: theme.fonts.body, color: theme.colors.primary }}>
           {selectedNodes.length} nodes selected
         </div>
         <button
@@ -100,7 +100,8 @@ export const SelectionSidebar: React.FC<SelectionSidebarProps> = ({
             border: 'none',
             background: 'none',
             cursor: 'pointer',
-            fontSize: '18px',
+            fontSize: theme.fontSizes[3],
+            fontFamily: theme.fonts.body,
             color: theme.colors.textSecondary,
             padding: '0',
             width: '24px',
@@ -175,8 +176,9 @@ export const SelectionSidebar: React.FC<SelectionSidebarProps> = ({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
-                      fontWeight: 600,
-                      fontSize: '13px',
+                      fontWeight: theme.fontWeights.semibold,
+                      fontSize: theme.fontSizes[1],
+                      fontFamily: theme.fonts.body,
                       color: theme.colors.text,
                       marginBottom: description ? '2px' : 0,
                     }}
@@ -186,7 +188,8 @@ export const SelectionSidebar: React.FC<SelectionSidebarProps> = ({
                   {description && (
                     <div
                       style={{
-                        fontSize: '11px',
+                        fontSize: theme.fontSizes[0],
+                        fontFamily: theme.fonts.body,
                         color: theme.colors.textSecondary,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -227,7 +230,8 @@ export const SelectionSidebar: React.FC<SelectionSidebarProps> = ({
                   <div style={{ marginTop: '10px' }}>
                     <div
                       style={{
-                        fontSize: '10px',
+                        fontSize: theme.fontSizes[0],
+                      fontFamily: theme.fonts.body,
                         color: theme.colors.textSecondary,
                         marginBottom: '4px',
                       }}
@@ -236,7 +240,8 @@ export const SelectionSidebar: React.FC<SelectionSidebarProps> = ({
                     </div>
                     <div
                       style={{
-                        fontSize: '11px',
+                        fontSize: theme.fontSizes[0],
+                        fontFamily: theme.fonts.body,
                         padding: '3px 8px',
                         backgroundColor: nodeColor,
                         color: 'white',
@@ -253,7 +258,8 @@ export const SelectionSidebar: React.FC<SelectionSidebarProps> = ({
                     <div style={{ marginTop: '8px' }}>
                       <div
                         style={{
-                          fontSize: '10px',
+                          fontSize: theme.fontSizes[0],
+                      fontFamily: theme.fonts.body,
                           color: theme.colors.textSecondary,
                           marginBottom: '4px',
                         }}
@@ -262,7 +268,8 @@ export const SelectionSidebar: React.FC<SelectionSidebarProps> = ({
                       </div>
                       <div
                         style={{
-                          fontSize: '11px',
+                          fontSize: theme.fontSizes[0],
+                        fontFamily: theme.fonts.body,
                           padding: '3px 8px',
                           backgroundColor:
                             typeDefinition?.states?.[node.state]?.color || theme.colors.secondary,
@@ -281,7 +288,8 @@ export const SelectionSidebar: React.FC<SelectionSidebarProps> = ({
                     <div style={{ marginTop: '8px' }}>
                       <div
                         style={{
-                          fontSize: '10px',
+                          fontSize: theme.fontSizes[0],
+                      fontFamily: theme.fonts.body,
                           color: theme.colors.textSecondary,
                           marginBottom: '6px',
                           fontWeight: 'bold',
@@ -293,7 +301,8 @@ export const SelectionSidebar: React.FC<SelectionSidebarProps> = ({
                         <div key={key} style={{ marginBottom: '6px' }}>
                           <div
                             style={{
-                              fontSize: '10px',
+                              fontSize: theme.fontSizes[0],
+                      fontFamily: theme.fonts.body,
                               color: theme.colors.textSecondary,
                               marginBottom: '2px',
                             }}
@@ -302,7 +311,8 @@ export const SelectionSidebar: React.FC<SelectionSidebarProps> = ({
                           </div>
                           <div
                             style={{
-                              fontSize: '11px',
+                              fontSize: theme.fontSizes[0],
+                        fontFamily: theme.fonts.body,
                               color: theme.colors.text,
                               wordBreak: 'break-word',
                             }}
@@ -321,7 +331,8 @@ export const SelectionSidebar: React.FC<SelectionSidebarProps> = ({
                   {/* Node ID */}
                   <div
                     style={{
-                      fontSize: '10px',
+                      fontSize: theme.fontSizes[0],
+                      fontFamily: theme.fonts.body,
                       color: theme.colors.textMuted,
                       marginTop: '8px',
                       paddingTop: '6px',
