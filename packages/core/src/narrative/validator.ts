@@ -584,6 +584,42 @@ export class NarrativeValidator {
     const validFields = ['introduction', 'events', 'logs', 'flow', 'summary', 'span', 'children'];
     const templateKeys = Object.keys(template);
 
+    // Check that events field is present and is an object
+    if (!template.events) {
+      violations.push({
+        ruleId: 'narrative-template-structure',
+        severity: 'error',
+        file,
+        path: `scenarios[${scenarioIdx}].template`,
+        message: 'Template is missing required "events" field',
+        impact: 'Template must specify how to render each event type',
+        suggestion: 'Add "events: { eventName: template }" to map event names to templates',
+        fixable: false,
+      });
+    } else if (typeof template.events !== 'object' || Array.isArray(template.events)) {
+      violations.push({
+        ruleId: 'narrative-template-structure',
+        severity: 'error',
+        file,
+        path: `scenarios[${scenarioIdx}].template.events`,
+        message: 'Template "events" field must be an object',
+        impact: 'Events will not render correctly',
+        suggestion: 'Use object format: { "event.name": "template string" }',
+        fixable: false,
+      });
+    } else if (Object.keys(template.events).length === 0) {
+      violations.push({
+        ruleId: 'narrative-template-structure',
+        severity: 'error',
+        file,
+        path: `scenarios[${scenarioIdx}].template.events`,
+        message: 'Template "events" field must not be empty',
+        impact: 'No events will be rendered in this scenario',
+        suggestion: 'Add at least one event template: { "event.name": "template string" }',
+        fixable: false,
+      });
+    }
+
     // Check for invalid/legacy fields
     for (const key of templateKeys) {
       if (!validFields.includes(key)) {
