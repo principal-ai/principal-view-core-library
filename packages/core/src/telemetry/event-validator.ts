@@ -77,7 +77,7 @@ export class EventValidator {
     const errors: string[] = [];
 
     // First try to find schema by event name (supports multiple events per component)
-    let eventSchema = this.eventSchemasByName.get(eventName);
+    const eventSchema = this.eventSchemasByName.get(eventName);
 
     // If not found by event name, check if the specific node has a schema
     if (!eventSchema) {

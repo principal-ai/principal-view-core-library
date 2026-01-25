@@ -15,7 +15,7 @@ import path from 'path';
 import { generateTypes } from '../src/codegen/type-generator';
 import { EventValidator, createValidatedEmitter } from '../src/telemetry/event-validator';
 import type { ExtendedCanvas } from '../src/types/canvas';
-import { startTestSpan, createValidatedSpanEmitter, clearSpans } from './otel-setup';
+import { startTestSpan, createValidatedSpanEmitter, clearSpans, type TestSpan } from './otel-setup';
 
 // Load canvas with event schemas
 const canvasPath = path.join(__dirname, '../../../.principal-views/graph-converter-execution.otel.canvas');
@@ -131,7 +131,7 @@ describe('End-to-End: Canvas → Types → Validation → Emission', () => {
     class GraphConverterService {
       private emit: ReturnType<typeof createValidatedEmitter>;
 
-      constructor(canvas: ExtendedCanvas, span: any) {
+      constructor(canvas: ExtendedCanvas, span: TestSpan) {
         const validator = new EventValidator(canvas);
         this.emit = createValidatedEmitter(
           validator,
