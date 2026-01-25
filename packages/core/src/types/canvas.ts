@@ -327,11 +327,14 @@ export interface PVNodeExtension {
   // Use pv.event for structured event schema instead
 
   /**
-   * Event schema for type-safe telemetry validation
+   * Event schema for type-safe telemetry validation (inline definition)
    *
    * Defines the single event that this node emits during execution.
    * Used for compile-time and runtime validation of telemetry events.
    * Each node should emit exactly one event type.
+   *
+   * Use this for one-off events specific to this node.
+   * For reusable events, use `eventRef` to reference library event schemas.
    *
    * @example
    * ```typescript
@@ -346,6 +349,22 @@ export interface PVNodeExtension {
    * ```
    */
   event?: PVEventSchema;
+
+  /**
+   * Reference to a library event schema
+   *
+   * References an event schema defined in library.yaml's `eventSchemas` section.
+   * This promotes reusability and consistency across canvases.
+   *
+   * NOTE: A node cannot have both `event` and `eventRef` - choose one.
+   * Validators will flag nodes that have both as an error.
+   *
+   * @example
+   * ```typescript
+   * eventRef: 'auth.callback.started'
+   * ```
+   */
+  eventRef?: string;
 
   /** Data schema for typed fields */
   dataSchema?: Record<

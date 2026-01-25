@@ -309,8 +309,15 @@ export class NarrativeValidator {
     // Extract all event names from canvas nodes
     const canvasEvents = new Set<string>();
     for (const node of canvas.nodes) {
-      if (node.pv?.event && typeof node.pv.event === 'string') {
-        canvasEvents.add(node.pv.event);
+      if (node.pv?.event) {
+        // event is a PVEventSchema object with a 'name' property
+        if (typeof node.pv.event === 'object' && node.pv.event.name) {
+          canvasEvents.add(node.pv.event.name);
+        }
+      }
+      // Also check for eventRef (library reference)
+      if (node.pv?.eventRef && typeof node.pv.eventRef === 'string') {
+        canvasEvents.add(node.pv.eventRef);
       }
     }
 
@@ -338,7 +345,7 @@ export class NarrativeValidator {
     }
 
     // Check for narrative events not in canvas
-    for (const eventName of narrativeEvents) {
+    for (const eventName of Array.from(narrativeEvents)) {
       if (!canvasEvents.has(eventName)) {
         violations.push({
           ruleId: 'narrative-event-sync',
@@ -354,7 +361,7 @@ export class NarrativeValidator {
     }
 
     // Check for canvas events not in narrative (warning only)
-    for (const eventName of canvasEvents) {
+    for (const eventName of Array.from(canvasEvents)) {
       if (!narrativeEvents.has(eventName)) {
         violations.push({
           ruleId: 'narrative-event-coverage',

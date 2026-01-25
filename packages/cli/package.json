@@ -1,6 +1,6 @@
 {
   "name": "@principal-ai/principal-view-cli",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Principal View CLI - Validate and manage .canvas configuration files",
   "main": "dist/index.cjs",
   "types": "dist/index.d.ts",
@@ -37,10 +37,11 @@
     "commander": "14.0.2",
     "glob": "^13.0.0",
     "globby": "16.0.0",
-    "js-yaml": "4.1.1"
+    "js-yaml": "4.1.1",
+    "@principal-ai/principal-view-core": "^0.13.0"
   },
   "devDependencies": {
-    "@principal-ai/principal-view-core": "0.12.0",
+    "@principal-ai/principal-view-core": "0.13.0",
     "@types/js-yaml": "4.0.9",
     "@types/node": "22.10.1",
     "esbuild": "0.24.0",
@@ -55,5 +56,8 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
+  },
+  "peerDependencies": {
+    "@principal-ai/principal-view-core": "^0.13.0"
   }
 }

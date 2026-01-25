@@ -6,6 +6,7 @@
  */
 
 import type { ExtendedCanvas, PVEventSchema } from '../types/canvas';
+import type { ComponentLibrary } from '../types/library';
 import type { JsonValue, JsonObject } from '../types';
 
 /**
@@ -37,8 +38,10 @@ export class EventValidator {
   private eventSchemasByNode: Map<string, PVEventSchema> = new Map();
   private eventSchemasByName: Map<string, PVEventSchema> = new Map();
   private nodeIdsByBaseId: Map<string, Set<string>> = new Map();
+  private library?: ComponentLibrary;
 
-  constructor(canvas: ExtendedCanvas) {
+  constructor(canvas: ExtendedCanvas, library?: ComponentLibrary) {
+    this.library = library;
     this.indexEventSchemas(canvas);
   }
 
@@ -49,12 +52,29 @@ export class EventValidator {
     if (!canvas.nodes) return;
 
     for (const node of canvas.nodes) {
+      let eventSchema: PVEventSchema | undefined;
+
+      // Check for inline event definition
       if (node.pv?.event) {
+        eventSchema = node.pv.event;
+      }
+      // Check for library event reference
+      else if (node.pv?.eventRef) {
+        eventSchema = this.resolveLibraryEvent(node.pv.eventRef);
+        if (!eventSchema) {
+          console.warn(
+            `Node '${node.id}' references unknown library event '${node.pv.eventRef}'`
+          );
+          continue;
+        }
+      }
+
+      if (eventSchema) {
         // Index by node ID
-        this.eventSchemasByNode.set(node.id, node.pv.event);
+        this.eventSchemasByNode.set(node.id, eventSchema);
 
         // Index by event name
-        this.eventSchemasByName.set(node.pv.event.name, node.pv.event);
+        this.eventSchemasByName.set(eventSchema.name, eventSchema);
 
         // Index by base node ID (strip numeric suffixes like '-2', '-3')
         const baseId = node.id.replace(/-\d+$/, '');
@@ -64,6 +84,27 @@ export class EventValidator {
         this.nodeIdsByBaseId.get(baseId)!.add(node.id);
       }
     }
+  }
+
+  /**
+   * Resolve an event schema from library by event name
+   */
+  private resolveLibraryEvent(eventName: string): PVEventSchema | undefined {
+    if (!this.library?.eventSchemas) {
+      return undefined;
+    }
+
+    const librarySchema = this.library.eventSchemas[eventName];
+    if (!librarySchema) {
+      return undefined;
+    }
+
+    // Convert library schema (without name) to full PVEventSchema
+    return {
+      name: eventName,
+      description: librarySchema.description,
+      attributes: librarySchema.attributes,
+    };
   }
 
   /**
@@ -178,7 +219,7 @@ export class EventValidator {
     }
 
     const eventNames: string[] = [];
-    for (const id of relatedNodeIds) {
+    for (const id of Array.from(relatedNodeIds)) {
       const schema = this.eventSchemasByNode.get(id);
       if (schema) {
         eventNames.push(schema.name);

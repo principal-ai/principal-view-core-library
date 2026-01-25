@@ -18,6 +18,7 @@ import type {
   PVAnimationType,
   // PVActionPattern removed - see docs/LEGACY_PATH_BASED_PATTERNS.md
   PVNodeState,
+  PVEventSchema,
 } from './canvas';
 
 // ============================================================================
@@ -198,6 +199,26 @@ export interface ComponentLibrary {
 
   /** Reusable edge type definitions */
   edgeComponents: Record<string, LibraryEdgeComponent>;
+
+  /**
+   * Reusable event schema definitions
+   *
+   * Defines event schemas that can be referenced by canvas nodes via `pv.eventRef`.
+   * This promotes reusability and consistency across canvases.
+   *
+   * @example
+   * ```yaml
+   * eventSchemas:
+   *   auth.callback.started:
+   *     description: "Authentication callback initiated"
+   *     attributes:
+   *       session.id:
+   *         type: string
+   *         required: true
+   *         description: "Session identifier"
+   * ```
+   */
+  eventSchemas?: Record<string, Omit<PVEventSchema, 'name'>>;
 
   /** Optional connection rules (which nodes can connect via which edges) */
   connectionRules?: LibraryConnectionRule[];

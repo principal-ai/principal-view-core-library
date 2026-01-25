@@ -472,7 +472,7 @@ function findSimilarField(field: string, allowedFields: string[]): string | null
  * Check if a canvas has OTEL-related features
  * Returns true if the canvas contains any of:
  * 1. Nodes with pv.otel extension (kind, category)
- * 2. Event schema (pv.event with validation)
+ * 2. Event schema (pv.event or pv.eventRef with validation)
  * 3. Canvas scope/audit config (OTEL log routing)
  * 4. Resource matching for OTEL logs
  */
@@ -504,8 +504,8 @@ function hasOtelFeatures(canvas: unknown): boolean {
             return true;
           }
 
-          // Check for event schema (pv.event)
-          if (nodePv.event !== undefined) {
+          // Check for event schema (pv.event or pv.eventRef)
+          if (nodePv.event !== undefined || nodePv.eventRef !== undefined) {
             return true;
           }
 
@@ -858,20 +858,30 @@ function validateCanvas(
           );
         }
 
-        // For .otel.canvas files: require event field on nodes with pv extension (except groups)
+        // Check for conflict: node cannot have both event and eventRef
+        if (nodePv.event !== undefined && nodePv.eventRef !== undefined) {
+          issues.push({
+            type: 'error',
+            message: `Node "${nodeLabel}" has both "pv.event" and "pv.eventRef" - only one is allowed`,
+            path: `${nodePath}.pv`,
+            suggestion: 'Use "event" for inline event definition, or "eventRef" to reference a library event schema. Remove one of them.',
+          });
+        }
+
+        // For .otel.canvas files: require event or eventRef field on nodes with pv extension (except groups)
         if (filePath.endsWith('.otel.canvas') && nodeType !== 'group') {
-          if (nodePv.event === undefined) {
+          if (nodePv.event === undefined && nodePv.eventRef === undefined) {
             issues.push({
               type: 'error',
-              message: `Node "${nodeLabel}" in .otel.canvas file must have "pv.event" field`,
-              path: `${nodePath}.pv.event`,
-              suggestion: 'Add event name, e.g.: "event": "user.login" or "event": "order.created"',
+              message: `Node "${nodeLabel}" in .otel.canvas file must have either "pv.event" or "pv.eventRef" field`,
+              path: `${nodePath}.pv`,
+              suggestion: 'Add inline event schema with "event": {...} or reference library event with "eventRef": "event.name"',
             });
           }
         }
 
         // Validate source file references for OTEL event nodes
-        const hasOtelFeatures = nodePv.otel !== undefined || nodePv.event !== undefined;
+        const hasOtelFeatures = nodePv.otel !== undefined || nodePv.event !== undefined || nodePv.eventRef !== undefined;
         if (hasOtelFeatures) {
           // OTEL nodes must have at least one source file reference
           if (!Array.isArray(nodePv.sources) || nodePv.sources.length === 0) {
@@ -883,11 +893,11 @@ function validateCanvas(
             });
           }
 
-          // For .otel.canvas files: nodes with event must have pv.otel for UI rendering
-          if (filePath.endsWith('.otel.canvas') && nodePv.event !== undefined && nodePv.otel === undefined) {
+          // For .otel.canvas files: nodes with event or eventRef must have pv.otel for UI rendering
+          if (filePath.endsWith('.otel.canvas') && (nodePv.event !== undefined || nodePv.eventRef !== undefined) && nodePv.otel === undefined) {
             issues.push({
               type: 'error',
-              message: `Node "${nodeLabel}" in .otel.canvas file has event but is missing "pv.otel" field required for UI badges`,
+              message: `Node "${nodeLabel}" in .otel.canvas file has event schema but is missing "pv.otel" field required for UI badges`,
               path: `${nodePath}.pv.otel`,
               suggestion: 'Add OTEL metadata for UI rendering, e.g.: "otel": { "kind": "event", "category": "lifecycle", "isNew": true }',
             });

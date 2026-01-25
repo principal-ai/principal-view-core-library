@@ -194,6 +194,35 @@ export class LibraryLoader {
       }
     }
 
+    // Validate event schemas if present
+    if (library.eventSchemas) {
+      if (typeof library.eventSchemas !== 'object') {
+        return `Field 'eventSchemas' must be an object in ${filePath}`;
+      }
+
+      for (const [eventName, schema] of Object.entries(library.eventSchemas)) {
+        if (!schema.description) {
+          return `Event schema '${eventName}' is missing required field 'description' in ${filePath}`;
+        }
+
+        if (!schema.attributes || typeof schema.attributes !== 'object') {
+          return `Event schema '${eventName}' is missing or has invalid 'attributes' field in ${filePath}`;
+        }
+
+        // Validate each attribute in the event schema
+        for (const [attrName, attrSchema] of Object.entries(schema.attributes)) {
+          if (!attrSchema.type) {
+            return `Event schema '${eventName}' attribute '${attrName}' is missing required field 'type' in ${filePath}`;
+          }
+
+          const validTypes = ['string', 'number', 'boolean', 'object', 'array'];
+          if (!validTypes.includes(attrSchema.type)) {
+            return `Event schema '${eventName}' attribute '${attrName}' has invalid type '${attrSchema.type}' in ${filePath}. Valid types: ${validTypes.join(', ')}`;
+          }
+        }
+      }
+    }
+
     // Validate connection rules if present
     if (library.connectionRules) {
       for (const [index, rule] of library.connectionRules.entries()) {

@@ -8,6 +8,7 @@ import type {
   DiscoveredCanvas,
   DiscoveredCanvasWithContent,
   DiscoveredExecution,
+  DiscoveredExecutionWithContent,
   CanvasDiscoveryResult,
   DiscoveryOptions,
   CanvasType,
@@ -235,8 +236,8 @@ export class CanvasDiscovery {
     packageMap: Map<string, PackageLayer>,
     options: DiscoveryOptions,
     errors: Array<{ path: string; error: string }>
-  ): Promise<DiscoveredExecution[]> {
-    const executions: DiscoveredExecution[] = [];
+  ): Promise<(DiscoveredExecution | DiscoveredExecutionWithContent)[]> {
+    const executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[] = [];
 
     for (const file of fileTree.allFiles) {
       const path = file.relativePath || file.path || '';
@@ -257,7 +258,7 @@ export class CanvasDiscovery {
         : metadata.basename;
 
       // Create discovered execution
-      let execution: DiscoveredExecution = {
+      let execution: DiscoveredExecution | DiscoveredExecutionWithContent = {
         id,
         name: this.toDisplayName(metadata.basename),
         path,
@@ -273,7 +274,7 @@ export class CanvasDiscovery {
       if (options.includeContent && options.fileReader) {
         try {
           const content = await options.fileReader(path);
-          execution = { ...execution, content: JSON.parse(content) };
+          execution = { ...execution, content: JSON.parse(content) } as DiscoveredExecutionWithContent;
         } catch (error) {
           errors.push({
             path,

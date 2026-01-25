@@ -13,6 +13,7 @@
  */
 
 import type { ExtendedCanvas, PVEventSchema, PVEventFieldSchema } from '../types/canvas';
+import type { ComponentLibrary } from '../types/library';
 
 /**
  * Code generation options
@@ -55,7 +56,7 @@ export interface CodeGenerator {
   /** Target language */
   language: string;
   /** Generate code from canvas */
-  generate(canvas: ExtendedCanvas, options?: CodegenOptions): CodegenResult;
+  generate(canvas: ExtendedCanvas, options?: CodegenOptions, library?: ComponentLibrary): CodegenResult;
 }
 
 /**
@@ -67,7 +68,7 @@ export interface CodeGenerator {
 export class TypeScriptGenerator implements CodeGenerator {
   language = 'typescript';
 
-  generate(canvas: ExtendedCanvas, options?: CodegenOptions): CodegenResult {
+  generate(canvas: ExtendedCanvas, options?: CodegenOptions, library?: ComponentLibrary): CodegenResult {
     const opts = {
       readonly: options?.style?.readonly ?? false,
       strictNullChecks: options?.style?.strictNullChecks ?? true,
@@ -97,15 +98,32 @@ export class TypeScriptGenerator implements CodeGenerator {
     // Generate types for each node with event schema
     if (canvas.nodes) {
       for (const node of canvas.nodes) {
+        let eventSchema: PVEventSchema | undefined;
+
+        // Check for inline event definition
         if (node.pv?.event) {
-          lines.push(...this.generateNodeTypes(node.id, node.pv.event, opts));
+          eventSchema = node.pv.event;
+        }
+        // Check for library event reference
+        else if (node.pv?.eventRef) {
+          eventSchema = this.resolveLibraryEvent(node.pv.eventRef, library);
+          if (!eventSchema) {
+            console.warn(
+              `Node '${node.id}' references unknown library event '${node.pv.eventRef}'`
+            );
+            continue;
+          }
+        }
+
+        if (eventSchema) {
+          lines.push(...this.generateNodeTypes(node.id, eventSchema, opts));
           lines.push('');
         }
       }
     }
 
     // Generate union type of all event names
-    lines.push(...this.generateEventNameUnion(canvas, opts));
+    lines.push(...this.generateEventNameUnion(canvas, opts, library));
     lines.push('');
 
     // Generate event emitter helper type
@@ -207,15 +225,24 @@ export class TypeScriptGenerator implements CodeGenerator {
 
   private generateEventNameUnion(
     canvas: ExtendedCanvas,
-    opts: { includeDocComments: boolean }
+    opts: { includeDocComments: boolean },
+    library?: ComponentLibrary
   ): string[] {
     const lines: string[] = [];
     const allEventNames = new Set<string>();
 
     if (canvas.nodes) {
       for (const node of canvas.nodes) {
+        // Check for inline event definition
         if (node.pv?.event?.name) {
           allEventNames.add(node.pv.event.name);
+        }
+        // Check for library event reference
+        else if (node.pv?.eventRef) {
+          const eventSchema = this.resolveLibraryEvent(node.pv.eventRef, library);
+          if (eventSchema) {
+            allEventNames.add(eventSchema.name);
+          }
         }
       }
     }
@@ -329,6 +356,27 @@ export class TypeScriptGenerator implements CodeGenerator {
       .replace(/[^a-z0-9-]/g, '');
     return `${kebab}.types.ts`;
   }
+
+  /**
+   * Resolve an event schema from library by event name
+   */
+  private resolveLibraryEvent(eventName: string, library?: ComponentLibrary): PVEventSchema | undefined {
+    if (!library?.eventSchemas) {
+      return undefined;
+    }
+
+    const librarySchema = library.eventSchemas[eventName];
+    if (!librarySchema) {
+      return undefined;
+    }
+
+    // Convert library schema (without name) to full PVEventSchema
+    return {
+      name: eventName,
+      description: librarySchema.description,
+      attributes: librarySchema.attributes,
+    };
+  }
 }
 
 /**
@@ -347,10 +395,11 @@ export class TypeScriptGenerator implements CodeGenerator {
  */
 export function generateTypes(
   canvas: ExtendedCanvas,
-  options: CodegenOptions = { language: 'typescript' }
+  options: CodegenOptions = { language: 'typescript' },
+  library?: ComponentLibrary
 ): CodegenResult {
   const generator = getGenerator(options.language);
-  return generator.generate(canvas, options);
+  return generator.generate(canvas, options, library);
 }
 
 /**
