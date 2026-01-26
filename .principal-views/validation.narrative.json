@@ -1,0 +1,309 @@
+{
+  "version": "1.0.0",
+  "canvas": "validation.otel.canvas",
+  "name": "Validation Pipeline",
+  "description": "Comprehensive validation workflow narratives for all Principal View validation types",
+  "mode": "span-tree",
+  "scenarioSelection": "first-match",
+  "showLogsPerSpan": true,
+  "scenarios": [
+    {
+      "id": "full-discovery-and-validation",
+      "priority": 1,
+      "description": "Complete discovery and validation workflow",
+      "condition": {
+        "requires": ["analysis.started", "discovery.complete", "validation.complete"],
+        "assertions": {
+          "result.valid": { "$eq": true }
+        }
+      },
+      "template": {
+        "introduction": "✅ Full Validation Pipeline - SUCCESS\n{'━'.repeat(50)}",
+        "span": "→ {span.name}",
+        "children": "recurse",
+        "events": {
+          "analysis.started": "  🔍 Analysis started\n    • Repository: {repository.path}\n    • Type: {analysis.type}",
+          "filetree.built": "  📁 FileTree built\n    • Total files: {files.total}\n    • SHA: {filetree.sha}",
+          "packages.discovered": "  📦 Packages discovered\n    • Count: {packages.count}\n    • Type: {repository.type}",
+          "canvases.discovered": "  🎨 Canvases discovered\n    • Total: {canvases.total}\n    • Regular: {canvases.regular}\n    • OTEL: {canvases.otel}",
+          "executions.discovered": "  ⚡ Executions discovered\n    • Total: {executions.total}",
+          "library.loaded": "  📚 Library loaded\n    • Found: {library.found ? 'Yes' : 'No'}\n    • Node types: {nodeComponents.count ? nodeComponents.count : 'N/A'}\n    • Edge types: {edgeComponents.count ? edgeComponents.count : 'N/A'}",
+          "discovery.complete": "  ✅ Discovery complete\n    • Items discovered: {items.discovered}\n    • Duration: {discovery.duration ? discovery.duration + 'ms' : 'N/A'}",
+          "validation.started": "  📂 Validation started\n    • Type: {validation.type}",
+          "file.parsed": "  📝 Parsed {file.path}",
+          "type.detected": "  🔍 Type: {detected.type}",
+          "canvas.validated": "  ✅ Canvas validated",
+          "narrative.validated": "  ✅ Narrative validated",
+          "execution.validated": "  ✅ Execution validated",
+          "library.validated": "  ✅ Library validated",
+          "rules.executed": "  ✅ Rules executed",
+          "results.aggregated": "  📊 Results aggregated",
+          "validation.complete": "  ✅ Validation complete\n    • Valid: {result.validCount}\n    • Duration: {duration.ms}ms"
+        },
+        "logs": {
+          "error": "    ❌ {log.body}",
+          "warn": "    ⚠️  {log.body}",
+          "info": "    ℹ️  {log.body}",
+          "debug": "    🔍 {log.body}"
+        },
+        "summary": "{'━'.repeat(50)}\n\n✅ VALIDATION PIPELINE COMPLETE\n\nDiscovery:\n  • Packages: {packages.count}\n  • Canvases: {canvases.total}\n  • Executions: {executions.total}\n\nValidation:\n  • Valid items: {result.validCount}\n  • Total duration: {duration.ms}ms"
+      }
+    },
+    {
+      "id": "canvas-validation-success",
+      "priority": 2,
+      "description": "Canvas files validated successfully",
+      "condition": {
+        "requires": ["canvas.validated", "validation.complete"],
+        "assertions": {
+          "validation.type": { "$eq": "canvas" },
+          "result.valid": { "$eq": true }
+        }
+      },
+      "template": {
+        "introduction": "✅ Canvas Validation - SUCCESS\n{'━'.repeat(50)}",
+        "span": "→ {span.name}",
+        "children": "recurse",
+        "events": {
+          "analysis.started": "  🔍 Analysis started",
+          "filetree.built": "  📁 FileTree built ({files.total} files)",
+          "packages.discovered": "  📦 Packages: {packages.count}",
+          "canvases.discovered": "  🎨 Found {canvases.total} canvas files",
+          "discovery.complete": "  ✅ Discovery complete",
+          "validation.started": "  📂 Started canvas validation\n    • Files to validate: {input.fileCount}\n    • Patterns: {input.patterns ? input.patterns.join(', ') : 'default'}",
+          "file.parsed": "  📝 Parsed {file.path}\n    • Format: {file.format}\n    • Size: {file.size ? file.size + ' bytes' : 'unknown'}",
+          "type.detected": "  🔍 Detected type: {detected.type}",
+          "canvas.validated": "  ✅ Canvas validation complete\n    • Type: {canvas.type}\n    • Nodes: {nodes.count ? nodes.count : 'N/A'}\n    • Edges: {edges.count ? edges.count : 'N/A'}\n    • Checks: {checks.passed}/{checks.total} passed",
+          "results.aggregated": "  📊 Results aggregated\n    • Total files: {total.files}\n    • Errors: {total.errors}\n    • Warnings: {total.warnings}",
+          "validation.complete": "  ✅ Validation succeeded\n    • Valid: {result.validCount}\n    • Invalid: {result.invalidCount}\n    • Duration: {duration.ms}ms"
+        },
+        "logs": {
+          "error": "    ❌ {log.body}",
+          "warn": "    ⚠️  {log.body}",
+          "info": "    ℹ️  {log.body}",
+          "debug": "    🔍 {log.body}"
+        },
+        "summary": "{'━'.repeat(50)}\n\n✅ CANVAS VALIDATION PASSED\n\nResults:\n  • Valid files: {result.validCount}\n  • Total checks: {checks.total}\n  • Duration: {duration.ms}ms"
+      }
+    },
+    {
+      "id": "narrative-validation-success",
+      "priority": 3,
+      "description": "Narrative templates validated successfully",
+      "condition": {
+        "requires": ["narrative.validated", "validation.complete"],
+        "assertions": {
+          "validation.type": { "$eq": "narrative" },
+          "result.valid": { "$eq": true }
+        }
+      },
+      "template": {
+        "introduction": "✅ Narrative Validation - SUCCESS\n{'━'.repeat(50)}",
+        "span": "→ {span.name}",
+        "children": "recurse",
+        "events": {
+          "validation.started": "  📂 Started narrative validation",
+          "file.parsed": "  📝 Parsed {file.path}",
+          "type.detected": "  🔍 Detected type: {detected.type}",
+          "narrative.validated": "  ✅ Narrative validation complete\n    • Scenarios: {scenarios.count}\n    • Violations: {violations.count}\n    • Errors: {errors.count}\n    • Warnings: {warnings.count}",
+          "results.aggregated": "  📊 Results aggregated",
+          "validation.complete": "  ✅ Validation succeeded"
+        },
+        "logs": {
+          "error": "    ❌ {log.body}",
+          "warn": "    ⚠️  {log.body}",
+          "info": "    ℹ️  {log.body}"
+        },
+        "summary": "{'━'.repeat(50)}\n\n✅ NARRATIVE VALIDATION PASSED\n\nResults:\n  • Scenarios validated: {scenarios.count}\n  • Violations: {violations.count}"
+      }
+    },
+    {
+      "id": "execution-validation-success",
+      "priority": 4,
+      "description": "Execution files validated successfully",
+      "condition": {
+        "requires": ["execution.validated", "validation.complete"],
+        "assertions": {
+          "validation.type": { "$eq": "execution" },
+          "result.valid": { "$eq": true }
+        }
+      },
+      "template": {
+        "introduction": "✅ Execution Validation - SUCCESS\n{'━'.repeat(50)}",
+        "span": "→ {span.name}",
+        "children": "recurse",
+        "events": {
+          "validation.started": "  📂 Started execution validation",
+          "file.parsed": "  📝 Parsed {file.path}",
+          "type.detected": "  🔍 Detected type: {detected.type}",
+          "execution.validated": "  ✅ Execution validation complete\n    • Format: {format}\n    • Spans: {spans.count}\n    • Events: {events.count}\n    • Errors: {errors.count}",
+          "results.aggregated": "  📊 Results aggregated",
+          "validation.complete": "  ✅ Validation succeeded"
+        },
+        "logs": {
+          "error": "    ❌ {log.body}",
+          "warn": "    ⚠️  {log.body}",
+          "info": "    ℹ️  {log.body}"
+        },
+        "summary": "{'━'.repeat(50)}\n\n✅ EXECUTION VALIDATION PASSED\n\nResults:\n  • Spans: {spans.count}\n  • Events: {events.count}"
+      }
+    },
+    {
+      "id": "library-validation-success",
+      "priority": 5,
+      "description": "Library files validated successfully",
+      "condition": {
+        "requires": ["library.validated", "validation.complete"],
+        "assertions": {
+          "validation.type": { "$eq": "library" },
+          "result.valid": { "$eq": true }
+        }
+      },
+      "template": {
+        "introduction": "✅ Library Validation - SUCCESS\n{'━'.repeat(50)}",
+        "span": "→ {span.name}",
+        "children": "recurse",
+        "events": {
+          "validation.started": "  📂 Started library validation",
+          "file.parsed": "  📝 Parsed {file.path}",
+          "type.detected": "  🔍 Detected type: {detected.type}",
+          "library.validated": "  ✅ Library validation complete\n    • Node components: {nodeComponents.count}\n    • Edge components: {edgeComponents.count}\n    • Issues: {issues.count}",
+          "results.aggregated": "  📊 Results aggregated",
+          "validation.complete": "  ✅ Validation succeeded"
+        },
+        "logs": {
+          "error": "    ❌ {log.body}",
+          "warn": "    ⚠️  {log.body}",
+          "info": "    ℹ️  {log.body}"
+        },
+        "summary": "{'━'.repeat(50)}\n\n✅ LIBRARY VALIDATION PASSED\n\nResults:\n  • Node components: {nodeComponents.count}\n  • Edge components: {edgeComponents.count}"
+      }
+    },
+    {
+      "id": "rules-execution-success",
+      "priority": 6,
+      "description": "Linting rules executed successfully",
+      "condition": {
+        "requires": ["rules.executed", "validation.complete"],
+        "assertions": {
+          "validation.type": { "$eq": "rules" },
+          "result.valid": { "$eq": true }
+        }
+      },
+      "template": {
+        "introduction": "✅ Rules Execution - SUCCESS\n{'━'.repeat(50)}",
+        "span": "→ {span.name}",
+        "children": "recurse",
+        "events": {
+          "validation.started": "  📂 Started lint rules execution",
+          "file.parsed": "  📝 Parsed {file.path}",
+          "type.detected": "  🔍 Detected type: {detected.type}",
+          "rules.executed": "  ✅ Rules execution complete\n    • Rules run: {rules.count}\n    • Violations: {violations.total}\n    • Errors: {violations.error}\n    • Warnings: {violations.warning}\n    • Fixable: {fixable.count ? fixable.count : 0}",
+          "results.aggregated": "  📊 Results aggregated",
+          "validation.complete": "  ✅ Validation succeeded"
+        },
+        "logs": {
+          "error": "    ❌ {log.body}",
+          "warn": "    ⚠️  {log.body}",
+          "info": "    ℹ️  {log.body}"
+        },
+        "summary": "{'━'.repeat(50)}\n\n✅ RULES EXECUTION PASSED\n\nResults:\n  • Rules executed: {rules.count}\n  • Total violations: {violations.total}\n  • Fixable: {fixable.count ? fixable.count : 0}"
+      }
+    },
+    {
+      "id": "validation-parse-error",
+      "priority": 10,
+      "description": "Parse error during file loading",
+      "condition": {
+        "requires": ["validation.error"],
+        "assertions": {
+          "error.stage": { "$eq": "parsing" }
+        }
+      },
+      "template": {
+        "introduction": "❌ Validation - PARSE ERROR\n{'━'.repeat(50)}",
+        "span": "→ {span.name}",
+        "children": "recurse",
+        "events": {
+          "validation.started": "  📂 Started validation\n    • Type: {validation.type}",
+          "file.parsed": "  📝 Attempted to parse {file.path}",
+          "validation.error": "  💥 Parse error occurred\n    • File: {error.file}\n    • Error: {error.message}\n    • Type: {error.type}"
+        },
+        "logs": {
+          "error": "    ❌ {log.body}",
+          "warn": "    ⚠️  {log.body}"
+        },
+        "summary": "{'━'.repeat(50)}\n\n❌ PARSE ERROR\n\nFailed to parse file:\n  • File: {error.file}\n  • Error: {error.message}"
+      }
+    },
+    {
+      "id": "validation-schema-error",
+      "priority": 11,
+      "description": "Schema or structure validation error",
+      "condition": {
+        "requires": ["validation.error"],
+        "assertions": {
+          "error.type": { "$in": ["schema", "structure", "reference"] }
+        }
+      },
+      "template": {
+        "introduction": "❌ Validation - SCHEMA ERROR\n{'━'.repeat(50)}",
+        "span": "→ {span.name}",
+        "children": "recurse",
+        "events": {
+          "validation.started": "  📂 Started validation\n    • Type: {validation.type}",
+          "file.parsed": "  📝 Parsed {file.path}",
+          "type.detected": "  🔍 Detected type: {detected.type}",
+          "canvas.validated": "  🔍 Canvas validation attempted",
+          "narrative.validated": "  🔍 Narrative validation attempted",
+          "execution.validated": "  🔍 Execution validation attempted",
+          "library.validated": "  🔍 Library validation attempted",
+          "rules.executed": "  🔍 Rules execution attempted",
+          "validation.error": "  💥 Validation error\n    • Type: {error.type}\n    • Stage: {error.stage}\n    • File: {error.file}\n    • Line: {error.line ? error.line : 'N/A'}\n    • Message: {error.message}"
+        },
+        "logs": {
+          "error": "    ❌ {log.body}",
+          "warn": "    ⚠️  {log.body}"
+        },
+        "summary": "{'━'.repeat(50)}\n\n❌ VALIDATION ERROR\n\nValidation failed:\n  • Type: {error.type}\n  • File: {error.file}\n  • Message: {error.message}"
+      }
+    },
+    {
+      "id": "validation-fallback",
+      "priority": 999,
+      "description": "Generic validation execution",
+      "condition": {
+        "default": true
+      },
+      "template": {
+        "introduction": "📋 Validation Execution\n{'━'.repeat(50)}",
+        "span": "→ {span.name}",
+        "children": "recurse",
+        "events": {
+          "validation.started": "  📂 Validation started\n    • Type: {validation.type}\n    • Files: {input.fileCount ? input.fileCount : 'N/A'}",
+          "file.parsed": "  📝 File parsed: {file.path}",
+          "type.detected": "  🔍 Type detected: {detected.type}",
+          "canvas.validated": "  ✅ Canvas validated",
+          "narrative.validated": "  ✅ Narrative validated",
+          "execution.validated": "  ✅ Execution validated",
+          "library.validated": "  ✅ Library validated",
+          "rules.executed": "  ✅ Rules executed",
+          "results.aggregated": "  📊 Results aggregated",
+          "validation.complete": "  ✅ Validation complete",
+          "validation.error": "  ❌ Error: {error.message}"
+        },
+        "logs": {
+          "error": "    ❌ {log.body}",
+          "warn": "    ⚠️  {log.body}",
+          "info": "    ℹ️  {log.body}"
+        },
+        "summary": "{'━'.repeat(50)}\n\nValidation execution captured."
+      }
+    }
+  ],
+  "formatting": {
+    "indentSize": 2,
+    "showTimestamps": false,
+    "emptyLinesBetweenSections": 1
+  }
+}

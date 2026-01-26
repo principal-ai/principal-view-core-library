@@ -1,0 +1,1159 @@
+{
+  "nodes": [
+    {
+      "id": "analysis-started",
+      "type": "text",
+      "text": "Analysis Started",
+      "x": 100,
+      "y": 50,
+      "width": 200,
+      "height": 100,
+      "color": "#4CAF50",
+      "pv": {
+        "name": "Analysis Started",
+        "description": "Codebase composition analysis begins",
+        "shape": "roundedRect",
+        "icon": "Play",
+        "otel": {
+          "kind": "event",
+          "category": "lifecycle",
+          "isNew": true
+        },
+        "event": {
+          "name": "analysis.started",
+          "attributes": {
+            "repository.path": {
+              "type": "string",
+              "description": "Repository root path",
+              "required": true
+            },
+            "analysis.type": {
+              "type": "string",
+              "description": "Type of analysis (discovery, validation, full)",
+              "required": true
+            }
+          }
+        },
+        "sources": [
+          "packages/core/src/discovery/CanvasDiscovery.ts",
+          "packages/cli/src/commands/validate.ts"
+        ]
+      }
+    },
+    {
+      "id": "filetree-built",
+      "type": "text",
+      "text": "FileTree Built",
+      "x": 100,
+      "y": 250,
+      "width": 200,
+      "height": 100,
+      "color": "#2196F3",
+      "pv": {
+        "name": "FileTree Built",
+        "description": "Repository file tree constructed",
+        "shape": "roundedRect",
+        "icon": "FolderTree",
+        "otel": {
+          "kind": "event",
+          "category": "operation",
+          "isNew": false
+        },
+        "event": {
+          "name": "filetree.built",
+          "attributes": {
+            "files.total": {
+              "type": "integer",
+              "description": "Total files in repository",
+              "required": true
+            },
+            "filetree.sha": {
+              "type": "string",
+              "description": "Content hash for caching",
+              "required": true
+            }
+          }
+        },
+        "sources": ["packages/core/src/discovery/CanvasDiscovery.ts"]
+      }
+    },
+    {
+      "id": "packages-discovered",
+      "type": "text",
+      "text": "Packages Discovered",
+      "x": 100,
+      "y": 450,
+      "width": 200,
+      "height": 100,
+      "color": "#FF9800",
+      "pv": {
+        "name": "Packages Discovered",
+        "description": "Monorepo packages identified",
+        "shape": "roundedRect",
+        "icon": "Package",
+        "otel": {
+          "kind": "event",
+          "category": "operation",
+          "isNew": false
+        },
+        "event": {
+          "name": "packages.discovered",
+          "attributes": {
+            "packages.count": {
+              "type": "integer",
+              "description": "Number of packages found",
+              "required": true
+            },
+            "packages.names": {
+              "type": "string[]",
+              "description": "Package names",
+              "required": false
+            },
+            "repository.type": {
+              "type": "string",
+              "description": "Repository type (monorepo, single-package)",
+              "required": true
+            }
+          }
+        },
+        "sources": ["packages/core/src/discovery/CanvasDiscovery.ts"]
+      }
+    },
+    {
+      "id": "canvases-discovered",
+      "type": "text",
+      "text": "Canvases Discovered",
+      "x": 450,
+      "y": 250,
+      "width": 200,
+      "height": 100,
+      "color": "#9C27B0",
+      "pv": {
+        "name": "Canvases Discovered",
+        "description": "Canvas files found in packages",
+        "shape": "roundedRect",
+        "icon": "FileJson",
+        "otel": {
+          "kind": "event",
+          "category": "operation",
+          "isNew": false
+        },
+        "event": {
+          "name": "canvases.discovered",
+          "attributes": {
+            "canvases.total": {
+              "type": "integer",
+              "description": "Total canvas files found",
+              "required": true
+            },
+            "canvases.regular": {
+              "type": "integer",
+              "description": "Regular .canvas files",
+              "required": true
+            },
+            "canvases.otel": {
+              "type": "integer",
+              "description": "OTEL .otel.canvas files",
+              "required": true
+            },
+            "canvases.byPackage": {
+              "type": "object",
+              "description": "Canvas count per package",
+              "required": false
+            }
+          }
+        },
+        "sources": ["packages/core/src/discovery/CanvasDiscovery.ts"]
+      }
+    },
+    {
+      "id": "executions-discovered",
+      "type": "text",
+      "text": "Executions Discovered",
+      "x": 450,
+      "y": 400,
+      "width": 200,
+      "height": 100,
+      "color": "#9C27B0",
+      "pv": {
+        "name": "Executions Discovered",
+        "description": "Execution files found in __executions__",
+        "shape": "roundedRect",
+        "icon": "Activity",
+        "otel": {
+          "kind": "event",
+          "category": "operation",
+          "isNew": false
+        },
+        "event": {
+          "name": "executions.discovered",
+          "attributes": {
+            "executions.total": {
+              "type": "integer",
+              "description": "Total execution files found",
+              "required": true
+            },
+            "executions.byCanvas": {
+              "type": "object",
+              "description": "Execution count per canvas",
+              "required": false
+            }
+          }
+        },
+        "sources": ["packages/core/src/discovery/CanvasDiscovery.ts"]
+      }
+    },
+    {
+      "id": "library-loaded",
+      "type": "text",
+      "text": "Library Loaded",
+      "x": 450,
+      "y": 550,
+      "width": 200,
+      "height": 100,
+      "color": "#9C27B0",
+      "pv": {
+        "name": "Library Loaded",
+        "description": "Component library definitions loaded",
+        "shape": "roundedRect",
+        "icon": "Library",
+        "otel": {
+          "kind": "event",
+          "category": "operation",
+          "isNew": false
+        },
+        "event": {
+          "name": "library.loaded",
+          "attributes": {
+            "library.found": {
+              "type": "boolean",
+              "description": "Whether library file exists",
+              "required": true
+            },
+            "library.path": {
+              "type": "string",
+              "description": "Path to library file",
+              "required": false
+            },
+            "nodeComponents.count": {
+              "type": "integer",
+              "description": "Number of node component types",
+              "required": false
+            },
+            "edgeComponents.count": {
+              "type": "integer",
+              "description": "Number of edge component types",
+              "required": false
+            }
+          }
+        },
+        "sources": ["packages/core/src/LibraryLoader.ts"]
+      }
+    },
+    {
+      "id": "discovery-complete",
+      "type": "text",
+      "text": "Discovery Complete",
+      "x": 100,
+      "y": 650,
+      "width": 200,
+      "height": 100,
+      "color": "#FF9800",
+      "pv": {
+        "name": "Discovery Complete",
+        "description": "All discovery operations completed",
+        "shape": "roundedRect",
+        "icon": "CheckSquare",
+        "otel": {
+          "kind": "event",
+          "category": "operation",
+          "isNew": false
+        },
+        "event": {
+          "name": "discovery.complete",
+          "attributes": {
+            "discovery.duration": {
+              "type": "number",
+              "description": "Discovery duration in milliseconds",
+              "required": false
+            },
+            "items.discovered": {
+              "type": "integer",
+              "description": "Total items discovered",
+              "required": true
+            }
+          }
+        },
+        "sources": ["packages/core/src/discovery/CanvasDiscovery.ts"]
+      }
+    },
+    {
+      "id": "validation-started",
+      "type": "text",
+      "text": "Validation Started",
+      "x": 100,
+      "y": 850,
+      "width": 200,
+      "height": 100,
+      "color": "#4CAF50",
+      "pv": {
+        "name": "Validation Started",
+        "description": "Validation process begins on discovered items",
+        "shape": "roundedRect",
+        "icon": "PlayCircle",
+        "otel": {
+          "kind": "event",
+          "category": "lifecycle",
+          "isNew": false
+        },
+        "event": {
+          "name": "validation.started",
+          "attributes": {
+            "validation.type": {
+              "type": "string",
+              "description": "Type of validation (canvas, narrative, execution, library, config, rules, event)",
+              "required": true
+            },
+            "input.fileCount": {
+              "type": "integer",
+              "description": "Number of files to validate",
+              "required": false
+            }
+          }
+        },
+        "sources": [
+          "packages/cli/src/commands/validate.ts",
+          "packages/cli/src/commands/validate-execution.ts",
+          "packages/cli/src/commands/lint.ts"
+        ]
+      }
+    },
+    {
+      "id": "file-parsed",
+      "type": "text",
+      "text": "File Parsed",
+      "x": 100,
+      "y": 1050,
+      "width": 200,
+      "height": 100,
+      "color": "#2196F3",
+      "pv": {
+        "name": "File Parsed",
+        "description": "File successfully parsed (JSON/YAML)",
+        "shape": "roundedRect",
+        "icon": "FileJson",
+        "otel": {
+          "kind": "event",
+          "category": "operation",
+          "isNew": false
+        },
+        "event": {
+          "name": "file.parsed",
+          "attributes": {
+            "file.path": {
+              "type": "string",
+              "description": "Path to parsed file",
+              "required": true
+            },
+            "file.format": {
+              "type": "string",
+              "description": "File format (json, yaml)",
+              "required": true
+            },
+            "file.size": {
+              "type": "integer",
+              "description": "File size in bytes",
+              "required": false
+            }
+          }
+        },
+        "sources": [
+          "packages/cli/src/commands/validate.ts",
+          "packages/core/src/ConfigurationLoader.ts"
+        ]
+      }
+    },
+    {
+      "id": "type-detected",
+      "type": "text",
+      "text": "Type Detected",
+      "x": 100,
+      "y": 1250,
+      "width": 200,
+      "height": 100,
+      "color": "#FF9800",
+      "pv": {
+        "name": "Validation Type Detected",
+        "description": "Determined which validation to perform",
+        "shape": "roundedRect",
+        "icon": "GitBranch",
+        "otel": {
+          "kind": "event",
+          "category": "operation",
+          "isNew": false
+        },
+        "event": {
+          "name": "type.detected",
+          "attributes": {
+            "detected.type": {
+              "type": "string",
+              "description": "Detected validation type",
+              "required": true
+            },
+            "detection.method": {
+              "type": "string",
+              "description": "How type was detected (file extension, content, explicit)",
+              "required": false
+            }
+          }
+        },
+        "sources": [
+          "packages/cli/src/commands/validate.ts",
+          "packages/cli/src/commands/lint.ts"
+        ]
+      }
+    },
+    {
+      "id": "canvas-validated",
+      "type": "text",
+      "text": "Canvas Validated",
+      "x": 450,
+      "y": 1050,
+      "width": 200,
+      "height": 100,
+      "color": "#9C27B0",
+      "pv": {
+        "name": "Canvas Validated",
+        "description": "Canvas file validation completed",
+        "shape": "roundedRect",
+        "icon": "CheckSquare",
+        "otel": {
+          "kind": "event",
+          "category": "operation",
+          "isNew": false
+        },
+        "event": {
+          "name": "canvas.validated",
+          "attributes": {
+            "canvas.type": {
+              "type": "string",
+              "description": "Canvas type (standard, otel)",
+              "required": true
+            },
+            "checks.total": {
+              "type": "integer",
+              "description": "Total validation checks performed",
+              "required": true
+            },
+            "checks.passed": {
+              "type": "integer",
+              "description": "Checks that passed",
+              "required": true
+            },
+            "checks.failed": {
+              "type": "integer",
+              "description": "Checks that failed",
+              "required": true
+            },
+            "nodes.count": {
+              "type": "integer",
+              "description": "Number of nodes validated",
+              "required": false
+            },
+            "edges.count": {
+              "type": "integer",
+              "description": "Number of edges validated",
+              "required": false
+            }
+          }
+        },
+        "sources": ["packages/cli/src/commands/validate.ts"]
+      }
+    },
+    {
+      "id": "narrative-validated",
+      "type": "text",
+      "text": "Narrative Validated",
+      "x": 450,
+      "y": 1200,
+      "width": 200,
+      "height": 100,
+      "color": "#9C27B0",
+      "pv": {
+        "name": "Narrative Validated",
+        "description": "Narrative template validation completed",
+        "shape": "roundedRect",
+        "icon": "FileText",
+        "otel": {
+          "kind": "event",
+          "category": "operation",
+          "isNew": false
+        },
+        "event": {
+          "name": "narrative.validated",
+          "attributes": {
+            "scenarios.count": {
+              "type": "integer",
+              "description": "Number of scenarios validated",
+              "required": true
+            },
+            "violations.count": {
+              "type": "integer",
+              "description": "Total violations found",
+              "required": true
+            },
+            "errors.count": {
+              "type": "integer",
+              "description": "Error violations",
+              "required": true
+            },
+            "warnings.count": {
+              "type": "integer",
+              "description": "Warning violations",
+              "required": true
+            }
+          }
+        },
+        "sources": [
+          "packages/cli/src/commands/narrative/validate.ts",
+          "packages/core/src/narrative/validator.ts"
+        ]
+      }
+    },
+    {
+      "id": "execution-validated",
+      "type": "text",
+      "text": "Execution Validated",
+      "x": 450,
+      "y": 1350,
+      "width": 200,
+      "height": 100,
+      "color": "#9C27B0",
+      "pv": {
+        "name": "Execution Validated",
+        "description": "Execution file (OTLP) validation completed",
+        "shape": "roundedRect",
+        "icon": "Activity",
+        "otel": {
+          "kind": "event",
+          "category": "operation",
+          "isNew": false
+        },
+        "event": {
+          "name": "execution.validated",
+          "attributes": {
+            "format": {
+              "type": "string",
+              "description": "Format detected (OTLP, ExecutionData)",
+              "required": true
+            },
+            "spans.count": {
+              "type": "integer",
+              "description": "Number of spans validated",
+              "required": true
+            },
+            "events.count": {
+              "type": "integer",
+              "description": "Total events across all spans",
+              "required": true
+            },
+            "errors.count": {
+              "type": "integer",
+              "description": "Validation errors found",
+              "required": true
+            }
+          }
+        },
+        "sources": [
+          "packages/cli/src/commands/validate-execution.ts",
+          "packages/core/src/execution/ExecutionValidator.ts"
+        ]
+      }
+    },
+    {
+      "id": "library-validated",
+      "type": "text",
+      "text": "Library Validated",
+      "x": 450,
+      "y": 1500,
+      "width": 200,
+      "height": 100,
+      "color": "#9C27B0",
+      "pv": {
+        "name": "Library Validated",
+        "description": "Library file validation completed",
+        "shape": "roundedRect",
+        "icon": "Library",
+        "otel": {
+          "kind": "event",
+          "category": "operation",
+          "isNew": false
+        },
+        "event": {
+          "name": "library.validated",
+          "attributes": {
+            "nodeComponents.count": {
+              "type": "integer",
+              "description": "Number of node components",
+              "required": true
+            },
+            "edgeComponents.count": {
+              "type": "integer",
+              "description": "Number of edge components",
+              "required": true
+            },
+            "issues.count": {
+              "type": "integer",
+              "description": "Total issues found",
+              "required": true
+            }
+          }
+        },
+        "sources": ["packages/cli/src/commands/validate.ts"]
+      }
+    },
+    {
+      "id": "rules-executed",
+      "type": "text",
+      "text": "Rules Executed",
+      "x": 450,
+      "y": 1650,
+      "width": 200,
+      "height": 100,
+      "color": "#9C27B0",
+      "pv": {
+        "name": "Rules Executed",
+        "description": "Linting rules execution completed",
+        "shape": "roundedRect",
+        "icon": "ListChecks",
+        "otel": {
+          "kind": "event",
+          "category": "operation",
+          "isNew": false
+        },
+        "event": {
+          "name": "rules.executed",
+          "attributes": {
+            "rules.count": {
+              "type": "integer",
+              "description": "Number of rules executed",
+              "required": true
+            },
+            "violations.total": {
+              "type": "integer",
+              "description": "Total violations found",
+              "required": true
+            },
+            "violations.error": {
+              "type": "integer",
+              "description": "Error-level violations",
+              "required": true
+            },
+            "violations.warning": {
+              "type": "integer",
+              "description": "Warning-level violations",
+              "required": true
+            },
+            "fixable.count": {
+              "type": "integer",
+              "description": "Auto-fixable violations",
+              "required": false
+            }
+          }
+        },
+        "sources": [
+          "packages/cli/src/commands/lint.ts",
+          "packages/core/src/rules/engine.ts"
+        ]
+      }
+    },
+    {
+      "id": "results-aggregated",
+      "type": "text",
+      "text": "Results Aggregated",
+      "x": 100,
+      "y": 1450,
+      "width": 200,
+      "height": 100,
+      "color": "#FF9800",
+      "pv": {
+        "name": "Results Aggregated",
+        "description": "All validation results combined",
+        "shape": "roundedRect",
+        "icon": "Layers",
+        "otel": {
+          "kind": "event",
+          "category": "operation",
+          "isNew": false
+        },
+        "event": {
+          "name": "results.aggregated",
+          "attributes": {
+            "total.files": {
+              "type": "integer",
+              "description": "Total files validated",
+              "required": true
+            },
+            "total.errors": {
+              "type": "integer",
+              "description": "Total errors across all validations",
+              "required": true
+            },
+            "total.warnings": {
+              "type": "integer",
+              "description": "Total warnings across all validations",
+              "required": true
+            },
+            "validations.performed": {
+              "type": "string[]",
+              "description": "Types of validations performed",
+              "required": true
+            }
+          }
+        },
+        "sources": [
+          "packages/cli/src/commands/validate.ts",
+          "packages/cli/src/commands/lint.ts"
+        ]
+      }
+    },
+    {
+      "id": "validation-complete",
+      "type": "text",
+      "text": "Validation Complete",
+      "x": 100,
+      "y": 1650,
+      "width": 200,
+      "height": 100,
+      "color": "#4CAF50",
+      "pv": {
+        "name": "Validation Complete",
+        "description": "All validations completed successfully",
+        "shape": "roundedRect",
+        "icon": "CheckCircle2",
+        "otel": {
+          "kind": "event",
+          "category": "lifecycle",
+          "isNew": false
+        },
+        "event": {
+          "name": "validation.complete",
+          "attributes": {
+            "result.valid": {
+              "type": "boolean",
+              "description": "Overall validation result",
+              "required": true
+            },
+            "result.validCount": {
+              "type": "integer",
+              "description": "Number of valid items",
+              "required": true
+            },
+            "result.invalidCount": {
+              "type": "integer",
+              "description": "Number of invalid items",
+              "required": true
+            },
+            "duration.ms": {
+              "type": "number",
+              "description": "Total validation duration",
+              "required": false
+            }
+          }
+        },
+        "sources": [
+          "packages/cli/src/commands/validate.ts",
+          "packages/cli/src/commands/lint.ts",
+          "packages/cli/src/commands/narrative/validate.ts",
+          "packages/cli/src/commands/validate-execution.ts"
+        ]
+      }
+    },
+    {
+      "id": "validation-error",
+      "type": "text",
+      "text": "Validation Error",
+      "x": 800,
+      "y": 1250,
+      "width": 200,
+      "height": 100,
+      "color": "#F44336",
+      "pv": {
+        "name": "Validation Error",
+        "description": "Validation failed with errors",
+        "shape": "roundedRect",
+        "icon": "XCircle",
+        "otel": {
+          "kind": "event",
+          "category": "error",
+          "isNew": false
+        },
+        "event": {
+          "name": "validation.error",
+          "attributes": {
+            "error.type": {
+              "type": "string",
+              "description": "Error type (parse, schema, reference, structure)",
+              "required": true
+            },
+            "error.message": {
+              "type": "string",
+              "description": "Error message",
+              "required": true
+            },
+            "error.stage": {
+              "type": "string",
+              "description": "Stage where error occurred",
+              "required": true
+            },
+            "error.file": {
+              "type": "string",
+              "description": "File that caused the error",
+              "required": false
+            },
+            "error.line": {
+              "type": "integer",
+              "description": "Line number where error occurred",
+              "required": false
+            }
+          }
+        },
+        "sources": [
+          "packages/cli/src/commands/validate.ts",
+          "packages/core/src/ConfigurationValidator.ts",
+          "packages/core/src/execution/ExecutionValidator.ts",
+          "packages/core/src/narrative/validator.ts"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "start-to-filetree",
+      "fromNode": "analysis-started",
+      "toNode": "filetree-built",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "sequence"
+      }
+    },
+    {
+      "id": "filetree-to-packages",
+      "fromNode": "filetree-built",
+      "toNode": "packages-discovered",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "sequence"
+      }
+    },
+    {
+      "id": "packages-to-canvases",
+      "fromNode": "packages-discovered",
+      "toNode": "canvases-discovered",
+      "fromSide": "right",
+      "toSide": "left",
+      "pv": {
+        "edgeType": "discovery"
+      }
+    },
+    {
+      "id": "packages-to-executions",
+      "fromNode": "packages-discovered",
+      "toNode": "executions-discovered",
+      "fromSide": "right",
+      "toSide": "left",
+      "pv": {
+        "edgeType": "discovery"
+      }
+    },
+    {
+      "id": "packages-to-library",
+      "fromNode": "packages-discovered",
+      "toNode": "library-loaded",
+      "fromSide": "right",
+      "toSide": "left",
+      "pv": {
+        "edgeType": "discovery"
+      }
+    },
+    {
+      "id": "canvases-to-complete",
+      "fromNode": "canvases-discovered",
+      "toNode": "discovery-complete",
+      "fromSide": "left",
+      "toSide": "right",
+      "pv": {
+        "edgeType": "sequence"
+      }
+    },
+    {
+      "id": "executions-to-complete",
+      "fromNode": "executions-discovered",
+      "toNode": "discovery-complete",
+      "fromSide": "left",
+      "toSide": "right",
+      "pv": {
+        "edgeType": "sequence"
+      }
+    },
+    {
+      "id": "library-to-complete",
+      "fromNode": "library-loaded",
+      "toNode": "discovery-complete",
+      "fromSide": "left",
+      "toSide": "right",
+      "pv": {
+        "edgeType": "sequence"
+      }
+    },
+    {
+      "id": "discovery-to-validation",
+      "fromNode": "discovery-complete",
+      "toNode": "validation-started",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "sequence"
+      }
+    },
+    {
+      "id": "validation-to-parse",
+      "fromNode": "validation-started",
+      "toNode": "file-parsed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "sequence"
+      }
+    },
+    {
+      "id": "parse-to-detect",
+      "fromNode": "file-parsed",
+      "toNode": "type-detected",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "sequence"
+      }
+    },
+    {
+      "id": "detect-to-canvas",
+      "fromNode": "type-detected",
+      "toNode": "canvas-validated",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "canvas",
+      "pv": {
+        "edgeType": "branch"
+      }
+    },
+    {
+      "id": "detect-to-narrative",
+      "fromNode": "type-detected",
+      "toNode": "narrative-validated",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "narrative",
+      "pv": {
+        "edgeType": "branch"
+      }
+    },
+    {
+      "id": "detect-to-execution",
+      "fromNode": "type-detected",
+      "toNode": "execution-validated",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "execution",
+      "pv": {
+        "edgeType": "branch"
+      }
+    },
+    {
+      "id": "detect-to-library",
+      "fromNode": "type-detected",
+      "toNode": "library-validated",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "library",
+      "pv": {
+        "edgeType": "branch"
+      }
+    },
+    {
+      "id": "detect-to-rules",
+      "fromNode": "type-detected",
+      "toNode": "rules-executed",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "lint",
+      "pv": {
+        "edgeType": "branch"
+      }
+    },
+    {
+      "id": "canvas-to-aggregate",
+      "fromNode": "canvas-validated",
+      "toNode": "results-aggregated",
+      "fromSide": "left",
+      "toSide": "right",
+      "pv": {
+        "edgeType": "sequence"
+      }
+    },
+    {
+      "id": "narrative-to-aggregate",
+      "fromNode": "narrative-validated",
+      "toNode": "results-aggregated",
+      "fromSide": "left",
+      "toSide": "right",
+      "pv": {
+        "edgeType": "sequence"
+      }
+    },
+    {
+      "id": "execution-to-aggregate",
+      "fromNode": "execution-validated",
+      "toNode": "results-aggregated",
+      "fromSide": "left",
+      "toSide": "right",
+      "pv": {
+        "edgeType": "sequence"
+      }
+    },
+    {
+      "id": "library-to-aggregate",
+      "fromNode": "library-validated",
+      "toNode": "results-aggregated",
+      "fromSide": "left",
+      "toSide": "right",
+      "pv": {
+        "edgeType": "sequence"
+      }
+    },
+    {
+      "id": "rules-to-aggregate",
+      "fromNode": "rules-executed",
+      "toNode": "results-aggregated",
+      "fromSide": "left",
+      "toSide": "right",
+      "pv": {
+        "edgeType": "sequence"
+      }
+    },
+    {
+      "id": "aggregate-to-complete",
+      "fromNode": "results-aggregated",
+      "toNode": "validation-complete",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "sequence"
+      }
+    },
+    {
+      "id": "parse-to-error",
+      "fromNode": "file-parsed",
+      "toNode": "validation-error",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "parse failure",
+      "pv": {
+        "edgeType": "error-path"
+      }
+    },
+    {
+      "id": "canvas-to-error",
+      "fromNode": "canvas-validated",
+      "toNode": "validation-error",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "validation failure",
+      "pv": {
+        "edgeType": "error-path"
+      }
+    },
+    {
+      "id": "narrative-to-error",
+      "fromNode": "narrative-validated",
+      "toNode": "validation-error",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "validation failure",
+      "pv": {
+        "edgeType": "error-path"
+      }
+    },
+    {
+      "id": "execution-to-error",
+      "fromNode": "execution-validated",
+      "toNode": "validation-error",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "validation failure",
+      "pv": {
+        "edgeType": "error-path"
+      }
+    },
+    {
+      "id": "library-to-error",
+      "fromNode": "library-validated",
+      "toNode": "validation-error",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "validation failure",
+      "pv": {
+        "edgeType": "error-path"
+      }
+    },
+    {
+      "id": "rules-to-error",
+      "fromNode": "rules-executed",
+      "toNode": "validation-error",
+      "fromSide": "right",
+      "toSide": "left",
+      "label": "rule violations",
+      "pv": {
+        "edgeType": "error-path"
+      }
+    }
+  ],
+  "pv": {
+    "version": "1.0.0",
+    "name": "Validation Pipeline",
+    "description": "Complete validation workflow from codebase composition analysis through validation to results",
+    "markdown": ".principal-views/validation.md",
+    "edgeTypes": {
+      "sequence": {
+        "label": "Then",
+        "style": "solid",
+        "color": "#666",
+        "width": 2,
+        "directed": true
+      },
+      "discovery": {
+        "label": "Discover",
+        "style": "dashed",
+        "color": "#FF9800",
+        "width": 2,
+        "directed": true
+      },
+      "branch": {
+        "label": "Route",
+        "style": "dashed",
+        "color": "#9C27B0",
+        "width": 2,
+        "directed": true
+      },
+      "error-path": {
+        "label": "Error",
+        "style": "dashed",
+        "color": "#F44336",
+        "width": 2,
+        "directed": true
+      }
+    }
+  }
+}
