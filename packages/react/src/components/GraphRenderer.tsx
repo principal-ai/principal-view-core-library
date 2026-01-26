@@ -38,8 +38,8 @@ import type {
   ExtendedCanvas,
   ComponentLibrary,
   JsonValue,
-} from '@principal-ai/principal-view-core/browser';
-import { CanvasConverter } from '@principal-ai/principal-view-core/browser';
+} from '@principal-ai/principal-view-core';
+import { CanvasConverter } from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
 import { CustomNode } from '../nodes/CustomNode';
 import type { CustomNodeData } from '../nodes/CustomNode';
@@ -207,6 +207,14 @@ interface GraphRendererBaseProps {
    */
   onNodeClick?: (nodeId: string, event: React.MouseEvent) => void;
 
+  /**
+   * Whether to show the node detail panel when nodes are clicked.
+   * Defaults to undefined (auto), which shows panel only when onNodeClick is not provided.
+   * Set to true to force showing panel even with custom onNodeClick handler.
+   * Set to false to hide panel completely.
+   */
+  showNodeDetailPanel?: boolean;
+
 }
 
 /** GraphRenderer props - canvas format only */
@@ -359,6 +367,7 @@ interface GraphRendererInnerProps {
   editStateRef: React.MutableRefObject<EditState>;
   onSourceClick?: (nodeId: string, source: string) => void;
   onNodeClick?: (nodeId: string, event: React.MouseEvent) => void;
+  showNodeDetailPanel?: boolean;
 }
 
 /**
@@ -388,6 +397,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   editStateRef,
   onSourceClick,
   onNodeClick: onNodeClickProp,
+  showNodeDetailPanel,
 }) => {
   const { fitView } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
@@ -569,39 +579,47 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   // Handle node click (toggle selection, supports Shift for multi-select)
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
-      // If custom node click handler is provided, use it instead of default behavior
+      // Determine if we should show the panel based on showNodeDetailPanel prop
+      const shouldManagePanel = showNodeDetailPanel !== false && (showNodeDetailPanel === true || !onNodeClickProp);
+
+      // If custom node click handler is provided, call it
       if (onNodeClickProp) {
         onNodeClickProp(node.id, event);
-        return;
+        // If showNodeDetailPanel is not explicitly true, return early (old behavior)
+        if (showNodeDetailPanel !== true) {
+          return;
+        }
       }
 
-      if (event.shiftKey && editable) {
-        // Shift+click: toggle node in selection
-        setSelectedNodeIds((prev) => {
-          const next = new Set(prev);
-          if (next.has(node.id)) {
-            next.delete(node.id);
-          } else {
-            next.add(node.id);
-          }
-          return next;
-        });
-        setShowNodePanel(true);
-      } else {
-        // Regular click: single select (replace selection)
-        const shouldDeselect = selectedNodeIds.size === 1 && selectedNodeIds.has(node.id);
-        if (shouldDeselect) {
-          setSelectedNodeIds(new Set());
-          setShowNodePanel(false);
-        } else {
-          setSelectedNodeIds(new Set([node.id]));
+      if (shouldManagePanel) {
+        if (event.shiftKey && editable) {
+          // Shift+click: toggle node in selection
+          setSelectedNodeIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(node.id)) {
+              next.delete(node.id);
+            } else {
+              next.add(node.id);
+            }
+            return next;
+          });
           setShowNodePanel(true);
+        } else {
+          // Regular click: single select (replace selection)
+          const shouldDeselect = selectedNodeIds.size === 1 && selectedNodeIds.has(node.id);
+          if (shouldDeselect) {
+            setSelectedNodeIds(new Set());
+            setShowNodePanel(false);
+          } else {
+            setSelectedNodeIds(new Set([node.id]));
+            setShowNodePanel(true);
+          }
+          setSelectedEdgeIds(new Set());
+          setShowEdgePanel(false);
         }
-        setSelectedEdgeIds(new Set());
-        setShowEdgePanel(false);
       }
     },
-    [editable, selectedNodeIds, onNodeClickProp]
+    [editable, selectedNodeIds, onNodeClickProp, showNodeDetailPanel]
   );
 
   // Handle close edge info panel
@@ -1499,7 +1517,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       </ReactFlow>
 
       {/* Multi-selection sidebar - shown when 2+ nodes are selected via explicit click/box select */}
-      {selectedNodeIds.size >= 2 && showNodePanel && (
+      {selectedNodeIds.size >= 2 && showNodePanel && showNodeDetailPanel !== false && (
         <SelectionSidebar
           selectedNodeIds={selectedNodeIds}
           nodes={nodes}
@@ -1522,7 +1540,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       )}
 
       {/* Single node info panel - shown only on explicit click */}
-      {selectedNodeIds.size === 1 && selectedNode && selectedNodeTypeDefinition && showNodePanel && (
+      {selectedNodeIds.size === 1 && selectedNode && selectedNodeTypeDefinition && showNodePanel && showNodeDetailPanel !== false && (
         <NodeInfoPanel
           node={selectedNode}
           typeDefinition={selectedNodeTypeDefinition}
@@ -1910,6 +1928,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     onPendingChangesChange,
     onSourceClick,
     onNodeClick,
+    showNodeDetailPanel,
   } = props;
 
   return (
@@ -1938,6 +1957,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           editStateRef={editStateRef}
           onSourceClick={onSourceClick}
           onNodeClick={onNodeClick}
+          showNodeDetailPanel={showNodeDetailPanel}
         />
       </ReactFlowProvider>
     </div>

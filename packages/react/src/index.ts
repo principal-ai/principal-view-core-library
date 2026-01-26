@@ -26,7 +26,7 @@ export type {
   ComponentLibrary,
   LibraryNodeComponent,
   LibraryEdgeComponent,
-} from '@principal-ai/principal-view-core/browser';
+} from '@principal-ai/principal-view-core';
 
 // Export components
 export { GraphRenderer } from './components/GraphRenderer';

@@ -5,12 +5,9 @@
  * This entry point includes all functionality that depends on Node.js modules
  * such as fs, path, glob, and other Node.js-only dependencies.
  *
- * For browser environments, use:
- * - '@principal-ai/principal-view-core/browser' for browser-safe functionality
- *
- * For Node.js environments, you can use either:
- * - '@principal-ai/principal-view-core' for all functionality (browser + Node.js)
- * - '@principal-ai/principal-view-core/node' for Node.js-specific functionality only
+ * The main entry point ('@principal-ai/principal-view-core') exports browser-safe
+ * functionality that works in any environment. Use this /node entry point when you
+ * need Node.js-specific utilities like buildFileTreeFromDirectory.
  */
 
 // Export all types (safe in all environments)
@@ -48,9 +45,12 @@ export type { ReactFlowNode, ReactFlowEdge } from './utils/CanvasConverter';
 export { EventValidator, createValidatedEmitter, EventValidationError } from './telemetry/event-validator';
 export type { ValidationResult } from './telemetry/event-validator';
 
-// Export telemetry coverage analysis (Node.js only - uses fs/promises, path, glob)
+// Export telemetry coverage analysis (re-exported from main for convenience)
 export { analyzeCoverage } from './telemetry/coverage';
-export type { CoverageMetrics, NodeCoverage, CanvasNode as CoverageCanvasNode } from './telemetry/coverage';
+export type { CoverageMetrics, NodeCoverage } from './telemetry/coverage';
+
+// Export FileTree builder utilities (Node.js only - file system operations)
+export { buildFileTreeFromDirectory, createNodeFileReader } from './utils/FileTreeBuilder';
 
 // Export code generation (Node.js only - file system operations)
 export { generateTypes, TypeScriptGenerator, generatorRegistry } from './codegen/type-generator';

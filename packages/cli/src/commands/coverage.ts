@@ -8,7 +8,12 @@
 import { Command } from 'commander';
 import { resolve } from 'node:path';
 import chalk from 'chalk';
-import { analyzeCoverage, type CoverageMetrics } from '@principal-ai/principal-view-core/node';
+import {
+  analyzeCoverage,
+  buildFileTreeFromDirectory,
+  createNodeFileReader,
+  type CoverageMetrics
+} from '@principal-ai/principal-view-core/node';
 
 interface CoverageOptions {
   dir?: string;
@@ -36,8 +41,8 @@ function printCoverageReport(metrics: CoverageMetrics, rootDir: string, options:
   // Node summary
   console.log(chalk.bold('\n🎯 Node Summary:'));
   console.log(`   Total nodes: ${metrics.totalNodes}`);
-  console.log(`   Nodes with anchors: ${chalk.cyan(metrics.nodesWithFiles.toString())}`);
-  console.log(`   Nodes without anchors: ${chalk.dim(metrics.totalNodes - metrics.nodesWithFiles)}`);
+  console.log(`   Nodes with sources: ${chalk.cyan(metrics.nodesWithFiles.toString())}`);
+  console.log(`   Nodes without sources: ${chalk.dim(metrics.totalNodes - metrics.nodesWithFiles)}`);
   console.log(`   Nodes with instrumentation: ${chalk.green(metrics.nodesWithInstrumentation.toString())}`);
 
   const coverageColor = metrics.coveragePercentage >= 80
@@ -47,16 +52,16 @@ function printCoverageReport(metrics: CoverageMetrics, rootDir: string, options:
     : chalk.red;
   console.log(`   Coverage: ${coverageColor(metrics.coveragePercentage.toFixed(1) + '%')}`);
 
-  // Nodes WITHOUT anchors
-  const noAnchors = metrics.nodeCoverage.filter(n => n.filePaths.length === 0);
-  if (noAnchors.length > 0 && verbose) {
-    console.log(chalk.yellow(`\n⚠️  Nodes Without Anchors (${noAnchors.length}):`));
-    const display = verbose ? noAnchors : noAnchors.slice(0, 10);
+  // Nodes WITHOUT sources
+  const noSources = metrics.nodeCoverage.filter(n => n.filePaths.length === 0);
+  if (noSources.length > 0 && verbose) {
+    console.log(chalk.yellow(`\n⚠️  Nodes Without Sources (${noSources.length}):`));
+    const display = verbose ? noSources : noSources.slice(0, 10);
     display.forEach(node => {
       console.log(chalk.dim(`   - ${node.nodeId}`));
     });
-    if (!verbose && noAnchors.length > 10) {
-      console.log(chalk.dim(`   ... and ${noAnchors.length - 10} more (use --verbose to see all)`));
+    if (!verbose && noSources.length > 10) {
+      console.log(chalk.dim(`   ... and ${noSources.length - 10} more (use --verbose to see all)`));
     }
   }
 
@@ -105,8 +110,8 @@ function printCoverageReport(metrics: CoverageMetrics, rootDir: string, options:
 
   // Recommendations
   console.log(chalk.bold('\n💡 Recommendations:'));
-  if (noAnchors.length > 0) {
-    console.log(chalk.red('   🔴 Add anchors to canvas nodes before measuring coverage'));
+  if (noSources.length > 0) {
+    console.log(chalk.red('   🔴 Add pv.sources to canvas nodes before measuring coverage'));
   } else if (metrics.coveragePercentage < 30) {
     console.log(chalk.red('   🔴 Low coverage - add OTEL instrumentation to files referenced in canvas'));
   } else if (metrics.coveragePercentage < 60) {
@@ -117,9 +122,9 @@ function printCoverageReport(metrics: CoverageMetrics, rootDir: string, options:
 
   // Next steps
   console.log(chalk.bold('\n📝 Next Steps:'));
-  if (noAnchors.length > 0) {
-    console.log(chalk.dim(`   1. Add anchors to ${noAnchors.length} node(s) without file references`));
-    console.log(chalk.dim(`   2. Example: { "id": "node-id", "anchors": [{ "path": "packages/core/src/File.ts" }] }`));
+  if (noSources.length > 0) {
+    console.log(chalk.dim(`   1. Add pv.sources to ${noSources.length} node(s) without file references`));
+    console.log(chalk.dim(`   2. Example: { "pv": { "sources": ["packages/core/src/File.ts"] } }`));
     console.log(chalk.dim(`   3. Re-run: privu coverage`));
   } else if (uninstrumented.length > 0) {
     console.log(chalk.dim(`   1. Review the ${uninstrumented.length} uninstrumented node(s) above`));
@@ -146,8 +151,12 @@ export function createCoverageCommand(): Command {
       try {
         const rootDir = resolve(options.dir || process.cwd());
 
+        // Build FileTree and create fileReader
+        const fileTree = await buildFileTreeFromDirectory(rootDir);
+        const fileReader = createNodeFileReader(rootDir);
+
         // Analyze coverage
-        const metrics = await analyzeCoverage(rootDir);
+        const metrics = await analyzeCoverage(fileTree, fileReader);
 
         // Output results
         if (options.json) {

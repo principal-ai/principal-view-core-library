@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
-import type { NodeTypeDefinition } from '@principal-ai/principal-view-core/browser';
+import type { NodeTypeDefinition } from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
 import { resolveIcon } from '../utils/iconResolver';
 import { NodeTooltip } from '../components/NodeTooltip';
@@ -81,9 +81,10 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
   // Only show tooltip when hovering, not dragging, and shift key is pressed
   const showTooltip = isHovered && !dragging && shiftKeyPressed;
 
-  // Extract OTEL info and description for tooltip
+  // Extract OTEL info, description, and sources for tooltip
   const otelInfo = nodeData?.otel as OtelInfo | undefined;
   const description = nodeData?.description as string | undefined;
+  const sources = nodeData?.sources as string[] | undefined;
 
   // OTEL kind badge colors
   const getOtelBadgeColor = (kind: string) => {
@@ -516,6 +517,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
             <NodeTooltip
               description={description}
               otel={otelInfo}
+              sources={sources}
               visible={showTooltip}
               nodeRef={nodeRef}
             />
@@ -571,6 +573,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
             <NodeTooltip
               description={description}
               otel={otelInfo}
+              sources={sources}
               visible={showTooltip}
               nodeRef={nodeRef}
             />
@@ -651,6 +654,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
             <NodeTooltip
               description={description}
               otel={otelInfo}
+              sources={sources}
               visible={showTooltip}
               nodeRef={nodeRef}
             />

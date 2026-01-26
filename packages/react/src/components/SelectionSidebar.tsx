@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { NodeState, NodeTypeDefinition } from '@principal-ai/principal-view-core/browser';
+import type { NodeState, NodeTypeDefinition } from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
 import { resolveIcon } from '../utils/iconResolver';
 

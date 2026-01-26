@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
-import type { ExtendedCanvas } from '@principal-ai/principal-view-core/browser';
+import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 import { swapGraphOrientation } from '../utils/orientationUtils';
-import { CanvasConverter } from '@principal-ai/principal-view-core/browser';
+import { CanvasConverter } from '@principal-ai/principal-view-core';
 
 const meta = {
   title: 'Features/Graph Orientation',

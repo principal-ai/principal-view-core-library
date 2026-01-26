@@ -11,6 +11,7 @@ export interface OtelInfo {
 export interface NodeTooltipProps {
   description?: string;
   otel?: OtelInfo;
+  sources?: string[];
   visible: boolean;
   /** Reference to the node element for positioning */
   nodeRef?: React.RefObject<HTMLDivElement>;
@@ -23,6 +24,7 @@ export interface NodeTooltipProps {
 export const NodeTooltip: React.FC<NodeTooltipProps> = ({
   description,
   otel,
+  sources,
   visible,
   nodeRef,
 }) => {
@@ -161,6 +163,32 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
       <div style={{ lineHeight: '1.4', color: description ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)' }}>
         {description || 'No description'}
       </div>
+
+      {/* Sources */}
+      {sources && sources.length > 0 && (
+        <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '6px' }}>
+          <div style={{
+            fontSize: theme.fontSizes[0],
+            fontWeight: theme.fontWeights.semibold,
+            color: 'rgba(255,255,255,0.7)',
+            marginBottom: '4px'
+          }}>
+            Sources:
+          </div>
+          <div style={{ fontSize: theme.fontSizes[0], color: 'rgba(255,255,255,0.8)' }}>
+            {sources.map((source, index) => (
+              <div key={index} style={{
+                fontFamily: 'monospace',
+                fontSize: theme.fontSizes[0],
+                marginTop: index > 0 ? '2px' : 0,
+                wordBreak: 'break-all'
+              }}>
+                {source}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 

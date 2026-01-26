@@ -1,4 +1,4 @@
-import type { NodeState, EdgeState, CanvasSide } from '@principal-ai/principal-view-core/browser';
+import type { NodeState, EdgeState, CanvasSide } from '@principal-ai/principal-view-core';
 
 /**
  * Swaps the orientation of a graph from horizontal to vertical or vice versa.

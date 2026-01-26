@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ConfigurationFile } from '@principal-ai/principal-view-core/browser';
+import type { ConfigurationFile } from '@principal-ai/principal-view-core';
 
 export interface ConfigurationSelectorProps {
   /** Available configurations */

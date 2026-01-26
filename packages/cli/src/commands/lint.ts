@@ -460,6 +460,56 @@ export function createLintCommand(): Command {
         // Lint each file
         const results = new Map<string, GraphLintResult>();
 
+        // PHASE 1: Group narratives by canvas and collect all events used
+        const narrativesByCanvas = new Map<string, Array<{ absolutePath: string; relativePath: string; loaded: any }>>();
+        const canvasEventMap = new Map<string, Set<string>>();
+
+        for (const filePath of configFiles) {
+          const absolutePath = resolve(cwd, filePath);
+          const relativePath = relative(cwd, absolutePath);
+          const fileType = getFileType(absolutePath);
+
+          if (fileType === 'narrative') {
+            const loaded = loadNarrativeTemplate(absolutePath);
+            if (!loaded) continue;
+
+            const canvasPath = loaded.narrative.canvas
+              ? resolve(dirname(absolutePath), loaded.narrative.canvas)
+              : undefined;
+
+            if (canvasPath) {
+              const canvasKey = relative(cwd, canvasPath);
+
+              // Group narrative by canvas
+              if (!narrativesByCanvas.has(canvasKey)) {
+                narrativesByCanvas.set(canvasKey, []);
+                canvasEventMap.set(canvasKey, new Set<string>());
+              }
+              narrativesByCanvas.get(canvasKey)!.push({ absolutePath, relativePath, loaded });
+
+              // Collect events from this narrative
+              const narrativeEvents = canvasEventMap.get(canvasKey)!;
+              for (const scenario of loaded.narrative.scenarios) {
+                if (scenario.condition?.requires) {
+                  for (const eventPattern of scenario.condition.requires) {
+                    if (!eventPattern.includes('*')) {
+                      narrativeEvents.add(eventPattern);
+                    }
+                  }
+                }
+                if (scenario.template?.events) {
+                  for (const eventName of Object.keys(scenario.template.events)) {
+                    if (!eventName.includes('*')) {
+                      narrativeEvents.add(eventName);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // PHASE 2: Validate each file with canvas-wide event knowledge
         for (const filePath of configFiles) {
           const absolutePath = resolve(cwd, filePath);
           const relativePath = relative(cwd, absolutePath);
@@ -496,14 +546,19 @@ export function createLintCommand(): Command {
               : undefined;
             const canvas = canvasPath ? loadCanvas(canvasPath) : undefined;
 
-            // Run narrative validation
+            // Get all events used across narratives for this canvas
+            const canvasKey = canvasPath ? relative(cwd, canvasPath) : undefined;
+            const allNarrativeEvents = canvasKey ? canvasEventMap.get(canvasKey) : undefined;
+
+            // Run narrative validation with canvas-wide event knowledge
             const narrativeResult = await narrativeValidator.validate({
               narrative: loaded.narrative,
               narrativePath: relativePath,
               canvas: canvas ?? undefined,
-              canvasPath: canvasPath ? relative(cwd, canvasPath) : undefined,
+              canvasPath: canvasKey,
               basePath: dirname(absolutePath),
               rawContent: loaded.raw,
+              allNarrativeEvents,
             });
 
             // Convert narrative violations to graph violations format

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { EdgeState, EdgeTypeDefinition } from '@principal-ai/principal-view-core/browser';
+import type { EdgeState, EdgeTypeDefinition } from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
 
 export interface EdgeInfoPanelProps {
@@ -35,17 +35,17 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
     <div
       style={{
         position: 'absolute',
-        top: '60px',
-        right: '20px',
+        bottom: 0,
+        left: 0,
+        right: 0,
         backgroundColor: theme.colors.background,
         color: theme.colors.text,
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        padding: '16px',
-        minWidth: '250px',
-        maxWidth: '350px',
+        borderTop: `2px solid ${edgeColor}`,
+        boxShadow: '0 -4px 12px rgba(0,0,0,0.15)',
+        padding: '16px 24px',
         zIndex: 1000,
-        border: `1px solid ${theme.colors.border}`,
+        maxHeight: '40%',
+        overflowY: 'auto',
       }}
     >
       {/* Header */}
@@ -53,14 +53,17 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '12px',
-          paddingBottom: '8px',
-          borderBottom: `2px solid ${edgeColor}`,
+          alignItems: 'flex-start',
+          marginBottom: '16px',
         }}
       >
-        <div style={{ fontWeight: theme.fontWeights.bold, fontSize: theme.fontSizes[1], fontFamily: theme.fonts.body, color: edgeColor }}>
-          Edge Information
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+          <div style={{ fontWeight: theme.fontWeights.bold, fontSize: theme.fontSizes[2], fontFamily: theme.fonts.body, color: edgeColor }}>
+            Edge Information
+          </div>
+          <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textMuted }}>
+            {edge.type}
+          </div>
         </div>
         <button
           onClick={onClose}
@@ -71,183 +74,174 @@ export const EdgeInfoPanel: React.FC<EdgeInfoPanelProps> = ({
             fontSize: theme.fontSizes[3],
             fontFamily: theme.fonts.body,
             color: theme.colors.textSecondary,
-            padding: '0',
-            width: '24px',
-            height: '24px',
+            padding: '4px',
+            width: '28px',
+            height: '28px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            borderRadius: '4px',
+            transition: 'background-color 0.15s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = theme.colors.muted;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
           }}
         >
           ×
         </button>
       </div>
 
-      {/* Edge Type */}
-      <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
-          Type
-        </div>
-        <div
-          style={{
-            fontSize: theme.fontSizes[0],
-            fontFamily: theme.fonts.body,
-            padding: '4px 8px',
-            backgroundColor: edgeColor,
-            color: theme.colors.background,
-            borderRadius: '4px',
-            display: 'inline-block',
-          }}
-        >
-          {edge.type}
-        </div>
-      </div>
+      {/* Content - use horizontal layout */}
+      <div style={{ display: 'flex', gap: '32px', alignItems: 'flex-start' }}>
 
-      {/* Connection Info */}
-      <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
-          Connection
-        </div>
-        <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body }}>
-          <span
+        {/* Left section - Connection Info */}
+        <div style={{ flex: 1 }}>
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
+              Connection
+            </div>
+            <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body }}>
+              <span
+                style={{
+                  fontFamily: theme.fonts.monospace,
+                  backgroundColor: theme.colors.muted,
+                  padding: '2px 6px',
+                  borderRadius: '3px',
+                }}
+              >
+                {sourceNodeId}
+              </span>
+              <span style={{ margin: '0 8px', color: theme.colors.textMuted }}>→</span>
+              <span
+                style={{
+                  fontFamily: theme.fonts.monospace,
+                  backgroundColor: theme.colors.muted,
+                  padding: '2px 6px',
+                  borderRadius: '3px',
+                }}
+              >
+                {targetNodeId}
+              </span>
+            </div>
+          </div>
+
+          {/* Metadata */}
+          <div
             style={{
-              fontFamily: theme.fonts.monospace,
-              backgroundColor: theme.colors.muted,
-              padding: '2px 6px',
-              borderRadius: '3px',
+              fontSize: theme.fontSizes[0],
+              fontFamily: theme.fonts.body,
+              color: theme.colors.textMuted,
             }}
           >
-            {sourceNodeId}
-          </span>
-          <span style={{ margin: '0 8px', color: theme.colors.textMuted }}>→</span>
-          <span
-            style={{
-              fontFamily: theme.fonts.monospace,
-              backgroundColor: theme.colors.muted,
-              padding: '2px 6px',
-              borderRadius: '3px',
-            }}
-          >
-            {targetNodeId}
-          </span>
-        </div>
-      </div>
-
-      {/* Connection Sides */}
-      <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '8px' }}>
-          Connection Sides
-        </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textMuted, marginBottom: '4px' }}>
-              From Side
-            </div>
-            <select
-              value={(edge.data?.fromSide as string) || 'right'}
-              onChange={(e) => {
-                if (onUpdateSides) {
-                  onUpdateSides(edge.id, e.target.value, (edge.data?.toSide as string) || 'left');
-                }
-              }}
-              disabled={!onUpdateSides}
-              style={{
-                width: '100%',
-                padding: '6px 8px',
-                fontSize: theme.fontSizes[0],
-                fontFamily: theme.fonts.body,
-                borderRadius: '4px',
-                border: `1px solid ${theme.colors.border}`,
-                backgroundColor: theme.colors.background,
-                color: theme.colors.text,
-                cursor: onUpdateSides ? 'pointer' : 'not-allowed',
-                opacity: onUpdateSides ? 1 : 0.6,
-              }}
-            >
-              {SIDE_OPTIONS.map((side) => (
-                <option key={side} value={side}>
-                  {side}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textMuted, marginBottom: '4px' }}>
-              To Side
-            </div>
-            <select
-              value={(edge.data?.toSide as string) || 'left'}
-              onChange={(e) => {
-                if (onUpdateSides) {
-                  onUpdateSides(
-                    edge.id,
-                    (edge.data?.fromSide as string) || 'right',
-                    e.target.value
-                  );
-                }
-              }}
-              disabled={!onUpdateSides}
-              style={{
-                width: '100%',
-                padding: '6px 8px',
-                fontSize: theme.fontSizes[0],
-                fontFamily: theme.fonts.body,
-                borderRadius: '4px',
-                border: `1px solid ${theme.colors.border}`,
-                backgroundColor: theme.colors.background,
-                color: theme.colors.text,
-                cursor: onUpdateSides ? 'pointer' : 'not-allowed',
-                opacity: onUpdateSides ? 1 : 0.6,
-              }}
-            >
-              {SIDE_OPTIONS.map((side) => (
-                <option key={side} value={side}>
-                  {side}
-                </option>
-              ))}
-            </select>
+            ID: {edge.id}
           </div>
         </div>
-      </div>
 
-      {/* Metadata */}
-      <div
-        style={{
-          fontSize: theme.fontSizes[0],
-          fontFamily: theme.fonts.body,
-          color: theme.colors.textMuted,
-          marginTop: '12px',
-          paddingTop: '8px',
-          borderTop: `1px solid ${theme.colors.border}`,
-        }}
-      >
-        ID: {edge.id}
-      </div>
+        {/* Center section - Connection Sides */}
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '8px' }}>
+            Connection Sides
+          </div>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textMuted, marginBottom: '4px' }}>
+                From Side
+              </div>
+              <select
+                value={(edge.data?.fromSide as string) || 'right'}
+                onChange={(e) => {
+                  if (onUpdateSides) {
+                    onUpdateSides(edge.id, e.target.value, (edge.data?.toSide as string) || 'left');
+                  }
+                }}
+                disabled={!onUpdateSides}
+                style={{
+                  width: '100%',
+                  padding: '6px 8px',
+                  fontSize: theme.fontSizes[0],
+                  fontFamily: theme.fonts.body,
+                  borderRadius: '4px',
+                  border: `1px solid ${theme.colors.border}`,
+                  backgroundColor: theme.colors.background,
+                  color: theme.colors.text,
+                  cursor: onUpdateSides ? 'pointer' : 'not-allowed',
+                  opacity: onUpdateSides ? 1 : 0.6,
+                }}
+              >
+                {SIDE_OPTIONS.map((side) => (
+                  <option key={side} value={side}>
+                    {side}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textMuted, marginBottom: '4px' }}>
+                To Side
+              </div>
+              <select
+                value={(edge.data?.toSide as string) || 'left'}
+                onChange={(e) => {
+                  if (onUpdateSides) {
+                    onUpdateSides(
+                      edge.id,
+                      (edge.data?.fromSide as string) || 'right',
+                      e.target.value
+                    );
+                  }
+                }}
+                disabled={!onUpdateSides}
+                style={{
+                  width: '100%',
+                  padding: '6px 8px',
+                  fontSize: theme.fontSizes[0],
+                  fontFamily: theme.fonts.body,
+                  borderRadius: '4px',
+                  border: `1px solid ${theme.colors.border}`,
+                  backgroundColor: theme.colors.background,
+                  color: theme.colors.text,
+                  cursor: onUpdateSides ? 'pointer' : 'not-allowed',
+                  opacity: onUpdateSides ? 1 : 0.6,
+                }}
+              >
+                {SIDE_OPTIONS.map((side) => (
+                  <option key={side} value={side}>
+                    {side}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
 
-      {/* Delete Button */}
-      {onDelete && (
-        <button
-          onClick={() => {
-            onDelete(edge.id);
-            onClose();
-          }}
-          style={{
-            marginTop: '12px',
-            width: '100%',
-            padding: '8px 12px',
-            backgroundColor: theme.colors.error,
-            color: theme.colors.background,
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: theme.fontSizes[0],
-            fontFamily: theme.fonts.body,
-            fontWeight: theme.fontWeights.bold,
-          }}
-        >
-          Delete Edge
-        </button>
-      )}
+        {/* Right section - Delete Button */}
+        {onDelete && (
+          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <button
+              onClick={() => {
+                onDelete(edge.id);
+                onClose();
+              }}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: theme.colors.error,
+                color: theme.colors.background,
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: theme.fontSizes[0],
+                fontFamily: theme.fonts.body,
+                fontWeight: theme.fontWeights.bold,
+              }}
+            >
+              Delete Edge
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

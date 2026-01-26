@@ -2,7 +2,7 @@ import { describe, expect, test, mock } from 'bun:test';
 import React, { createRef } from 'react';
 import { render } from '@testing-library/react';
 import { GraphRenderer, type GraphRendererHandle } from './GraphRenderer';
-import type { ExtendedCanvas } from '@principal-ai/principal-view-core/browser';
+import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 import { Window } from 'happy-dom';
 

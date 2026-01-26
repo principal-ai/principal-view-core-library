@@ -5,7 +5,7 @@
  * for Milestone 1 default visualization behavior
  */
 
-import type { LogLevel } from '@principal-ai/principal-view-core/browser';
+import type { LogLevel } from '@principal-ai/principal-view-core';
 
 /**
  * Node animation configuration

@@ -38,6 +38,15 @@ export interface NarrativeValidationContext {
     /** Attributes grouped by event name */
     eventAttributes: Map<string, Record<string, unknown>>;
   };
+
+  /**
+   * Optional: Events used across all narratives that reference this canvas.
+   * When provided, coverage warnings are only emitted for canvas events
+   * that are NOT in this set (i.e., truly unused across all narratives).
+   * This enables multi-narrative canvas patterns where different narratives
+   * cover different subsets of canvas events.
+   */
+  allNarrativeEvents?: Set<string>;
 }
 
 export interface NarrativeViolation {
@@ -310,8 +319,20 @@ export class NarrativeValidator {
     const canvasEvents = new Set<string>();
     for (const node of canvas.nodes) {
       if (node.pv?.event) {
-        // event is a PVEventSchema object with a 'name' property
-        if (typeof node.pv.event === 'object' && node.pv.event.name) {
+        if (typeof node.pv.event === 'string') {
+          // Legacy string format detected - provide migration guidance
+          violations.push({
+            ruleId: 'canvas-event-format-deprecated',
+            severity: 'error',
+            file: narrative.canvas || 'canvas',
+            path: `nodes[${node.id}].pv.event`,
+            message: `Canvas node "${node.id}" uses deprecated string format for event: "${node.pv.event}"`,
+            impact: 'Event will not be recognized by narrative validator and narratives will fail to match',
+            suggestion: `Use "eventRef": "${node.pv.event}" to reference a library event, or use "event": { "name": "${node.pv.event}", "attributes": {} } for inline definition. If using eventRef, define the event schema in library.yaml under eventSchemas.`,
+            fixable: false,
+          });
+        } else if (typeof node.pv.event === 'object' && node.pv.event.name) {
+          // event is a PVEventSchema object with a 'name' property
           canvasEvents.add(node.pv.event.name);
         }
       }
@@ -361,14 +382,20 @@ export class NarrativeValidator {
     }
 
     // Check for canvas events not in narrative (warning only)
+    // If allNarrativeEvents is provided, check against the combined set of all narratives
+    // for this canvas. Otherwise, check against just this narrative's events.
+    const eventsToCheckAgainst = context.allNarrativeEvents ?? narrativeEvents;
+
     for (const eventName of Array.from(canvasEvents)) {
-      if (!narrativeEvents.has(eventName)) {
+      if (!eventsToCheckAgainst.has(eventName)) {
         violations.push({
           ruleId: 'narrative-event-coverage',
           severity: 'warn',
           file: narrativePath,
           path: 'events',
-          message: `Canvas defines event "${eventName}" which is not used in any narrative scenario`,
+          message: context.allNarrativeEvents
+            ? `Canvas defines event "${eventName}" which is not used in any narrative for this canvas`
+            : `Canvas defines event "${eventName}" which is not used in this narrative scenario`,
           impact: 'This canvas node may never be highlighted during narrative playback',
           suggestion: `Add event "${eventName}" to a scenario's template.events or condition.requires`,
           fixable: false,

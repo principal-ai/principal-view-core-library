@@ -4,7 +4,7 @@ import { ThemeProvider } from '@principal-ade/industry-theme';
 import { GraphRenderer } from '../components/GraphRenderer';
 import { NodeInfoPanel } from '../components/NodeInfoPanel';
 import { NodeTooltip } from '../components/NodeTooltip';
-import type { NodeState, NodeTypeDefinition } from '@principal-ai/principal-view-core/browser';
+import type { NodeState, NodeTypeDefinition } from '@principal-ai/principal-view-core';
 
 // OTEL Log Association canvas data
 const otelCanvas = {

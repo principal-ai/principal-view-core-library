@@ -1,5 +1,5 @@
 import React from 'react';
-import type { EdgeTypeDefinition } from '@principal-ai/principal-view-core/browser';
+import type { EdgeTypeDefinition } from '@principal-ai/principal-view-core';
 
 export interface GenericEdgeProps {
   /** Edge ID */

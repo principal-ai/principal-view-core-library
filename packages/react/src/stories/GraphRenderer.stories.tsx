@@ -2,7 +2,7 @@ import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
 import type { GraphRendererHandle, PendingChanges } from '../components/GraphRenderer';
-import type { ExtendedCanvas } from '@principal-ai/principal-view-core/browser';
+import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 
 const meta = {
@@ -1070,6 +1070,258 @@ Color coding:
 - **Blue (T)**: Type nodes - TypeScript types/interfaces
 - **Green (S)**: Service nodes - Runtime services
 - **Purple (I)**: Instance nodes - Specific running instances
+        `,
+      },
+    },
+  },
+};
+
+// ============================================================================
+// Sources Tooltip Canvas
+// ============================================================================
+
+/**
+ * Canvas demonstrating source file associations in tooltips
+ */
+const sourcesTooltipCanvas: ExtendedCanvas = {
+  nodes: [
+    {
+      id: 'auth-service',
+      type: 'text',
+      x: 100,
+      y: 150,
+      width: 160,
+      height: 100,
+      text: '# Auth Service\n\nHandles user authentication',
+      color: '#3b82f6',
+      pv: {
+        nodeType: 'service',
+        shape: 'rectangle',
+        icon: 'Lock',
+        sources: [
+          'src/services/auth/AuthService.ts',
+          'src/services/auth/TokenManager.ts',
+        ],
+      },
+    },
+    {
+      id: 'user-controller',
+      type: 'text',
+      x: 350,
+      y: 150,
+      width: 160,
+      height: 100,
+      text: '# User Controller\n\nManages user CRUD operations',
+      color: '#8b5cf6',
+      pv: {
+        nodeType: 'controller',
+        shape: 'rectangle',
+        icon: 'User',
+        sources: [
+          'src/controllers/UserController.ts',
+        ],
+      },
+    },
+    {
+      id: 'database',
+      type: 'text',
+      x: 600,
+      y: 150,
+      width: 140,
+      height: 100,
+      text: '# Database\n\nPostgreSQL instance',
+      color: '#22c55e',
+      pv: {
+        nodeType: 'database',
+        shape: 'hexagon',
+        icon: 'Database',
+        sources: [
+          'src/db/connection.ts',
+          'src/db/migrations/001_init.sql',
+          'src/db/queries/users.ts',
+        ],
+      },
+    },
+    {
+      id: 'cache-layer',
+      type: 'text',
+      x: 225,
+      y: 320,
+      width: 150,
+      height: 90,
+      text: '# Cache Layer\n\nRedis caching',
+      color: '#f59e0b',
+      pv: {
+        nodeType: 'cache',
+        shape: 'diamond',
+        icon: 'Zap',
+        sources: [
+          'src/cache/RedisCache.ts',
+          'src/cache/CacheManager.ts',
+        ],
+      },
+    },
+    {
+      id: 'logger',
+      type: 'text',
+      x: 450,
+      y: 320,
+      width: 140,
+      height: 90,
+      text: '# Logger\n\nCentralized logging',
+      color: '#6366f1',
+      pv: {
+        nodeType: 'utility',
+        shape: 'circle',
+        icon: 'FileText',
+        sources: [
+          'src/utils/logger.ts',
+        ],
+      },
+    },
+  ],
+  edges: [
+    {
+      id: 'auth-to-user',
+      fromNode: 'auth-service',
+      toNode: 'user-controller',
+      fromSide: 'right',
+      toSide: 'left',
+      label: 'validates',
+      pv: { edgeType: 'dataflow' },
+    },
+    {
+      id: 'user-to-db',
+      fromNode: 'user-controller',
+      toNode: 'database',
+      fromSide: 'right',
+      toSide: 'left',
+      label: 'queries',
+      pv: { edgeType: 'dataflow' },
+    },
+    {
+      id: 'auth-to-cache',
+      fromNode: 'auth-service',
+      toNode: 'cache-layer',
+      fromSide: 'bottom',
+      toSide: 'top',
+      label: 'stores tokens',
+      pv: { edgeType: 'dataflow' },
+    },
+    {
+      id: 'user-to-cache',
+      fromNode: 'user-controller',
+      toNode: 'cache-layer',
+      fromSide: 'bottom',
+      toSide: 'top',
+      label: 'caches',
+      pv: { edgeType: 'dataflow' },
+    },
+    {
+      id: 'auth-to-logger',
+      fromNode: 'auth-service',
+      toNode: 'logger',
+      fromSide: 'bottom',
+      toSide: 'top',
+      label: 'logs',
+      pv: { edgeType: 'logging' },
+    },
+    {
+      id: 'user-to-logger',
+      fromNode: 'user-controller',
+      toNode: 'logger',
+      fromSide: 'bottom',
+      toSide: 'top',
+      label: 'logs',
+      pv: { edgeType: 'logging' },
+    },
+  ],
+  pv: {
+    version: '1.0.0',
+    name: 'Service Architecture with Sources',
+    description: 'Demonstrates source file associations in shift-hover tooltips',
+    edgeTypes: {
+      dataflow: {
+        style: 'solid',
+        color: '#3b82f6',
+        width: 2,
+        directed: true,
+      },
+      logging: {
+        style: 'dashed',
+        color: '#94a3b8',
+        width: 2,
+        directed: true,
+      },
+    },
+  },
+};
+
+const SourcesInTooltipTemplate = () => {
+  const [lastClickedSource, setLastClickedSource] = React.useState<{ nodeId: string; source: string } | null>(null);
+
+  const handleSourceClick = (nodeId: string, source: string) => {
+    console.log('Source clicked:', source, 'from node:', nodeId);
+    setLastClickedSource({ nodeId, source });
+    alert(`Source clicked!\n\nNode: ${nodeId}\nFile: ${source}`);
+  };
+
+  return (
+    <div>
+      {lastClickedSource && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 12,
+            backgroundColor: '#f0f9ff',
+            borderRadius: 4,
+            border: '1px solid #3b82f6',
+          }}
+        >
+          <strong style={{ color: '#1e40af' }}>Last Clicked Source:</strong>
+          <div style={{ marginTop: 4, fontSize: 12, color: '#1e40af', fontFamily: 'monospace' }}>
+            Node: {lastClickedSource.nodeId}
+          </div>
+          <div style={{ fontSize: 12, color: '#1e40af', fontFamily: 'monospace' }}>
+            File: {lastClickedSource.source}
+          </div>
+        </div>
+      )}
+      <GraphRenderer
+        canvas={sourcesTooltipCanvas}
+        width={900}
+        height={550}
+        onSourceClick={handleSourceClick}
+      />
+    </div>
+  );
+};
+
+export const SourcesInTooltip: Story = {
+  render: () => <SourcesInTooltipTemplate />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Sources in Tooltips and Info Panel** - Demonstrates source file associations:
+
+**How to view sources:**
+1. Hold the **Shift** key and hover over any node to see sources in the tooltip
+2. Click on a node to open the info panel at the bottom
+3. Click on any source file path to trigger the \`onSourceClick\` callback
+
+**Features:**
+- **Green "S" Badge**: Nodes with sources show a green badge in the top-left corner
+- **Tooltip Sources**: Source files appear below the description in shift-hover tooltips
+- **Clickable Sources**: In the info panel, sources are clickable buttons with dotted underlines
+- **Callback Integration**: \`onSourceClick(nodeId, source)\` fires when a source is clicked
+- **Visual Feedback**: Sources show hover effects and are clearly interactive
+
+**Try it:**
+1. Click on "Auth Service" to open the info panel
+2. Click on any of its 2 source files in the panel
+3. An alert will show the clicked source information
+4. Also try: Database (3 sources), Cache Layer (2 sources), Logger (1 source)
         `,
       },
     },

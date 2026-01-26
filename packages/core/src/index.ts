@@ -5,14 +5,8 @@
  * This is the main entry point for the package and only includes browser-compatible code.
  * Includes types, canvas utilities, YAML parsing, and narrative rendering.
  *
- * BREAKING CHANGE (v0.12.0):
- * The main export now only includes browser-safe functionality.
- *
- * For Node.js-specific functionality (file system, code generation, rules engine, etc.), use:
+ * For Node.js-specific functionality (file system utilities, etc.), use:
  * import { ... } from '@principal-ai/principal-view-core/node'
- *
- * For explicit browser usage (same as main export):
- * import { ... } from '@principal-ai/principal-view-core/browser'
  */
 
 // Export essential types only
@@ -127,6 +121,10 @@ export type {
   ExecutionValidationResult,
 } from './execution/ExecutionValidator';
 
+// Export telemetry coverage analysis (browser-safe - uses FileTree abstraction)
+export { analyzeCoverage } from './telemetry/coverage';
+export type { CoverageMetrics, NodeCoverage } from './telemetry/coverage';
+
 // Export path-based processing (browser-safe - Milestone 1 & 2)
 export { PathBasedEventProcessor } from './PathBasedEventProcessor';
 export type { LogEntry } from './PathBasedEventProcessor';
@@ -182,7 +180,7 @@ export { InMemoryFileSystemAdapter } from '@principal-ai/repository-abstraction'
 // - GraphInstrumentationHelper (Node.js utilities)
 // - PathMatcher, GraphConverter (Node.js utilities)
 // - EventValidator, createValidatedEmitter (Node.js telemetry)
-// - analyzeCoverage (file system - uses fs/promises, path, glob)
+// - buildFileTreeFromDirectory, createNodeFileReader (Node.js file system utilities for building FileTree)
 // - generateTypes, TypeScriptGenerator, generatorRegistry (code generation - file system)
 // - traceToCanvas, traceToCanvasJson (trace utilities)
 // - Rules engine (OpenTelemetry dependencies)
@@ -190,4 +188,4 @@ export { InMemoryFileSystemAdapter } from '@principal-ai/repository-abstraction'
 // - ExecutionLoader, createExecutionLoader (file system loader)
 //
 // Example:
-// import { analyzeCoverage, NarrativeValidator } from '@principal-ai/principal-view-core/node';
+// import { buildFileTreeFromDirectory, createNodeFileReader, NarrativeValidator } from '@principal-ai/principal-view-core/node';

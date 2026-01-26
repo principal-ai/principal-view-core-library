@@ -3,23 +3,14 @@
  *
  * Measures observability coverage by analyzing which canvas nodes have
  * OpenTelemetry instrumentation in their source files.
+ *
+ * Uses FileTree abstraction for environment-agnostic file operations.
  */
 
-import { readFile, access } from 'fs/promises';
-import { resolve } from 'path';
-import { glob } from 'glob';
-
-export interface CanvasNode {
-  id: string;
-  text?: string;
-  anchors?: Array<{ path?: string }>;
-  [key: string]: unknown;
-}
-
-export interface Canvas {
-  nodes?: CanvasNode[];
-  [key: string]: unknown;
-}
+import type { FileTree } from '@principal-ai/repository-abstraction';
+import { CanvasDiscovery } from '../discovery/CanvasDiscovery';
+import type { DiscoveredCanvasWithContent } from '../discovery/types';
+import type { ExtendedCanvasNode } from '../types/canvas';
 
 export interface NodeCoverage {
   nodeId: string;
@@ -39,17 +30,13 @@ export interface CoverageMetrics {
 }
 
 /**
- * Extract file paths from a canvas node anchors (REQUIRED)
+ * Extract file paths from a canvas node's pv.sources (REQUIRED)
  */
-function extractFilePaths(node: CanvasNode): string[] {
+function extractFilePaths(node: ExtendedCanvasNode): string[] {
   const paths: string[] = [];
 
-  if (node.anchors) {
-    for (const anchor of node.anchors) {
-      if (anchor.path) {
-        paths.push(anchor.path);
-      }
-    }
+  if (node.pv?.sources) {
+    paths.push(...node.pv.sources);
   }
 
   return paths;
@@ -57,10 +44,17 @@ function extractFilePaths(node: CanvasNode): string[] {
 
 /**
  * Check if a file has OpenTelemetry instrumentation
+ *
+ * @param filePath - Path to the file to check
+ * @param fileReader - Function to read file contents
+ * @returns True if file has OTEL instrumentation
  */
-async function hasInstrumentation(filePath: string): Promise<boolean> {
+async function hasInstrumentation(
+  filePath: string,
+  fileReader: (path: string) => Promise<string>
+): Promise<boolean> {
   try {
-    const content = await readFile(filePath, 'utf-8');
+    const content = await fileReader(filePath);
 
     const hasOtelImport = content.includes('@opentelemetry/api');
     const hasTracer = /getTracer|startSpan|addEvent/.test(content);
@@ -73,40 +67,29 @@ async function hasInstrumentation(filePath: string): Promise<boolean> {
 }
 
 /**
- * Check if file exists
- */
-async function fileExists(filePath: string): Promise<boolean> {
-  try {
-    await access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Analyze coverage for a single canvas node
+ *
+ * @param node - Canvas node to analyze
+ * @param fileReader - Function to read file contents
+ * @returns Coverage information for the node
  */
 async function analyzeNodeCoverage(
-  node: CanvasNode,
-  rootDir: string
+  node: ExtendedCanvasNode,
+  fileReader: (path: string) => Promise<string>
 ): Promise<NodeCoverage> {
   const filePaths = extractFilePaths(node);
   const instrumentedFiles: string[] = [];
   const missingFiles: string[] = [];
 
   for (const path of filePaths) {
-    const fullPath = resolve(rootDir, path);
-    const exists = await fileExists(fullPath);
-
-    if (!exists) {
+    try {
+      const instrumented = await hasInstrumentation(path, fileReader);
+      if (instrumented) {
+        instrumentedFiles.push(path);
+      }
+    } catch {
+      // File doesn't exist or can't be read
       missingFiles.push(path);
-      continue;
-    }
-
-    const instrumented = await hasInstrumentation(fullPath);
-    if (instrumented) {
-      instrumentedFiles.push(path);
     }
   }
 
@@ -121,27 +104,46 @@ async function analyzeNodeCoverage(
 
 /**
  * Generate telemetry coverage report from canvas files
+ *
+ * @param fileTree - FileTree representation of the codebase
+ * @param fileReader - Function to read file contents
+ * @returns Coverage metrics for all canvas nodes
+ *
+ * @example
+ * ```typescript
+ * import { buildFileTreeFromDirectory, createNodeFileReader } from '@principal-ai/principal-view-core/node';
+ *
+ * const fileTree = await buildFileTreeFromDirectory('/path/to/project');
+ * const fileReader = createNodeFileReader('/path/to/project');
+ * const metrics = await analyzeCoverage(fileTree, fileReader);
+ * ```
  */
-export async function analyzeCoverage(rootDir: string): Promise<CoverageMetrics> {
-  const canvasFiles = await glob('**/*.otel.canvas', {
-    cwd: rootDir,
-    absolute: true,
-    dot: true,
-    ignore: ['**/node_modules/**']
+export async function analyzeCoverage(
+  fileTree: FileTree,
+  fileReader: (path: string) => Promise<string>
+): Promise<CoverageMetrics> {
+  // Use CanvasDiscovery to find all canvas files
+  const discovery = new CanvasDiscovery();
+  const result = await discovery.discover(fileTree, {
+    fileReader,
+    includeContent: true, // Need content to parse nodes
   });
+
+  // Filter for .otel.canvas files only
+  const otelCanvases = result.canvases.filter(c => c.type === 'otel');
 
   const allNodeCoverage: NodeCoverage[] = [];
 
-  for (const canvasFile of canvasFiles) {
-    const content = await readFile(canvasFile, 'utf-8');
-    const canvas: Canvas = JSON.parse(content);
+  for (const canvas of otelCanvases) {
+    // Cast to DiscoveredCanvasWithContent since we used includeContent: true
+    const canvasWithContent = canvas as DiscoveredCanvasWithContent;
 
-    if (!canvas.nodes || canvas.nodes.length === 0) {
+    if (!canvasWithContent.content?.nodes || canvasWithContent.content.nodes.length === 0) {
       continue;
     }
 
-    for (const node of canvas.nodes) {
-      const coverage = await analyzeNodeCoverage(node, rootDir);
+    for (const node of canvasWithContent.content.nodes) {
+      const coverage = await analyzeNodeCoverage(node, fileReader);
       allNodeCoverage.push(coverage);
     }
   }
@@ -157,6 +159,6 @@ export async function analyzeCoverage(rootDir: string): Promise<CoverageMetrics>
       ? (nodesWithInstrumentation.length / nodesWithFiles.length) * 100
       : 0,
     nodeCoverage: allNodeCoverage,
-    canvasFiles: canvasFiles.map(f => f.replace(rootDir + '/', ''))
+    canvasFiles: otelCanvases.map(c => c.path),
   };
 }

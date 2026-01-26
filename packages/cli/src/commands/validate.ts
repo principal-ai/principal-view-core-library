@@ -868,6 +868,16 @@ function validateCanvas(
           });
         }
 
+        // Check for legacy string format: event should be object or use eventRef instead
+        if (nodePv.event !== undefined && typeof nodePv.event === 'string') {
+          issues.push({
+            type: 'error',
+            message: `Node "${nodeLabel}" uses deprecated string format for "pv.event": "${nodePv.event}"`,
+            path: `${nodePath}.pv.event`,
+            suggestion: `Migration options:\n  1. Use "eventRef": "${nodePv.event}" to reference a library event (define in library.yaml under eventSchemas)\n  2. Use "event": { "name": "${nodePv.event}", "attributes": {} } for inline event definition`,
+          });
+        }
+
         // For .otel.canvas files: require event or eventRef field on nodes with pv extension (except groups)
         if (filePath.endsWith('.otel.canvas') && nodeType !== 'group') {
           if (nodePv.event === undefined && nodePv.eventRef === undefined) {

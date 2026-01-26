@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { NodeState, NodeTypeDefinition, JsonValue } from '@principal-ai/principal-view-core/browser';
+import type { NodeState, NodeTypeDefinition, JsonValue } from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
 import { resolveIcon } from '../utils/iconResolver';
 
@@ -164,17 +164,17 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
     <div
       style={{
         position: 'absolute',
-        top: '60px',
-        right: '20px',
+        bottom: 0,
+        left: 0,
+        right: 0,
         backgroundColor: theme.colors.background,
         color: theme.colors.text,
-        borderRadius: '8px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        padding: '16px',
-        minWidth: '250px',
-        maxWidth: '350px',
+        borderTop: `2px solid ${nodeColor}`,
+        boxShadow: '0 -4px 12px rgba(0,0,0,0.15)',
+        padding: '16px 24px',
         zIndex: 1000,
-        border: `1px solid ${theme.colors.border}`,
+        maxHeight: '40%',
+        overflowY: 'auto',
       }}
     >
       {/* Header - shows node name */}
@@ -182,14 +182,17 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '12px',
-          paddingBottom: '8px',
-          borderBottom: `2px solid ${nodeColor}`,
+          alignItems: 'flex-start',
+          marginBottom: '16px',
         }}
       >
-        <div style={{ fontWeight: theme.fontWeights.bold, fontSize: theme.fontSizes[1], fontFamily: theme.fonts.body, color: nodeColor }}>
-          {node.name || node.id}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+          <div style={{ fontWeight: theme.fontWeights.bold, fontSize: theme.fontSizes[2], fontFamily: theme.fonts.body, color: nodeColor }}>
+            {node.name || node.id}
+          </div>
+          <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textMuted }}>
+            {node.type}
+          </div>
         </div>
         <button
           onClick={onClose}
@@ -200,144 +203,180 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
             fontSize: theme.fontSizes[3],
             fontFamily: theme.fonts.body,
             color: theme.colors.textSecondary,
-            padding: '0',
-            width: '24px',
-            height: '24px',
+            padding: '4px',
+            width: '28px',
+            height: '28px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            borderRadius: '4px',
+            transition: 'background-color 0.15s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = theme.colors.muted;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
           }}
         >
           ×
         </button>
       </div>
 
-      {/* Description - first field under header */}
-      {node.data?.description && (
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
-            Description
-          </div>
-          <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body }}>{String(node.data.description)}</div>
-        </div>
-      )}
+      {/* Content - use horizontal layout for better space usage */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
 
-      {/* Sources - shown after description */}
-      {sources.length > 0 && (
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
-            Sources
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-            {sources.map((source, index) =>
-              onSourceClick ? (
-                <button
-                  key={index}
-                  onClick={() => onSourceClick(node.id, source)}
-                  style={{
-                    fontSize: theme.fontSizes[0],
-                    fontFamily: theme.fonts.body,
-                    padding: '2px 8px',
-                    backgroundColor: theme.colors.muted,
-                    borderRadius: '4px',
-                    color: theme.colors.textSecondary,
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.15s, color 0.15s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = theme.colors.primary;
-                    e.currentTarget.style.color = theme.colors.background;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = theme.colors.muted;
-                    e.currentTarget.style.color = theme.colors.textSecondary;
-                  }}
-                >
-                  {source}
-                </button>
-              ) : (
-                <span
-                  key={index}
-                  style={{
-                    fontSize: theme.fontSizes[0],
-                    fontFamily: theme.fonts.body,
-                    padding: '2px 8px',
-                    backgroundColor: theme.colors.muted,
-                    borderRadius: '4px',
-                    color: theme.colors.textSecondary,
-                  }}
-                >
-                  {source}
-                </span>
-              )
-            )}
-          </div>
-        </div>
-      )}
+        {/* Left column - Description and basic info */}
+        <div>
+          {/* Description - first field under header */}
+          {node.data?.description && (
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
+                Description
+              </div>
+              <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body }}>{String(node.data.description)}</div>
+            </div>
+          )}
 
-      {/* OTEL Info - shown after sources */}
-      {otelInfo && (
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
-            OpenTelemetry
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-            {/* Kind badge */}
-            {otelInfo.kind && (
-              <span
-                style={{
-                  fontSize: theme.fontSizes[0],
-                  fontWeight: theme.fontWeights.semibold,
-                  fontFamily: theme.fonts.body,
-                  padding: '3px 8px',
-                  borderRadius: '4px',
-                  textTransform: 'uppercase',
-                  color: 'white',
-                  backgroundColor:
-                    otelInfo.kind === 'type'
-                      ? '#4A90E2'
-                      : otelInfo.kind === 'service'
-                      ? '#7ED321'
-                      : otelInfo.kind === 'instance'
-                      ? '#9B59B6'
-                      : '#888',
-                }}
-              >
-                {otelInfo.kind}
-              </span>
+          {/* OTEL Info */}
+          {otelInfo && (
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
+                OpenTelemetry
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                {/* Kind badge */}
+                {otelInfo.kind && (
+                  <span
+                    style={{
+                      fontSize: theme.fontSizes[0],
+                      fontWeight: theme.fontWeights.semibold,
+                      fontFamily: theme.fonts.body,
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      textTransform: 'uppercase',
+                      color: 'white',
+                      backgroundColor:
+                        otelInfo.kind === 'type'
+                          ? '#4A90E2'
+                          : otelInfo.kind === 'service'
+                          ? '#7ED321'
+                          : otelInfo.kind === 'instance'
+                          ? '#9B59B6'
+                          : '#888',
+                    }}
+                  >
+                    {otelInfo.kind}
+                  </span>
             )}
-            {/* Category */}
-            {otelInfo.category && (
-              <span
-                style={{
-                  fontSize: theme.fontSizes[0],
-                  fontFamily: theme.fonts.body,
-                  color: theme.colors.textSecondary,
-                }}
-              >
-                {otelInfo.category}
-              </span>
-            )}
-            {/* NEW badge */}
-            {otelInfo.isNew && (
-              <span
-                style={{
-                  fontSize: theme.fontSizes[0],
-                  fontWeight: theme.fontWeights.semibold,
-                  fontFamily: theme.fonts.body,
-                  padding: '2px 6px',
-                  borderRadius: '3px',
-                  backgroundColor: '#F5A623',
-                  color: 'white',
-                }}
-              >
-                NEW
-              </span>
-            )}
-          </div>
+                {/* Category */}
+                {otelInfo.category && (
+                  <span
+                    style={{
+                      fontSize: theme.fontSizes[0],
+                      fontFamily: theme.fonts.body,
+                      color: theme.colors.textSecondary,
+                    }}
+                  >
+                    {otelInfo.category}
+                  </span>
+                )}
+                {/* NEW badge */}
+                {otelInfo.isNew && (
+                  <span
+                    style={{
+                      fontSize: theme.fontSizes[0],
+                      fontWeight: theme.fontWeights.semibold,
+                      fontFamily: theme.fonts.body,
+                      padding: '2px 6px',
+                      borderRadius: '3px',
+                      backgroundColor: '#F5A623',
+                      color: 'white',
+                    }}
+                  >
+                    NEW
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Right column - Sources and other metadata */}
+        <div>
+          {/* Sources */}
+          {sources.length > 0 && (
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
+                Sources
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {sources.map((source, index) =>
+                  onSourceClick ? (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        console.log('Source clicked:', source, 'from node:', node.id);
+                        onSourceClick(node.id, source);
+                      }}
+                      style={{
+                        fontSize: theme.fontSizes[0],
+                        fontFamily: 'monospace',
+                        padding: '6px 10px',
+                        backgroundColor: theme.colors.muted,
+                        borderRadius: '4px',
+                        color: theme.colors.primary,
+                        border: `1px solid ${theme.colors.border}`,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        textAlign: 'left',
+                        width: '100%',
+                        textDecoration: 'underline',
+                        textDecorationStyle: 'dotted',
+                        textDecorationColor: theme.colors.primary,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = theme.colors.primary;
+                        e.currentTarget.style.color = theme.colors.background;
+                        e.currentTarget.style.borderColor = theme.colors.primary;
+                        e.currentTarget.style.textDecoration = 'underline';
+                        e.currentTarget.style.textDecorationColor = theme.colors.background;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = theme.colors.muted;
+                        e.currentTarget.style.color = theme.colors.primary;
+                        e.currentTarget.style.borderColor = theme.colors.border;
+                        e.currentTarget.style.textDecoration = 'underline';
+                        e.currentTarget.style.textDecorationStyle = 'dotted';
+                        e.currentTarget.style.textDecorationColor = theme.colors.primary;
+                      }}
+                    >
+                      {source}
+                    </button>
+                  ) : (
+                    <span
+                      key={index}
+                      style={{
+                        fontSize: theme.fontSizes[0],
+                        fontFamily: 'monospace',
+                        padding: '6px 10px',
+                        backgroundColor: theme.colors.muted,
+                        borderRadius: '4px',
+                        color: theme.colors.textSecondary,
+                        display: 'block',
+                        border: `1px solid ${theme.colors.border}`,
+                      }}
+                    >
+                      {source}
+                    </span>
+                  )
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+      </div>
 
       {/* Expand/Collapse button for additional details */}
       <button
