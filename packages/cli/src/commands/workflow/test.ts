@@ -7,7 +7,7 @@ import {
   hasEventMatching,
 } from '@principal-ai/principal-view-core';
 import {
-  loadNarrative,
+  loadWorkflow,
   loadExecution,
   executionToEvents,
   resolvePath,
@@ -25,14 +25,14 @@ export function createTestCommand(): Command {
 
   command
     .description('Test scenario matching and show why scenarios match or don\'t match')
-    .argument('<narrative>', 'Path to .narrative.json file')
+    .argument('<workflow>', 'Path to .workflow.json file')
     .argument('<execution>', 'Path to .otel.json execution file')
     .option('--show-all', 'Show all scenarios (not just matches)')
     .option('--show-aggregates', 'Display computed aggregates')
     .option('--json', 'Output as JSON')
-    .action(async (narrativePath: string, executionPath: string, options: TestOptions) => {
+    .action(async (workflowPath: string, executionPath: string, options: TestOptions) => {
       try {
-        const narrative = await loadNarrative(resolvePath(narrativePath));
+        const workflow = await loadWorkflow(resolvePath(workflowPath));
         const executionData = await loadExecution(resolvePath(executionPath));
         const events = executionToEvents(executionData);
 
@@ -40,7 +40,7 @@ export function createTestCommand(): Command {
         const aggregates = computeAggregates(events);
 
         // Test each scenario
-        const scenarioResults = narrative.scenarios.map((scenario) => {
+        const scenarioResults = workflow.scenarios.map((scenario) => {
           const condition = scenario.condition;
           const matched = matchesCondition(condition, events, aggregates);
 
@@ -95,12 +95,12 @@ export function createTestCommand(): Command {
         });
 
         // Select the winning scenario
-        const matchResult = selectScenario(narrative, events, aggregates);
+        const matchResult = selectScenario(workflow, events, aggregates);
         const selectedScenario = matchResult.scenario;
 
         if (options.json) {
           const output = {
-            narrative: narrativePath,
+            workflow: workflowPath,
             execution: executionPath,
             scenarios: scenarioResults.map((r) => ({
               id: r.scenario.id,
@@ -117,7 +117,7 @@ export function createTestCommand(): Command {
           console.log(JSON.stringify(output, null, 2));
         } else {
           // Text output
-          console.log(chalk.bold(`\nTesting: ${narrativePath}`));
+          console.log(chalk.bold(`\nTesting: ${workflowPath}`));
           console.log(chalk.gray(`Execution: ${executionPath}\n`));
 
           console.log(chalk.bold('Scenario Matching Results:'));

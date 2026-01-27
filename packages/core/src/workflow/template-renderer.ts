@@ -1,16 +1,16 @@
 /**
  * Template Renderer
  *
- * Renders narrative templates into human-readable text using
+ * Renders workflow templates into human-readable text using
  * OTEL events, selected scenarios, and template expressions.
  */
 
 import type {
-  NarrativeTemplate,
-  NarrativeScenario,
+  WorkflowTemplate,
+  WorkflowScenario,
   OtelEvent,
-  NarrativeResult,
-  NarrativeContext,
+  WorkflowResult,
+  WorkflowContext,
   SpanTreeNode,
   FlowDirective,
   FormattingOptions,
@@ -19,15 +19,15 @@ import { parseTemplate } from './template-parser';
 import { selectScenario, computeAggregates } from './scenario-matcher';
 
 /**
- * Render a narrative from a template and events
+ * Render a workflow from a template and events
  *
- * Main entry point for narrative generation.
+ * Main entry point for workflow generation.
  *
- * @param template - Narrative template
+ * @param template - Workflow template
  * @param events - Collected OTEL events
- * @returns Rendered narrative
+ * @returns Rendered workflow
  */
-export function renderNarrative(template: NarrativeTemplate, events: OtelEvent[]): NarrativeResult {
+export function renderWorkflow(template: WorkflowTemplate, events: OtelEvent[]): WorkflowResult {
   // Compute aggregates for scenario matching and templates
   const aggregates = computeAggregates(events);
 
@@ -35,7 +35,7 @@ export function renderNarrative(template: NarrativeTemplate, events: OtelEvent[]
   const matchResult = selectScenario(template, events, aggregates);
 
   // Build context
-  const context: NarrativeContext = {
+  const context: WorkflowContext = {
     template,
     scenario: matchResult.scenario,
     events,
@@ -56,7 +56,7 @@ export function renderNarrative(template: NarrativeTemplate, events: OtelEvent[]
     context.spanTree = buildSpanTree(events, template.showLogsPerSpan);
   }
 
-  // Render narrative
+  // Render workflow
   const text = renderScenario(context);
 
   // Build metadata
@@ -85,10 +85,10 @@ export function renderNarrative(template: NarrativeTemplate, events: OtelEvent[]
 /**
  * Render a scenario template
  *
- * @param context - Narrative context
+ * @param context - Workflow context
  * @returns Rendered text
  */
-function renderScenario(context: NarrativeContext): string {
+function renderScenario(context: WorkflowContext): string {
   const { scenario, template, events, aggregates, formatting } = context;
   const parts: string[] = [];
 
@@ -145,7 +145,7 @@ function renderScenario(context: NarrativeContext): string {
  */
 function renderSpanTree(
   tree: SpanTreeNode[],
-  scenario: NarrativeScenario,
+  scenario: WorkflowScenario,
   context: Record<string, unknown>,
   formatting: FormattingOptions
 ): string {
@@ -224,7 +224,7 @@ function renderSpanTree(
  */
 function renderTimeline(
   events: OtelEvent[],
-  scenario: NarrativeScenario,
+  scenario: WorkflowScenario,
   context: Record<string, unknown>,
   formatting: FormattingOptions
 ): string {
@@ -294,7 +294,7 @@ function renderTimeline(
  */
 function renderLog(
   log: OtelEvent,
-  scenario: NarrativeScenario,
+  scenario: WorkflowScenario,
   context: Record<string, unknown>,
   _formatting: FormattingOptions
 ): string | undefined {
@@ -322,7 +322,7 @@ function renderLog(
  * @param severityNumber - OTEL severity number (1-24)
  * @returns Severity level name
  */
-function getSeverityLevel(severityNumber?: number): keyof NonNullable<NarrativeScenario['template']['logs']> {
+function getSeverityLevel(severityNumber?: number): keyof NonNullable<WorkflowScenario['template']['logs']> {
   if (!severityNumber) return 'info';
   if (severityNumber >= 21) return 'fatal';
   if (severityNumber >= 17) return 'error';

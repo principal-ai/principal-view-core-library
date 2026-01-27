@@ -166,7 +166,7 @@ describe('Validated Event Emitter', () => {
 });
 
 describe('Full Execution Flow with Validation', () => {
-  test('should validate entire execution narrative', () => {
+  test('should validate entire execution workflow', () => {
     clearSpans();
 
     const testSpan = startTestSpan('graph conversion with validation', {

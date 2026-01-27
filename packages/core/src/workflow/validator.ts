@@ -1,9 +1,9 @@
 /**
- * Narrative Template Validator
- * Validates .narrative.json files against their corresponding .otel.canvas files
+ * Workflow Template Validator
+ * Validates .workflow.json files against their corresponding .otel.canvas files
  */
 
-import type { NarrativeTemplate } from './types';
+import type { WorkflowTemplate } from './types';
 import type { ExtendedCanvas } from '../types/canvas';
 import { existsSync } from 'fs';
 import { resolve } from 'path';
@@ -12,12 +12,12 @@ import { resolve } from 'path';
 // Validation Types
 // ============================================================================
 
-export interface NarrativeValidationContext {
-  /** The narrative template being validated */
-  narrative: NarrativeTemplate;
+export interface WorkflowValidationContext {
+  /** The workflow template being validated */
+  workflow: WorkflowTemplate;
 
-  /** Path to the narrative file */
-  narrativePath: string;
+  /** Path to the workflow file */
+  workflowPath: string;
 
   /** The canvas file (if found) */
   canvas?: ExtendedCanvas;
@@ -28,7 +28,7 @@ export interface NarrativeValidationContext {
   /** Base path for resolving relative paths */
   basePath: string;
 
-  /** Raw narrative content for line number lookup */
+  /** Raw workflow content for line number lookup */
   rawContent?: string;
 
   /** Execution data for validating attribute references (optional) */
@@ -40,16 +40,16 @@ export interface NarrativeValidationContext {
   };
 
   /**
-   * Optional: Events used across all narratives that reference this canvas.
+   * Optional: Events used across all workflows that reference this canvas.
    * When provided, coverage warnings are only emitted for canvas events
-   * that are NOT in this set (i.e., truly unused across all narratives).
-   * This enables multi-narrative canvas patterns where different narratives
+   * that are NOT in this set (i.e., truly unused across all workflows).
+   * This enables multi-workflow canvas patterns where different workflows
    * cover different subsets of canvas events.
    */
-  allNarrativeEvents?: Set<string>;
+  allWorkflowEvents?: Set<string>;
 }
 
-export interface NarrativeViolation {
+export interface WorkflowViolation {
   /** Rule ID that detected this violation */
   ruleId: string;
 
@@ -78,9 +78,9 @@ export interface NarrativeViolation {
   fixable: boolean;
 }
 
-export interface NarrativeValidationResult {
+export interface WorkflowValidationResult {
   /** All violations found */
-  violations: NarrativeViolation[];
+  violations: WorkflowViolation[];
 
   /** Count of errors */
   errorCount: number;
@@ -96,14 +96,14 @@ export interface NarrativeValidationResult {
 // Validator Implementation
 // ============================================================================
 
-export class NarrativeValidator {
+export class WorkflowValidator {
   /**
-   * Validate a narrative template
+   * Validate a workflow template
    */
   async validate(
-    context: NarrativeValidationContext
-  ): Promise<NarrativeValidationResult> {
-    const violations: NarrativeViolation[] = [];
+    context: WorkflowValidationContext
+  ): Promise<WorkflowValidationResult> {
+    const violations: WorkflowViolation[] = [];
 
     // Run all validation rules
     violations.push(...this.checkSchema(context));
@@ -129,29 +129,29 @@ export class NarrativeValidator {
   /**
    * Check schema validity (required fields, valid values)
    */
-  private checkSchema(context: NarrativeValidationContext): NarrativeViolation[] {
-    const violations: NarrativeViolation[] = [];
-    const { narrative, narrativePath } = context;
+  private checkSchema(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { workflow, workflowPath } = context;
 
     // Check version
-    if (!narrative.version) {
+    if (!workflow.version) {
       violations.push({
-        ruleId: 'narrative-schema-valid',
+        ruleId: 'workflow-schema-valid',
         severity: 'error',
-        file: narrativePath,
+        file: workflowPath,
         path: 'version',
         message: 'Missing required field "version"',
         impact: 'Cannot determine template version for compatibility',
         suggestion: 'Add a version field (e.g., "1.0.0")',
         fixable: false,
       });
-    } else if (!this.isValidSemver(narrative.version)) {
+    } else if (!this.isValidSemver(workflow.version)) {
       violations.push({
-        ruleId: 'narrative-schema-valid',
+        ruleId: 'workflow-schema-valid',
         severity: 'error',
-        file: narrativePath,
+        file: workflowPath,
         path: 'version',
-        message: `Invalid version format: "${narrative.version}"`,
+        message: `Invalid version format: "${workflow.version}"`,
         impact: 'Version must follow semver format',
         suggestion: 'Use semver format like "1.0.0"',
         fixable: false,
@@ -159,67 +159,67 @@ export class NarrativeValidator {
     }
 
     // Check canvas reference
-    if (!narrative.canvas) {
+    if (!workflow.canvas) {
       violations.push({
-        ruleId: 'narrative-schema-valid',
+        ruleId: 'workflow-schema-valid',
         severity: 'error',
-        file: narrativePath,
+        file: workflowPath,
         path: 'canvas',
         message: 'Missing required field "canvas"',
-        impact: 'Cannot determine which canvas this narrative belongs to',
+        impact: 'Cannot determine which canvas this workflow belongs to',
         suggestion: 'Add a canvas field pointing to an .otel.canvas file',
         fixable: false,
       });
     }
 
     // Check name
-    if (!narrative.name) {
+    if (!workflow.name) {
       violations.push({
-        ruleId: 'narrative-schema-valid',
+        ruleId: 'workflow-schema-valid',
         severity: 'error',
-        file: narrativePath,
+        file: workflowPath,
         path: 'name',
         message: 'Missing required field "name"',
-        impact: 'Cannot identify this narrative template',
+        impact: 'Cannot identify this workflow template',
         suggestion: 'Add a human-readable name',
         fixable: false,
       });
     }
 
     // Check description
-    if (!narrative.description) {
+    if (!workflow.description) {
       violations.push({
-        ruleId: 'narrative-schema-valid',
+        ruleId: 'workflow-schema-valid',
         severity: 'error',
-        file: narrativePath,
+        file: workflowPath,
         path: 'description',
         message: 'Missing required field "description"',
-        impact: 'Cannot understand the purpose of this narrative',
-        suggestion: 'Add a description explaining what this narrative shows',
+        impact: 'Cannot understand the purpose of this workflow',
+        suggestion: 'Add a description explaining what this workflow shows',
         fixable: false,
       });
     }
 
     // Check mode
     const validModes = ['span-tree', 'timeline'];
-    if (!narrative.mode) {
+    if (!workflow.mode) {
       violations.push({
-        ruleId: 'narrative-schema-valid',
+        ruleId: 'workflow-schema-valid',
         severity: 'error',
-        file: narrativePath,
+        file: workflowPath,
         path: 'mode',
         message: 'Missing required field "mode"',
-        impact: 'Cannot determine how to structure the narrative',
+        impact: 'Cannot determine how to structure the workflow',
         suggestion: `Set mode to one of: ${validModes.join(', ')}`,
         fixable: false,
       });
-    } else if (!validModes.includes(narrative.mode)) {
+    } else if (!validModes.includes(workflow.mode)) {
       violations.push({
-        ruleId: 'narrative-schema-valid',
+        ruleId: 'workflow-schema-valid',
         severity: 'error',
-        file: narrativePath,
+        file: workflowPath,
         path: 'mode',
-        message: `Invalid mode: "${narrative.mode}"`,
+        message: `Invalid mode: "${workflow.mode}"`,
         impact: 'Mode must be one of the supported types',
         suggestion: `Use one of: ${validModes.join(', ')}`,
         fixable: false,
@@ -228,13 +228,13 @@ export class NarrativeValidator {
 
     // Check scenarioSelection
     const validSelections = ['first-match', 'manual'];
-    if (narrative.scenarioSelection && !validSelections.includes(narrative.scenarioSelection)) {
+    if (workflow.scenarioSelection && !validSelections.includes(workflow.scenarioSelection)) {
       violations.push({
-        ruleId: 'narrative-schema-valid',
+        ruleId: 'workflow-schema-valid',
         severity: 'error',
-        file: narrativePath,
+        file: workflowPath,
         path: 'scenarioSelection',
-        message: `Invalid scenarioSelection: "${narrative.scenarioSelection}"`,
+        message: `Invalid scenarioSelection: "${workflow.scenarioSelection}"`,
         impact: 'Scenario selection must be a valid type',
         suggestion: `Use one of: ${validSelections.join(', ')}`,
         fixable: false,
@@ -242,25 +242,25 @@ export class NarrativeValidator {
     }
 
     // Check scenarios array
-    if (!narrative.scenarios || !Array.isArray(narrative.scenarios)) {
+    if (!workflow.scenarios || !Array.isArray(workflow.scenarios)) {
       violations.push({
-        ruleId: 'narrative-schema-valid',
+        ruleId: 'workflow-schema-valid',
         severity: 'error',
-        file: narrativePath,
+        file: workflowPath,
         path: 'scenarios',
         message: 'Missing or invalid "scenarios" field',
-        impact: 'Cannot generate narratives without scenarios',
+        impact: 'Cannot generate workflows without scenarios',
         suggestion: 'Add a scenarios array with at least one scenario',
         fixable: false,
       });
-    } else if (narrative.scenarios.length === 0) {
+    } else if (workflow.scenarios.length === 0) {
       violations.push({
-        ruleId: 'narrative-schema-valid',
+        ruleId: 'workflow-schema-valid',
         severity: 'error',
-        file: narrativePath,
+        file: workflowPath,
         path: 'scenarios',
         message: 'Scenarios array is empty',
-        impact: 'Cannot generate narratives without scenarios',
+        impact: 'Cannot generate workflows without scenarios',
         suggestion: 'Add at least one scenario definition',
         fixable: false,
       });
@@ -272,25 +272,25 @@ export class NarrativeValidator {
   /**
    * Check that the referenced canvas file exists
    */
-  private checkCanvasExists(context: NarrativeValidationContext): NarrativeViolation[] {
-    const violations: NarrativeViolation[] = [];
-    const { narrative, narrativePath, basePath, canvasPath } = context;
+  private checkCanvasExists(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { workflow, workflowPath, basePath, canvasPath } = context;
 
-    if (!narrative.canvas) {
+    if (!workflow.canvas) {
       // Already flagged by checkSchema
       return violations;
     }
 
     // Resolve canvas path
-    const resolvedPath = canvasPath || resolve(basePath, narrative.canvas);
+    const resolvedPath = canvasPath || resolve(basePath, workflow.canvas);
 
     if (!existsSync(resolvedPath)) {
       violations.push({
-        ruleId: 'narrative-canvas-exists',
+        ruleId: 'workflow-canvas-exists',
         severity: 'error',
-        file: narrativePath,
+        file: workflowPath,
         path: 'canvas',
-        message: `Referenced canvas file does not exist: ${narrative.canvas}`,
+        message: `Referenced canvas file does not exist: ${workflow.canvas}`,
         impact: 'Cannot validate event references without the canvas',
         suggestion: 'Ensure the canvas field points to a valid .otel.canvas file',
         fixable: false,
@@ -307,9 +307,9 @@ export class NarrativeValidator {
    * In the future, when canvas files include OTEL event schema definitions,
    * this will validate event references.
    */
-  private checkEventReferences(context: NarrativeValidationContext): NarrativeViolation[] {
-    const violations: NarrativeViolation[] = [];
-    const { narrative, narrativePath, canvas } = context;
+  private checkEventReferences(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { workflow, workflowPath, canvas } = context;
 
     if (!canvas || !canvas.nodes) {
       return violations;
@@ -324,10 +324,10 @@ export class NarrativeValidator {
           violations.push({
             ruleId: 'canvas-event-format-deprecated',
             severity: 'error',
-            file: narrative.canvas || 'canvas',
+            file: workflow.canvas || 'canvas',
             path: `nodes[${node.id}].pv.event`,
             message: `Canvas node "${node.id}" uses deprecated string format for event: "${node.pv.event}"`,
-            impact: 'Event will not be recognized by narrative validator and narratives will fail to match',
+            impact: 'Event will not be recognized by workflow validator and workflows will fail to match',
             suggestion: `Use "eventRef": "${node.pv.event}" to reference a library event, or use "event": { "name": "${node.pv.event}", "attributes": {} } for inline definition. If using eventRef, define the event schema in library.yaml under eventSchemas.`,
             fixable: false,
           });
@@ -342,15 +342,15 @@ export class NarrativeValidator {
       }
     }
 
-    // Extract all event names from narrative scenarios
-    const narrativeEvents = new Set<string>();
-    for (const scenario of narrative.scenarios) {
+    // Extract all event names from workflow scenarios
+    const workflowEvents = new Set<string>();
+    for (const scenario of workflow.scenarios) {
       // From condition.requires
       if (scenario.condition?.requires) {
         for (const eventPattern of scenario.condition.requires) {
           // Skip wildcard patterns for now
           if (!eventPattern.includes('*')) {
-            narrativeEvents.add(eventPattern);
+            workflowEvents.add(eventPattern);
           }
         }
       }
@@ -359,44 +359,44 @@ export class NarrativeValidator {
         for (const eventName of Object.keys(scenario.template.events)) {
           // Skip wildcard patterns
           if (!eventName.includes('*')) {
-            narrativeEvents.add(eventName);
+            workflowEvents.add(eventName);
           }
         }
       }
     }
 
-    // Check for narrative events not in canvas
-    for (const eventName of Array.from(narrativeEvents)) {
+    // Check for workflow events not in canvas
+    for (const eventName of Array.from(workflowEvents)) {
       if (!canvasEvents.has(eventName)) {
         violations.push({
-          ruleId: 'narrative-event-sync',
+          ruleId: 'workflow-event-sync',
           severity: 'error',
-          file: narrativePath,
+          file: workflowPath,
           path: 'events',
-          message: `Narrative references event "${eventName}" which is not defined in canvas`,
+          message: `Workflow references event "${eventName}" which is not defined in canvas`,
           impact: 'This event will never highlight a canvas node and may never match',
-          suggestion: `Add event "${eventName}" to a node in ${narrative.canvas} or remove it from the narrative`,
+          suggestion: `Add event "${eventName}" to a node in ${workflow.canvas} or remove it from the workflow`,
           fixable: false,
         });
       }
     }
 
-    // Check for canvas events not in narrative (warning only)
-    // If allNarrativeEvents is provided, check against the combined set of all narratives
-    // for this canvas. Otherwise, check against just this narrative's events.
-    const eventsToCheckAgainst = context.allNarrativeEvents ?? narrativeEvents;
+    // Check for canvas events not in workflow (warning only)
+    // If allWorkflowEvents is provided, check against the combined set of all workflows
+    // for this canvas. Otherwise, check against just this workflow's events.
+    const eventsToCheckAgainst = context.allWorkflowEvents ?? workflowEvents;
 
     for (const eventName of Array.from(canvasEvents)) {
       if (!eventsToCheckAgainst.has(eventName)) {
         violations.push({
-          ruleId: 'narrative-event-coverage',
+          ruleId: 'workflow-event-coverage',
           severity: 'warn',
-          file: narrativePath,
+          file: workflowPath,
           path: 'events',
-          message: context.allNarrativeEvents
-            ? `Canvas defines event "${eventName}" which is not used in any narrative for this canvas`
-            : `Canvas defines event "${eventName}" which is not used in this narrative scenario`,
-          impact: 'This canvas node may never be highlighted during narrative playback',
+          message: context.allWorkflowEvents
+            ? `Canvas defines event "${eventName}" which is not used in any workflow for this canvas`
+            : `Canvas defines event "${eventName}" which is not used in this workflow scenario`,
+          impact: 'This canvas node may never be highlighted during workflow playback',
           suggestion: `Add event "${eventName}" to a scenario's template.events or condition.requires`,
           fixable: false,
         });
@@ -409,11 +409,11 @@ export class NarrativeValidator {
   /**
    * Check that scenarios are well-formed
    */
-  private checkScenarios(context: NarrativeValidationContext): NarrativeViolation[] {
-    const violations: NarrativeViolation[] = [];
-    const { narrative, narrativePath } = context;
+  private checkScenarios(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { workflow, workflowPath } = context;
 
-    if (!narrative.scenarios || narrative.scenarios.length === 0) {
+    if (!workflow.scenarios || workflow.scenarios.length === 0) {
       return violations; // Already flagged by checkSchema
     }
 
@@ -421,13 +421,13 @@ export class NarrativeValidator {
     const priorities = new Set<number>();
     let hasDefault = false;
 
-    narrative.scenarios.forEach((scenario, idx) => {
+    workflow.scenarios.forEach((scenario, idx) => {
       // Check for required fields
       if (!scenario.id) {
         violations.push({
-          ruleId: 'narrative-scenario-valid',
+          ruleId: 'workflow-scenario-valid',
           severity: 'error',
-          file: narrativePath,
+          file: workflowPath,
           path: `scenarios[${idx}].id`,
           message: 'Scenario is missing required "id" field',
           impact: 'Cannot identify this scenario',
@@ -438,9 +438,9 @@ export class NarrativeValidator {
         // Check for duplicate IDs
         if (scenarioIds.has(scenario.id)) {
           violations.push({
-            ruleId: 'narrative-scenario-valid',
+            ruleId: 'workflow-scenario-valid',
             severity: 'error',
-            file: narrativePath,
+            file: workflowPath,
             path: `scenarios[${idx}].id`,
             message: `Duplicate scenario ID: "${scenario.id}"`,
             impact: 'Scenario IDs must be unique',
@@ -454,9 +454,9 @@ export class NarrativeValidator {
       // Check priority
       if (scenario.priority === undefined || scenario.priority === null) {
         violations.push({
-          ruleId: 'narrative-scenario-valid',
+          ruleId: 'workflow-scenario-valid',
           severity: 'error',
-          file: narrativePath,
+          file: workflowPath,
           path: `scenarios[${idx}].priority`,
           message: 'Scenario is missing required "priority" field',
           impact: 'Cannot determine scenario selection order',
@@ -466,9 +466,9 @@ export class NarrativeValidator {
       } else {
         if (scenario.priority < 0) {
           violations.push({
-            ruleId: 'narrative-scenario-valid',
+            ruleId: 'workflow-scenario-valid',
             severity: 'error',
-            file: narrativePath,
+            file: workflowPath,
             path: `scenarios[${idx}].priority`,
             message: 'Priority must be a non-negative number',
             impact: 'Invalid priority value',
@@ -480,9 +480,9 @@ export class NarrativeValidator {
         // Check for duplicate priorities
         if (priorities.has(scenario.priority)) {
           violations.push({
-            ruleId: 'narrative-scenario-valid',
+            ruleId: 'workflow-scenario-valid',
             severity: 'error',
-            file: narrativePath,
+            file: workflowPath,
             path: `scenarios[${idx}].priority`,
             message: `Duplicate priority: ${scenario.priority}`,
             impact: 'Priorities must be unique to determine selection order',
@@ -501,9 +501,9 @@ export class NarrativeValidator {
       // Check condition
       if (!scenario.condition) {
         violations.push({
-          ruleId: 'narrative-scenario-valid',
+          ruleId: 'workflow-scenario-valid',
           severity: 'error',
-          file: narrativePath,
+          file: workflowPath,
           path: `scenarios[${idx}].condition`,
           message: 'Scenario is missing required "condition" field',
           impact: 'Cannot determine when to use this scenario',
@@ -512,36 +512,36 @@ export class NarrativeValidator {
         });
       } else {
         // Validate condition structure
-        violations.push(...this.checkConditionStructure(scenario.condition, narrativePath, idx));
+        violations.push(...this.checkConditionStructure(scenario.condition, workflowPath, idx));
       }
 
       // Check template
       if (!scenario.template) {
         violations.push({
-          ruleId: 'narrative-scenario-valid',
+          ruleId: 'workflow-scenario-valid',
           severity: 'error',
-          file: narrativePath,
+          file: workflowPath,
           path: `scenarios[${idx}].template`,
           message: 'Scenario is missing required "template" field',
-          impact: 'Cannot render narrative without a template',
+          impact: 'Cannot render workflow without a template',
           suggestion: 'Add a template with introduction, events, or flow',
           fixable: false,
         });
       } else {
         // Validate template structure
-        violations.push(...this.checkTemplateStructure(scenario.template, narrativePath, idx));
+        violations.push(...this.checkTemplateStructure(scenario.template, workflowPath, idx));
       }
     });
 
     // Ensure at least one default scenario exists
     if (!hasDefault) {
       violations.push({
-        ruleId: 'narrative-scenario-valid',
+        ruleId: 'workflow-scenario-valid',
         severity: 'error',
-        file: narrativePath,
+        file: workflowPath,
         path: 'scenarios',
         message: 'No default scenario defined',
-        impact: 'Narrative rendering may fail if no scenario matches',
+        impact: 'Workflow rendering may fail if no scenario matches',
         suggestion: 'Add a scenario with "condition.default: true" as a fallback',
         fixable: false,
       });
@@ -557,8 +557,8 @@ export class NarrativeValidator {
     condition: unknown,
     file: string,
     scenarioIdx: number
-  ): NarrativeViolation[] {
-    const violations: NarrativeViolation[] = [];
+  ): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
     const validFields = ['requires', 'excludes', 'assertions', 'default', 'any'];
 
     // Type guard: ensure condition is an object
@@ -574,7 +574,7 @@ export class NarrativeValidator {
         // Check for common legacy format fields
         if (key === 'event') {
           violations.push({
-            ruleId: 'narrative-condition-structure',
+            ruleId: 'workflow-condition-structure',
             severity: 'error',
             file,
             path: `scenarios[${scenarioIdx}].condition.${key}`,
@@ -585,7 +585,7 @@ export class NarrativeValidator {
           });
         } else if (key === 'attributes') {
           violations.push({
-            ruleId: 'narrative-condition-structure',
+            ruleId: 'workflow-condition-structure',
             severity: 'error',
             file,
             path: `scenarios[${scenarioIdx}].condition.${key}`,
@@ -596,7 +596,7 @@ export class NarrativeValidator {
           });
         } else {
           violations.push({
-            ruleId: 'narrative-condition-structure',
+            ruleId: 'workflow-condition-structure',
             severity: 'error',
             file,
             path: `scenarios[${scenarioIdx}].condition.${key}`,
@@ -619,15 +619,15 @@ export class NarrativeValidator {
     template: any,
     file: string,
     scenarioIdx: number
-  ): NarrativeViolation[] {
-    const violations: NarrativeViolation[] = [];
+  ): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
     const validFields = ['introduction', 'events', 'logs', 'flow', 'summary', 'span', 'children'];
     const templateKeys = Object.keys(template);
 
     // Check that events field is present and is an object
     if (!template.events) {
       violations.push({
-        ruleId: 'narrative-template-structure',
+        ruleId: 'workflow-template-structure',
         severity: 'error',
         file,
         path: `scenarios[${scenarioIdx}].template`,
@@ -638,7 +638,7 @@ export class NarrativeValidator {
       });
     } else if (typeof template.events !== 'object' || Array.isArray(template.events)) {
       violations.push({
-        ruleId: 'narrative-template-structure',
+        ruleId: 'workflow-template-structure',
         severity: 'error',
         file,
         path: `scenarios[${scenarioIdx}].template.events`,
@@ -649,7 +649,7 @@ export class NarrativeValidator {
       });
     } else if (Object.keys(template.events).length === 0) {
       violations.push({
-        ruleId: 'narrative-template-structure',
+        ruleId: 'workflow-template-structure',
         severity: 'error',
         file,
         path: `scenarios[${scenarioIdx}].template.events`,
@@ -666,7 +666,7 @@ export class NarrativeValidator {
         // Check for common legacy format fields
         if (key === 'steps') {
           violations.push({
-            ruleId: 'narrative-template-structure',
+            ruleId: 'workflow-template-structure',
             severity: 'error',
             file,
             path: `scenarios[${scenarioIdx}].template.${key}`,
@@ -677,7 +677,7 @@ export class NarrativeValidator {
           });
         } else if (key === 'details') {
           violations.push({
-            ruleId: 'narrative-template-structure',
+            ruleId: 'workflow-template-structure',
             severity: 'error',
             file,
             path: `scenarios[${scenarioIdx}].template.${key}`,
@@ -688,7 +688,7 @@ export class NarrativeValidator {
           });
         } else {
           violations.push({
-            ruleId: 'narrative-template-structure',
+            ruleId: 'workflow-template-structure',
             severity: 'error',
             file,
             path: `scenarios[${scenarioIdx}].template.${key}`,
@@ -707,19 +707,19 @@ export class NarrativeValidator {
   /**
    * Check that event names don't use attribute filter syntax
    */
-  private checkEventNameSyntax(context: NarrativeValidationContext): NarrativeViolation[] {
-    const violations: NarrativeViolation[] = [];
-    const { narrative, narrativePath } = context;
+  private checkEventNameSyntax(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { workflow, workflowPath } = context;
 
-    narrative.scenarios.forEach((scenario, scenarioIdx) => {
+    workflow.scenarios.forEach((scenario, scenarioIdx) => {
       // Check condition.requires
       if (scenario.condition?.requires) {
         scenario.condition.requires.forEach((eventPattern, idx) => {
           if (eventPattern.includes('[') && eventPattern.includes(']')) {
             violations.push({
-              ruleId: 'narrative-event-name-syntax',
+              ruleId: 'workflow-event-name-syntax',
               severity: 'error',
-              file: narrativePath,
+              file: workflowPath,
               path: `scenarios[${scenarioIdx}].condition.requires[${idx}]`,
               message: `Event name uses unsupported [attribute=value] syntax: "${eventPattern}"`,
               impact: 'Attribute filter syntax is not supported - event will not match',
@@ -735,9 +735,9 @@ export class NarrativeValidator {
         scenario.condition.excludes.forEach((eventPattern, idx) => {
           if (eventPattern.includes('[') && eventPattern.includes(']')) {
             violations.push({
-              ruleId: 'narrative-event-name-syntax',
+              ruleId: 'workflow-event-name-syntax',
               severity: 'error',
-              file: narrativePath,
+              file: workflowPath,
               path: `scenarios[${scenarioIdx}].condition.excludes[${idx}]`,
               message: `Event name uses unsupported [attribute=value] syntax: "${eventPattern}"`,
               impact: 'Attribute filter syntax is not supported - event will not match',
@@ -753,9 +753,9 @@ export class NarrativeValidator {
         Object.keys(scenario.template.events).forEach((eventName) => {
           if (eventName.includes('[') && eventName.includes(']')) {
             violations.push({
-              ruleId: 'narrative-event-name-syntax',
+              ruleId: 'workflow-event-name-syntax',
               severity: 'error',
-              file: narrativePath,
+              file: workflowPath,
               path: `scenarios[${scenarioIdx}].template.events["${eventName}"]`,
               message: `Event name uses unsupported [attribute=value] syntax: "${eventName}"`,
               impact: 'Attribute filter syntax is not supported - template will never render',
@@ -773,11 +773,11 @@ export class NarrativeValidator {
   /**
    * Check template syntax (balanced braces, valid expressions)
    */
-  private checkTemplateSyntax(context: NarrativeValidationContext): NarrativeViolation[] {
-    const violations: NarrativeViolation[] = [];
-    const { narrative, narrativePath } = context;
+  private checkTemplateSyntax(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { workflow, workflowPath } = context;
 
-    narrative.scenarios.forEach((scenario, scenarioIdx) => {
+    workflow.scenarios.forEach((scenario, scenarioIdx) => {
       if (!scenario.template) {
         return;
       }
@@ -788,7 +788,7 @@ export class NarrativeValidator {
       if (template.introduction) {
         violations.push(...this.validateTemplateString(
           template.introduction,
-          narrativePath,
+          workflowPath,
           `scenarios[${scenarioIdx}].template.introduction`
         ));
       }
@@ -797,7 +797,7 @@ export class NarrativeValidator {
       if (template.summary) {
         violations.push(...this.validateTemplateString(
           template.summary,
-          narrativePath,
+          workflowPath,
           `scenarios[${scenarioIdx}].template.summary`
         ));
       }
@@ -807,7 +807,7 @@ export class NarrativeValidator {
         Object.entries(template.events).forEach(([eventName, templateStr]) => {
           violations.push(...this.validateTemplateString(
             templateStr,
-            narrativePath,
+            workflowPath,
             `scenarios[${scenarioIdx}].template.events.${eventName}`
           ));
         });
@@ -819,7 +819,7 @@ export class NarrativeValidator {
           if (typeof templateStr === 'string') {
             violations.push(...this.validateTemplateString(
               templateStr,
-              narrativePath,
+              workflowPath,
               `scenarios[${scenarioIdx}].template.logs.${severity}`
             ));
           }
@@ -832,13 +832,13 @@ export class NarrativeValidator {
           if (typeof item === 'string') {
             violations.push(...this.validateTemplateString(
               item,
-              narrativePath,
+              workflowPath,
               `scenarios[${scenarioIdx}].template.flow[${flowIdx}]`
             ));
           } else if (typeof item === 'object' && item.template) {
             violations.push(...this.validateTemplateString(
               item.template,
-              narrativePath,
+              workflowPath,
               `scenarios[${scenarioIdx}].template.flow[${flowIdx}].template`
             ));
           }
@@ -856,8 +856,8 @@ export class NarrativeValidator {
     templateStr: string,
     file: string,
     path: string
-  ): NarrativeViolation[] {
-    const violations: NarrativeViolation[] = [];
+  ): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
 
     // Check for balanced braces
     let braceDepth = 0;
@@ -887,7 +887,7 @@ export class NarrativeValidator {
           braceDepth--;
           if (braceDepth < 0) {
             violations.push({
-              ruleId: 'narrative-template-syntax',
+              ruleId: 'workflow-template-syntax',
               severity: 'error',
               file,
               path,
@@ -904,7 +904,7 @@ export class NarrativeValidator {
 
     if (braceDepth > 0) {
       violations.push({
-        ruleId: 'narrative-template-syntax',
+        ruleId: 'workflow-template-syntax',
         severity: 'error',
         file,
         path,
@@ -926,7 +926,7 @@ export class NarrativeValidator {
 
       if (questionCount > colonCount) {
         violations.push({
-          ruleId: 'narrative-template-syntax',
+          ruleId: 'workflow-template-syntax',
           severity: 'error',
           file,
           path,
@@ -949,9 +949,9 @@ export class NarrativeValidator {
    * - Object attributes are accessed via properties (not used directly)
    * - Attribute names are correct (catches typos)
    */
-  private checkAttributeReferences(context: NarrativeValidationContext): NarrativeViolation[] {
-    const violations: NarrativeViolation[] = [];
-    const { narrative, narrativePath, executionData } = context;
+  private checkAttributeReferences(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { workflow, workflowPath, executionData } = context;
 
     // Skip if no execution data provided
     if (!executionData) {
@@ -961,7 +961,7 @@ export class NarrativeValidator {
     const { aggregates, eventAttributes } = executionData;
 
     // Check each scenario's template
-    for (const scenario of narrative.scenarios) {
+    for (const scenario of workflow.scenarios) {
       const scenarioPath = `scenarios[${scenario.id}]`;
 
       // Check introduction template
@@ -972,7 +972,7 @@ export class NarrativeValidator {
             attrs,
             aggregates,
             null, // introduction doesn't have specific event context
-            narrativePath,
+            workflowPath,
             `${scenarioPath}.template.introduction`
           )
         );
@@ -989,7 +989,7 @@ export class NarrativeValidator {
               attrs,
               aggregates,
               eventAttrs || null,
-              narrativePath,
+              workflowPath,
               `${scenarioPath}.template.events.${eventName}`,
               eventName
             )
@@ -1005,7 +1005,7 @@ export class NarrativeValidator {
             attrs,
             aggregates,
             null, // summary uses global aggregates
-            narrativePath,
+            workflowPath,
             `${scenarioPath}.template.summary`
           )
         );
@@ -1033,8 +1033,8 @@ export class NarrativeValidator {
     file: string,
     path: string,
     eventName?: string
-  ): NarrativeViolation[] {
-    const violations: NarrativeViolation[] = [];
+  ): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
 
     for (const attr of attributes) {
       // Check if attribute exists in global aggregates
@@ -1051,7 +1051,7 @@ export class NarrativeValidator {
         const similar = this.findSimilarAttributes(attr, allKeys);
 
         violations.push({
-          ruleId: 'narrative-attribute-undefined',
+          ruleId: 'workflow-attribute-undefined',
           severity: 'warn',
           file,
           path,
@@ -1072,7 +1072,7 @@ export class NarrativeValidator {
         const suggestions = objectKeys.slice(0, 3).map((k) => `{{${attr}.${k}}}`);
 
         violations.push({
-          ruleId: 'narrative-attribute-object',
+          ruleId: 'workflow-attribute-object',
           severity: 'warn',
           file,
           path,
@@ -1134,24 +1134,24 @@ export class NarrativeValidator {
   /**
    * Check formatting options
    */
-  private checkFormattingOptions(context: NarrativeValidationContext): NarrativeViolation[] {
-    const violations: NarrativeViolation[] = [];
-    const { narrative, narrativePath } = context;
+  private checkFormattingOptions(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { workflow, workflowPath } = context;
 
-    if (!narrative.formatting) {
+    if (!workflow.formatting) {
       return violations;
     }
 
     // Check showAttributes
-    if (narrative.formatting.showAttributes) {
+    if (workflow.formatting.showAttributes) {
       const validValues = ['none', 'matched', 'all'];
-      if (!validValues.includes(narrative.formatting.showAttributes)) {
+      if (!validValues.includes(workflow.formatting.showAttributes)) {
         violations.push({
-          ruleId: 'narrative-formatting-options',
+          ruleId: 'workflow-formatting-options',
           severity: 'warn',
-          file: narrativePath,
+          file: workflowPath,
           path: 'formatting.showAttributes',
-          message: `Invalid showAttributes value: "${narrative.formatting.showAttributes}"`,
+          message: `Invalid showAttributes value: "${workflow.formatting.showAttributes}"`,
           impact: 'May not display attributes correctly',
           suggestion: `Use one of: ${validValues.join(', ')}`,
           fixable: false,
@@ -1165,7 +1165,7 @@ export class NarrativeValidator {
   /**
    * Aggregate violations into result
    */
-  private aggregateResults(violations: NarrativeViolation[]): NarrativeValidationResult {
+  private aggregateResults(violations: WorkflowViolation[]): WorkflowValidationResult {
     let errorCount = 0;
     let warningCount = 0;
     let fixableCount = 0;
@@ -1352,6 +1352,6 @@ export class NarrativeValidator {
 /**
  * Create a validator instance
  */
-export function createNarrativeValidator(): NarrativeValidator {
-  return new NarrativeValidator();
+export function createWorkflowValidator(): WorkflowValidator {
+  return new WorkflowValidator();
 }

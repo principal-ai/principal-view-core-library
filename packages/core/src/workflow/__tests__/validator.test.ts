@@ -1,22 +1,22 @@
 /**
- * Tests for narrative template validator
+ * Tests for workflow template validator
  */
 
-import { NarrativeValidator } from '../validator';
-import type { NarrativeTemplate, NarrativeValidationContext } from '../validator';
+import { WorkflowValidator } from '../validator';
+import type { WorkflowTemplate, WorkflowValidationContext } from '../validator';
 import type { ExtendedCanvas } from '../../types/canvas';
 import { mkdtempSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
-describe('NarrativeValidator', () => {
-  let validator: NarrativeValidator;
+describe('WorkflowValidator', () => {
+  let validator: WorkflowValidator;
   let tempDir: string;
 
   beforeEach(() => {
-    validator = new NarrativeValidator();
+    validator = new WorkflowValidator();
     // Create a temporary directory for test files
-    tempDir = mkdtempSync(join(tmpdir(), 'narrative-validator-test-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'workflow-validator-test-'));
   });
 
   afterEach(() => {
@@ -30,12 +30,12 @@ describe('NarrativeValidator', () => {
   // Helper Functions
   // ============================================================================
 
-  function createValidNarrative(): NarrativeTemplate {
+  function createValidWorkflow(): WorkflowTemplate {
     return {
       version: '1.0.0',
       canvas: 'test.otel.canvas',
-      name: 'Test Narrative',
-      description: 'A test narrative template',
+      name: 'Test Workflow',
+      description: 'A test workflow template',
       mode: 'span-tree',
       scenarioSelection: 'first-match',
       scenarios: [
@@ -66,7 +66,7 @@ describe('NarrativeValidator', () => {
             default: true,
           },
           template: {
-            introduction: 'Default narrative',
+            introduction: 'Default workflow',
             events: {
               'test.started': 'Test started',
             },
@@ -123,20 +123,20 @@ describe('NarrativeValidator', () => {
   }
 
   function createContext(
-    narrative: Partial<NarrativeTemplate>,
+    workflow: Partial<WorkflowTemplate>,
     options: {
       canvas?: ExtendedCanvas;
       canvasPath?: string;
     } = {}
-  ): NarrativeValidationContext {
-    const fullNarrative = {
-      ...createValidNarrative(),
-      ...narrative,
-    } as NarrativeTemplate;
+  ): WorkflowValidationContext {
+    const fullWorkflow = {
+      ...createValidWorkflow(),
+      ...workflow,
+    } as WorkflowTemplate;
 
     return {
-      narrative: fullNarrative,
-      narrativePath: 'test.narrative.json',
+      workflow: fullWorkflow,
+      workflowPath: 'test.workflow.json',
       canvas: options.canvas,
       canvasPath: options.canvasPath,
       basePath: tempDir,
@@ -148,7 +148,7 @@ describe('NarrativeValidator', () => {
   // ============================================================================
 
   describe('checkSchema', () => {
-    it('should pass for valid narrative template', async () => {
+    it('should pass for valid workflow template', async () => {
       // Create canvas file so canvas-exists check passes
       const canvasPath = join(tempDir, 'test.otel.canvas');
       const markdownPath = join(tempDir, 'test.md');
@@ -169,7 +169,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-schema-valid',
+          ruleId: 'workflow-schema-valid',
           path: 'version',
           message: expect.stringContaining('Missing required field "version"'),
         })
@@ -183,7 +183,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-schema-valid',
+          ruleId: 'workflow-schema-valid',
           path: 'version',
           message: expect.stringContaining('Invalid version format'),
         })
@@ -197,7 +197,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-schema-valid',
+          ruleId: 'workflow-schema-valid',
           path: 'canvas',
           message: expect.stringContaining('Missing required field "canvas"'),
         })
@@ -211,7 +211,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-schema-valid',
+          ruleId: 'workflow-schema-valid',
           path: 'name',
           message: expect.stringContaining('Missing required field "name"'),
         })
@@ -225,7 +225,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-schema-valid',
+          ruleId: 'workflow-schema-valid',
           path: 'description',
         })
       );
@@ -238,7 +238,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-schema-valid',
+          ruleId: 'workflow-schema-valid',
           path: 'mode',
           message: expect.stringContaining('Missing required field "mode"'),
         })
@@ -252,7 +252,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-schema-valid',
+          ruleId: 'workflow-schema-valid',
           path: 'mode',
           message: expect.stringContaining('Invalid mode'),
         })
@@ -278,7 +278,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-schema-valid',
+          ruleId: 'workflow-schema-valid',
           path: 'scenarioSelection',
         })
       );
@@ -291,7 +291,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-schema-valid',
+          ruleId: 'workflow-schema-valid',
           path: 'scenarios',
           message: expect.stringContaining('empty'),
         })
@@ -318,7 +318,7 @@ describe('NarrativeValidator', () => {
       const result = await validator.validate(context);
 
       const canvasViolations = result.violations.filter(
-        (v) => v.ruleId === 'narrative-canvas-exists'
+        (v) => v.ruleId === 'workflow-canvas-exists'
       );
       expect(canvasViolations).toHaveLength(0);
     });
@@ -333,7 +333,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-canvas-exists',
+          ruleId: 'workflow-canvas-exists',
           message: expect.stringContaining('does not exist'),
         })
       );
@@ -350,7 +350,7 @@ describe('NarrativeValidator', () => {
       const result = await validator.validate(context);
 
       const scenarioViolations = result.violations.filter(
-        (v) => v.ruleId === 'narrative-scenario-valid'
+        (v) => v.ruleId === 'workflow-scenario-valid'
       );
       expect(scenarioViolations).toHaveLength(0);
     });
@@ -372,7 +372,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-scenario-valid',
+          ruleId: 'workflow-scenario-valid',
           message: expect.stringContaining('missing required "id"'),
         })
       );
@@ -402,7 +402,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-scenario-valid',
+          ruleId: 'workflow-scenario-valid',
           message: expect.stringContaining('Duplicate scenario ID'),
         })
       );
@@ -425,7 +425,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-scenario-valid',
+          ruleId: 'workflow-scenario-valid',
           message: expect.stringContaining('missing required "priority"'),
         })
       );
@@ -448,7 +448,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-scenario-valid',
+          ruleId: 'workflow-scenario-valid',
           message: expect.stringContaining('non-negative'),
         })
       );
@@ -478,7 +478,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-scenario-valid',
+          ruleId: 'workflow-scenario-valid',
           message: expect.stringContaining('Duplicate priority'),
         })
       );
@@ -501,7 +501,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-scenario-valid',
+          ruleId: 'workflow-scenario-valid',
           message: expect.stringContaining('No default scenario'),
         })
       );
@@ -524,7 +524,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-scenario-valid',
+          ruleId: 'workflow-scenario-valid',
           message: expect.stringContaining('missing required "condition"'),
         })
       );
@@ -547,7 +547,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-scenario-valid',
+          ruleId: 'workflow-scenario-valid',
           message: expect.stringContaining('missing required "template"'),
         })
       );
@@ -581,7 +581,7 @@ describe('NarrativeValidator', () => {
       const result = await validator.validate(context);
 
       const syntaxViolations = result.violations.filter(
-        (v) => v.ruleId === 'narrative-template-syntax'
+        (v) => v.ruleId === 'workflow-template-syntax'
       );
       expect(syntaxViolations).toHaveLength(0);
     });
@@ -605,7 +605,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-template-syntax',
+          ruleId: 'workflow-template-syntax',
           message: expect.stringContaining('Unbalanced braces'),
         })
       );
@@ -630,7 +630,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-template-syntax',
+          ruleId: 'workflow-template-syntax',
           message: expect.stringContaining('Unbalanced braces'),
         })
       );
@@ -655,7 +655,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-template-syntax',
+          ruleId: 'workflow-template-syntax',
           message: expect.stringContaining('Incomplete conditional'),
         })
       );
@@ -678,7 +678,7 @@ describe('NarrativeValidator', () => {
       const result = await validator.validate(context);
 
       const syntaxViolations = result.violations.filter(
-        (v) => v.ruleId === 'narrative-template-syntax'
+        (v) => v.ruleId === 'workflow-template-syntax'
       );
       expect(syntaxViolations).toHaveLength(0);
     });
@@ -705,7 +705,7 @@ describe('NarrativeValidator', () => {
       expect(result.errorCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-template-syntax',
+          ruleId: 'workflow-template-syntax',
           path: expect.stringContaining('events.test.started'),
         })
       );
@@ -761,7 +761,7 @@ describe('NarrativeValidator', () => {
       const result = await validator.validate(context);
 
       const formattingViolations = result.violations.filter(
-        (v) => v.ruleId === 'narrative-formatting-options'
+        (v) => v.ruleId === 'workflow-formatting-options'
       );
       expect(formattingViolations).toHaveLength(0);
     });
@@ -777,7 +777,7 @@ describe('NarrativeValidator', () => {
       expect(result.warningCount).toBeGreaterThan(0);
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-formatting-options',
+          ruleId: 'workflow-formatting-options',
           severity: 'warn',
           message: expect.stringContaining('Invalid showAttributes'),
         })
@@ -796,7 +796,7 @@ describe('NarrativeValidator', () => {
         const result = await validator.validate(context);
 
         const formattingViolations = result.violations.filter(
-          (v) => v.ruleId === 'narrative-formatting-options' && v.path === 'formatting.showAttributes'
+          (v) => v.ruleId === 'workflow-formatting-options' && v.path === 'formatting.showAttributes'
         );
         expect(formattingViolations).toHaveLength(0);
       }
@@ -838,17 +838,17 @@ describe('NarrativeValidator', () => {
   // ============================================================================
 
   describe('integration tests', () => {
-    it('should validate a complete valid narrative template', async () => {
+    it('should validate a complete valid workflow template', async () => {
       const canvasPath = join(tempDir, 'test.otel.canvas');
       const markdownPath = join(tempDir, 'test.md');
       writeFileSync(canvasPath, JSON.stringify(createValidCanvas()));
       writeFileSync(markdownPath, '# Test Documentation');
 
-      const narrative: NarrativeTemplate = {
+      const workflow: WorkflowTemplate = {
         version: '1.0.0',
         canvas: 'test.otel.canvas',
-        name: 'Complete Test Narrative',
-        description: 'A complete narrative template for testing',
+        name: 'Complete Test Workflow',
+        description: 'A complete workflow template for testing',
         mode: 'span-tree',
         scenarioSelection: 'first-match',
         scenarios: [
@@ -914,9 +914,9 @@ describe('NarrativeValidator', () => {
         },
       };
 
-      const context: NarrativeValidationContext = {
-        narrative,
-        narrativePath: 'test.narrative.json',
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
         canvas: createValidCanvas(),
         canvasPath,
         basePath: tempDir,
@@ -930,7 +930,7 @@ describe('NarrativeValidator', () => {
     });
 
     it('should collect multiple violations from different rules', async () => {
-      const narrative = {
+      const workflow = {
         version: 'invalid-version',
         canvas: 'nonexistent.canvas',
         name: '',
@@ -950,9 +950,9 @@ describe('NarrativeValidator', () => {
         },
       } as any;
 
-      const context: NarrativeValidationContext = {
-        narrative,
-        narrativePath: 'test.narrative.json',
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
         basePath: tempDir,
       };
 

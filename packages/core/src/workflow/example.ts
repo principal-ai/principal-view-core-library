@@ -1,20 +1,20 @@
 /**
- * Example: Using the Narrative Template System
+ * Example: Using the Workflow Template System
  *
- * This example demonstrates how to use the narrative renderer
- * to transform OTEL events into human-readable narratives.
+ * This example demonstrates how to use the workflow renderer
+ * to transform OTEL events into human-readable workflows.
  */
 
-import { renderNarrative } from './template-renderer';
-import type { NarrativeTemplate, OtelEvent } from './types';
+import { renderWorkflow } from './template-renderer';
+import type { WorkflowTemplate, OtelEvent } from './types';
 
 // Example 1: Simple Success Scenario
 function exampleSuccess() {
-  const template: NarrativeTemplate = {
+  const template: WorkflowTemplate = {
     version: '1.0.0',
     canvas: 'example.otel.canvas',
     name: 'Example Execution',
-    description: 'Simple execution narrative',
+    description: 'Simple execution workflow',
     mode: 'span-tree',
     scenarioSelection: 'first-match',
     showLogsPerSpan: true,
@@ -77,7 +77,7 @@ function exampleSuccess() {
     },
   ];
 
-  const result = renderNarrative(template, events);
+  const result = renderWorkflow(template, events);
   console.log('=== Example 1: Success Scenario ===\n');
   console.log(result.text);
   console.log('\nMetadata:', result.metadata);
@@ -86,7 +86,7 @@ function exampleSuccess() {
 
 // Example 2: Multi-scenario with Violations
 function exampleWithViolations() {
-  const template: NarrativeTemplate = {
+  const template: WorkflowTemplate = {
     version: '1.0.0',
     canvas: 'validation.otel.canvas',
     name: 'Validation Execution',
@@ -185,7 +185,7 @@ function exampleWithViolations() {
   ];
 
   console.log('=== Example 2a: Validation with Errors ===\n');
-  const result1 = renderNarrative(template, eventsWithErrors);
+  const result1 = renderWorkflow(template, eventsWithErrors);
   console.log(result1.text);
   console.log('\nSelected scenario:', result1.scenarioId);
   console.log('\n');
@@ -213,7 +213,7 @@ function exampleWithViolations() {
   ];
 
   console.log('=== Example 2b: Validation with Warnings ===\n');
-  const result2 = renderNarrative(template, eventsWithWarnings);
+  const result2 = renderWorkflow(template, eventsWithWarnings);
   console.log(result2.text);
   console.log('\nSelected scenario:', result2.scenarioId);
   console.log('\n');
@@ -241,7 +241,7 @@ function exampleWithViolations() {
   ];
 
   console.log('=== Example 2c: Validation Success ===\n');
-  const result3 = renderNarrative(template, eventsSuccess);
+  const result3 = renderWorkflow(template, eventsSuccess);
   console.log(result3.text);
   console.log('\nSelected scenario:', result3.scenarioId);
   console.log('\n');
@@ -249,7 +249,7 @@ function exampleWithViolations() {
 
 // Example 3: Span Tree with Hierarchy
 function exampleSpanTree() {
-  const template: NarrativeTemplate = {
+  const template: WorkflowTemplate = {
     version: '1.0.0',
     canvas: 'hierarchy.otel.canvas',
     name: 'Hierarchical Execution',
@@ -334,7 +334,7 @@ function exampleSpanTree() {
   ];
 
   console.log('=== Example 3: Span Tree Hierarchy ===\n');
-  const result = renderNarrative(template, events);
+  const result = renderWorkflow(template, events);
   console.log(result.text);
   console.log('\n');
 }

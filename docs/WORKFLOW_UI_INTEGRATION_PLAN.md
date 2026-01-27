@@ -1,4 +1,4 @@
-# Narrative Template System - UI Integration Plan
+# Workflow Template System - UI Integration Plan
 
 ## Current State Analysis
 
@@ -52,25 +52,25 @@ All 11 assertions passed successfully.
 
 ## Integration Approach
 
-### Phase 1: Add Narrative View Toggle (Quick Win)
+### Phase 1: Add Workflow View Toggle (Quick Win)
 
-**1.1 Create NarrativeRenderer Component**
+**1.1 Create WorkflowRenderer Component**
 
-New file: `packages/react/src/components/NarrativeRenderer.tsx`
+New file: `packages/react/src/components/WorkflowRenderer.tsx`
 
 ```typescript
-interface NarrativeRendererProps {
-  template: NarrativeTemplate;
+interface WorkflowRendererProps {
+  template: WorkflowTemplate;
   events: OtelEvent[];
   className?: string;
 }
 
-export const NarrativeRenderer: React.FC<NarrativeRendererProps> = ({
+export const WorkflowRenderer: React.FC<WorkflowRendererProps> = ({
   template,
   events,
   className
 }) => {
-  const result = renderNarrative(template, events);
+  const result = renderWorkflow(template, events);
 
   return (
     <div className={className}>
@@ -79,7 +79,7 @@ export const NarrativeRenderer: React.FC<NarrativeRendererProps> = ({
       </pre>
 
       {/* Optional metadata panel */}
-      <NarrativeMetadata metadata={result.metadata} />
+      <WorkflowMetadata metadata={result.metadata} />
     </div>
   );
 };
@@ -90,19 +90,19 @@ export const NarrativeRenderer: React.FC<NarrativeRendererProps> = ({
 Update `TestEventPanel.tsx`:
 
 ```typescript
-type ViewMode = 'raw' | 'narrative';
+type ViewMode = 'raw' | 'workflow';
 
 export interface TestEventPanelProps {
   // ... existing props
   viewMode?: ViewMode;
-  narrativeTemplate?: NarrativeTemplate;
+  workflowTemplate?: WorkflowTemplate;
   onViewModeChange?: (mode: ViewMode) => void;
 }
 
 export const TestEventPanel = ({
   // ... existing props
   viewMode = 'raw',
-  narrativeTemplate,
+  workflowTemplate,
   onViewModeChange
 }) => {
   // Add toggle button in header
@@ -110,15 +110,15 @@ export const TestEventPanel = ({
     <button onClick={() => onViewModeChange?.('raw')}>
       Raw Events
     </button>
-    <button onClick={() => onViewModeChange?.('narrative')}>
-      Narrative
+    <button onClick={() => onViewModeChange?.('workflow')}>
+      Workflow
     </button>
   </div>
 
   // Render based on mode
-  {viewMode === 'narrative' && narrativeTemplate ? (
-    <NarrativeRenderer
-      template={narrativeTemplate}
+  {viewMode === 'workflow' && workflowTemplate ? (
+    <WorkflowRenderer
+      template={workflowTemplate}
       events={convertToOtelEvents(currentSpan, logs)}
     />
   ) : (
@@ -127,34 +127,34 @@ export const TestEventPanel = ({
 };
 ```
 
-**1.3 Load Narrative Templates**
+**1.3 Load Workflow Templates**
 
-Create utility to load `.narrative.json` files alongside `.otel.canvas` files:
+Create utility to load `.workflow.json` files alongside `.otel.canvas` files:
 
 ```typescript
-// packages/react/src/utils/narrative-loader.ts
-export async function loadNarrativeTemplate(
+// packages/react/src/utils/workflow-loader.ts
+export async function loadWorkflowTemplate(
   canvasPath: string
-): Promise<NarrativeTemplate | null> {
-  const narrativePath = canvasPath.replace('.otel.canvas', '.narrative.json');
+): Promise<WorkflowTemplate | null> {
+  const workflowPath = canvasPath.replace('.otel.canvas', '.workflow.json');
   try {
-    const response = await fetch(narrativePath);
+    const response = await fetch(workflowPath);
     return await response.json();
   } catch {
-    return null; // No narrative template available
+    return null; // No workflow template available
   }
 }
 ```
 
-### Phase 2: Enhanced Narrative View (Rich Features)
+### Phase 2: Enhanced Workflow View (Rich Features)
 
 **2.1 Split View Mode**
 
-Add a "split" view mode showing narrative + raw events side-by-side:
+Add a "split" view mode showing workflow + raw events side-by-side:
 
 ```
 ┌─────────────────┬─────────────────┐
-│   Narrative     │   Raw Events    │
+│   Workflow     │   Raw Events    │
 │                 │                 │
 │ ✅ Test Passed  │ EVENT: setup... │
 │                 │ attributes:     │
@@ -169,21 +169,21 @@ Add a "split" view mode showing narrative + raw events side-by-side:
 
 **2.2 Interactive Event Mapping**
 
-Add hover/click interactions to map between narrative and raw events:
+Add hover/click interactions to map between workflow and raw events:
 
-- Hover over narrative line → highlight corresponding raw event
-- Click on narrative section → scroll to that event in raw view
-- Visual indicators showing which raw events contribute to each narrative line
+- Hover over workflow line → highlight corresponding raw event
+- Click on workflow section → scroll to that event in raw view
+- Visual indicators showing which raw events contribute to each workflow line
 
 ```typescript
-interface NarrativeSegment {
+interface WorkflowSegment {
   text: string;
   sourceEvents: string[]; // Event names that produced this line
   lineNumber: number;
 }
 
-// Parse narrative with source tracking
-const segments = parseNarrativeWithSources(result.text, events);
+// Parse workflow with source tracking
+const segments = parseWorkflowWithSources(result.text, events);
 
 // Render with interaction
 {segments.map((segment, idx) => (
@@ -224,13 +224,13 @@ Allow users to view alternative scenarios:
 )}
 ```
 
-**2.4 Narrative Syntax Highlighting**
+**2.4 Workflow Syntax Highlighting**
 
-Add syntax highlighting to the narrative text:
+Add syntax highlighting to the workflow text:
 
 ```typescript
 // Color different elements
-const highlightNarrative = (text: string) => {
+const highlightWorkflow = (text: string) => {
   return text
     .replace(/^✅|❌|⚠️|📋/gm, '<span class="emoji">$&</span>')
     .replace(/^→ /gm, '<span class="arrow">→ </span>')
@@ -243,13 +243,13 @@ const highlightNarrative = (text: string) => {
 
 **3.1 Template Selector**
 
-When multiple narrative templates are available for a canvas:
+When multiple workflow templates are available for a canvas:
 
 ```typescript
 interface TemplateMetadata {
   name: string;
   description: string;
-  mode: NarrativeMode;
+  mode: WorkflowMode;
   scenarioCount: number;
 }
 
@@ -262,13 +262,13 @@ interface TemplateMetadata {
 
 **3.2 Visual Template Editor (Future)**
 
-Interactive editor for creating/modifying narrative templates:
+Interactive editor for creating/modifying workflow templates:
 
 ```
 ┌─────────────────────────────────────────┐
 │ Template Editor                         │
 ├─────────────────────────────────────────┤
-│ Name: Graph Converter Test Narrative   │
+│ Name: Graph Converter Test Workflow   │
 │ Mode: [span-tree ▼]                     │
 │                                         │
 │ Scenarios:                              │
@@ -290,7 +290,7 @@ Interactive editor for creating/modifying narrative templates:
 
 **3.3 Live Preview**
 
-Show live narrative preview as you edit the template:
+Show live workflow preview as you edit the template:
 
 ```
 ┌──────────────┬──────────────┐
@@ -306,14 +306,14 @@ Show live narrative preview as you edit the template:
 
 ## Implementation Roadmap
 
-### Sprint 1: Basic Narrative View (1-2 days)
-- [ ] Create `NarrativeRenderer` component
+### Sprint 1: Basic Workflow View (1-2 days)
+- [ ] Create `WorkflowRenderer` component
 - [ ] Add view mode toggle to `TestEventPanel`
 - [ ] Convert TestEventPanel data to OtelEvent format
-- [ ] Load narrative templates from JSON
-- [ ] Basic styling for narrative display
+- [ ] Load workflow templates from JSON
+- [ ] Basic styling for workflow display
 
-**Deliverable:** Users can toggle between raw events and narrative view
+**Deliverable:** Users can toggle between raw events and workflow view
 
 ### Sprint 2: Enhanced Experience (2-3 days)
 - [ ] Add split view mode
@@ -322,10 +322,10 @@ Show live narrative preview as you edit the template:
 - [ ] Create hover interactions
 - [ ] Add metadata panel
 
-**Deliverable:** Rich, interactive narrative experience
+**Deliverable:** Rich, interactive workflow experience
 
 ### Sprint 3: Template Discovery (1-2 days)
-- [ ] Auto-discover narrative templates for canvas files
+- [ ] Auto-discover workflow templates for canvas files
 - [ ] Template selector UI
 - [ ] Template validation
 - [ ] Error handling for missing/invalid templates
@@ -336,8 +336,8 @@ Show live narrative preview as you edit the template:
 - [ ] Visual template editor
 - [ ] Live preview
 - [ ] Template testing tools
-- [ ] Export narratives (markdown, PDF)
-- [ ] Share narrative URLs
+- [ ] Export workflows (markdown, PDF)
+- [ ] Share workflow URLs
 
 **Deliverable:** Full template management system
 
@@ -347,14 +347,14 @@ Show live narrative preview as you edit the template:
 TestEventPanel
 ├── ViewModeToggle
 │   ├── RawButton
-│   ├── NarrativeButton
+│   ├── WorkflowButton
 │   └── SplitButton
-├── NarrativeView (when viewMode = 'narrative')
+├── WorkflowView (when viewMode = 'workflow')
 │   ├── ScenarioSelector
-│   ├── NarrativeRenderer
-│   │   ├── NarrativeText (with syntax highlighting)
+│   ├── WorkflowRenderer
+│   │   ├── WorkflowText (with syntax highlighting)
 │   │   └── InteractionLayer (hover/click handlers)
-│   └── NarrativeMetadata
+│   └── WorkflowMetadata
 └── RawEventsView (when viewMode = 'raw')
     └── TimelineItems
         ├── EventItem
@@ -366,7 +366,7 @@ TestEventPanel
 ```
 1. Load Canvas
    ↓
-2. Discover Narrative Template (.narrative.json)
+2. Discover Workflow Template (.workflow.json)
    ↓
 3. Collect OTEL Events (from test spans + logs)
    ↓
@@ -374,11 +374,11 @@ TestEventPanel
    ↓
    ├─→ Raw Mode: Display events as YAML
    │
-   └─→ Narrative Mode:
-       ├─→ renderNarrative(template, events)
+   └─→ Workflow Mode:
+       ├─→ renderWorkflow(template, events)
        ├─→ Select matching scenario
        ├─→ Parse template expressions
-       └─→ Display formatted narrative
+       └─→ Display formatted workflow
 ```
 
 ## Example Integration
@@ -388,11 +388,11 @@ TestEventPanel
 ```typescript
 // packages/react/src/stories/RealTestExecution.stories.tsx
 
-import narrativeTemplate from '../../../.principal-views/graph-converter-test.narrative.json';
+import workflowTemplate from '../../../.principal-views/graph-converter-test.workflow.json';
 
-export const WithNarrative: Story = {
+export const WithWorkflow: Story = {
   render: () => {
-    const [viewMode, setViewMode] = useState<ViewMode>('narrative');
+    const [viewMode, setViewMode] = useState<ViewMode>('workflow');
 
     return (
       <div style={{ display: 'flex', width: '100vw', height: '100vh' }}>
@@ -403,7 +403,7 @@ export const WithNarrative: Story = {
             currentSpanIndex={currentSpanIndex}
             currentEventIndex={currentEventIndex}
             viewMode={viewMode}
-            narrativeTemplate={narrativeTemplate}
+            workflowTemplate={workflowTemplate}
             onViewModeChange={setViewMode}
           />
         </div>
@@ -420,10 +420,10 @@ export const WithNarrative: Story = {
 
 ### Styling
 
-Use monospace font for narrative text to match the terminal/log aesthetic:
+Use monospace font for workflow text to match the terminal/log aesthetic:
 
 ```typescript
-const narrativeStyle = {
+const workflowStyle = {
   fontFamily: theme.fonts.monospace,
   fontSize: '14px',
   lineHeight: '1.6',
@@ -454,20 +454,20 @@ Map semantic elements to colors:
 
 ### Performance
 
-- Memoize narrative rendering results
+- Memoize workflow rendering results
 - Lazy load templates
-- Virtual scrolling for long narratives
+- Virtual scrolling for long workflows
 - Debounce hover interactions
 
 ## Integration with Existing Features
 
 ### Phase Highlighting
 
-Map narrative sections to graph phases:
+Map workflow sections to graph phases:
 
 ```typescript
 // When user hovers over Setup phase in graph
-<NarrativeRenderer
+<WorkflowRenderer
   template={template}
   events={events}
   highlightedSection="setup" // Highlight setup-related lines
@@ -476,26 +476,26 @@ Map narrative sections to graph phases:
 
 ### Event Correlation
 
-Maintain bidirectional links between narrative and raw events:
+Maintain bidirectional links between workflow and raw events:
 
 ```typescript
-interface NarrativeLine {
+interface WorkflowLine {
   text: string;
   eventNames: string[];
   eventIndices: number[];
 }
 
-// Click narrative line → highlight in raw view
-// Click raw event → highlight in narrative
+// Click workflow line → highlight in raw view
+// Click raw event → highlight in workflow
 ```
 
 ### Search and Filter
 
-Add search capability across narrative text:
+Add search capability across workflow text:
 
 ```typescript
-<NarrativeSearch
-  narrative={result.text}
+<WorkflowSearch
+  workflow={result.text}
   onMatch={(lineNumber) => scrollToLine(lineNumber)}
 />
 ```
@@ -509,8 +509,8 @@ Add search capability across narrative text:
 
 ### For QA/Testing
 - **Test Reports**: Generate readable test execution reports
-- **Issue Documentation**: Copy narrative for bug reports
-- **Regression Analysis**: Compare narratives across runs
+- **Issue Documentation**: Copy workflow for bug reports
+- **Regression Analysis**: Compare workflows across runs
 
 ### For Product/Management
 - **Observability**: Understand system behavior without technical depth
@@ -519,20 +519,20 @@ Add search capability across narrative text:
 
 ## Success Metrics
 
-- [ ] Users can toggle between raw/narrative views with 1 click
-- [ ] Narrative loads in <100ms for typical test execution
-- [ ] 90%+ of test executions have matching narrative templates
-- [ ] Users report narratives are "much easier to read" than raw YAML
-- [ ] Adoption: 70%+ of users prefer narrative view after trying it
+- [ ] Users can toggle between raw/workflow views with 1 click
+- [ ] Workflow loads in <100ms for typical test execution
+- [ ] 90%+ of test executions have matching workflow templates
+- [ ] Users report workflows are "much easier to read" than raw YAML
+- [ ] Adoption: 70%+ of users prefer workflow view after trying it
 
 ## Future Enhancements
 
-1. **AI-Generated Narratives**: Use LLM to generate narrative templates from examples
-2. **Narrative Diff**: Compare narratives across test runs to spot changes
+1. **AI-Generated Workflows**: Use LLM to generate workflow templates from examples
+2. **Workflow Diff**: Compare workflows across test runs to spot changes
 3. **Export Formats**: Markdown, HTML, PDF export
-4. **Template Library**: Share narrative templates across projects
+4. **Template Library**: Share workflow templates across projects
 5. **Smart Highlighting**: ML-based highlighting of important sections
-6. **Timeline Visualization**: Visual timeline alongside narrative
+6. **Timeline Visualization**: Visual timeline alongside workflow
 7. **Collaborative Editing**: Multi-user template editing
 8. **Version Control**: Track template changes over time
 
@@ -541,9 +541,9 @@ Add search capability across narrative text:
 ## Next Steps
 
 **Immediate (Week 1):**
-1. Create `NarrativeRenderer` component
+1. Create `WorkflowRenderer` component
 2. Add view toggle to `TestEventPanel`
-3. Test with existing narrative templates
+3. Test with existing workflow templates
 
 **Short Term (Week 2-3):**
 1. Add split view mode
@@ -555,4 +555,4 @@ Add search capability across narrative text:
 2. Add template validation
 3. Create documentation
 
-This plan provides a clear path to integrate the narrative template system into the React UI, starting with simple view toggling and progressively adding richer features.
+This plan provides a clear path to integrate the workflow template system into the React UI, starting with simple view toggling and progressively adding richer features.

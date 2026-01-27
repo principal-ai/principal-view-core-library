@@ -1,12 +1,12 @@
-# Narrative Template System: Human-Readable Execution Stories
+# Workflow Template System: Human-Readable Execution Stories
 
-This document outlines the design for a narrative template system that transforms OpenTelemetry event streams into human-readable execution stories based on OTEL canvas definitions.
+This document outlines the design for a workflow template system that transforms OpenTelemetry event streams into human-readable execution stories based on OTEL canvas definitions.
 
 ## Overview
 
-The narrative template system addresses a core usability challenge: **OTEL event data is optimized for machines, not humans**. While `.otel.canvas` files define event schemas and system flows, they don't provide a way to tell the story of what actually happened during execution.
+The workflow template system addresses a core usability challenge: **OTEL event data is optimized for machines, not humans**. While `.otel.canvas` files define event schemas and system flows, they don't provide a way to tell the story of what actually happened during execution.
 
-**Key Principle**: Separate event schema definitions from narrative presentation, allowing multiple narrative views of the same execution data.
+**Key Principle**: Separate event schema definitions from workflow presentation, allowing multiple workflow views of the same execution data.
 
 ### Problem Statement
 
@@ -21,7 +21,7 @@ Given an execution that generates OTEL events:
 
 Current state: Users must manually interpret raw event data.
 
-Desired state: Automatically generate readable narratives:
+Desired state: Automatically generate readable workflows:
 ```
 ✅ Graph Converter Succeeded
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -40,17 +40,17 @@ Converting 12 node definitions
 
 ### File Structure
 
-The system introduces a new file type: `.narrative.json` files that reference `.otel.canvas` files.
+The system introduces a new file type: `.workflow.json` files that reference `.otel.canvas` files.
 
 ```
 .principal-views/
 ├── graph-converter-execution.otel.canvas           # Event schema (unchanged)
-├── graph-converter-execution.narrative.json        # Default narrative templates
-├── graph-converter-execution.narrative-dev.json    # Developer debugging view
-├── graph-converter-execution.narrative-exec.json   # Executive summary view
+├── graph-converter-execution.workflow.json        # Default workflow templates
+├── graph-converter-execution.workflow-dev.json    # Developer debugging view
+├── graph-converter-execution.workflow-exec.json   # Executive summary view
 └── rules-engine-execution.otel.canvas
-    ├── rules-engine-execution.narrative.json
-    └── rules-engine-execution.narrative-debug.json
+    ├── rules-engine-execution.workflow.json
+    └── rules-engine-execution.workflow-debug.json
 ```
 
 ### Separation of Concerns
@@ -58,7 +58,7 @@ The system introduces a new file type: `.narrative.json` files that reference `.
 | File Type | Responsibility | Owned By | Change Frequency |
 |-----------|---------------|----------|------------------|
 | `.otel.canvas` | Event schema, node definitions, graph structure | Engineers | Low - structural changes only |
-| `.narrative.json` | Human-readable templates, scenarios, formatting | Technical writers / Engineers | Medium - template refinement |
+| `.workflow.json` | Human-readable templates, scenarios, formatting | Technical writers / Engineers | Medium - template refinement |
 
 ### High-Level Flow
 
@@ -86,14 +86,14 @@ The system introduces a new file type: `.narrative.json` files that reference `.
          │
          ▼
 ┌─────────────────────────┐
-│ Scenario Matching       │ (select narrative based on events)
+│ Scenario Matching       │ (select workflow based on events)
 │ - Evaluate conditions   │
 │ - First-match wins      │
 └────────┬────────────────┘
          │
          ▼
 ┌─────────────────────────┐
-│ Template Rendering      │ (generate final narrative)
+│ Template Rendering      │ (generate final workflow)
 │ - Attribute injection   │
 │ - Formatting            │
 └────────┬────────────────┘
@@ -101,18 +101,18 @@ The system introduces a new file type: `.narrative.json` files that reference `.
          ▼
 ┌─────────────────┐
 │ Human-Readable  │
-│ Narrative Text  │
+│ Workflow Text  │
 └─────────────────┘
 ```
 
-### OTEL Signal Types in Narratives
+### OTEL Signal Types in Workflows
 
-The narrative system supports all three OpenTelemetry signal types:
+The workflow system supports all three OpenTelemetry signal types:
 
 #### 1. Spans (Traces)
 - **What**: Execution traces representing operations
 - **Key Data**: Name, duration, parent-child relationships, attributes
-- **Use in Narratives**: Primary structure for execution flow
+- **Use in Workflows**: Primary structure for execution flow
 - **Example**: `conversion.started`, `rule.completed`
 
 ```typescript
@@ -134,7 +134,7 @@ interface OtelSpan {
 #### 2. Logs
 - **What**: Discrete log records emitted during execution
 - **Key Data**: Severity, message body, trace context, attributes
-- **Use in Narratives**: Detailed context, errors, debug info
+- **Use in Workflows**: Detailed context, errors, debug info
 - **Example**: Debug messages, error stack traces
 
 ```typescript
@@ -169,7 +169,7 @@ interface OtelLog {
 #### 3. Metrics (Future)
 - **What**: Numeric measurements over time
 - **Key Data**: Name, value, unit, labels
-- **Use in Narratives**: Performance statistics, aggregations
+- **Use in Workflows**: Performance statistics, aggregations
 - **Example**: `conversion.duration.ms`, `rules.violation.count`
 
 Note: Metrics support is planned for Phase 4.
@@ -298,20 +298,20 @@ Renders as:
 
 ---
 
-## Narrative Template Schema
+## Workflow Template Schema
 
 ### Root Structure
 
 ```typescript
-interface NarrativeTemplate {
+interface WorkflowTemplate {
   // Metadata
   version: string;                    // Schema version (e.g., "1.0.0")
   canvas: string;                     // Reference to .otel.canvas file
   name: string;                       // Human-readable template name
-  description: string;                // Purpose of this narrative view
+  description: string;                // Purpose of this workflow view
 
   // Rendering configuration
-  mode: NarrativeMode;                // How to structure the narrative
+  mode: WorkflowMode;                // How to structure the workflow
   scenarioSelection: 'first-match' | 'manual';
 
   // OTEL signal integration
@@ -319,13 +319,13 @@ interface NarrativeTemplate {
   interleaveSignals?: boolean;        // Mix spans/logs by timestamp (timeline mode)
 
   // Scenario definitions
-  scenarios: NarrativeScenario[];
+  scenarios: WorkflowScenario[];
 
   // Formatting options
   formatting?: FormattingOptions;
 }
 
-type NarrativeMode =
+type WorkflowMode =
   | 'span-tree'      // Follow OTEL span hierarchy (uses parent-child relationships)
   | 'timeline'       // Chronological order (sorts all signals by timestamp)
   | 'summary-only';  // Just show summary, skip event details
@@ -333,10 +333,10 @@ type NarrativeMode =
 
 ### Scenario Definition
 
-Scenarios are **mutually exclusive** narrative templates selected based on which events occurred.
+Scenarios are **mutually exclusive** workflow templates selected based on which events occurred.
 
 ```typescript
-interface NarrativeScenario {
+interface WorkflowScenario {
   // Identification
   id: string;                         // Unique scenario identifier
   priority: number;                   // Lower = higher priority (1 = highest)
@@ -377,7 +377,7 @@ interface ScenarioTemplate {
   introduction?: string;              // Opening text
   events?: Record<string, string>;    // Event/log name -> template mapping (e.g., "conversion.started", "log.error")
   logs?: LogTemplates;                // Optional: separate log templates by severity
-  flow?: Array<string | FlowDirective>; // Narrative flow steps
+  flow?: Array<string | FlowDirective>; // Workflow flow steps
   summary?: string;                   // Closing text
 }
 
@@ -491,8 +491,8 @@ Scenarios are evaluated in **priority order** (lowest priority number first). Th
 function selectScenario(
   events: OtelEvent[],
   attributes: Record<string, any>,
-  scenarios: NarrativeScenario[]
-): NarrativeScenario {
+  scenarios: WorkflowScenario[]
+): WorkflowScenario {
   // Sort by priority (should already be sorted in file)
   const sorted = scenarios.sort((a, b) => a.priority - b.priority);
 
@@ -561,16 +561,16 @@ Supports glob patterns for flexible matching:
 
 ---
 
-## Example: Complete Narrative Template
+## Example: Complete Workflow Template
 
-### File: `graph-converter-execution.narrative.json`
+### File: `graph-converter-execution.workflow.json`
 
 ```json
 {
   "version": "1.0.0",
   "canvas": "graph-converter-execution.otel.canvas",
-  "name": "Default Narrative",
-  "description": "Standard execution narrative for graph converter",
+  "name": "Default Workflow",
+  "description": "Standard execution workflow for graph converter",
 
   "mode": "span-tree",
   "scenarioSelection": "first-match",
@@ -713,7 +713,7 @@ Supports glob patterns for flexible matching:
 - `partial-conversion`? ❌ No (result.nodes.count = 12, not < 1)
 - `happy-path`? ✅ **YES** (has conversion.complete, result.nodes.count > 0)
 
-**Generated Narrative:**
+**Generated Workflow:**
 ```
 ✅ Graph Converter Succeeded
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -753,7 +753,7 @@ Converting 8 edge definitions
 **Scenario Selection:**
 - `conversion-error`? ✅ **YES** (has conversion.error)
 
-**Generated Narrative:**
+**Generated Workflow:**
 ```
 ❌ Graph Converter Failed
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -766,11 +766,11 @@ Processing 12 nodes...
 ❌ FAILED - Conversion incomplete
 ```
 
-### Example 3: Multiple Narrative Views
+### Example 3: Multiple Workflow Views
 
-Same events, different narrative templates:
+Same events, different workflow templates:
 
-**Developer View (`narrative-dev.json`):**
+**Developer View (`workflow-dev.json`):**
 ```
 🔧 Graph Converter Execution Trace
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -792,7 +792,7 @@ Same events, different narrative templates:
 📊 Stats: 12 nodes, 8 edges, 45ms, 3.75ms/item
 ```
 
-**Executive View (`narrative-exec.json`):**
+**Executive View (`workflow-exec.json`):**
 ```
 Graph conversion: 12 nodes generated in 45ms
 ```
@@ -850,7 +850,7 @@ Graph conversion: 12 nodes generated in 45ms
 ]
 ```
 
-**Narrative Template (`narrative-timeline.json`):**
+**Workflow Template (`workflow-timeline.json`):**
 ```json
 {
   "mode": "timeline",
@@ -881,7 +881,7 @@ Graph conversion: 12 nodes generated in 45ms
 }
 ```
 
-**Generated Narrative:**
+**Generated Workflow:**
 ```
 ⚠️  Conversion Timeline (Errors Detected)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -902,7 +902,7 @@ Graph conversion: 12 nodes generated in 45ms
 
 **Signals Collected:** (Same as Example 4, but with span parent-child relationships)
 
-**Narrative Template (`narrative-span-tree.json`):**
+**Workflow Template (`workflow-span-tree.json`):**
 ```json
 {
   "mode": "span-tree",
@@ -926,7 +926,7 @@ Graph conversion: 12 nodes generated in 45ms
 }
 ```
 
-**Generated Narrative:**
+**Generated Workflow:**
 ```
 Execution Trace with Logs
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -947,12 +947,12 @@ This hierarchical view shows which logs occurred during which spans, making it e
 
 ## UI Integration
 
-### Narrative Rendering Component
+### Workflow Rendering Component
 
 ```typescript
-interface NarrativeViewProps {
+interface WorkflowViewProps {
   canvasFile: string;               // e.g., "graph-converter-execution.otel.canvas"
-  narrativeFile?: string;           // Optional: specific narrative template
+  workflowFile?: string;           // Optional: specific workflow template
   events: OtelEvent[];              // Collected OTEL events
   options?: {
     allowManualSelection?: boolean; // Let user pick different scenario
@@ -960,15 +960,15 @@ interface NarrativeViewProps {
   };
 }
 
-function NarrativeView({ canvasFile, narrativeFile, events, options }: NarrativeViewProps) {
+function WorkflowView({ canvasFile, workflowFile, events, options }: WorkflowViewProps) {
   const canvas = useCanvas(canvasFile);
-  const narrative = useNarrative(narrativeFile || canvas.pv.narratives.default);
+  const workflow = useWorkflow(workflowFile || canvas.pv.workflows.default);
 
-  const { scenario, allScenarios } = useScenarioSelection(narrative, events);
-  const renderedNarrative = useNarrativeRenderer(scenario, events);
+  const { scenario, allScenarios } = useScenarioSelection(workflow, events);
+  const renderedWorkflow = useWorkflowRenderer(scenario, events);
 
   return (
-    <div className="narrative-view">
+    <div className="workflow-view">
       {options?.allowManualSelection && (
         <ScenarioSelector
           scenarios={allScenarios}
@@ -977,9 +977,9 @@ function NarrativeView({ canvasFile, narrativeFile, events, options }: Narrative
         />
       )}
 
-      <NarrativeContent>
-        {renderedNarrative}
-      </NarrativeContent>
+      <WorkflowContent>
+        {renderedWorkflow}
+      </WorkflowContent>
 
       {options?.showRawEvents && (
         <EventInspector events={events} />
@@ -989,23 +989,23 @@ function NarrativeView({ canvasFile, narrativeFile, events, options }: Narrative
 }
 ```
 
-### Narrative Template Picker
+### Workflow Template Picker
 
 ```typescript
-interface NarrativeTemplateSelectorProps {
+interface WorkflowTemplateSelectorProps {
   canvas: OtelCanvas;
   selectedTemplate?: string;
   onSelect: (templateFile: string) => void;
 }
 
-function NarrativeTemplateSelector({ canvas, selectedTemplate, onSelect }: NarrativeTemplateSelectorProps) {
-  const templates = canvas.pv.narratives.available;
+function WorkflowTemplateSelector({ canvas, selectedTemplate, onSelect }: WorkflowTemplateSelectorProps) {
+  const templates = canvas.pv.workflows.available;
 
   return (
     <Select value={selectedTemplate} onChange={onSelect}>
       {templates.map(template => (
         <option key={template} value={template}>
-          {getNarrativeMetadata(template).name}
+          {getWorkflowMetadata(template).name}
         </option>
       ))}
     </Select>
@@ -1019,7 +1019,7 @@ When multiple scenarios are applicable but lower priority ones matched:
 
 ```
 ┌─────────────────────────────────────────┐
-│ Narrative View                 [v]      │
+│ Workflow View                 [v]      │
 ├─────────────────────────────────────────┤
 │                                         │
 │ Auto-selected: happy-path ▼             │
@@ -1046,7 +1046,7 @@ When multiple scenarios are applicable but lower priority ones matched:
 ### Phase 1: Core Infrastructure ✅ COMPLETED
 
 **Deliverables:**
-- [x] Define TypeScript types for narrative templates
+- [x] Define TypeScript types for workflow templates
 - [x] Implement scenario matching algorithm
 - [x] Implement template expression parser
 - [x] Create basic template renderer
@@ -1054,8 +1054,8 @@ When multiple scenarios are applicable but lower priority ones matched:
 
 **Files Created:**
 ```
-packages/core/src/narrative/
-├── types.ts                    # NarrativeTemplate, NarrativeScenario types
+packages/core/src/workflow/
+├── types.ts                    # WorkflowTemplate, WorkflowScenario types
 ├── scenario-matcher.ts         # Scenario selection logic
 ├── template-parser.ts          # Expression parsing
 ├── template-renderer.ts        # Template → text rendering
@@ -1066,26 +1066,26 @@ packages/core/src/narrative/
     └── template-renderer.test.ts
 ```
 
-**Published:** `@principal-ai/principal-view-core@0.7.0` with narrative exports
+**Published:** `@principal-ai/principal-view-core@0.7.0` with workflow exports
 
 ### Phase 2: Template Examples ✅ COMPLETED
 
 **Deliverables:**
-- [x] Create narrative templates for existing `.otel.canvas` files
-- [ ] Add `narratives` metadata to canvas `pv` sections (future)
+- [x] Create workflow templates for existing `.otel.canvas` files
+- [ ] Add `workflows` metadata to canvas `pv` sections (future)
 - [ ] Document template authoring guidelines (future)
 - [ ] Create template validation tool (future)
 
 **Templates Created:**
-- [x] `graph-converter-test.narrative.json` (test execution narrative)
-- [x] `graph-converter-execution.narrative.json` (graph converter narrative)
-- [x] `rules-engine-execution.narrative.json` (rules engine narrative)
+- [x] `graph-converter-test.workflow.json` (test execution workflow)
+- [x] `graph-converter-execution.workflow.json` (graph converter workflow)
+- [x] `rules-engine-execution.workflow.json` (rules engine workflow)
 
 ### Phase 3: UI Integration ✅ PARTIALLY COMPLETED
 
 **Deliverables:**
-- [x] React component for narrative rendering
-- [x] Narrative view mode toggle (raw ↔ narrative)
+- [x] React component for workflow rendering
+- [x] Workflow view mode toggle (raw ↔ workflow)
 - [ ] Scenario override dropdown (future)
 - [x] Raw event inspector toggle (viewMode switch)
 - [x] Storybook stories for all components
@@ -1094,33 +1094,33 @@ packages/core/src/narrative/
 ```
 packages/react/src/
 ├── components/
-│   ├── NarrativeRenderer.tsx        # Core narrative rendering
+│   ├── WorkflowRenderer.tsx        # Core workflow rendering
 │   └── TestEventPanel.tsx           # Modified with view mode toggle
 ├── utils/
-│   ├── narrative-converter.ts       # TestSpan → OtelEvent conversion
-│   └── narrative-loader.ts          # Template validation utilities
+│   ├── workflow-converter.ts       # TestSpan → OtelEvent conversion
+│   └── workflow-loader.ts          # Template validation utilities
 └── stories/
-    ├── RealTestExecution.stories.tsx  # Updated with narrative stories
-    │   ├── WithNarrativeToggle        # Interactive toggle demo
-    │   └── NarrativeWithGraph         # Split view demo
+    ├── RealTestExecution.stories.tsx  # Updated with workflow stories
+    │   ├── WithWorkflowToggle        # Interactive toggle demo
+    │   └── WorkflowWithGraph         # Split view demo
     └── data/
-        └── graph-converter-test.narrative.json  # Template for Vite
+        └── graph-converter-test.workflow.json  # Template for Vite
 ```
 
-**Published:** React package with narrative UI integration
+**Published:** React package with workflow UI integration
 
 **CLI Updates:**
-- [x] Exclude `.narrative.json` files from lint validation
+- [x] Exclude `.workflow.json` files from lint validation
 - [x] Published `@principal-ai/principal-view-cli@0.1.29`
 
 ### Phase 4: Advanced Features (Week 4-5)
 
 **Deliverables:**
-- [ ] Support for multiple narrative files per canvas
+- [ ] Support for multiple workflow files per canvas
 - [ ] Internationalization support (i18n)
 - [ ] Template validation in rules engine
-- [ ] CLI tool for generating narratives from event files
-- [ ] Export narratives (markdown, PDF)
+- [ ] CLI tool for generating workflows from event files
+- [ ] Export workflows (markdown, PDF)
 
 ---
 
@@ -1132,7 +1132,7 @@ Should we support template inheritance or composition?
 
 ```json
 {
-  "extends": "graph-converter-execution.narrative.json",
+  "extends": "graph-converter-execution.workflow.json",
   "scenarios": [
     {
       "id": "conversion-error",
@@ -1145,26 +1145,26 @@ Should we support template inheritance or composition?
 
 ### 2. Real-time Streaming
 
-How should narratives work with streaming events (execution still in progress)?
+How should workflows work with streaming events (execution still in progress)?
 
 Options:
 - Show "in progress" indicator
-- Update narrative live as events arrive
-- Show partial narrative + pending events
+- Update workflow live as events arrive
+- Show partial workflow + pending events
 
-### 3. Parameterized Narratives
+### 3. Parameterized Workflows
 
-Should we allow runtime parameters to customize narratives?
+Should we allow runtime parameters to customize workflows?
 
 ```typescript
-generateNarrative(events, {
+generateWorkflow(events, {
   focusRuleId: "required-metadata",  // Filter to specific rule
   verbosity: "detailed",             // Control detail level
   audience: "developer"              // Auto-select template
 });
 ```
 
-### 4. Narrative Diff
+### 4. Workflow Diff
 
 For comparing two executions:
 
@@ -1179,11 +1179,11 @@ Comparing runs:
 
 ### 5. Automatic Scenario Generation
 
-Could we use LLMs to generate narrative templates from canvas schemas?
+Could we use LLMs to generate workflow templates from canvas schemas?
 
 ```bash
-$ pv narrative generate graph-converter-execution.otel.canvas
-Generated: graph-converter-execution.narrative.json
+$ pv workflow generate graph-converter-execution.otel.canvas
+Generated: graph-converter-execution.workflow.json
   - 4 scenarios
   - 12 event templates
   - Ready for customization
@@ -1207,16 +1207,16 @@ Generated: graph-converter-execution.narrative.json
 
 ---
 
-## Appendix: Full Example Narrative Templates
+## Appendix: Full Example Workflow Templates
 
-### A. graph-converter-execution.narrative-dev.json
+### A. graph-converter-execution.workflow-dev.json
 
 ```json
 {
   "version": "1.0.0",
   "canvas": "graph-converter-execution.otel.canvas",
-  "name": "Developer Debugging Narrative",
-  "description": "Detailed technical narrative with timing and internals",
+  "name": "Developer Debugging Workflow",
+  "description": "Detailed technical workflow with timing and internals",
 
   "mode": "span-tree",
   "scenarioSelection": "first-match",
@@ -1270,13 +1270,13 @@ Generated: graph-converter-execution.narrative.json
 }
 ```
 
-### B. rules-engine-execution.narrative.json
+### B. rules-engine-execution.workflow.json
 
 ```json
 {
   "version": "1.0.0",
   "canvas": "rules-engine-execution.otel.canvas",
-  "name": "Rules Engine Narrative",
+  "name": "Rules Engine Workflow",
   "description": "Human-readable validation results",
 
   "mode": "span-tree",

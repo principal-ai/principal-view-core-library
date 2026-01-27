@@ -5,11 +5,11 @@ import { createRenderCommand } from './render.js';
 import { createTestCommand } from './test.js';
 import { createListCommand } from './list.js';
 
-export function createNarrativeCommand(): Command {
-  const command = new Command('narrative');
+export function createWorkflowCommand(): Command {
+  const command = new Command('workflow');
 
   command
-    .description('Validate, test, and debug narrative templates')
+    .description('Validate, test, and debug workflow templates')
     .addCommand(createValidateCommand())
     .addCommand(createInspectCommand())
     .addCommand(createRenderCommand())

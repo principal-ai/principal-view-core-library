@@ -1,14 +1,14 @@
-# Create Narrative Scenarios Skill
+# Create Workflow Scenarios Skill
 
-Create .narrative.json files that transform OTEL execution data into human-readable narratives for debugging and validation.
+Create .workflow.json files that transform OTEL execution data into human-readable workflows for debugging and validation.
 
 ## Purpose
 
-Narrative scenarios answer the question: **"What happened when this feature ran?"**
+Workflow scenarios answer the question: **"What happened when this feature ran?"**
 
-They are **scenario-driven narrative templates** that convert raw OTEL telemetry into readable stories:
+They are **scenario-driven workflow templates** that convert raw OTEL telemetry into readable stories:
 - Transform cryptic event names into plain English
-- Show execution flow as a narrative timeline
+- Show execution flow as a workflow timeline
 - Highlight success/failure outcomes
 - Surface important attribute values in context
 - Make debugging accessible to non-engineers
@@ -20,29 +20,29 @@ Use this skill when the user wants to:
 - **Debug feature execution** - "What actually happened when this ran?"
 - **Create execution reports** - "Generate a readable summary of this test run"
 - **Document scenarios** - "Show what success/failure looks like for this feature"
-- **Enable narrative views** - "Add human-readable output to this canvas"
+- **Enable workflow views** - "Add human-readable output to this canvas"
 
-**Prerequisite**: You should already have a .otel.canvas file for the feature. Narratives are always paired with canvases.
+**Prerequisite**: You should already have a .otel.canvas file for the feature. Workflows are always paired with canvases.
 
 ## What This Skill Does
 
-This skill helps create properly structured .narrative.json files that:
+This skill helps create properly structured .workflow.json files that:
 1. **Define scenarios** - Different execution outcomes (success, failure, timeout, etc.)
 2. **Match conditions** - Rules that determine which scenario applies to execution data
-3. **Generate narratives** - Templates that render events as readable text
+3. **Generate workflows** - Templates that render events as readable text
 4. **Extract variables** - Pull attribute values from events for use in templates
-5. **Show flow** - Present execution as a step-by-step narrative
+5. **Show flow** - Present execution as a step-by-step workflow
 
 ## File Structure
 
-A .narrative.json file contains metadata, rendering configuration, and multiple scenarios.
+A .workflow.json file contains metadata, rendering configuration, and multiple scenarios.
 
 ### File Naming Convention
 
-**REQUIRED**: Narrative files MUST:
-- Use the `.narrative.json` extension (e.g., `order-processing.narrative.json`)
+**REQUIRED**: Workflow files MUST:
+- Use the `.workflow.json` extension (e.g., `order-processing.workflow.json`)
 - Be co-located with their corresponding .otel.canvas file
-- Have a matching base name (e.g., `order-processing.otel.canvas` ↔ `order-processing.narrative.json`)
+- Have a matching base name (e.g., `order-processing.otel.canvas` ↔ `order-processing.workflow.json`)
 
 ### Complete Structure
 
@@ -86,7 +86,7 @@ A .narrative.json file contains metadata, rendering configuration, and multiple 
 - `version` (string, required) - Semver version (e.g., "1.0.0")
 - `canvas` (string, required) - Relative path to .otel.canvas file
 - `name` (string, required) - Human-readable name
-- `description` (string, required) - What this narrative describes
+- `description` (string, required) - What this workflow describes
 
 ### Rendering Configuration
 - `mode` (string, required) - Either `"span-tree"` or `"timeline"`
@@ -215,7 +215,7 @@ Default (without `any`) is AND - all `requires` must be present.
 }
 ```
 
-### 3. Template - How to render the narrative
+### 3. Template - How to render the workflow
 
 Templates consist of three optional parts:
 
@@ -450,7 +450,7 @@ How to render span nodes:
 
 ## Workflow
 
-When creating a .narrative.json file:
+When creating a .workflow.json file:
 
 1. **Start with the canvas** - Identify the .otel.canvas file
    - Example: `order-processing.otel.canvas`
@@ -458,7 +458,7 @@ When creating a .narrative.json file:
 2. **Inspect execution data** - Look at actual .otel.json files to see:
    - What events are emitted
    - What attributes are available
-   - Use CLI: `privu narrative inspect execution.otel.json`
+   - Use CLI: `privu workflow inspect execution.otel.json`
 
 3. **Identify scenarios** - What are the different outcomes?
    - Success: Order completed
@@ -471,7 +471,7 @@ When creating a .narrative.json file:
    - Failure: `requires: ["order.failed"]` + `error.type` exists
    - Timeout: `duration.ms > 30000`
 
-5. **Design narrative templates** - How should each read?
+5. **Design workflow templates** - How should each read?
    - Use emojis for visual cues (✅ ❌ ⚠️ 📋 →)
    - Extract meaningful values with `{{variables}}`
    - Keep it concise and scannable
@@ -484,17 +484,17 @@ When creating a .narrative.json file:
 7. **Create the file**:
    ```bash
    # Same directory and base name as canvas
-   touch order-processing.narrative.json
+   touch order-processing.workflow.json
    ```
 
 8. **Validate** using the CLI:
    ```bash
-   privu narrative validate order-processing.narrative.json
+   privu workflow validate order-processing.workflow.json
    ```
 
 9. **Test with real data**:
    ```bash
-   privu narrative render order-processing.narrative.json execution.otel.json
+   privu workflow render order-processing.workflow.json execution.otel.json
    ```
 
 ## Template Best Practices
@@ -556,10 +556,10 @@ When creating a .narrative.json file:
 
 ## Validation
 
-**MANDATORY STEP:** After creating or updating a .narrative.json file, you MUST validate it:
+**MANDATORY STEP:** After creating or updating a .workflow.json file, you MUST validate it:
 
 ```bash
-privu narrative validate path/to/narrative.json
+privu workflow validate path/to/workflow.json
 ```
 
 The validator checks:
@@ -640,30 +640,30 @@ The validator checks:
 }
 ```
 
-## Testing Narratives
+## Testing Workflows
 
 After validation passes, test with actual execution data:
 
 ```bash
 # Inspect execution to see available attributes
-privu narrative inspect execution.otel.json
+privu workflow inspect execution.otel.json
 
-# Render narrative with execution data
-privu narrative render narrative.json execution.otel.json
+# Render workflow with execution data
+privu workflow render workflow.json execution.otel.json
 
 # Test scenario matching
-privu narrative test narrative.json execution.otel.json
+privu workflow test workflow.json execution.otel.json
 ```
 
 **Verification checklist:**
 - ✅ Correct scenario selected
 - ✅ All `{{variables}}` populated
 - ✅ No `{{missing.vars}}` shown
-- ✅ Narrative is readable and helpful
+- ✅ Workflow is readable and helpful
 - ✅ Events appear in logical order
 
 If variables show as `{{missing.var}}`:
-1. Run `privu narrative inspect execution.otel.json`
+1. Run `privu workflow inspect execution.otel.json`
 2. Check available attributes
 3. Update template to use correct names
 4. Re-validate and re-test
@@ -673,7 +673,7 @@ If variables show as `{{missing.var}}`:
 ```
 .principal-views/
 ├── order-processing.otel.canvas       # Canvas definition
-├── order-processing.narrative.json    # Narrative scenarios
+├── order-processing.workflow.json    # Workflow scenarios
 └── __executions__/
     ├── order-success.otel.json        # Test execution data
     ├── order-failure.otel.json
@@ -683,37 +683,37 @@ If variables show as `{{missing.var}}`:
 ## CLI Commands Reference
 
 ```bash
-# Validate narrative structure
-privu narrative validate <narrative.json>
+# Validate workflow structure
+privu workflow validate <workflow.json>
 
 # Inspect execution data (see available attributes)
-privu narrative inspect <execution.otel.json>
+privu workflow inspect <execution.otel.json>
 
-# Render narrative with execution data
-privu narrative render <narrative.json> <execution.otel.json>
+# Render workflow with execution data
+privu workflow render <workflow.json> <execution.otel.json>
 
 # Test scenario matching (see which scenario matches and why)
-privu narrative test <narrative.json> <execution.otel.json>
+privu workflow test <workflow.json> <execution.otel.json>
 
-# List all narratives in project
-privu narrative list
+# List all workflows in project
+privu workflow list
 ```
 
 ## Integration with ExecutionViewerPanel
 
-When narratives are available, ExecutionViewerPanel:
-- Auto-loads narrative on canvas load
-- Shows narrative text with event highlighting
-- Provides "Narrative / Raw Events" toggle
-- Syncs event selection between canvas and narrative
+When workflows are available, ExecutionViewerPanel:
+- Auto-loads workflow on canvas load
+- Shows workflow text with event highlighting
+- Provides "Workflow / Raw Events" toggle
+- Syncs event selection between canvas and workflow
 - Shows warning when variables can't be resolved
 - Allows clicking events to see source data
 
 ## Real Examples in Codebase
 
 See working examples at:
-- `.principal-views/graph-converter.narrative.json` - Canvas conversion scenarios
-- Look for `.narrative.json` files in other projects
+- `.principal-views/graph-converter.workflow.json` - Canvas conversion scenarios
+- Look for `.workflow.json` files in other projects
 
 ## Common Pitfalls
 
@@ -750,6 +750,6 @@ Always include a fallback with `"condition": { "default": true }` at priority 99
 ## Type Definitions Reference
 
 For complete type definitions, see:
-- `packages/core/src/narrative/types.ts` - All TypeScript types
-- `packages/core/src/narrative/example.ts` - Working code examples
-- `packages/core/src/narrative/validator.ts` - Validation rules
+- `packages/core/src/workflow/types.ts` - All TypeScript types
+- `packages/core/src/workflow/example.ts` - Working code examples
+- `packages/core/src/workflow/validator.ts` - Validation rules

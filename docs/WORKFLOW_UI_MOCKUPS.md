@@ -1,4 +1,4 @@
-# Narrative UI Mockups
+# Workflow UI Mockups
 
 ## Current UI (Before)
 
@@ -56,7 +56,7 @@
 ├─────────────────────────────────────────────────────────────────┤
 │ ← Prev    Test 1 of 5    Next →                                │
 │                                                                 │
-│ View: [Raw Events] [✓ Narrative]              All Passed ✓  ?  │
+│ View: [Raw Events] [✓ Workflow]              All Passed ✓  ?  │
 │                                                                 │
 │ Test: should convert simple config to nodes and edges          │
 ├─────────────────────────────────────────────────────────────────┤
@@ -108,7 +108,7 @@
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ Test Event Panel                                                            │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ ← Prev  Test 1 of 5  Next →    View: [Raw] [Narrative] [✓ Split]     ?    │
+│ ← Prev  Test 1 of 5  Next →    View: [Raw] [Workflow] [✓ Split]     ?    │
 ├────────────────────────────────┬────────────────────────────────────────────┤
 │ NARRATIVE                      │ RAW EVENTS                                 │
 │                                │                                            │
@@ -133,8 +133,8 @@
 ```
 
 **Interaction:**
-- Hover over narrative section → highlights corresponding raw events
-- Click on narrative line → scrolls to event in raw panel
+- Hover over workflow section → highlights corresponding raw events
+- Click on workflow line → scrolls to event in raw panel
 - Visual arrow shows current hover mapping
 
 ---
@@ -147,7 +147,7 @@
 ├─────────────────────────────────────────────────────────────────┤
 │ ← Prev    Test 1 of 5    Next →          All Passed ✓    ?     │
 │                                                                 │
-│ View: [Raw Events] [✓ Narrative]                               │
+│ View: [Raw Events] [✓ Workflow]                               │
 │                                                                 │
 │ Scenario: [test-passed ▼] (2 other scenarios available)        │
 │   ▸ test-passed      - Test passed all assertions              │
@@ -167,7 +167,7 @@
 
 ---
 
-## Phase 3: Full-Screen Graph + Narrative Overlay
+## Phase 3: Full-Screen Graph + Workflow Overlay
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -193,7 +193,7 @@
 │                                                                             │
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────┐                   │
-│  │ 📋 Narrative                                  [✕]   │                   │
+│  │ 📋 Workflow                                  [✕]   │                   │
 │  ├─────────────────────────────────────────────────────┤                   │
 │  │ ✅ Test - PASSED                                    │                   │
 │  │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │                   │
@@ -209,11 +209,11 @@
 ```
 
 **Interaction:**
-- Narrative appears as overlay/sidebar
+- Workflow appears as overlay/sidebar
 - Can be dragged, resized, minimized
 - Synchronized highlighting with graph nodes
-- Hover graph node → highlights narrative section
-- Click narrative section → highlights graph node
+- Hover graph node → highlights workflow section
+- Click workflow section → highlights graph node
 
 ---
 
@@ -226,7 +226,7 @@
 │ Test 1 of 5             │
 │ [← Prev] [Next →]       │
 │                         │
-│ [Raw] [✓ Narrative]     │
+│ [Raw] [✓ Workflow]     │
 ├─────────────────────────┤
 │                         │
 │ ✅ Test - PASSED        │
@@ -337,7 +337,7 @@ Colors:
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │                                                                 │
-│                         ⟳ Loading narrative...                  │
+│                         ⟳ Loading workflow...                  │
 │                                                                 │
 │                    Rendering template for test 1 of 5           │
 │                                                                 │
@@ -354,11 +354,11 @@ Colors:
 ┌─────────────────────────────────────────────────────────────────┐
 │ Test Event Panel                                                │
 ├─────────────────────────────────────────────────────────────────┤
-│ View: [✓ Raw Events] [Narrative (unavailable)]                 │
+│ View: [✓ Raw Events] [Workflow (unavailable)]                 │
 │                                                                 │
-│ ⓘ No narrative template available for this execution           │
+│ ⓘ No workflow template available for this execution           │
 │                                                                 │
-│   Create a narrative template to see a human-readable          │
+│   Create a workflow template to see a human-readable          │
 │   summary of this test execution.                              │
 │                                                                 │
 │   [Create Template] [Learn More]                               │
@@ -375,4 +375,4 @@ Colors:
 
 ---
 
-These mockups show the progression from raw event display to rich narrative presentation, with various interaction modes and states to handle different user scenarios.
+These mockups show the progression from raw event display to rich workflow presentation, with various interaction modes and states to handle different user scenarios.

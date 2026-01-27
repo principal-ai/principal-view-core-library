@@ -17,14 +17,14 @@ import {
   type GraphLintResult,
   type GraphRuleViolation,
   type PrivuConfig,
-  createNarrativeValidator,
-  type NarrativeViolation,
+  createWorkflowValidator,
+  type WorkflowViolation,
 } from '@principal-ai/principal-view-core/node';
 // Browser-safe type imports
 import type {
   GraphConfiguration,
   ComponentLibrary,
-  NarrativeTemplate,
+  WorkflowTemplate,
   ExtendedCanvas,
 } from '@principal-ai/principal-view-core';
 
@@ -146,24 +146,24 @@ function loadGraphConfig(filePath: string): { config: GraphConfiguration; raw: s
 }
 
 /**
- * Load a narrative template file
+ * Load a workflow template file
  */
-function loadNarrativeTemplate(filePath: string): { narrative: NarrativeTemplate; raw: string } | null {
+function loadWorkflowTemplate(filePath: string): { workflow: WorkflowTemplate; raw: string } | null {
   if (!existsSync(filePath)) {
     return null;
   }
 
   try {
     const raw = readFileSync(filePath, 'utf8');
-    const narrative = JSON.parse(raw) as NarrativeTemplate;
-    return { narrative, raw };
+    const workflow = JSON.parse(raw) as WorkflowTemplate;
+    return { workflow, raw };
   } catch {
     return null;
   }
 }
 
 /**
- * Load a canvas file for narrative validation
+ * Load a canvas file for workflow validation
  */
 function loadCanvas(filePath: string): ExtendedCanvas | null {
   if (!existsSync(filePath)) {
@@ -187,11 +187,11 @@ function loadCanvas(filePath: string): ExtendedCanvas | null {
 /**
  * Determine file type
  */
-function getFileType(filePath: string): 'canvas' | 'narrative' | 'config' {
+function getFileType(filePath: string): 'canvas' | 'workflow' | 'config' {
   const name = basename(filePath).toLowerCase();
 
-  if (name.endsWith('.narrative.json')) {
-    return 'narrative';
+  if (name.endsWith('.workflow.json')) {
+    return 'workflow';
   }
 
   if (name.endsWith('.canvas') || name.endsWith('.otel.canvas')) {
@@ -416,7 +416,7 @@ export function createLintCommand(): Command {
         });
 
         // Filter out library files, config files, and execution artifacts
-        // INCLUDE both canvas files and narrative templates for linting
+        // INCLUDE both canvas files and workflow templates for linting
         const configFiles = matchedFiles.filter((f: string) => {
           const name = basename(f).toLowerCase();
           const isLibraryFile = name.startsWith('library.');
@@ -455,13 +455,13 @@ export function createLintCommand(): Command {
 
         // Create validators
         const engine = createDefaultRulesEngine();
-        const narrativeValidator = createNarrativeValidator();
+        const workflowValidator = createWorkflowValidator();
 
         // Lint each file
         const results = new Map<string, GraphLintResult>();
 
-        // PHASE 1: Group narratives by canvas and collect all events used
-        const narrativesByCanvas = new Map<string, Array<{ absolutePath: string; relativePath: string; loaded: any }>>();
+        // PHASE 1: Group workflows by canvas and collect all events used
+        const workflowsByCanvas = new Map<string, Array<{ absolutePath: string; relativePath: string; loaded: any }>>();
         const canvasEventMap = new Map<string, Set<string>>();
 
         for (const filePath of configFiles) {
@@ -469,38 +469,38 @@ export function createLintCommand(): Command {
           const relativePath = relative(cwd, absolutePath);
           const fileType = getFileType(absolutePath);
 
-          if (fileType === 'narrative') {
-            const loaded = loadNarrativeTemplate(absolutePath);
+          if (fileType === 'workflow') {
+            const loaded = loadWorkflowTemplate(absolutePath);
             if (!loaded) continue;
 
-            const canvasPath = loaded.narrative.canvas
-              ? resolve(dirname(absolutePath), loaded.narrative.canvas)
+            const canvasPath = loaded.workflow.canvas
+              ? resolve(dirname(absolutePath), loaded.workflow.canvas)
               : undefined;
 
             if (canvasPath) {
               const canvasKey = relative(cwd, canvasPath);
 
-              // Group narrative by canvas
-              if (!narrativesByCanvas.has(canvasKey)) {
-                narrativesByCanvas.set(canvasKey, []);
+              // Group workflow by canvas
+              if (!workflowsByCanvas.has(canvasKey)) {
+                workflowsByCanvas.set(canvasKey, []);
                 canvasEventMap.set(canvasKey, new Set<string>());
               }
-              narrativesByCanvas.get(canvasKey)!.push({ absolutePath, relativePath, loaded });
+              workflowsByCanvas.get(canvasKey)!.push({ absolutePath, relativePath, loaded });
 
-              // Collect events from this narrative
-              const narrativeEvents = canvasEventMap.get(canvasKey)!;
-              for (const scenario of loaded.narrative.scenarios) {
+              // Collect events from this workflow
+              const workflowEvents = canvasEventMap.get(canvasKey)!;
+              for (const scenario of loaded.workflow.scenarios) {
                 if (scenario.condition?.requires) {
                   for (const eventPattern of scenario.condition.requires) {
                     if (!eventPattern.includes('*')) {
-                      narrativeEvents.add(eventPattern);
+                      workflowEvents.add(eventPattern);
                     }
                   }
                 }
                 if (scenario.template?.events) {
                   for (const eventName of Object.keys(scenario.template.events)) {
                     if (!eventName.includes('*')) {
-                      narrativeEvents.add(eventName);
+                      workflowEvents.add(eventName);
                     }
                   }
                 }
@@ -515,9 +515,9 @@ export function createLintCommand(): Command {
           const relativePath = relative(cwd, absolutePath);
           const fileType = getFileType(absolutePath);
 
-          if (fileType === 'narrative') {
-            // Validate narrative template
-            const loaded = loadNarrativeTemplate(absolutePath);
+          if (fileType === 'workflow') {
+            // Validate workflow template
+            const loaded = loadWorkflowTemplate(absolutePath);
             if (!loaded) {
               // File couldn't be loaded - report as error
               results.set(relativePath, {
@@ -526,7 +526,7 @@ export function createLintCommand(): Command {
                     ruleId: 'parse-error',
                     severity: 'error',
                     file: relativePath,
-                    message: `Could not parse narrative file: ${filePath}`,
+                    message: `Could not parse workflow file: ${filePath}`,
                     impact: 'File cannot be validated',
                     fixable: false,
                   },
@@ -541,28 +541,28 @@ export function createLintCommand(): Command {
             }
 
             // Load the referenced canvas if it exists
-            const canvasPath = loaded.narrative.canvas
-              ? resolve(dirname(absolutePath), loaded.narrative.canvas)
+            const canvasPath = loaded.workflow.canvas
+              ? resolve(dirname(absolutePath), loaded.workflow.canvas)
               : undefined;
             const canvas = canvasPath ? loadCanvas(canvasPath) : undefined;
 
-            // Get all events used across narratives for this canvas
+            // Get all events used across workflows for this canvas
             const canvasKey = canvasPath ? relative(cwd, canvasPath) : undefined;
-            const allNarrativeEvents = canvasKey ? canvasEventMap.get(canvasKey) : undefined;
+            const allWorkflowEvents = canvasKey ? canvasEventMap.get(canvasKey) : undefined;
 
-            // Run narrative validation with canvas-wide event knowledge
-            const narrativeResult = await narrativeValidator.validate({
-              narrative: loaded.narrative,
-              narrativePath: relativePath,
+            // Run workflow validation with canvas-wide event knowledge
+            const workflowResult = await workflowValidator.validate({
+              workflow: loaded.workflow,
+              workflowPath: relativePath,
               canvas: canvas ?? undefined,
               canvasPath: canvasKey,
               basePath: dirname(absolutePath),
               rawContent: loaded.raw,
-              allNarrativeEvents,
+              allWorkflowEvents,
             });
 
-            // Convert narrative violations to graph violations format
-            const violations: GraphRuleViolation[] = narrativeResult.violations.map((v: NarrativeViolation) => ({
+            // Convert workflow violations to graph violations format
+            const violations: GraphRuleViolation[] = workflowResult.violations.map((v: WorkflowViolation) => ({
               ruleId: v.ruleId,
               severity: v.severity,
               file: v.file,
@@ -576,10 +576,10 @@ export function createLintCommand(): Command {
 
             results.set(relativePath, {
               violations,
-              errorCount: narrativeResult.errorCount,
-              warningCount: narrativeResult.warningCount,
-              fixableCount: narrativeResult.fixableCount,
-              byCategory: { schema: 0, reference: 0, structure: 0, pattern: 0, library: 0 }, // Could categorize narrative rules
+              errorCount: workflowResult.errorCount,
+              warningCount: workflowResult.warningCount,
+              fixableCount: workflowResult.fixableCount,
+              byCategory: { schema: 0, reference: 0, structure: 0, pattern: 0, library: 0 }, // Could categorize workflow rules
               byRule: countByRule(violations),
             });
           } else {

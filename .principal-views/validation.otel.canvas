@@ -311,7 +311,7 @@
           "attributes": {
             "validation.type": {
               "type": "string",
-              "description": "Type of validation (canvas, narrative, execution, library, config, rules, event)",
+              "description": "Type of validation (canvas, workflow, execution, library, config, rules, event)",
               "required": true
             },
             "input.fileCount": {
@@ -471,17 +471,17 @@
       }
     },
     {
-      "id": "narrative-validated",
+      "id": "workflow-validated",
       "type": "text",
-      "text": "Narrative Validated",
+      "text": "Workflow Validated",
       "x": 450,
       "y": 1200,
       "width": 200,
       "height": 100,
       "color": "#9C27B0",
       "pv": {
-        "name": "Narrative Validated",
-        "description": "Narrative template validation completed",
+        "name": "Workflow Validated",
+        "description": "Workflow template validation completed",
         "shape": "roundedRect",
         "icon": "FileText",
         "otel": {
@@ -490,7 +490,7 @@
           "isNew": false
         },
         "event": {
-          "name": "narrative.validated",
+          "name": "workflow.validated",
           "attributes": {
             "scenarios.count": {
               "type": "integer",
@@ -515,8 +515,8 @@
           }
         },
         "sources": [
-          "packages/cli/src/commands/narrative/validate.ts",
-          "packages/core/src/narrative/validator.ts"
+          "packages/cli/src/commands/workflow/validate.ts",
+          "packages/core/src/workflow/validator.ts"
         ]
       }
     },
@@ -764,7 +764,7 @@
         "sources": [
           "packages/cli/src/commands/validate.ts",
           "packages/cli/src/commands/lint.ts",
-          "packages/cli/src/commands/narrative/validate.ts",
+          "packages/cli/src/commands/workflow/validate.ts",
           "packages/cli/src/commands/validate-execution.ts"
         ]
       }
@@ -822,7 +822,7 @@
           "packages/cli/src/commands/validate.ts",
           "packages/core/src/ConfigurationValidator.ts",
           "packages/core/src/execution/ExecutionValidator.ts",
-          "packages/core/src/narrative/validator.ts"
+          "packages/core/src/workflow/validator.ts"
         ]
       }
     }
@@ -950,12 +950,12 @@
       }
     },
     {
-      "id": "detect-to-narrative",
+      "id": "detect-to-workflow",
       "fromNode": "type-detected",
-      "toNode": "narrative-validated",
+      "toNode": "workflow-validated",
       "fromSide": "right",
       "toSide": "left",
-      "label": "narrative",
+      "label": "workflow",
       "pv": {
         "edgeType": "branch"
       }
@@ -1004,8 +1004,8 @@
       }
     },
     {
-      "id": "narrative-to-aggregate",
-      "fromNode": "narrative-validated",
+      "id": "workflow-to-aggregate",
+      "fromNode": "workflow-validated",
       "toNode": "results-aggregated",
       "fromSide": "left",
       "toSide": "right",
@@ -1076,8 +1076,8 @@
       }
     },
     {
-      "id": "narrative-to-error",
-      "fromNode": "narrative-validated",
+      "id": "workflow-to-error",
+      "fromNode": "workflow-validated",
       "toNode": "validation-error",
       "fromSide": "right",
       "toSide": "left",

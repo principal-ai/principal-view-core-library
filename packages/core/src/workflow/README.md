@@ -1,14 +1,14 @@
-# Narrative Template System
+# Workflow Template System
 
-Transform OpenTelemetry event streams into human-readable execution narratives.
+Transform OpenTelemetry event streams into human-readable execution workflows.
 
 ## Overview
 
-The Narrative Template System converts raw OTEL telemetry data (spans, logs, metrics) into structured, readable narratives that tell the story of what happened during an execution.
+The Workflow Template System converts raw OTEL telemetry data (spans, logs, metrics) into structured, readable workflows that tell the story of what happened during an execution.
 
 ## Features
 
-- **Scenario-based Matching**: Automatically selects the appropriate narrative based on which events occurred
+- **Scenario-based Matching**: Automatically selects the appropriate workflow based on which events occurred
 - **Template Expression Language**: Rich templating with property access, conditionals, arithmetic, and string operations
 - **Multiple Rendering Modes**:
   - `span-tree`: Hierarchical view following span parent-child relationships
@@ -19,15 +19,15 @@ The Narrative Template System converts raw OTEL telemetry data (spans, logs, met
 
 ## Quick Start
 
-### 1. Create a Narrative Template
+### 1. Create a Workflow Template
 
-Create a `.narrative.json` file that references your `.otel.canvas` file:
+Create a `.workflow.json` file that references your `.otel.canvas` file:
 
 ```json
 {
   "version": "1.0.0",
   "canvas": "my-execution.otel.canvas",
-  "name": "My Execution Narrative",
+  "name": "My Execution Workflow",
   "mode": "span-tree",
   "scenarioSelection": "first-match",
   "scenarios": [
@@ -47,11 +47,11 @@ Create a `.narrative.json` file that references your `.otel.canvas` file:
 }
 ```
 
-### 2. Use the Narrative Renderer
+### 2. Use the Workflow Renderer
 
 ```typescript
-import { renderNarrative } from '@principal-ai/principal-view-core/narrative';
-import type { OtelEvent } from '@principal-ai/principal-view-core/narrative';
+import { renderWorkflow } from '@principal-ai/principal-view-core/workflow';
+import type { OtelEvent } from '@principal-ai/principal-view-core/workflow';
 
 // Your OTEL events
 const events: OtelEvent[] = [
@@ -75,8 +75,8 @@ const events: OtelEvent[] = [
   }
 ];
 
-// Render the narrative
-const result = renderNarrative(template, events);
+// Render the workflow
+const result = renderWorkflow(template, events);
 console.log(result.text);
 ```
 
@@ -267,27 +267,27 @@ Logs are categorized by severity:
 
 ## Examples
 
-See the `.narrative.json` files in `.principal-views/` for complete examples:
-- `graph-converter-execution.narrative.json` - Simple conversion flow
-- `rules-engine-execution.narrative.json` - Complex validation with multiple scenarios
-- `graph-converter-test.narrative.json` - Test execution narrative
+See the `.workflow.json` files in `.principal-views/` for complete examples:
+- `graph-converter-execution.workflow.json` - Simple conversion flow
+- `rules-engine-execution.workflow.json` - Complex validation with multiple scenarios
+- `graph-converter-test.workflow.json` - Test execution workflow
 
 ## API Reference
 
-### `renderNarrative(template, events)`
+### `renderWorkflow(template, events)`
 
 Main rendering function.
 
 **Parameters:**
-- `template: NarrativeTemplate` - The narrative template configuration
+- `template: WorkflowTemplate` - The workflow template configuration
 - `events: OtelEvent[]` - Array of OTEL events to render
 
 **Returns:**
-- `NarrativeResult` - Rendered narrative with metadata
+- `WorkflowResult` - Rendered workflow with metadata
 
 ```typescript
-interface NarrativeResult {
-  text: string;                    // Rendered narrative text
+interface WorkflowResult {
+  text: string;                    // Rendered workflow text
   scenarioId: string;               // ID of selected scenario
   isDefault: boolean;               // Whether default scenario was used
   metadata: {
@@ -315,7 +315,7 @@ Parse and evaluate a template string with expressions.
 Select the first matching scenario from a template.
 
 **Parameters:**
-- `template: NarrativeTemplate` - Template with scenarios
+- `template: WorkflowTemplate` - Template with scenarios
 - `events: OtelEvent[]` - OTEL events
 - `attributes: Record<string, unknown>` - Aggregated attributes
 
@@ -331,9 +331,9 @@ Select the first matching scenario from a template.
 - Comprehensive test suite (89 tests passing)
 
 📋 **Phase 2: Example Templates** (Complete)
-- Graph converter execution narrative
-- Rules engine execution narrative
-- Graph converter test narrative
+- Graph converter execution workflow
+- Rules engine execution workflow
+- Graph converter test workflow
 
 🔮 **Phase 3: UI Integration** (Future)
 - Canvas viewer integration
@@ -346,18 +346,18 @@ Select the first matching scenario from a template.
 Run the test suite:
 
 ```bash
-bun test packages/core/src/narrative/__tests__/
+bun test packages/core/src/workflow/__tests__/
 ```
 
 Test coverage:
 - `scenario-matcher.test.ts`: Event matching, assertions, aggregates
 - `template-parser.test.ts`: Expression evaluation, template parsing
-- `template-renderer.test.ts`: End-to-end narrative rendering
+- `template-renderer.test.ts`: End-to-end workflow rendering
 
 ## Architecture
 
 ```
-narrative/
+workflow/
 ├── types.ts              # TypeScript type definitions
 ├── scenario-matcher.ts   # Scenario selection and matching logic
 ├── template-parser.ts    # Template expression parser
@@ -374,7 +374,7 @@ When adding new features:
 2. Implement logic in appropriate module
 3. Add tests covering new functionality
 4. Update this README with examples
-5. Create example `.narrative.json` files
+5. Create example `.workflow.json` files
 
 ## License
 

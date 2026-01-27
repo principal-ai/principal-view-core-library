@@ -27,7 +27,7 @@ describe('parseTemplate', () => {
     expect(parseTemplate('Total violations: {{result.violations.total}}', context)).toBe('Total violations: 3');
   });
 
-  it('should handle realistic narrative templates', () => {
+  it('should handle realistic workflow templates', () => {
     expect(parseTemplate('✅ Installed {{skills.installed}} skill(s) to {{agents.count}} agent(s)', context)).toBe(
       '✅ Installed 2 skill(s) to 2 agent(s)'
     );
@@ -42,7 +42,7 @@ describe('parseTemplate', () => {
     expect(parseTemplate('Value: {{missing.property}}', context)).toBe('Value: ');
   });
 
-  it('should format multiline narrative', () => {
+  it('should format multiline workflow', () => {
     const template = `✅ Conversion Complete
 
 Processed {{config.nodeTypes}} node types

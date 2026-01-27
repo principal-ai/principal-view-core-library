@@ -6,7 +6,7 @@
 
 ## Summary
 
-During OTEL canvas onboarding, we encountered several inconsistencies between the CLI's documentation output and its actual validation behavior. This causes confusion and prevents users from creating valid canvas and narrative files.
+During OTEL canvas onboarding, we encountered several inconsistencies between the CLI's documentation output and its actual validation behavior. This causes confusion and prevents users from creating valid canvas and workflow files.
 
 ---
 
@@ -80,7 +80,7 @@ During OTEL canvas onboarding, we encountered several inconsistencies between th
 
 ---
 
-## Issue 2: Narrative Event Cross-Reference Validation Bug
+## Issue 2: Workflow Event Cross-Reference Validation Bug
 
 ### Setup
 
@@ -99,7 +99,7 @@ During OTEL canvas onboarding, we encountered several inconsistencies between th
 }
 ```
 
-**Narrative file (`.principal-views/init.narrative.json`):**
+**Workflow file (`.principal-views/init.workflow.json`):**
 ```json
 {
   "canvas": "init.otel.canvas",
@@ -120,11 +120,11 @@ $ npx @principal-ai/principal-view-cli validate .principal-views/init.otel.canva
 ✓ .principal-views/init.otel.canvas
 ✓ All 1 file(s) are valid
 
-$ npx @principal-ai/principal-view-cli narrative validate .principal-views/init.narrative.json
-✗ Error: Narrative references event "init.complete" which is not defined in canvas
+$ npx @principal-ai/principal-view-cli workflow validate .principal-views/init.workflow.json
+✗ Error: Workflow references event "init.complete" which is not defined in canvas
   Location: events
   Impact: This event will never highlight a canvas node and may never match
-  Suggestion: Add event "init.complete" to a node in init.otel.canvas or remove it from the narrative
+  Suggestion: Add event "init.complete" to a node in init.otel.canvas or remove it from the workflow
 ```
 
 ### Evidence
@@ -142,13 +142,13 @@ $ cat .principal-views/init.otel.canvas | grep '"event":'
 
 ### Impact
 
-- False negative validation errors block narrative creation
+- False negative validation errors block workflow creation
 - Users cannot trust the validator output
 - Cannot complete OTEL onboarding workflow
 
 ### Suspected cause
 
-The narrative validator may be:
+The workflow validator may be:
 1. Looking for events in the wrong location/field in the canvas
 2. Not properly parsing the canvas JSON before cross-referencing
 3. Using cached/stale canvas data
@@ -156,9 +156,9 @@ The narrative validator may be:
 ### Recommendation
 
 **Debug steps:**
-1. Add verbose logging to show which events the narrative validator found in the canvas
+1. Add verbose logging to show which events the workflow validator found in the canvas
 2. Verify the canvas parsing logic matches the current schema
-3. Add integration test: validate canvas → validate narrative → ensure cross-references work
+3. Add integration test: validate canvas → validate workflow → ensure cross-references work
 
 ---
 
@@ -192,7 +192,7 @@ The narrative validator may be:
 ### Recommendation
 
 Add comprehensive template syntax documentation to:
-- `npx @principal-ai/principal-view-cli formats narrative`
+- `npx @principal-ai/principal-view-cli formats workflow`
 - Include examples of:
   - Simple variable: `{variableName}`
   - Nested object: `{object.property}`
@@ -207,9 +207,9 @@ Add comprehensive template syntax documentation to:
 Despite validation warnings, we proceeded with:
 
 **Canvas:** Valid ✅
-**Narrative:** Structurally correct but shows false warnings ⚠️
+**Workflow:** Structurally correct but shows false warnings ⚠️
 
-We'll continue with test instrumentation to see if the narrative actually works at runtime despite the validation warnings.
+We'll continue with test instrumentation to see if the workflow actually works at runtime despite the validation warnings.
 
 ---
 
@@ -219,7 +219,7 @@ We'll continue with test instrumentation to see if the narrative actually works 
 - **Node:** Bun runtime
 - **Files created:**
   - `.principal-views/init.otel.canvas` - ✅ Validates
-  - `.principal-views/init.narrative.json` - ⚠️ False warnings
+  - `.principal-views/init.workflow.json` - ⚠️ False warnings
 - **Onboarding guide:** `/Users/griever/.claude/skills/onboard otel canvas/SKILL.md`
 
 ---
@@ -228,10 +228,10 @@ We'll continue with test instrumentation to see if the narrative actually works 
 
 1. **Update documentation:**
    - `formats canvas` → show current schema
-   - `formats narrative` → add template variable reference
+   - `formats workflow` → add template variable reference
    - Add schema versioning to docs
 
-2. **Fix narrative validator:**
+2. **Fix workflow validator:**
    - Ensure it correctly reads `pv.event` fields from canvas
    - Add test coverage for cross-references
    - Better error messages showing what was found vs expected
@@ -297,10 +297,10 @@ Replace lines 54-60 in `formats.ts` to show:
 
 ### Issue 2: CONFIRMED ✅
 
-**Root Cause:** Bug in narrative validator's event extraction logic
+**Root Cause:** Bug in workflow validator's event extraction logic
 
 **Evidence:**
-- **File:** `packages/core/src/narrative/validator.ts`
+- **File:** `packages/core/src/workflow/validator.ts`
 - **Line:** 312
 - **Current code:**
   ```typescript
@@ -317,7 +317,7 @@ Replace lines 54-60 in `formats.ts` to show:
   ```
 
 **Fix Required:**
-Change line 312 in `packages/core/src/narrative/validator.ts` from:
+Change line 312 in `packages/core/src/workflow/validator.ts` from:
 ```typescript
 if (node.pv?.event?.name) {
   canvasEvents.add(node.pv.event.name);
@@ -333,7 +333,7 @@ if (node.pv?.event && typeof node.pv.event === 'string') {
 **Root Cause:** Templates use Handlebars syntax but error messages suggest wrong syntax
 
 **Evidence:**
-- **File:** `packages/core/src/narrative/template-parser.ts`
+- **File:** `packages/core/src/workflow/template-parser.ts`
 - **Template engine:** Handlebars (line 12)
 - **Supported syntax:**
   - Variables: `{{variable}}`
@@ -353,8 +353,8 @@ Suggestion: Conditional format: {{#if condition}}true{{else}}false{{/if}}
 ```
 
 **Fix Required:**
-1. Update error message in `packages/core/src/narrative/validator.ts:856`
-2. Add Handlebars template documentation to `packages/cli/src/commands/formats.ts` narrative section
+1. Update error message in `packages/core/src/workflow/validator.ts:856`
+2. Add Handlebars template documentation to `packages/cli/src/commands/formats.ts` workflow section
 3. Include examples:
    ```handlebars
    {{variable}}                           // Simple variable
@@ -377,7 +377,7 @@ Suggestion: Conditional format: {{#if condition}}true{{else}}false{{/if}}
    - Update error messages to show correct syntax
 
 3. **Testing**:
-   - Add integration test for canvas ↔ narrative event validation
+   - Add integration test for canvas ↔ workflow event validation
    - Add test cases for Handlebars template rendering
 
 ---

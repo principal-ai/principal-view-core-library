@@ -17,7 +17,7 @@ import { createHooksCommand } from './commands/hooks.js';
 import { createCreateCommand } from './commands/create.js';
 import { createLintCommand } from './commands/lint.js';
 import { createCoverageCommand } from './commands/coverage.js';
-import { createNarrativeCommand } from './commands/narrative/index.js';
+import { createWorkflowCommand } from './commands/workflow/index.js';
 
 // Version is injected at build time via package.json
 const VERSION = '0.2.3';
@@ -41,7 +41,7 @@ program.addCommand(createFormatsCommand());
 program.addCommand(createDoctorCommand());
 program.addCommand(createHooksCommand());
 program.addCommand(createCoverageCommand());
-program.addCommand(createNarrativeCommand());
+program.addCommand(createWorkflowCommand());
 
 // Parse command line arguments
 program.parse(process.argv);

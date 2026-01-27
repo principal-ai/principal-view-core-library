@@ -1,8 +1,8 @@
 {
   "version": "1.0.0",
   "canvas": "graph-converter-test.otel.canvas",
-  "name": "Graph Converter Test Narrative",
-  "description": "Human-readable narrative for graph converter test execution",
+  "name": "Graph Converter Test Workflow",
+  "description": "Human-readable workflow for graph converter test execution",
   "mode": "span-tree",
   "scenarioSelection": "first-match",
   "showLogsPerSpan": true,

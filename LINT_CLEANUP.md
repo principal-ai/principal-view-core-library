@@ -55,7 +55,7 @@ This document tracks the ESLint cleanup effort across the monorepo to achieve a 
 **Target:** Remove all `any` types and replace with proper TypeScript types
 
 #### High-Impact Files (50+ errors)
-1. **src/narrative/__tests__/validator.test.ts** (18 errors)
+1. **src/workflow/__tests__/validator.test.ts** (18 errors)
    - Test file - likely mock/stub objects using `any`
    - Replace with proper type definitions or type assertions
 
@@ -111,7 +111,7 @@ This document tracks the ESLint cleanup effort across the monorepo to achieve a 
   - src/codegen/usage-example.ts (2)
   - src/generated/graph-converter-execution.types.ts (3)
 - **no-regex-spaces**: 2 errors
-  - src/narrative/__tests__/template-renderer.test.ts
+  - src/workflow/__tests__/template-renderer.test.ts
 
 **Estimated Effort:** 6-8 hours
 **Completion Target:** Phase 1

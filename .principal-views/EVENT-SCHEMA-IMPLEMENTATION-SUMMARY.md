@@ -115,7 +115,7 @@ Comprehensive test suite covering:
 - ✅ Strict mode throws on errors
 - ✅ Permissive mode warns on errors
 - ✅ Special metadata fields are allowed
-- ✅ Full execution narratives can be validated
+- ✅ Full execution workflows can be validated
 
 ### 6. Storybook Stories (`packages/react/src/stories/ValidatedExecution.stories.tsx`)
 

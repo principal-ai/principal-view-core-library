@@ -1,8 +1,8 @@
 /**
- * Narrative Template System Types
+ * Workflow Template System Types
  *
  * Types for transforming OpenTelemetry event streams into human-readable
- * execution narratives based on OTEL canvas definitions.
+ * execution workflows based on OTEL canvas definitions.
  *
  * @see docs/NARRATIVE_TEMPLATES_DESIGN.md
  */
@@ -10,7 +10,7 @@
 import type { OtelLog, OtelSpan, OtelAttributes } from '../types/otel';
 
 /**
- * Combined OTEL signal type for narrative processing
+ * Combined OTEL signal type for workflow processing
  */
 export type OtelSignal = OtelSpan | OtelLog | OtelEvent;
 
@@ -47,12 +47,12 @@ export interface OtelEvent {
 }
 
 /**
- * Narrative template definition
+ * Workflow template definition
  *
  * References an .otel.canvas file and defines how to render
- * execution events into human-readable narratives.
+ * execution events into human-readable workflows.
  */
-export interface NarrativeTemplate {
+export interface WorkflowTemplate {
   // Metadata
   /** Schema version (e.g., "1.0.0") */
   version: string;
@@ -63,12 +63,12 @@ export interface NarrativeTemplate {
   /** Human-readable template name */
   name: string;
 
-  /** Purpose of this narrative view */
+  /** Purpose of this workflow view */
   description: string;
 
   // Rendering configuration
-  /** How to structure the narrative */
-  mode: NarrativeMode;
+  /** How to structure the workflow */
+  mode: WorkflowMode;
 
   /** Scenario selection strategy */
   scenarioSelection: 'first-match' | 'manual';
@@ -81,8 +81,8 @@ export interface NarrativeTemplate {
   interleaveSignals?: boolean;
 
   // Scenario definitions
-  /** Mutually exclusive narrative scenarios */
-  scenarios: NarrativeScenario[];
+  /** Mutually exclusive workflow scenarios */
+  scenarios: WorkflowScenario[];
 
   // Formatting options
   /** Display formatting preferences */
@@ -90,19 +90,19 @@ export interface NarrativeTemplate {
 }
 
 /**
- * Narrative rendering mode
+ * Workflow rendering mode
  */
-export type NarrativeMode =
+export type WorkflowMode =
   | 'span-tree' // Follow OTEL span hierarchy (uses parent-child relationships)
   | 'timeline'; // Chronological order (sorts all signals by timestamp)
 
 /**
- * Narrative scenario definition
+ * Workflow scenario definition
  *
- * Scenarios are mutually exclusive narrative templates selected
+ * Scenarios are mutually exclusive workflow templates selected
  * based on which events occurred during execution.
  */
-export interface NarrativeScenario {
+export interface WorkflowScenario {
   // Identification
   /** Unique scenario identifier (kebab-case) */
   id: string;
@@ -118,7 +118,7 @@ export interface NarrativeScenario {
   condition: ScenarioCondition;
 
   // Template content
-  /** Narrative template content */
+  /** Workflow template content */
   template: ScenarioTemplate;
 }
 
@@ -190,7 +190,7 @@ export interface ScenarioTemplate {
   /** Optional: separate log templates by severity */
   logs?: LogTemplates;
 
-  /** Narrative flow steps */
+  /** Workflow flow steps */
   flow?: Array<string | FlowDirective>;
 
   /** Closing text */
@@ -230,7 +230,7 @@ export interface LogTemplates {
 }
 
 /**
- * Flow directive for narrative generation
+ * Flow directive for workflow generation
  */
 export interface FlowDirective {
   /** Iterate over collection (e.g., "violations", "logs.filter(l => l.severityNumber >= 17)") */
@@ -250,7 +250,7 @@ export interface FlowDirective {
 }
 
 /**
- * Formatting options for narrative rendering
+ * Formatting options for workflow rendering
  */
 export interface FormattingOptions {
   /** Indentation per hierarchy level (default: "  ") */
@@ -273,16 +273,16 @@ export interface FormattingOptions {
 }
 
 /**
- * Narrative rendering context
+ * Workflow rendering context
  *
- * Contains all data needed to render a narrative from events.
+ * Contains all data needed to render a workflow from events.
  */
-export interface NarrativeContext {
-  /** The narrative template being used */
-  template: NarrativeTemplate;
+export interface WorkflowContext {
+  /** The workflow template being used */
+  template: WorkflowTemplate;
 
   /** Selected scenario */
-  scenario: NarrativeScenario;
+  scenario: WorkflowScenario;
 
   /** All collected events */
   events: OtelEvent[];
@@ -315,10 +315,10 @@ export interface SpanTreeNode {
 }
 
 /**
- * Narrative rendering result
+ * Workflow rendering result
  */
-export interface NarrativeResult {
-  /** Rendered narrative text */
+export interface WorkflowResult {
+  /** Rendered workflow text */
   text: string;
 
   /** Scenario that was selected */
@@ -354,13 +354,13 @@ export interface NarrativeResult {
  */
 export interface ScenarioMatchResult {
   /** The matched scenario */
-  scenario: NarrativeScenario;
+  scenario: WorkflowScenario;
 
   /** Whether this was the default/fallback scenario */
   isDefault: boolean;
 
   /** All applicable scenarios (for manual selection UI) */
-  applicableScenarios: NarrativeScenario[];
+  applicableScenarios: WorkflowScenario[];
 
   /** Reasons why other scenarios didn't match */
   matchReasons?: Record<string, string>;

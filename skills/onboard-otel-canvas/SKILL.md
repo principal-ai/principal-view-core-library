@@ -16,10 +16,10 @@ This skill provides a **focused onboarding experience** for users who want to st
 Principal View OTEL is a workflow for documenting and validating OpenTelemetry event schemas using three file types:
 
 1. **`.otel.canvas`** - Defines your feature and its OTEL event schemas (what events should be emitted and their attributes)
-2. **`.narrative.json`** - Defines how to render execution traces as human-readable narratives
+2. **`.workflow.json`** - Defines how to render execution traces as human-readable workflows
 3. **`.otel.json`** - Actual execution data captured from instrumented tests (stored in `__executions__/`)
 
-These files work together: the canvas defines the schema, narratives define how to present executions, and execution files contain actual telemetry data that gets validated against the canvas and rendered using narratives.
+These files work together: the canvas defines the schema, workflows define how to present executions, and execution files contain actual telemetry data that gets validated against the canvas and rendered using workflows.
 
 ## When to Use This Skill
 
@@ -34,7 +34,7 @@ Use this skill when the user wants to:
 This skill provides an **interactive, step-by-step workflow** to:
 1. Pick one existing feature/function to document
 2. Create a .otel.canvas file mapping its telemetry
-3. Create .narrative.json scenarios for success/failure cases
+3. Create .workflow.json scenarios for success/failure cases
 4. Instrument tests to emit OTEL and validate against the canvas
 5. Export test execution data for visualization
 
@@ -176,21 +176,21 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
 
 **Goal**: Working .otel.canvas file with 2-4 event schemas (start, complete, error).
 
-### Phase 3: Create Narrative Scenarios
+### Phase 3: Create Workflow Scenarios
 
-Use the `create-narrative-scenarios` skill to create scenarios:
+Use the `create-workflow-scenarios` skill to create scenarios:
 
-1. **Create .narrative.json file** co-located with canvas:
+1. **Create .workflow.json file** co-located with canvas:
    ```bash
-   # Example: .principal-views/data-validator.narrative.json
+   # Example: .principal-views/data-validator.workflow.json
    ```
 
-   **Format reference**: See existing narrative files in `.principal-views/` for examples. Run `npx @principal-ai/principal-view-cli narrative validate <file>` to validate your narrative file
+   **Format reference**: See existing workflow files in `.principal-views/` for examples. Run `npx @principal-ai/principal-view-cli workflow validate <file>` to validate your workflow file
 
    **IMPORTANT: Naming and Description Guidelines**
-   - ❌ **Don't** append "Narratives" to the name: `"Package Processor Narratives"`
+   - ❌ **Don't** append "Workflows" to the name: `"Package Processor Workflows"`
    - ✅ **Do** use the feature name directly: `"Package Processor"`
-   - ❌ **Don't** prefix description with framework boilerplate: `"Human-readable narratives for package extraction..."`
+   - ❌ **Don't** prefix description with framework boilerplate: `"Human-readable workflows for package extraction..."`
    - ✅ **Do** describe the feature's purpose: `"Package extraction and analysis from repository file trees"`
    - Focus on WHAT the feature does, not WHAT the file contains
    - Keep it concise and domain-focused
@@ -219,7 +219,7 @@ Use the `create-narrative-scenarios` skill to create scenarios:
    npx @principal-ai/principal-view-cli validate
    ```
 
-**Goal**: Working .narrative.json with success, failure, and fallback scenarios.
+**Goal**: Working .workflow.json with success, failure, and fallback scenarios.
 
 ### Phase 4: Set Up Test Infrastructure
 
@@ -358,8 +358,8 @@ Add a test for the failure scenario:
    ```
 
 3. **Verify both scenarios export**:
-   - Success execution → success narrative
-   - Failure execution → failure narrative
+   - Success execution → success workflow
+   - Failure execution → failure workflow
 
 **Goal**: Two tests covering success and failure scenarios, both capturing real telemetry from instrumented source code.
 
@@ -374,7 +374,7 @@ Walk through the end-to-end flow:
 
 2. **Scenarios exist and validate**: ✅
    ```bash
-   # Check .narrative.json file validates
+   # Check .workflow.json file validates
    ```
 
 3. **Tests run and emit OTEL**: ✅
@@ -395,12 +395,12 @@ Walk through the end-to-end flow:
    Option 1: In Storybook
    - Load ExecutionViewerPanel
    - Point it to your canvas
-   - See narrative rendering of test executions
+   - See workflow rendering of test executions
 
    Option 2: In ADE
    - Open canvas in ADE
    - View executions tab
-   - Click execution files to see narratives
+   - Click execution files to see workflows
    ```
 
 **Goal**: User has complete, working example they can build on.
@@ -515,7 +515,7 @@ After completing onboarding, user should have:
 - Validates with CLI
 - Documents real feature
 
-✅ **Scenarios for narratives** (.narrative.json)
+✅ **Scenarios for workflows** (.workflow.json)
 - Success scenario
 - Failure scenario
 - Fallback scenario
@@ -617,12 +617,12 @@ Claude: [Creates .otel.canvas, validates, shows file]
 
 "✅ Canvas created and validated!
 
-Next, let's add narrative scenarios. I'll create:
+Next, let's add workflow scenarios. I'll create:
 - Success: '✅ Parsed {{rows.count}} rows successfully'
 - Error: '❌ CSV parsing failed: {{error.message}}'
 - Fallback: '📋 Parsing execution captured'
 
-[Creates .narrative.json, validates]
+[Creates .workflow.json, validates]
 
 ✅ Scenarios created!
 
@@ -662,7 +662,7 @@ in Storybook or ADE!"
 
 This skill orchestrates the other three:
 - **create-otel-canvas**: Phase 2 (create canvas)
-- **create-narrative-scenarios**: Phase 3 (create scenarios)
+- **create-workflow-scenarios**: Phase 3 (create scenarios)
 - **setup-otel-testing**: Phases 4-5 (setup and instrument tests)
 
 ## Templates to Reference
@@ -681,7 +681,7 @@ After successful onboarding:
 
 You now have:
 ✅ Canvas documenting your CSV parser telemetry
-✅ Scenarios for success/failure narratives
+✅ Scenarios for success/failure workflows
 ✅ Instrumented source code emitting validated OTEL
 ✅ Tests that capture real telemetry from your code
 ✅ Execution data exported for visualization
@@ -694,25 +694,25 @@ Next steps:
 
 Resources:
 - create-otel-canvas skill: Add more features
-- create-narrative-scenarios skill: Add more scenarios
+- create-workflow-scenarios skill: Add more scenarios
 - setup-otel-testing skill: Instrument more tests
 ```
 
 ## References
 
 - **create-otel-canvas**: Canvas creation details
-- **create-narrative-scenarios**: Scenario creation details
+- **create-workflow-scenarios**: Scenario creation details
 - **setup-otel-testing**: Test instrumentation details
 - **CLI schema command**: `npx @principal-ai/principal-view-cli schema` - Canvas format documentation
   - `schema nodes` - Node types and properties
   - `schema edges` - Edge properties
   - `schema vv` - Principal View extension fields (the `pv` field in canvas files)
   - `schema examples` - Complete example canvas files
-- **CLI narrative commands**: `npx @principal-ai/principal-view-cli narrative` - Narrative tools
-  - `narrative validate <file>` - Validate narrative template syntax and schema
-  - `narrative render <narrative> <execution>` - Render narrative with execution data
-  - `narrative test <narrative> <execution>` - Test scenario matching
-  - `narrative list` - List all narrative files in project
+- **CLI workflow commands**: `npx @principal-ai/principal-view-cli workflow` - Workflow tools
+  - `workflow validate <file>` - Validate workflow template syntax and schema
+  - `workflow render <workflow> <execution>` - Render workflow with execution data
+  - `workflow test <workflow> <execution>` - Test scenario matching
+  - `workflow list` - List all workflow files in project
 - **CLI validation commands**:
   - `validate` - Validate .canvas configuration files
   - `validate-execution` - Validate .otel.json execution files
@@ -721,5 +721,5 @@ Resources:
   - API repository: https://github.com/open-telemetry/opentelemetry-js-api
   - Packages used: `@opentelemetry/api` (core tracing API) and `@opentelemetry/sdk-trace-base` (SDK for test infrastructure)
   - If you encounter issues with OTEL instrumentation, configuration, or API usage, refer to these repositories for documentation and troubleshooting
-- **Example files**: See `.principal-views/*.otel.canvas` and `.principal-views/*.narrative.json` in the repository
+- **Example files**: See `.principal-views/*.otel.canvas` and `.principal-views/*.workflow.json` in the repository
 - docs/guides/adding-opentelemetry-to-tests.md: OTEL patterns and test setup

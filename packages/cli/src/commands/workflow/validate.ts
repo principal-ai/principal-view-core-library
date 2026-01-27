@@ -3,11 +3,11 @@ import chalk from 'chalk';
 import { resolve, dirname } from 'node:path';
 import { readFileSync } from 'node:fs';
 // Node.js-specific imports (validator)
-import { NarrativeValidator } from '@principal-ai/principal-view-core/node';
+import { WorkflowValidator } from '@principal-ai/principal-view-core/node';
 // Browser-safe imports
 import { computeAggregates } from '@principal-ai/principal-view-core';
 import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
-import { loadNarrative, resolvePath, loadExecution, executionToEvents } from './utils.js';
+import { loadWorkflow, resolvePath, loadExecution, executionToEvents } from './utils.js';
 
 interface ValidateOptions {
   canvas?: string;
@@ -21,8 +21,8 @@ export function createValidateCommand(): Command {
   const command = new Command('validate');
 
   command
-    .description('Validate narrative template syntax, schema, and references')
-    .argument('<file>', 'Path to .narrative.json file')
+    .description('Validate workflow template syntax, schema, and references')
+    .argument('<file>', 'Path to .workflow.json file')
     .option('--canvas <path>', 'Override canvas file path for validation')
     .option('--execution <path>', 'Execution file (.otel.json) for validating attribute references')
     .option('--json', 'Output violations as JSON')
@@ -31,19 +31,19 @@ export function createValidateCommand(): Command {
     .action(async (file: string, options: ValidateOptions) => {
       try {
         const baseDir = options.dir || process.cwd();
-        const narrativePath = resolvePath(file, baseDir);
+        const workflowPath = resolvePath(file, baseDir);
 
-        // Load narrative
-        const narrative = await loadNarrative(narrativePath);
+        // Load workflow
+        const workflow = await loadWorkflow(workflowPath);
 
         // Resolve canvas path
         let canvasPath: string | undefined;
         let canvas: ExtendedCanvas | undefined;
         if (options.canvas) {
           canvasPath = resolvePath(options.canvas, baseDir);
-        } else if (narrative.canvas) {
-          const narrativeDir = dirname(narrativePath);
-          canvasPath = resolve(narrativeDir, narrative.canvas);
+        } else if (workflow.canvas) {
+          const workflowDir = dirname(workflowPath);
+          canvasPath = resolve(workflowDir, workflow.canvas);
         }
 
         // Load canvas if path exists
@@ -94,12 +94,12 @@ export function createValidateCommand(): Command {
         }
 
         // Create validator
-        const validator = new NarrativeValidator();
+        const validator = new WorkflowValidator();
 
         // Validate
         const context = {
-          narrative,
-          narrativePath,
+          workflow,
+          workflowPath,
           canvasPath,
           canvas,
           basePath: baseDir,
@@ -134,8 +134,8 @@ export function createValidateCommand(): Command {
             summary: {
               errors: errors.length,
               warnings: warnings.length,
-              scenarioCount: narrative.scenarios.length,
-              hasDefault: narrative.scenarios.some((s) => s.condition.default),
+              scenarioCount: workflow.scenarios.length,
+              hasDefault: workflow.scenarios.some((s) => s.condition.default),
               attributeValidation: executionData ? 'enabled' : 'skipped',
             },
           };
@@ -148,14 +148,14 @@ export function createValidateCommand(): Command {
             console.log(chalk.green('✓'), 'Schema validation passed');
             console.log(
               chalk.green('✓'),
-              `${narrative.scenarios.length} scenarios found`
+              `${workflow.scenarios.length} scenarios found`
             );
-            const hasDefault = narrative.scenarios.some((s) => s.condition.default);
+            const hasDefault = workflow.scenarios.some((s) => s.condition.default);
             console.log(
               chalk.green('✓'),
               hasDefault ? 'Default scenario present' : 'No default scenario'
             );
-            const priorities = narrative.scenarios.map((s) => s.priority);
+            const priorities = workflow.scenarios.map((s) => s.priority);
             const allUnique = new Set(priorities).size === priorities.length;
             console.log(
               chalk.green('✓'),
@@ -165,7 +165,7 @@ export function createValidateCommand(): Command {
             if (canvasPath) {
               console.log(
                 chalk.green('✓'),
-                `Canvas: ${narrative.canvas || canvasPath} ✓`
+                `Canvas: ${workflow.canvas || canvasPath} ✓`
               );
             }
           } else {
@@ -205,11 +205,11 @@ export function createValidateCommand(): Command {
           }
 
           console.log(
-            chalk.gray(`  • ${narrative.scenarios.length} scenario(s)`)
+            chalk.gray(`  • ${workflow.scenarios.length} scenario(s)`)
           );
 
           if (canvasPath) {
-            console.log(chalk.gray(`  • Canvas: ${narrative.canvas || canvasPath}`));
+            console.log(chalk.gray(`  • Canvas: ${workflow.canvas || canvasPath}`));
           }
 
           if (executionData) {

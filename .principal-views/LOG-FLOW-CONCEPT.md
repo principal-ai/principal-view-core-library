@@ -134,7 +134,7 @@ When connected to live OTEL data:
 3. **Edge tooltips** = what data is in the log at that point
 4. **Node tooltips/panel** = what fields this service adds to logs
 
-### Narrative Mode (Request Journey)
+### Workflow Mode (Request Journey)
 Click a request_id to:
 1. Highlight the path it took through services
 2. Show the log at each layer
@@ -179,8 +179,8 @@ When consuming OTEL logs:
 4. Show log context in tooltip/panel
 5. Track which nodes are "silent" (not emitting logs)
 
-### The "Narrative"
-Each layer has a narrative field:
+### The "Workflow"
+Each layer has a workflow field:
 - **Ingress**: "Request arrives, assigned request_id"
 - **Auth**: "User authenticated, context enriched with user info"
 - **Business**: "Order created, context enriched with business data"
@@ -225,7 +225,7 @@ To answer "What happened to request X?":
 1. **Create your canvas** - Map your services to layers
 2. **Define dataSchema** - Document what each service should log
 3. **Connect OTEL** - Route logs to nodes, animate the flow
-4. **Enable narrative mode** - Click requests to see their journey
+4. **Enable workflow mode** - Click requests to see their journey
 5. **Improve telemetry** - Fill gaps revealed by the visualization
 
 The visualization becomes both **documentation** and **runtime observability** for your distributed system.

@@ -1,13 +1,13 @@
 /**
  * Scenario Matching Logic
  *
- * Selects the appropriate narrative scenario based on which events occurred
+ * Selects the appropriate workflow scenario based on which events occurred
  * during execution. Uses priority-based, first-match-wins algorithm.
  */
 
 import type {
-  NarrativeScenario,
-  NarrativeTemplate,
+  WorkflowScenario,
+  WorkflowTemplate,
   ScenarioCondition,
   Assertion,
   OtelEvent,
@@ -15,26 +15,26 @@ import type {
 } from './types';
 
 /**
- * Select the first matching scenario from a narrative template
+ * Select the first matching scenario from a workflow template
  *
  * Scenarios are evaluated in priority order (lowest priority number first).
  * Returns the first scenario whose conditions are met.
  *
- * @param template - Narrative template with scenarios
+ * @param template - Workflow template with scenarios
  * @param events - Collected OTEL events
  * @param attributes - Aggregated attributes (computed from events)
  * @returns Matched scenario and metadata
  * @throws Error if no scenario matches (template should have default fallback)
  */
 export function selectScenario(
-  template: NarrativeTemplate,
+  template: WorkflowTemplate,
   events: OtelEvent[],
   attributes: Record<string, unknown> = {}
 ): ScenarioMatchResult {
   // Sort scenarios by priority (should already be sorted in template)
   const sorted = [...template.scenarios].sort((a, b) => a.priority - b.priority);
 
-  const applicableScenarios: NarrativeScenario[] = [];
+  const applicableScenarios: WorkflowScenario[] = [];
   const matchReasons: Record<string, string> = {};
 
   // Find first matching scenario

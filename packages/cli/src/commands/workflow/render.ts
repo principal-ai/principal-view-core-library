@@ -1,9 +1,9 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { renderNarrative } from '@principal-ai/principal-view-core';
-import type { NarrativeMode } from '@principal-ai/principal-view-core';
+import { renderWorkflow } from '@principal-ai/principal-view-core';
+import type { WorkflowMode } from '@principal-ai/principal-view-core';
 import {
-  loadNarrative,
+  loadWorkflow,
   loadExecution,
   executionToEvents,
   resolvePath,
@@ -21,17 +21,17 @@ export function createRenderCommand(): Command {
   const command = new Command('render');
 
   command
-    .description('Render narrative template using execution data')
-    .argument('<narrative>', 'Path to .narrative.json file')
+    .description('Render workflow template using execution data')
+    .argument('<workflow>', 'Path to .workflow.json file')
     .argument('<execution>', 'Path to .otel.json execution file')
     .option('--mode <mode>', 'Override rendering mode: span-tree, timeline')
     .option('--scenario <id>', 'Force specific scenario (skip auto-selection)')
     .option('--json', 'Output structured result as JSON')
     .option('--format <format>', 'Output format: text (default), markdown, json', 'text')
     .option('--show-metadata', 'Include rendering metadata in output')
-    .action(async (narrativePath: string, executionPath: string, options: RenderOptions) => {
+    .action(async (workflowPath: string, executionPath: string, options: RenderOptions) => {
       try {
-        const narrative = await loadNarrative(resolvePath(narrativePath));
+        const workflow = await loadWorkflow(resolvePath(workflowPath));
         const executionData = await loadExecution(resolvePath(executionPath));
         const events = executionToEvents(executionData);
 
@@ -43,30 +43,30 @@ export function createRenderCommand(): Command {
               `Invalid mode: ${options.mode}. Must be one of: ${validModes.join(', ')}`
             );
           }
-          narrative.mode = options.mode as NarrativeMode;
+          workflow.mode = options.mode as WorkflowMode;
         }
 
-        // Render narrative
-        const result = renderNarrative(narrative, events);
+        // Render workflow
+        const result = renderWorkflow(workflow, events);
 
         // Get the selected scenario from the result
-        const selectedScenario = narrative.scenarios.find((s) => s.id === result.scenarioId);
+        const selectedScenario = workflow.scenarios.find((s) => s.id === result.scenarioId);
 
         // Force scenario if specified
         if (options.scenario) {
-          const scenario = narrative.scenarios.find((s) => s.id === options.scenario);
+          const scenario = workflow.scenarios.find((s) => s.id === options.scenario);
           if (!scenario) {
             throw new Error(`Scenario not found: ${options.scenario}`);
           }
-          // Note: This would require a way to force scenario in renderNarrative API
+          // Note: This would require a way to force scenario in renderWorkflow API
           // For now, we'll just validate the scenario exists
         }
 
         if (options.json) {
           const output: Record<string, unknown> = {
-            narrative: narrativePath,
+            workflow: workflowPath,
             execution: executionPath,
-            mode: narrative.mode,
+            mode: workflow.mode,
             scenario: {
               id: selectedScenario?.id,
               priority: selectedScenario?.priority,
@@ -83,9 +83,9 @@ export function createRenderCommand(): Command {
         } else {
           // Text output
           if (!options.format || options.format === 'text') {
-            console.log(chalk.gray(`Rendering: ${narrativePath}`));
+            console.log(chalk.gray(`Rendering: ${workflowPath}`));
             console.log(chalk.gray(`Execution: ${executionPath}`));
-            console.log(chalk.gray(`Mode: ${narrative.mode}`));
+            console.log(chalk.gray(`Mode: ${workflow.mode}`));
             if (selectedScenario) {
               console.log(
                 chalk.gray(

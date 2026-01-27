@@ -3,7 +3,7 @@
  */
 
 import { selectScenario, matchesCondition, hasEventMatching, evaluateAssertion, computeAggregates, getNestedValue } from '../scenario-matcher';
-import type { NarrativeTemplate, OtelEvent, ScenarioCondition } from '../types';
+import type { WorkflowTemplate, OtelEvent, ScenarioCondition } from '../types';
 
 describe('hasEventMatching', () => {
   const events: OtelEvent[] = [
@@ -224,7 +224,7 @@ describe('matchesCondition', () => {
 });
 
 describe('selectScenario', () => {
-  const template: NarrativeTemplate = {
+  const template: WorkflowTemplate = {
     version: '1.0.0',
     canvas: 'test.otel.canvas',
     name: 'Test Template',
@@ -307,7 +307,7 @@ describe('selectScenario', () => {
   });
 
   it('should throw error if no scenario matches (missing fallback)', () => {
-    const badTemplate: NarrativeTemplate = {
+    const badTemplate: WorkflowTemplate = {
       ...template,
       scenarios: [template.scenarios[0]], // Only error scenario, no fallback
     };

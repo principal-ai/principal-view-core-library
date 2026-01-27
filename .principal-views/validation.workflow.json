@@ -2,7 +2,7 @@
   "version": "1.0.0",
   "canvas": "validation.otel.canvas",
   "name": "Validation Pipeline",
-  "description": "Comprehensive validation workflow narratives for all Principal View validation types",
+  "description": "Comprehensive validation workflow workflows for all Principal View validation types",
   "mode": "span-tree",
   "scenarioSelection": "first-match",
   "showLogsPerSpan": true,
@@ -33,7 +33,7 @@
           "file.parsed": "  📝 Parsed {file.path}",
           "type.detected": "  🔍 Type: {detected.type}",
           "canvas.validated": "  ✅ Canvas validated",
-          "narrative.validated": "  ✅ Narrative validated",
+          "workflow.validated": "  ✅ Workflow validated",
           "execution.validated": "  ✅ Execution validated",
           "library.validated": "  ✅ Library validated",
           "rules.executed": "  ✅ Rules executed",
@@ -87,25 +87,25 @@
       }
     },
     {
-      "id": "narrative-validation-success",
+      "id": "workflow-validation-success",
       "priority": 3,
-      "description": "Narrative templates validated successfully",
+      "description": "Workflow templates validated successfully",
       "condition": {
-        "requires": ["narrative.validated", "validation.complete"],
+        "requires": ["workflow.validated", "validation.complete"],
         "assertions": {
-          "validation.type": { "$eq": "narrative" },
+          "validation.type": { "$eq": "workflow" },
           "result.valid": { "$eq": true }
         }
       },
       "template": {
-        "introduction": "✅ Narrative Validation - SUCCESS\n{'━'.repeat(50)}",
+        "introduction": "✅ Workflow Validation - SUCCESS\n{'━'.repeat(50)}",
         "span": "→ {span.name}",
         "children": "recurse",
         "events": {
-          "validation.started": "  📂 Started narrative validation",
+          "validation.started": "  📂 Started workflow validation",
           "file.parsed": "  📝 Parsed {file.path}",
           "type.detected": "  🔍 Detected type: {detected.type}",
-          "narrative.validated": "  ✅ Narrative validation complete\n    • Scenarios: {scenarios.count}\n    • Violations: {violations.count}\n    • Errors: {errors.count}\n    • Warnings: {warnings.count}",
+          "workflow.validated": "  ✅ Workflow validation complete\n    • Scenarios: {scenarios.count}\n    • Violations: {violations.count}\n    • Errors: {errors.count}\n    • Warnings: {warnings.count}",
           "results.aggregated": "  📊 Results aggregated",
           "validation.complete": "  ✅ Validation succeeded"
         },
@@ -255,7 +255,7 @@
           "file.parsed": "  📝 Parsed {file.path}",
           "type.detected": "  🔍 Detected type: {detected.type}",
           "canvas.validated": "  🔍 Canvas validation attempted",
-          "narrative.validated": "  🔍 Narrative validation attempted",
+          "workflow.validated": "  🔍 Workflow validation attempted",
           "execution.validated": "  🔍 Execution validation attempted",
           "library.validated": "  🔍 Library validation attempted",
           "rules.executed": "  🔍 Rules execution attempted",
@@ -284,7 +284,7 @@
           "file.parsed": "  📝 File parsed: {file.path}",
           "type.detected": "  🔍 Type detected: {detected.type}",
           "canvas.validated": "  ✅ Canvas validated",
-          "narrative.validated": "  ✅ Narrative validated",
+          "workflow.validated": "  ✅ Workflow validated",
           "execution.validated": "  ✅ Execution validated",
           "library.validated": "  ✅ Library validated",
           "rules.executed": "  ✅ Rules executed",

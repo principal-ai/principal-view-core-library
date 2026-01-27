@@ -80,9 +80,9 @@
 - `src/execution/ExecutionValidator.ts` - Multiple errors
 - `src/generated/graph-converter-execution.types.ts` - Generated file
 - `src/helpers/GraphInstrumentationHelper.test.ts` - Multiple errors
-- `src/narrative/__tests__/template-renderer.test.ts` - Multiple errors
-- `src/narrative/__tests__/validator.test.ts` - Multiple errors
-- `src/narrative/validator.ts` - Multiple errors
+- `src/workflow/__tests__/template-renderer.test.ts` - Multiple errors
+- `src/workflow/__tests__/validator.test.ts` - Multiple errors
+- `src/workflow/validator.ts` - Multiple errors
 - `src/telemetry/coverage.ts` - Multiple errors
 - `src/utils/PathMatcher.ts` - 1 regex spaces error
 - `src/utils/TraceToCanvas.test.ts` - Multiple errors

@@ -1,19 +1,19 @@
-# Narrative Template System - Implementation Summary
+# Workflow Template System - Implementation Summary
 
 ## Overview
 
-Successfully implemented a complete narrative template system that transforms OpenTelemetry event streams into human-readable execution narratives. This system bridges the gap between raw telemetry data and comprehensible execution stories.
+Successfully implemented a complete workflow template system that transforms OpenTelemetry event streams into human-readable execution workflows. This system bridges the gap between raw telemetry data and comprehensible execution stories.
 
 ## What We Built
 
 ### Phase 1: Core Infrastructure ✅
 
 **Implementation Files:**
-- `packages/core/src/narrative/types.ts` - Complete TypeScript type definitions
-- `packages/core/src/narrative/scenario-matcher.ts` - Scenario selection and matching logic
-- `packages/core/src/narrative/template-parser.ts` - Template expression parser
-- `packages/core/src/narrative/template-renderer.ts` - Main rendering engine
-- `packages/core/src/narrative/index.ts` - Public API exports
+- `packages/core/src/workflow/types.ts` - Complete TypeScript type definitions
+- `packages/core/src/workflow/scenario-matcher.ts` - Scenario selection and matching logic
+- `packages/core/src/workflow/template-parser.ts` - Template expression parser
+- `packages/core/src/workflow/template-renderer.ts` - Main rendering engine
+- `packages/core/src/workflow/index.ts` - Public API exports
 
 **Test Coverage:**
 - 89 tests across 3 test files
@@ -54,35 +54,35 @@ Successfully implemented a complete narrative template system that transforms Op
 
 ### Phase 2: Example Templates ✅
 
-Created comprehensive narrative templates for existing `.otel.canvas` files:
+Created comprehensive workflow templates for existing `.otel.canvas` files:
 
-**1. Graph Converter Execution** (`.principal-views/graph-converter-execution.narrative.json`)
+**1. Graph Converter Execution** (`.principal-views/graph-converter-execution.workflow.json`)
 - 4 scenarios: conversion-error, validation-failed, conversion-success, default
 - Demonstrates error handling, validation flow, and success paths
 - Includes log integration with severity-based formatting
 
-**2. Rules Engine Execution** (`.principal-views/rules-engine-execution.narrative.json`)
+**2. Rules Engine Execution** (`.principal-views/rules-engine-execution.workflow.json`)
 - 4 scenarios: rule-error, has-violations, no-violations, default
 - Shows complex multi-step execution flow
 - Demonstrates assertion-based scenario selection
 - Includes detailed violation reporting
 
-**3. Graph Converter Test** (`.principal-views/graph-converter-test.narrative.json`)
+**3. Graph Converter Test** (`.principal-views/graph-converter-test.workflow.json`)
 - 3 scenarios: test-failed, test-passed, default
-- Test execution narrative with assertion tracking
+- Test execution workflow with assertion tracking
 - Shows setup → execution → verification flow
 
 ### Documentation ✅
 
 **Created:**
-- `packages/core/src/narrative/README.md` - Comprehensive user guide
+- `packages/core/src/workflow/README.md` - Comprehensive user guide
   - Quick start examples
   - Complete API reference
   - Expression syntax documentation
   - Scenario matching guide
   - Real-world examples
 
-- `packages/core/src/narrative/example.ts` - Working code examples
+- `packages/core/src/workflow/example.ts` - Working code examples
   - Example 1: Simple success scenario
   - Example 2: Multi-scenario validation with errors/warnings
   - Example 3: Span tree with hierarchy
@@ -131,8 +131,8 @@ Resolved 10 failing tests by fixing:
 ## Usage Example
 
 ```typescript
-import { renderNarrative } from '@principal-ai/principal-view-core';
-import template from './.principal-views/my-execution.narrative.json';
+import { renderWorkflow } from '@principal-ai/principal-view-core';
+import template from './.principal-views/my-execution.workflow.json';
 
 const events = [
   {
@@ -149,7 +149,7 @@ const events = [
   }
 ];
 
-const result = renderNarrative(template, events);
+const result = renderWorkflow(template, events);
 console.log(result.text);
 ```
 
@@ -174,7 +174,7 @@ Processed 42 items in 1000ms
 Added to `packages/core/src/index.ts`:
 
 **Functions:**
-- `renderNarrative()` - Main rendering function
+- `renderWorkflow()` - Main rendering function
 - `parseTemplate()` - Template string parser
 - `evaluateExpression()` - Expression evaluator
 - `selectScenario()` - Scenario matcher
@@ -186,18 +186,18 @@ Added to `packages/core/src/index.ts`:
 - `setNestedValue()` - Nested property setter
 
 **Types:**
-- `NarrativeTemplate` - Template configuration
-- `NarrativeScenario` - Scenario definition
-- `NarrativeMode` - Rendering mode type
+- `WorkflowTemplate` - Template configuration
+- `WorkflowScenario` - Scenario definition
+- `WorkflowMode` - Rendering mode type
 - `ScenarioCondition` - Condition specification
 - `OtelEvent` - OTEL event type
-- `NarrativeResult` - Rendered output
+- `WorkflowResult` - Rendered output
 - And 10+ more supporting types
 
 ### File Structure
 
 ```
-packages/core/src/narrative/
+packages/core/src/workflow/
 ├── types.ts                    # Type definitions
 ├── scenario-matcher.ts         # Scenario selection logic
 ├── template-parser.ts          # Expression parser
@@ -211,9 +211,9 @@ packages/core/src/narrative/
     └── template-renderer.test.ts
 
 .principal-views/
-├── graph-converter-execution.narrative.json
-├── graph-converter-test.narrative.json
-└── rules-engine-execution.narrative.json
+├── graph-converter-execution.workflow.json
+├── graph-converter-test.workflow.json
+└── rules-engine-execution.workflow.json
 ```
 
 ## Real-World Demo
@@ -224,12 +224,12 @@ Successfully ran working examples demonstrating:
 - Hierarchical span tree rendering with proper indentation
 - Automatic scenario selection based on event attributes
 
-All examples produced correctly formatted, human-readable narratives from OTEL events.
+All examples produced correctly formatted, human-readable workflows from OTEL events.
 
 ## What This Enables
 
 ### For Developers
-- **Readable Telemetry**: Transform raw OTEL data into comprehensible narratives
+- **Readable Telemetry**: Transform raw OTEL data into comprehensible workflows
 - **Debugging**: Quickly understand execution flow and issues
 - **Testing**: Generate readable test execution reports
 - **Documentation**: Auto-generate execution documentation from traces
@@ -249,18 +249,18 @@ All examples produced correctly formatted, human-readable narratives from OTEL e
 ## Future Enhancements (Phase 3)
 
 Potential next steps:
-1. **UI Integration**: Canvas viewer with narrative display
-2. **Live Streaming**: Real-time narrative updates as events arrive
+1. **UI Integration**: Canvas viewer with workflow display
+2. **Live Streaming**: Real-time workflow updates as events arrive
 3. **Template Editor**: Visual template designer
 4. **Scenario Switcher**: Interactive scenario selection in UI
 5. **Export Formats**: Markdown, HTML, PDF output
 6. **Advanced Expressions**: Array operations, custom functions
-7. **Template Validation**: Schema validation for narrative templates
+7. **Template Validation**: Schema validation for workflow templates
 8. **Performance**: Streaming parser for large event sets
 
 ## Conclusion
 
-Successfully delivered a complete, production-ready narrative template system that transforms OpenTelemetry events into human-readable execution narratives. The system is:
+Successfully delivered a complete, production-ready workflow template system that transforms OpenTelemetry events into human-readable execution workflows. The system is:
 
 - **Feature Complete**: All planned Phase 1 & 2 features implemented
 - **Well Tested**: 89 tests covering all functionality
@@ -268,7 +268,7 @@ Successfully delivered a complete, production-ready narrative template system th
 - **Production Ready**: Exported and ready for use
 - **Demonstrated**: Working examples showing real-world usage
 
-The narrative template system provides a powerful bridge between raw telemetry data and human comprehension, enabling better debugging, monitoring, and communication across teams.
+The workflow template system provides a powerful bridge between raw telemetry data and human comprehension, enabling better debugging, monitoring, and communication across teams.
 
 ---
 

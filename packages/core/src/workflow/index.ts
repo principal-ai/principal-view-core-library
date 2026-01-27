@@ -1,16 +1,16 @@
 /**
- * Narrative Template System
+ * Workflow Template System
  *
- * Transform OpenTelemetry event streams into human-readable execution narratives.
+ * Transform OpenTelemetry event streams into human-readable execution workflows.
  *
- * @module narrative
+ * @module workflow
  */
 
 // Types
 export type {
-  NarrativeTemplate,
-  NarrativeScenario,
-  NarrativeMode,
+  WorkflowTemplate,
+  WorkflowScenario,
+  WorkflowMode,
   ScenarioCondition,
   ScenarioTemplate,
   Assertion,
@@ -19,8 +19,8 @@ export type {
   FormattingOptions,
   OtelEvent,
   OtelSignal,
-  NarrativeContext,
-  NarrativeResult,
+  WorkflowContext,
+  WorkflowResult,
   ScenarioMatchResult,
   SpanTreeNode,
 } from './types';
@@ -32,12 +32,12 @@ export { selectScenario, matchesCondition, hasEventMatching, computeAggregates, 
 export { parseTemplate } from './template-parser';
 
 // Template Rendering
-export { renderNarrative } from './template-renderer';
+export { renderWorkflow } from './template-renderer';
 
 // Validation
 export type {
-  NarrativeValidationContext,
-  NarrativeViolation,
-  NarrativeValidationResult,
+  WorkflowValidationContext,
+  WorkflowViolation,
+  WorkflowValidationResult,
 } from './validator';
-export { NarrativeValidator, createNarrativeValidator } from './validator';
+export { WorkflowValidator, createWorkflowValidator } from './validator';

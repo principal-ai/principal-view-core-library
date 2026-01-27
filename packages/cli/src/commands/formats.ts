@@ -16,9 +16,9 @@ ${chalk.bold('1. Canvas Files')} ${chalk.yellow('.otel.canvas')}
    Define OTEL event schemas and telemetry structure for a feature.
    These are the single source of truth for what events should be emitted.
 
-${chalk.bold('2. Narrative Files')} ${chalk.yellow('.narrative.json')}
+${chalk.bold('2. Workflow Files')} ${chalk.yellow('.workflow.json')}
    Define scenarios and templates for rendering executions as human-readable
-   narratives based on the emitted events.
+   workflows based on the emitted events.
 
 ${chalk.bold('3. Execution Files')} ${chalk.yellow('.otel.json')}
    Captured OTEL spans from test runs or production code, exported for
@@ -26,7 +26,7 @@ ${chalk.bold('3. Execution Files')} ${chalk.yellow('.otel.json')}
 
 Run ${chalk.cyan('npx @principal-ai/principal-view-cli formats <section>')} for details on:
   ${chalk.yellow('canvas')}       .otel.canvas format and event schemas
-  ${chalk.yellow('narrative')}    .narrative.json format and scenario structure
+  ${chalk.yellow('workflow')}    .workflow.json format and scenario structure
   ${chalk.yellow('execution')}    .otel.json format for captured spans
   ${chalk.yellow('examples')}     Complete example files
 `,
@@ -112,28 +112,28 @@ ${chalk.bold('Validation:')}
   ${chalk.cyan('npx @principal-ai/principal-view-cli validate')}
 `,
 
-  narrative: `
-${chalk.bold.cyan('Narrative Format (.narrative.json)')}
+  workflow: `
+${chalk.bold.cyan('Workflow Format (.workflow.json)')}
 ${chalk.dim('═'.repeat(70))}
 
-Narrative files define scenarios for rendering execution data as human-readable
+Workflow files define scenarios for rendering execution data as human-readable
 stories. They evaluate conditions against captured events to select the best
-matching narrative template.
+matching workflow template.
 
 ${chalk.bold('File Location:')}
-  ${chalk.dim('.principal-views/')}${chalk.yellow('<feature-name>.narrative.json')}
+  ${chalk.dim('.principal-views/')}${chalk.yellow('<feature-name>.workflow.json')}
   ${chalk.dim('(co-located with corresponding .otel.canvas file)')}
 
 ${chalk.bold('Required Structure:')}
 ${chalk.dim('┌────────────────────────────────────────────────────────────────────┐')}
 ${chalk.dim('│')} {                                                                  ${chalk.dim('│')}
-${chalk.dim('│')}   ${chalk.green('"name"')}: "Feature Name",      ${chalk.dim('// NOT "Feature Name Narratives"')} ${chalk.dim('│')}
-${chalk.dim('│')}   ${chalk.green('"description"')}: "What the feature does",  ${chalk.dim('// Purpose, not "Narratives for..."')} ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"name"')}: "Feature Name",      ${chalk.dim('// NOT "Feature Name Workflows"')} ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"description"')}: "What the feature does",  ${chalk.dim('// Purpose, not "Workflows for..."')} ${chalk.dim('│')}
 ${chalk.dim('│')}   ${chalk.green('"scenarios"')}: [                                                 ${chalk.dim('│')}
 ${chalk.dim('│')}     {                                                              ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"priority"')}: 1,           ${chalk.dim('// Lower = higher priority')}   ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"condition"')}: "...",      ${chalk.dim('// JSONPath/logic expression')} ${chalk.dim('│')}
-${chalk.dim('│')}       ${chalk.yellow('"template"')}: {            ${chalk.dim('// Narrative template')}        ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.yellow('"template"')}: {            ${chalk.dim('// Workflow template')}        ${chalk.dim('│')}
 ${chalk.dim('│')}         ${chalk.cyan('"summary"')}: "Completed {{count}} items",  ${chalk.dim('// Handlebars template')} ${chalk.dim('│')}
 ${chalk.dim('│')}         ${chalk.cyan('"events"')}: {                ${chalk.dim('// Per-event templates')}       ${chalk.dim('│')}
 ${chalk.dim('│')}           "event.name": "Event {{attribute}} occurred"           ${chalk.dim('│')}
@@ -146,14 +146,14 @@ ${chalk.dim('└─────────────────────�
 
 ${chalk.bold('Naming Guidelines:')}
 
-  ❌ DON'T append "Narratives" to the name:
-     "name": "Package Processor Narratives"
+  ❌ DON'T append "Workflows" to the name:
+     "name": "Package Processor Workflows"
 
   ✅ DO use the feature name directly:
      "name": "Package Processor"
 
   ❌ DON'T prefix description with boilerplate:
-     "description": "Human-readable narratives for package extraction..."
+     "description": "Human-readable workflows for package extraction..."
 
   ✅ DO describe the feature's purpose:
      "description": "Package extraction and analysis from repository file trees"
@@ -204,7 +204,7 @@ ${chalk.cyan('5. Template style:')}
    - Include key metrics and IDs
 
 ${chalk.bold('Validation:')}
-  ${chalk.cyan('npx @principal-ai/principal-view-cli narrative validate')}
+  ${chalk.cyan('npx @principal-ai/principal-view-cli workflow validate')}
 `,
 
   execution: `
@@ -405,9 +405,9 @@ ${chalk.yellow('.principal-views/data-validator.otel.canvas')}
   }
 }
 
-${chalk.bold('Example 2: Narrative Scenarios')}
+${chalk.bold('Example 2: Workflow Scenarios')}
 ${chalk.dim('─'.repeat(70))}
-${chalk.yellow('.principal-views/data-validator.narrative.json')}
+${chalk.yellow('.principal-views/data-validator.workflow.json')}
 
 {
   "name": "Data Validator",
@@ -507,7 +507,7 @@ ${chalk.yellow('__executions__/data-validator.otel.json')}
 
 ${chalk.bold('Next Steps:')}
   ${chalk.cyan('npx @principal-ai/principal-view-cli validate')}          Validate canvas
-  ${chalk.cyan('npx @principal-ai/principal-view-cli narrative validate')} Validate narratives
+  ${chalk.cyan('npx @principal-ai/principal-view-cli workflow validate')} Validate workflows
   ${chalk.cyan('npx @principal-ai/principal-view-cli validate-execution')}  Validate execution
 `,
 };
@@ -519,7 +519,7 @@ export function createFormatsCommand(): Command {
     .description('Display documentation about file formats')
     .argument(
       '[section]',
-      'Section to display: overview, canvas, narrative, execution, examples'
+      'Section to display: overview, canvas, workflow, execution, examples'
     )
     .action((section?: string) => {
       const validSections = Object.keys(FORMAT_SECTIONS);

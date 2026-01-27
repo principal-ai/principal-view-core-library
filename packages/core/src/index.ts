@@ -3,7 +3,7 @@
  * Browser-safe exports (no Node.js dependencies)
  *
  * This is the main entry point for the package and only includes browser-compatible code.
- * Includes types, canvas utilities, YAML parsing, and narrative rendering.
+ * Includes types, canvas utilities, YAML parsing, and workflow rendering.
  *
  * For Node.js-specific functionality (file system utilities, etc.), use:
  * import { ... } from '@principal-ai/principal-view-core/node'
@@ -54,10 +54,10 @@ export type { ReactFlowNode, ReactFlowEdge } from './utils/CanvasConverter';
 export { parseYaml, isYamlFile, getConfigNameFromFilename } from './utils/YamlParser';
 export type { YamlParseResult } from './utils/YamlParser';
 
-// Export narrative template system (browser-safe)
+// Export workflow template system (browser-safe)
 // Import directly from files to avoid pulling in Node.js validator
-export { renderNarrative } from './narrative/template-renderer';
-export { parseTemplate } from './narrative/template-parser';
+export { renderWorkflow } from './workflow/template-renderer';
+export { parseTemplate } from './workflow/template-parser';
 export {
   selectScenario,
   matchesCondition,
@@ -66,11 +66,11 @@ export {
   evaluateAssertion,
   getNestedValue,
   setNestedValue,
-} from './narrative/scenario-matcher';
+} from './workflow/scenario-matcher';
 export type {
-  NarrativeTemplate,
-  NarrativeScenario,
-  NarrativeMode,
+  WorkflowTemplate,
+  WorkflowScenario,
+  WorkflowMode,
   ScenarioCondition,
   ScenarioTemplate,
   Assertion,
@@ -79,11 +79,11 @@ export type {
   FormattingOptions,
   OtelEvent,
   OtelSignal,
-  NarrativeContext,
-  NarrativeResult,
+  WorkflowContext,
+  WorkflowResult,
   ScenarioMatchResult,
   SpanTreeNode,
-} from './narrative/types';
+} from './workflow/types';
 
 // Export OTEL types
 export type {

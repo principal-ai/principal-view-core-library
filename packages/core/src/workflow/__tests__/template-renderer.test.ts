@@ -1,13 +1,13 @@
 /**
- * Tests for template renderer (end-to-end narrative generation)
+ * Tests for template renderer (end-to-end workflow generation)
  */
 
-import { renderNarrative } from '../template-renderer';
-import type { NarrativeTemplate, OtelEvent } from '../types';
+import { renderWorkflow } from '../template-renderer';
+import type { WorkflowTemplate, OtelEvent } from '../types';
 
-describe('renderNarrative', () => {
+describe('renderWorkflow', () => {
   describe('span-tree mode', () => {
-    const template: NarrativeTemplate = {
+    const template: WorkflowTemplate = {
       version: '1.0.0',
       canvas: 'test.otel.canvas',
       name: 'Span Tree Test',
@@ -49,7 +49,7 @@ describe('renderNarrative', () => {
         },
       ];
 
-      const result = renderNarrative(template, events);
+      const result = renderWorkflow(template, events);
 
       expect(result.text).toContain('✅ Execution Trace');
       expect(result.text).toContain('→ parent.span');
@@ -65,7 +65,7 @@ describe('renderNarrative', () => {
         { name: 'grandchild', type: 'span', spanId: '3', parentSpanId: '2', traceId: 't1', timestamp: 20 },
       ];
 
-      const result = renderNarrative(template, events);
+      const result = renderWorkflow(template, events);
       const lines = result.text.split('\n');
 
       // Check for proper indentation (2 spaces per level)
@@ -75,7 +75,7 @@ describe('renderNarrative', () => {
     });
 
     it('should attach logs to spans when showLogsPerSpan is true', () => {
-      const templateWithLogs: NarrativeTemplate = {
+      const templateWithLogs: WorkflowTemplate = {
         ...template,
         showLogsPerSpan: true,
         scenarios: [
@@ -116,7 +116,7 @@ describe('renderNarrative', () => {
         },
       ];
 
-      const result = renderNarrative(templateWithLogs, events);
+      const result = renderWorkflow(templateWithLogs, events);
 
       expect(result.text).toContain('→ test.span');
       expect(result.text).toContain('📝 Processing started');
@@ -125,7 +125,7 @@ describe('renderNarrative', () => {
   });
 
   describe('timeline mode', () => {
-    const template: NarrativeTemplate = {
+    const template: WorkflowTemplate = {
       version: '1.0.0',
       canvas: 'test.otel.canvas',
       name: 'Timeline Test',
@@ -162,7 +162,7 @@ describe('renderNarrative', () => {
         { name: 'test.complete', timestamp: '2025-01-15T10:00:00.100Z', type: 'span' },
       ];
 
-      const result = renderNarrative(template, events);
+      const result = renderWorkflow(template, events);
 
       expect(result.text).toContain('[10:00:00.000] 🔵 Started');
       expect(result.text).toContain('[10:00:00.050] 📝 Processing');
@@ -179,7 +179,7 @@ describe('renderNarrative', () => {
 
 
   describe('scenario selection', () => {
-    const template: NarrativeTemplate = {
+    const template: WorkflowTemplate = {
       version: '1.0.0',
       canvas: 'test.otel.canvas',
       name: 'Scenario Test',
@@ -227,7 +227,7 @@ describe('renderNarrative', () => {
         { name: 'test.complete', timestamp: 100, type: 'span', attributes: { 'result.warnings': 2 } },
       ];
 
-      const result = renderNarrative(template, events);
+      const result = renderWorkflow(template, events);
       expect(result.scenarioId).toBe('error');
       expect(result.text).toContain('❌ Error');
     });
@@ -237,7 +237,7 @@ describe('renderNarrative', () => {
         { name: 'test.complete', timestamp: 100, type: 'span', attributes: { 'result.warnings': 3 } },
       ];
 
-      const result = renderNarrative(template, events);
+      const result = renderWorkflow(template, events);
       expect(result.scenarioId).toBe('warnings');
       expect(result.text).toContain('⚠️ Warnings');
     });
@@ -247,7 +247,7 @@ describe('renderNarrative', () => {
         { name: 'test.complete', timestamp: 100, type: 'span', attributes: { 'result.warnings': 0 } },
       ];
 
-      const result = renderNarrative(template, events);
+      const result = renderWorkflow(template, events);
       expect(result.scenarioId).toBe('success');
       expect(result.text).toContain('✅ Success');
     });
@@ -255,14 +255,14 @@ describe('renderNarrative', () => {
     it('should select fallback when no other matches', () => {
       const events: OtelEvent[] = [{ name: 'unknown.event', timestamp: 0, type: 'span' }];
 
-      const result = renderNarrative(template, events);
+      const result = renderWorkflow(template, events);
       expect(result.scenarioId).toBe('fallback');
       expect(result.text).toContain('Unknown');
     });
   });
 
   describe('event-specific attributes override aggregates', () => {
-    const template: NarrativeTemplate = {
+    const template: WorkflowTemplate = {
       version: '1.0.0',
       canvas: 'skill-installation.otel.canvas',
       name: 'Skill Installation',
@@ -352,7 +352,7 @@ describe('renderNarrative', () => {
         },
       ];
 
-      const result = renderNarrative(template, events);
+      const result = renderWorkflow(template, events);
 
       // Should show event-specific values, not aggregate values
       expect(result.text).toContain('Installing demo-skill to Amp (Mode: symlink)');
@@ -369,7 +369,7 @@ describe('renderNarrative', () => {
   });
 
   describe('metadata', () => {
-    const template: NarrativeTemplate = {
+    const template: WorkflowTemplate = {
       version: '1.0.0',
       canvas: 'test.otel.canvas',
       name: 'Metadata Test',
@@ -396,7 +396,7 @@ describe('renderNarrative', () => {
         { name: 'log3', timestamp: 20, type: 'log', body: 'test' },
       ];
 
-      const result = renderNarrative(template, events);
+      const result = renderWorkflow(template, events);
 
       expect(result.metadata.eventCount).toBe(5);
       expect(result.metadata.spanCount).toBe(2);
@@ -410,7 +410,7 @@ describe('renderNarrative', () => {
         { name: 'event3', timestamp: 1500, type: 'log', body: 'test' },
       ];
 
-      const result = renderNarrative(template, events);
+      const result = renderWorkflow(template, events);
 
       expect(result.metadata.timeRange).toBeDefined();
       expect(result.metadata.timeRange?.start).toBe(1000);

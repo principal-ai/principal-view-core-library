@@ -6,7 +6,7 @@
 
 ## Overview
 
-This document describes a feature for explicitly associating execution artifacts with specific narrative scenarios using a directory-based structure. This enables saved, reference test runs that serve as examples or "golden" executions for each scenario.
+This document describes a feature for explicitly associating execution artifacts with specific workflow scenarios using a directory-based structure. This enables saved, reference test runs that serve as examples or "golden" executions for each scenario.
 
 ## Motivation
 
@@ -20,7 +20,7 @@ Currently, executions are matched to scenarios dynamically based on event conten
 ### Use Cases
 
 - **Onboarding**: Show new developers what each scenario looks like in practice
-- **Documentation**: Executable examples for each narrative scenario
+- **Documentation**: Executable examples for each workflow scenario
 - **Regression testing**: Saved executions to compare against
 - **Visual testing**: Reference runs for UI/behavior validation
 
@@ -33,8 +33,8 @@ Organize execution files in subdirectories matching scenario IDs:
 ```
 .principal-views/
 ├── checkout-flow.otel.canvas
-├── __narratives__/
-│   └── checkout-scenarios.narrative.json
+├── __workflows__/
+│   └── checkout-scenarios.workflow.json
 └── __executions__/
     ├── checkout-success/           # Matches scenario id: "checkout-success"
     │   ├── run-001.otel.json      # Individual test run
@@ -51,7 +51,7 @@ Organize execution files in subdirectories matching scenario IDs:
 
 ### Mapping Rules
 
-1. **Subdirectory name** must exactly match a **scenario ID** from the narrative template
+1. **Subdirectory name** must exactly match a **scenario ID** from the workflow template
 2. All `.otel.json` files within that subdirectory belong to that scenario
 3. Files in the root `__executions__/` directory (no subdirectory) fall back to content-based matching
 4. Subdirectories that don't match any scenario ID are ignored
@@ -65,10 +65,10 @@ interface ScenarioExecution {
 }
 
 function findScenarioExecutions(
-  narrativeTemplate: NarrativeTemplate,
+  workflowTemplate: WorkflowTemplate,
   allFiles: FileInfo[]
 ): ScenarioExecution[] {
-  const scenarioIds = narrativeTemplate.scenarios.map(s => s.id);
+  const scenarioIds = workflowTemplate.scenarios.map(s => s.id);
   const results: ScenarioExecution[] = [];
 
   for (const scenarioId of scenarioIds) {
@@ -211,8 +211,8 @@ const loadCanvas = async (canvasId: string, canvasPath: string) => {
 
   // Find scenario-specific executions
   let scenarioExecutions = new Map<string, ExecutionFile[]>();
-  if (state.narrativeTemplate) {
-    const scenarioIds = state.narrativeTemplate.scenarios.map(s => s.id);
+  if (state.workflowTemplate) {
+    const scenarioIds = state.workflowTemplate.scenarios.map(s => s.id);
     scenarioExecutions = ExecutionLoader.findScenarioExecutions(
       fileTreeData.allFiles,
       scenarioIds
@@ -227,19 +227,19 @@ const loadCanvas = async (canvasId: string, canvasPath: string) => {
 };
 ```
 
-#### 2.4 Update NarrativeTemplatePanel
+#### 2.4 Update WorkflowTemplatePanel
 
 Display scenario-specific executions instead of dynamically matched ones:
 
 ```typescript
-const NarrativeTemplatePanel: React.FC<Props> = ({
-  narrativeTemplate,
+const WorkflowTemplatePanel: React.FC<Props> = ({
+  workflowTemplate,
   scenarioExecutions,  // NEW: Map<scenarioId, ExecutionFile[]>
   // ... other props
 }) => {
   return (
     <div>
-      {narrativeTemplate.scenarios.map(scenario => {
+      {workflowTemplate.scenarios.map(scenario => {
         const executions = scenarioExecutions.get(scenario.id) || [];
 
         return (
@@ -315,7 +315,7 @@ __executions__/
 **Migration script example:**
 ```bash
 # Analyze existing executions and suggest organization
-pv organize-executions --narrative checkout-scenarios.narrative.json
+pv organize-executions --workflow checkout-scenarios.workflow.json
 
 # Output:
 # Suggested organization:
@@ -388,7 +388,7 @@ describe('Scenario-Specific Execution Discovery', () => {
 ```
 
 ### Integration Tests
-- Create sample canvas with narrative
+- Create sample canvas with workflow
 - Add scenario-specific executions
 - Verify UI displays them correctly
 - Verify clicking loads execution
@@ -422,7 +422,7 @@ Add more info to execution files:
 pv record-execution --scenario payment-declined --output test-001.otel.json
 
 # Validate scenario directory structure
-pv validate-executions --narrative checkout-scenarios.narrative.json
+pv validate-executions --workflow checkout-scenarios.workflow.json
 
 # Organize existing executions
 pv organize-executions --auto
@@ -448,8 +448,8 @@ Panel Framework:
 - [ ] Update ExecutionLoader in panels package
 - [ ] Add scenarioExecutions to CanvasDetailPanel state
 - [ ] Update loadCanvas to discover scenario executions
-- [ ] Pass scenarioExecutions to NarrativeTemplatePanel
-- [ ] Update NarrativeTemplatePanel UI
+- [ ] Pass scenarioExecutions to WorkflowTemplatePanel
+- [ ] Update WorkflowTemplatePanel UI
 - [ ] Add integration tests
 - [ ] Update documentation
 

@@ -167,7 +167,7 @@ Option 1 has been implemented. The main export is now browser-safe, and Node.js-
 **For Browser Environments:**
 ```typescript
 // Main export is now browser-safe - no changes needed if using default import
-import { CanvasConverter, parseYaml, renderNarrative } from '@principal-ai/principal-view-core';
+import { CanvasConverter, parseYaml, renderWorkflow } from '@principal-ai/principal-view-core';
 ```
 
 **For Node.js Environments:**
@@ -195,14 +195,14 @@ The following exports now require `@principal-ai/principal-view-core/node`:
 - **Session Management:** `SessionManager`, `EventRecorderService`
 - **Loaders:** `ConfigurationLoader`, `LibraryLoader`, `ExecutionLoader`, `LibraryConverter`
 - **Rules Engine:** All exports from `./rules`
-- **Narrative Validator:** `NarrativeValidator`, `createNarrativeValidator`
+- **Workflow Validator:** `WorkflowValidator`, `createWorkflowValidator`
 
 ### What Stays in Main Export (Browser-Safe)
 
 - **Types:** All TypeScript types and interfaces
 - **Canvas:** `CanvasConverter`, canvas types, `CanvasDiscovery`
 - **YAML:** `parseYaml`, `isYamlFile`, `getConfigNameFromFilename`
-- **Narrative Rendering:** `renderNarrative`, `parseTemplate`, scenario matching functions
+- **Workflow Rendering:** `renderWorkflow`, `parseTemplate`, scenario matching functions
 - **Execution Validation:** `ExecutionValidator`, `createExecutionValidator`
 
 ## Testing the Fix

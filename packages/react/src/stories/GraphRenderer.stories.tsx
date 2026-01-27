@@ -1804,15 +1804,15 @@ This simulates what happens during execution playback in the CanvasDetailPanel:
    - Applies both the highlight glow and selection outline
 
 2. This creates a seamless connection between:
-   - Narrative events on the left (which set \`highlightedNodeId\`)
+   - Workflow events on the left (which set \`highlightedNodeId\`)
    - Visual feedback on the canvas (glow + outline)
    - Node details panel at the bottom (showing node info)
 
 **Use case:**
 In the CanvasDetailPanel, when users:
 - Click a scenario template → Nodes involved in that scenario are highlighted
-- Click a narrative event → The corresponding node on the canvas is highlighted
-- Click a node on the canvas → The corresponding narrative event is highlighted
+- Click a workflow event → The corresponding node on the canvas is highlighted
+- Click a node on the canvas → The corresponding workflow event is highlighted
 
 All of these actions update \`highlightedNodeId\`, which now automatically shows the node info panel!
         `,

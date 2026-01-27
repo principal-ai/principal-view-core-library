@@ -1,20 +1,20 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import type { NarrativeTemplate, OtelEvent } from '@principal-ai/principal-view-core';
+import type { WorkflowTemplate, OtelEvent } from '@principal-ai/principal-view-core';
 import { ExecutionValidator, type ExecutionData } from '@principal-ai/principal-view-core';
 
 /**
- * Load a narrative template from a file
+ * Load a workflow template from a file
  */
-export async function loadNarrative(filePath: string): Promise<NarrativeTemplate> {
+export async function loadWorkflow(filePath: string): Promise<WorkflowTemplate> {
   try {
     const content = await readFile(filePath, 'utf-8');
-    return JSON.parse(content) as NarrativeTemplate;
+    return JSON.parse(content) as WorkflowTemplate;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      throw new Error(`Narrative file not found: ${filePath}`);
+      throw new Error(`Workflow file not found: ${filePath}`);
     }
-    throw new Error(`Failed to parse narrative file: ${(error as Error).message}`);
+    throw new Error(`Failed to parse workflow file: ${(error as Error).message}`);
   }
 }
 
@@ -40,7 +40,7 @@ export async function loadExecution(filePath: string): Promise<ExecutionData> {
 }
 
 /**
- * Convert execution data to OtelEvent array format expected by narrative APIs
+ * Convert execution data to OtelEvent array format expected by workflow APIs
  */
 export function executionToEvents(execution: ExecutionData): OtelEvent[] {
   const events: OtelEvent[] = [];

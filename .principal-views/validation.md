@@ -2,12 +2,12 @@
 
 ## Overview
 
-The Validation Pipeline encompasses all validation operations in the Principal View system. It validates canvas files, narrative templates, execution data, library definitions, and runs comprehensive linting rules.
+The Validation Pipeline encompasses all validation operations in the Principal View system. It validates canvas files, workflow templates, execution data, library definitions, and runs comprehensive linting rules.
 
 ## Validation Types
 
 1. **Canvas Validation** - `.canvas` and `.otel.canvas` files
-2. **Narrative Validation** - `.narrative.json` template files
+2. **Workflow Validation** - `.workflow.json` template files
 3. **Execution Validation** - `.otel.json` OTLP format files
 4. **Library Validation** - `library.yaml/json` component definitions
 5. **Rules Execution** - 15 built-in linting rules across 5 categories
@@ -20,7 +20,7 @@ The Validation Pipeline encompasses all validation operations in the Principal V
 3. **Type Detected** - Determine which validation to perform
 4. **Specific Validation** - Route to appropriate validator:
    - Canvas validator (structure, nodes, edges, OTEL features)
-   - Narrative validator (scenarios, templates, event references)
+   - Workflow validator (scenarios, templates, event references)
    - Execution validator (OTLP format, spans, events)
    - Library validator (components, connection rules)
    - Rules engine (15 linting rules)
@@ -40,7 +40,7 @@ The Validation Pipeline encompasses all validation operations in the Principal V
 Entry point for any validation operation.
 
 **Attributes:**
-- `validation.type` (string, required) - Type of validation (canvas, narrative, execution, library, config, rules, event)
+- `validation.type` (string, required) - Type of validation (canvas, workflow, execution, library, config, rules, event)
 - `input.fileCount` (integer, optional) - Number of files to validate
 - `input.patterns` (string[], optional) - File patterns searched
 
@@ -70,8 +70,8 @@ Canvas file validation completed.
 - `nodes.count` (integer, optional) - Nodes validated
 - `edges.count` (integer, optional) - Edges validated
 
-### narrative.validated
-Narrative template validation completed.
+### workflow.validated
+Workflow template validation completed.
 
 **Attributes:**
 - `scenarios.count` (integer, required) - Scenarios validated
@@ -141,9 +141,9 @@ Validation failed with errors.
 validation.started (type=canvas) → file.parsed → type.detected → canvas.validated → results.aggregated → validation.complete
 ```
 
-### Narrative Validation with Warnings
+### Workflow Validation with Warnings
 ```
-validation.started (type=narrative) → file.parsed → type.detected → narrative.validated → results.aggregated → validation.complete
+validation.started (type=workflow) → file.parsed → type.detected → workflow.validated → results.aggregated → validation.complete
 ```
 
 ### Execution Validation Error
@@ -169,7 +169,7 @@ validation.started → file.parsed → validation.error (stage=parsing)
 ## Source Files
 
 - **Canvas Validation**: `packages/cli/src/commands/validate.ts`
-- **Narrative Validation**: `packages/cli/src/commands/narrative/validate.ts`, `packages/core/src/narrative/validator.ts`
+- **Workflow Validation**: `packages/cli/src/commands/workflow/validate.ts`, `packages/core/src/workflow/validator.ts`
 - **Execution Validation**: `packages/cli/src/commands/validate-execution.ts`, `packages/core/src/execution/ExecutionValidator.ts`
 - **Library Validation**: `packages/cli/src/commands/validate.ts`
 - **Rules Engine**: `packages/cli/src/commands/lint.ts`, `packages/core/src/rules/engine.ts`

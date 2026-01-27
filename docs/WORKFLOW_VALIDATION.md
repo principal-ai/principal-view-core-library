@@ -1,10 +1,10 @@
-# Narrative Template Validation
+# Workflow Template Validation
 
-This document outlines the validation rules for `.narrative.json` files to ensure they work correctly with their corresponding `.otel.canvas` files.
+This document outlines the validation rules for `.workflow.json` files to ensure they work correctly with their corresponding `.otel.canvas` files.
 
 ## Overview
 
-Narrative templates must be validated to ensure:
+Workflow templates must be validated to ensure:
 1. **Structural Validity**: Template follows the schema
 2. **Canvas Integration**: Referenced canvas exists and events match
 3. **Scenario Logic**: Scenarios are well-defined and non-conflicting
@@ -12,9 +12,9 @@ Narrative templates must be validated to ensure:
 
 ## Validation Rules
 
-### 1. `narrative-schema-valid` (Category: schema, Severity: error)
+### 1. `workflow-schema-valid` (Category: schema, Severity: error)
 
-**Description**: Validate that the narrative template follows the required schema
+**Description**: Validate that the workflow template follows the required schema
 
 **Checks:**
 - `version` field exists and is a valid semver string
@@ -37,13 +37,13 @@ Narrative templates must be validated to ensure:
 
 **Violation:**
 ```
-error  narrative-schema-valid  Missing required field "version"
+error  workflow-schema-valid  Missing required field "version"
                                → Add a version field (e.g., "1.0.0")
 ```
 
 ---
 
-### 2. `narrative-canvas-exists` (Category: reference, Severity: error)
+### 2. `workflow-canvas-exists` (Category: reference, Severity: error)
 
 **Description**: The referenced canvas file must exist
 
@@ -63,13 +63,13 @@ error  narrative-schema-valid  Missing required field "version"
 
 **Violation:**
 ```
-error  narrative-canvas-exists  Referenced canvas file does not exist: nonexistent.otel.canvas
+error  workflow-canvas-exists  Referenced canvas file does not exist: nonexistent.otel.canvas
                                 → Ensure the canvas field points to a valid .otel.canvas file
 ```
 
 ---
 
-### 3. `narrative-event-references` (Category: reference, Severity: error)
+### 3. `workflow-event-references` (Category: reference, Severity: error)
 
 **Description**: Events referenced in templates must be defined in the canvas
 
@@ -92,7 +92,7 @@ error  narrative-canvas-exists  Referenced canvas file does not exist: nonexiste
 }
 ```
 
-**Narrative Template:**
+**Workflow Template:**
 ```json
 {
   "template": {
@@ -107,13 +107,13 @@ error  narrative-canvas-exists  Referenced canvas file does not exist: nonexiste
 
 **Violation:**
 ```
-error  narrative-event-references  Event "conversion.invalid" not defined in canvas
+error  workflow-event-references  Event "conversion.invalid" not defined in canvas
                                    → Available events: conversion.started, conversion.complete, conversion.error
 ```
 
 ---
 
-### 4. `narrative-scenario-valid` (Category: structure, Severity: error)
+### 4. `workflow-scenario-valid` (Category: structure, Severity: error)
 
 **Description**: Scenarios must be well-formed and non-conflicting
 
@@ -139,7 +139,7 @@ error  narrative-event-references  Event "conversion.invalid" not defined in can
 
 **Violation:**
 ```
-error  narrative-scenario-valid  Duplicate scenario ID: "test-passed"
+error  workflow-scenario-valid  Duplicate scenario ID: "test-passed"
                                  → Scenario IDs must be unique
 ```
 
@@ -156,13 +156,13 @@ error  narrative-scenario-valid  Duplicate scenario ID: "test-passed"
 
 **Violation:**
 ```
-error  narrative-scenario-valid  No default scenario defined
+error  workflow-scenario-valid  No default scenario defined
                                  → Add a scenario with "condition.default: true"
 ```
 
 ---
 
-### 5. `narrative-template-syntax` (Category: pattern, Severity: error)
+### 5. `workflow-template-syntax` (Category: pattern, Severity: error)
 
 **Description**: Template strings must have valid expression syntax
 
@@ -185,7 +185,7 @@ error  narrative-scenario-valid  No default scenario defined
 
 **Violation:**
 ```
-error  narrative-template-syntax  Unbalanced braces in template expression
+error  workflow-template-syntax  Unbalanced braces in template expression
                                   → Ensure all {expressions} have closing braces
 ```
 
@@ -200,13 +200,13 @@ error  narrative-template-syntax  Unbalanced braces in template expression
 
 **Violation:**
 ```
-error  narrative-template-syntax  Invalid conditional expression: missing ':' operator
+error  workflow-template-syntax  Invalid conditional expression: missing ':' operator
                                   → Conditional format: {condition ? 'true' : 'false'}
 ```
 
 ---
 
-### 6. `narrative-attribute-references` (Category: reference, Severity: warn)
+### 6. `workflow-attribute-references` (Category: reference, Severity: warn)
 
 **Description**: Attributes referenced in templates should exist in canvas event schemas
 
@@ -231,7 +231,7 @@ error  narrative-template-syntax  Invalid conditional expression: missing ':' op
 }
 ```
 
-**Narrative Template:**
+**Workflow Template:**
 ```json
 {
   "events": {
@@ -243,13 +243,13 @@ error  narrative-template-syntax  Invalid conditional expression: missing ':' op
 
 **Violation:**
 ```
-warn  narrative-attribute-references  Attribute "result.quality" not found in event schema
+warn  workflow-attribute-references  Attribute "result.quality" not found in event schema
                                       → Available: result.nodes.count, duration.ms
 ```
 
 ---
 
-### 7. `narrative-formatting-options` (Category: schema, Severity: warn)
+### 7. `workflow-formatting-options` (Category: schema, Severity: warn)
 
 **Description**: Formatting options should have valid values
 
@@ -265,22 +265,22 @@ warn  narrative-attribute-references  Attribute "result.quality" not found in ev
 ### Validator Structure
 
 ```typescript
-interface NarrativeValidationContext {
-  narrative: NarrativeTemplate;
-  narrativePath: string;
+interface WorkflowValidationContext {
+  workflow: WorkflowTemplate;
+  workflowPath: string;
   canvas?: ExtendedCanvas;
   canvasPath?: string;
   basePath: string;  // For resolving relative paths
 }
 
-interface NarrativeValidationResult {
-  violations: NarrativeViolation[];
+interface WorkflowValidationResult {
+  violations: WorkflowViolation[];
   errorCount: number;
   warningCount: number;
   fixableCount: number;
 }
 
-interface NarrativeViolation {
+interface WorkflowViolation {
   ruleId: string;
   severity: 'error' | 'warn';
   file: string;
@@ -296,13 +296,13 @@ interface NarrativeViolation {
 ### Validator Implementation
 
 ```typescript
-// packages/core/src/narrative/validator.ts
+// packages/core/src/workflow/validator.ts
 
-export class NarrativeValidator {
+export class WorkflowValidator {
   async validate(
-    context: NarrativeValidationContext
-  ): Promise<NarrativeValidationResult> {
-    const violations: NarrativeViolation[] = [];
+    context: WorkflowValidationContext
+  ): Promise<WorkflowValidationResult> {
+    const violations: WorkflowViolation[] = [];
 
     // Run all validation rules
     violations.push(...await this.checkSchema(context));
@@ -317,8 +317,8 @@ export class NarrativeValidator {
   }
 
   private async checkSchema(
-    context: NarrativeValidationContext
-  ): Promise<NarrativeViolation[]> {
+    context: WorkflowValidationContext
+  ): Promise<WorkflowViolation[]> {
     // Implement schema validation
   }
 
@@ -332,30 +332,30 @@ export class NarrativeValidator {
 
 ### Updated Lint Command
 
-The `lint` command will validate both canvas files and narrative templates:
+The `lint` command will validate both canvas files and workflow templates:
 
 ```bash
-# Lint all files (canvas + narratives)
+# Lint all files (canvas + workflows)
 privu lint
 
-# Lint only narrative templates
-privu lint --type narrative
+# Lint only workflow templates
+privu lint --type workflow
 
 # Lint only canvas files
 privu lint --type canvas
 
 # Lint specific files
-privu lint .principal-views/*.narrative.json
+privu lint .principal-views/*.workflow.json
 ```
 
 ### File Type Detection
 
 ```typescript
-function getFileType(filePath: string): 'canvas' | 'narrative' | 'config' {
+function getFileType(filePath: string): 'canvas' | 'workflow' | 'config' {
   const name = basename(filePath).toLowerCase();
 
-  if (name.endsWith('.narrative.json')) {
-    return 'narrative';
+  if (name.endsWith('.workflow.json')) {
+    return 'workflow';
   }
 
   if (name.endsWith('.canvas') || name.endsWith('.otel.canvas')) {
@@ -373,16 +373,16 @@ function getFileType(filePath: string): 'canvas' | 'narrative' | 'config' {
 for (const filePath of matchedFiles) {
   const fileType = getFileType(filePath);
 
-  if (fileType === 'narrative') {
-    // Validate narrative template
-    const narrative = loadNarrativeTemplate(filePath);
-    const canvasPath = resolve(dirname(filePath), narrative.canvas);
+  if (fileType === 'workflow') {
+    // Validate workflow template
+    const workflow = loadWorkflowTemplate(filePath);
+    const canvasPath = resolve(dirname(filePath), workflow.canvas);
     const canvas = loadCanvas(canvasPath);
 
-    const validator = new NarrativeValidator();
+    const validator = new WorkflowValidator();
     const result = await validator.validate({
-      narrative,
-      narrativePath: filePath,
+      workflow,
+      workflowPath: filePath,
       canvas,
       canvasPath,
       basePath: dirname(filePath)
@@ -404,14 +404,14 @@ for (const filePath of matchedFiles) {
 ```bash
 $ privu lint
 
-.principal-views/graph-converter-test.narrative.json
+.principal-views/graph-converter-test.workflow.json
 
-  error  narrative-event-references  Event "test.invalid" not defined in canvas
+  error  workflow-event-references  Event "test.invalid" not defined in canvas
                                      → Available events: setup.started, setup.complete, ...
-  warn   narrative-attribute-references  Attribute "test.quality" not found in event schema
+  warn   workflow-attribute-references  Attribute "test.quality" not found in event schema
                                          → Available: test.name, test.status, ...
 
-.principal-views/rules-engine-execution.narrative.json
+.principal-views/rules-engine-execution.workflow.json
 
 ✓ All checks passed
 
@@ -427,17 +427,17 @@ $ privu lint
 ### Unit Tests
 
 ```typescript
-describe('NarrativeValidator', () => {
+describe('WorkflowValidator', () => {
   describe('checkSchema', () => {
     it('should flag missing version field', async () => {
       const result = await validator.validate({
-        narrative: { name: 'Test', scenarios: [] } as any,
-        narrativePath: 'test.narrative.json'
+        workflow: { name: 'Test', scenarios: [] } as any,
+        workflowPath: 'test.workflow.json'
       });
 
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-schema-valid',
+          ruleId: 'workflow-schema-valid',
           path: 'version'
         })
       );
@@ -453,7 +453,7 @@ describe('NarrativeValidator', () => {
         }
       });
 
-      const narrative = createMockNarrative({
+      const workflow = createMockWorkflow({
         template: {
           events: {
             'test.started': 'Started',
@@ -463,14 +463,14 @@ describe('NarrativeValidator', () => {
       });
 
       const result = await validator.validate({
-        narrative,
+        workflow,
         canvas,
-        narrativePath: 'test.narrative.json'
+        workflowPath: 'test.workflow.json'
       });
 
       expect(result.violations).toContainEqual(
         expect.objectContaining({
-          ruleId: 'narrative-event-references',
+          ruleId: 'workflow-event-references',
           message: expect.stringContaining('test.invalid')
         })
       );
@@ -497,29 +497,29 @@ Provide JSON schema for IDE validation:
 
 ```json
 {
-  "$schema": "https://principal-ai.com/schemas/narrative-template.schema.json",
+  "$schema": "https://principal-ai.com/schemas/workflow-template.schema.json",
   "version": "1.0.0",
   "canvas": "test.otel.canvas",
   ...
 }
 ```
 
-### Canvas-Narrative Co-validation
+### Canvas-Workflow Co-validation
 
-When validating a canvas, also check if any narrative templates reference it and validate them together.
+When validating a canvas, also check if any workflow templates reference it and validate them together.
 
 ---
 
 ## Implementation Checklist
 
-- [ ] Create `packages/core/src/narrative/validator.ts`
+- [ ] Create `packages/core/src/workflow/validator.ts`
 - [ ] Implement schema validation
 - [ ] Implement canvas existence check
 - [ ] Implement event reference validation
 - [ ] Implement scenario validation
 - [ ] Implement template syntax validation
 - [ ] Implement attribute reference validation
-- [ ] Update CLI lint command to handle narratives
+- [ ] Update CLI lint command to handle workflows
 - [ ] Add tests for all validation rules
 - [ ] Update documentation
 - [ ] Add JSON schema for IDE support

@@ -118,9 +118,9 @@ export { InMemoryFileSystemAdapter } from '@principal-ai/repository-abstraction'
 // Export rules engine (Node.js only - OpenTelemetry dependencies)
 export * from './rules';
 
-// Export narrative template system (full system including Node.js validator)
+// Export workflow template system (full system including Node.js validator)
 export {
-  renderNarrative,
+  renderWorkflow,
   parseTemplate,
   selectScenario,
   matchesCondition,
@@ -129,13 +129,13 @@ export {
   evaluateAssertion,
   getNestedValue,
   setNestedValue,
-  createNarrativeValidator,
-  NarrativeValidator,
-} from './narrative';
+  createWorkflowValidator,
+  WorkflowValidator,
+} from './workflow';
 export type {
-  NarrativeTemplate,
-  NarrativeScenario,
-  NarrativeMode,
+  WorkflowTemplate,
+  WorkflowScenario,
+  WorkflowMode,
   ScenarioCondition,
   ScenarioTemplate,
   Assertion,
@@ -144,14 +144,14 @@ export type {
   FormattingOptions,
   OtelEvent,
   OtelSignal,
-  NarrativeContext,
-  NarrativeResult,
+  WorkflowContext,
+  WorkflowResult,
   ScenarioMatchResult,
   SpanTreeNode,
-  NarrativeValidationContext,
-  NarrativeViolation,
-  NarrativeValidationResult,
-} from './narrative';
+  WorkflowValidationContext,
+  WorkflowViolation,
+  WorkflowValidationResult,
+} from './workflow';
 
 // Export canvas and execution discovery
 export { CanvasDiscovery } from './discovery/CanvasDiscovery';
