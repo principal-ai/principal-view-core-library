@@ -1433,3 +1433,390 @@ The fix uses \`updateNodeInternals()\` to reset ReactFlow's measurement tracking
     },
   },
 };
+
+/**
+ * Canvas for demonstrating the selected prop styling
+ */
+const selectionStylingCanvas: ExtendedCanvas = {
+  nodes: [
+    {
+      id: 'node-1',
+      type: 'text',
+      x: 100,
+      y: 100,
+      width: 140,
+      height: 70,
+      text: 'Click Me!',
+      color: '#4A90E2',
+      pv: {
+        nodeType: 'process',
+        shape: 'rectangle',
+        icon: 'MousePointer',
+        eventRef: 'user.clicked',
+      },
+    },
+    {
+      id: 'node-2',
+      type: 'text',
+      x: 300,
+      y: 100,
+      width: 100,
+      height: 100,
+      text: 'Or Me!',
+      color: '#7B68EE',
+      pv: {
+        nodeType: 'data',
+        shape: 'circle',
+        icon: 'Circle',
+        eventRef: 'data.processed',
+      },
+    },
+    {
+      id: 'node-3',
+      type: 'text',
+      x: 500,
+      y: 100,
+      width: 140,
+      height: 70,
+      text: 'Me Three!',
+      color: '#22c55e',
+      pv: {
+        nodeType: 'process',
+        shape: 'hexagon',
+        icon: 'Hexagon',
+        eventRef: 'workflow.executed',
+      },
+    },
+    {
+      id: 'node-4',
+      type: 'text',
+      x: 200,
+      y: 250,
+      width: 120,
+      height: 120,
+      text: 'Diamond',
+      color: '#f59e0b',
+      pv: {
+        nodeType: 'decision',
+        shape: 'diamond',
+        icon: 'GitBranch',
+        eventRef: 'decision.evaluated',
+      },
+    },
+    {
+      id: 'node-5',
+      type: 'text',
+      x: 400,
+      y: 250,
+      width: 140,
+      height: 80,
+      text: 'Inline Event',
+      color: '#8b5cf6',
+      pv: {
+        nodeType: 'event',
+        shape: 'rectangle',
+        icon: 'Zap',
+        event: {
+          name: 'order.completed',
+          description: 'Triggered when an order is successfully completed and payment is confirmed',
+          attributes: {
+            orderId: { type: 'string', required: true, description: 'Unique order identifier' },
+            userId: { type: 'string', required: true, description: 'User who placed the order' },
+            amount: { type: 'number', required: true, description: 'Order total amount' },
+            timestamp: { type: 'string', description: 'Order completion timestamp' },
+          },
+        },
+      },
+    },
+  ],
+  edges: [
+    {
+      id: 'edge-1',
+      fromNode: 'node-1',
+      toNode: 'node-2',
+      pv: { edgeType: 'dataflow' },
+    },
+    {
+      id: 'edge-2',
+      fromNode: 'node-2',
+      toNode: 'node-3',
+      pv: { edgeType: 'dataflow' },
+    },
+    {
+      id: 'edge-3',
+      fromNode: 'node-1',
+      toNode: 'node-4',
+      pv: { edgeType: 'dataflow' },
+    },
+  ],
+  pv: {
+    version: '1.0.0',
+    name: 'Selection Styling Demo',
+    description: 'Demonstrates ReactFlow selected prop visual styling',
+    edgeTypes: {
+      dataflow: {
+        style: 'solid',
+        color: '#50E3C2',
+        directed: true,
+      },
+    },
+  },
+};
+
+const SelectionStylingTemplate = () => {
+  return (
+    <div>
+      <div
+        style={{
+          marginBottom: 16,
+          padding: 12,
+          backgroundColor: '#f0f9ff',
+          borderRadius: 4,
+          border: '1px solid #3b82f6',
+        }}
+      >
+        <strong style={{ color: '#1e40af' }}>ReactFlow Selection Styling Demo</strong>
+        <div style={{ marginTop: 8, fontSize: 12, color: '#475569' }}>
+          <p style={{ margin: '4px 0' }}>
+            This demonstrates the <code>selected</code> prop that ReactFlow passes to CustomNode.
+          </p>
+          <p style={{ margin: '4px 0' }}>
+            <strong>Visual effects when a node is selected:</strong>
+          </p>
+          <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
+            <li><strong>2px box-shadow outline</strong> in the node's stroke color</li>
+            <li><strong>Resize handles</strong> (only visible in edit mode - not shown in this demo)</li>
+          </ul>
+          <p style={{ margin: '8px 0 4px 0' }}>
+            <strong>Try these interactions:</strong>
+          </p>
+          <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
+            <li><strong>Click</strong> any node → see the outline appear</li>
+            <li><strong>Click another</strong> node → outline moves to new selection</li>
+            <li><strong>Click background</strong> → outline disappears</li>
+            <li><strong>Shift+Drag</strong> box around multiple nodes → all get outlined</li>
+          </ul>
+          <p style={{ margin: '8px 0 4px 0', fontSize: 11, fontStyle: 'italic', color: '#64748b' }}>
+            Note: The <code>selected</code> prop is purely for visual feedback.
+            The info panel uses a separate <code>selectedNodeIds</code> state.
+          </p>
+        </div>
+      </div>
+      <GraphRenderer
+        canvas={selectionStylingCanvas}
+        width={800}
+        height={500}
+        showNodeDetailPanel={false}
+      />
+    </div>
+  );
+};
+
+export const SelectionStyling: Story = {
+  render: () => <SelectionStylingTemplate />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Selection Styling** - Demonstrates the visual effects of ReactFlow's \`selected\` prop in read-only mode.
+
+When a node is selected (via click or box selection), ReactFlow sets \`selected={true}\` on the node component.
+This triggers visual changes in \`CustomNode\`:
+
+1. **Box-shadow outline** (line 253-254 in CustomNode.tsx):
+   - 2px solid outline using the node's stroke color
+   - Appears immediately on selection
+   - Removed when selection is cleared
+   - **Click any node to see the outline appear!**
+
+2. **NodeResizer visibility** (line 441 in CustomNode.tsx):
+   - Shows resize handles when \`selected={true}\` AND \`editable={true}\`
+   - Not visible in this demo (read-only mode)
+   - See the "Editable" story for resize handle demos
+
+**Key Point:** The \`selected\` prop is purely for ReactFlow's visual feedback. It's separate from
+\`selectedNodeIds\` state which controls the info panel display.
+
+In this demo, the info panel is hidden (\`showNodeDetailPanel={false}\`) and edit mode is disabled,
+so you can focus on just the selection outline effect.
+        `,
+      },
+    },
+  },
+};
+
+const HighlightedNodeSyncTemplate = () => {
+  const [highlightedNodeId, setHighlightedNodeId] = React.useState<string | null>(null);
+  const nodeIds = ['node-1', 'node-2', 'node-3', 'node-4', 'node-5'];
+  const [currentIndex, setCurrentIndex] = React.useState(0);
+
+  const handleCycleNodes = () => {
+    const nextIndex = (currentIndex + 1) % nodeIds.length;
+    setCurrentIndex(nextIndex);
+    setHighlightedNodeId(nodeIds[nextIndex]);
+  };
+
+  const handleClearHighlight = () => {
+    setHighlightedNodeId(null);
+    setCurrentIndex(0);
+  };
+
+  // Mock event registry to demonstrate resolveEventRef
+  const resolveEventRef = (eventRef: string) => {
+    const eventRegistry: Record<string, any> = {
+      'user.clicked': {
+        name: 'user.clicked',
+        description: 'Triggered when a user clicks on an interactive element',
+        attributes: {
+          elementId: { type: 'string', required: true, description: 'ID of the clicked element' },
+          userId: { type: 'string', required: true, description: 'ID of the user who clicked' },
+          timestamp: { type: 'string', required: true, description: 'ISO 8601 timestamp' },
+          position: { type: 'object', description: 'Click coordinates (x, y)' },
+        },
+      },
+      'data.processed': {
+        name: 'data.processed',
+        description: 'Emitted when data processing completes successfully',
+        attributes: {
+          dataId: { type: 'string', required: true, description: 'Unique identifier for the data' },
+          recordsProcessed: { type: 'number', required: true, description: 'Number of records processed' },
+          duration: { type: 'number', description: 'Processing time in milliseconds' },
+          status: { type: 'string', required: true, description: 'Processing status (success/partial/failed)' },
+        },
+      },
+      'workflow.executed': {
+        name: 'workflow.executed',
+        description: 'Fired when a workflow completes execution',
+        attributes: {
+          workflowId: { type: 'string', required: true, description: 'Workflow identifier' },
+          executionId: { type: 'string', required: true, description: 'Execution run identifier' },
+          steps: { type: 'array', description: 'List of executed step IDs' },
+          result: { type: 'object', description: 'Workflow execution result' },
+        },
+      },
+      'decision.evaluated': {
+        name: 'decision.evaluated',
+        description: 'Published when a decision point is evaluated in the flow',
+        attributes: {
+          decisionId: { type: 'string', required: true, description: 'Decision point identifier' },
+          condition: { type: 'string', description: 'Evaluated condition expression' },
+          result: { type: 'boolean', required: true, description: 'Evaluation result' },
+          branchTaken: { type: 'string', required: true, description: 'Branch selected (true/false/error)' },
+        },
+      },
+    };
+
+    return eventRegistry[eventRef];
+  };
+
+  return (
+    <div>
+      <div
+        style={{
+          marginBottom: 16,
+          padding: 12,
+          backgroundColor: '#f0f9ff',
+          borderRadius: 4,
+          border: '1px solid #3b82f6',
+        }}
+      >
+        <strong style={{ color: '#1e40af' }}>Highlighted Node Sync Demo</strong>
+        <div style={{ marginTop: 8, fontSize: 12, color: '#475569' }}>
+          <p style={{ margin: '4px 0' }}>
+            This demonstrates how <code>highlightedNodeId</code> automatically syncs with selection
+            and shows the node info panel.
+          </p>
+          <p style={{ margin: '8px 0 4px 0' }}>
+            <strong>Current highlighted node:</strong>{' '}
+            {highlightedNodeId ? (
+              <span style={{ fontFamily: 'monospace', color: '#3b82f6' }}>{highlightedNodeId}</span>
+            ) : (
+              <span style={{ color: '#94a3b8' }}>None</span>
+            )}
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button
+              onClick={handleCycleNodes}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: 14,
+              }}
+            >
+              Cycle Nodes ({nodeIds[currentIndex]})
+            </button>
+            <button
+              onClick={handleClearHighlight}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#94a3b8',
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontSize: 14,
+              }}
+            >
+              Clear Highlight
+            </button>
+          </div>
+          <p style={{ margin: '12px 0 4px 0', fontSize: 11, fontStyle: 'italic', color: '#64748b' }}>
+            When you cycle nodes, watch how:
+          </p>
+          <ul style={{ margin: '4px 0', paddingLeft: 20, fontSize: 11, color: '#64748b' }}>
+            <li>The highlighted node gets a <strong>blue glow</strong></li>
+            <li>The node is automatically <strong>selected</strong> (selection outline)</li>
+            <li>The <strong>info panel shows</strong> at the bottom with node details</li>
+          </ul>
+        </div>
+      </div>
+      <GraphRenderer
+        canvas={selectionStylingCanvas}
+        width={800}
+        height={500}
+        highlightedNodeId={highlightedNodeId}
+        showNodeDetailPanel={true}
+        resolveEventRef={resolveEventRef}
+      />
+    </div>
+  );
+};
+
+export const HighlightedNodeSync: Story = {
+  render: () => <HighlightedNodeSyncTemplate />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Highlighted Node Sync** - Demonstrates automatic synchronization between \`highlightedNodeId\` and selection state.
+
+This simulates what happens during execution playback in the CanvasDetailPanel:
+
+**How it works:**
+1. When \`highlightedNodeId\` prop changes, GraphRenderer automatically:
+   - Selects that node (adds it to \`selectedNodeIds\`)
+   - Shows the node info panel (\`showNodePanel = true\`)
+   - Applies both the highlight glow and selection outline
+
+2. This creates a seamless connection between:
+   - Narrative events on the left (which set \`highlightedNodeId\`)
+   - Visual feedback on the canvas (glow + outline)
+   - Node details panel at the bottom (showing node info)
+
+**Use case:**
+In the CanvasDetailPanel, when users:
+- Click a scenario template → Nodes involved in that scenario are highlighted
+- Click a narrative event → The corresponding node on the canvas is highlighted
+- Click a node on the canvas → The corresponding narrative event is highlighted
+
+All of these actions update \`highlightedNodeId\`, which now automatically shows the node info panel!
+        `,
+      },
+    },
+  },
+};

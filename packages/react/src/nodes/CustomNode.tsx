@@ -329,9 +329,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         // Use small absolute minimums - typeDefinition.size is the default, not the minimum
         minWidth: 20,
         minHeight: 20,
-        boxShadow: selected ? `0 0 0 2px ${strokeColor}` : '0 2px 4px rgba(0,0,0,0.1)',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
         opacity: isActive ? 1 : 0.1,
-        transition: 'box-shadow 0.2s ease, opacity 0.3s ease',
+        transition: 'opacity 0.3s ease',
         boxSizing: 'border-box',
       }
     : {};
@@ -373,9 +373,9 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         // Use small absolute minimums - typeDefinition.size is the default, not the minimum
         minWidth: 20,
         minHeight: 20,
-        boxShadow: selected ? `0 0 0 2px ${strokeColor}` : '0 2px 4px rgba(0,0,0,0.1)',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
         opacity: isActive ? 1 : 0.1,
-        transition: 'box-shadow 0.2s ease, opacity 0.3s ease',
+        transition: 'opacity 0.3s ease',
         boxSizing: 'border-box',
       }
     : {};
@@ -470,7 +470,17 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
       {isHexagon ? (
         <div
           ref={nodeRef}
-          style={{ position: 'relative', width: '100%', height: '100%' }}
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            boxShadow: isHighlighted
+              ? `0 0 0 3px #3b82f6, 0 0 20px rgba(59, 130, 246, 0.5)`
+              : selected
+              ? `0 0 0 2px ${strokeColor}`
+              : 'none',
+            transition: 'box-shadow 0.2s ease',
+          }}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
@@ -526,7 +536,17 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
       ) : isDiamond ? (
         <div
           ref={nodeRef}
-          style={{ position: 'relative', width: '100%', height: '100%' }}
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            boxShadow: isHighlighted
+              ? `0 0 0 3px #3b82f6, 0 0 20px rgba(59, 130, 246, 0.5)`
+              : selected
+              ? `0 0 0 2px ${strokeColor}`
+              : 'none',
+            transition: 'box-shadow 0.2s ease',
+          }}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >

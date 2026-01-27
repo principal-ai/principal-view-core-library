@@ -5,8 +5,8 @@
  */
 
 import { Command } from 'commander';
-import { readFileSync } from 'node:fs';
-import { resolve, relative } from 'node:path';
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve, relative, dirname, join, basename } from 'node:path';
 import chalk from 'chalk';
 import { globby } from 'globby';
 import { createExecutionValidator } from '@principal-ai/principal-view-core';
@@ -37,6 +37,44 @@ function loadExecutionFile(filePath: string): unknown {
       `Failed to parse JSON: ${(error as Error).message}`
     );
   }
+}
+
+/**
+ * Check if a matching canvas file exists for an execution file
+ * Returns the path to the matching canvas, or null if not found
+ */
+function findMatchingCanvas(executionPath: string, cwd: string): string | null {
+  const fileName = basename(executionPath);
+  const dir = dirname(executionPath);
+
+  // Extract basename by removing .otel.json extension
+  const canvasBasename = fileName.replace(/\.otel\.json$/, '');
+
+  // Determine canvas directory (go up from __executions__ to .principal-views)
+  // Support both .principal-views/__executions__/ and __executions__/ patterns
+  let canvasDir: string;
+  if (dir.includes('.principal-views/__executions__')) {
+    canvasDir = dir.replace('/__executions__', '');
+  } else if (dir.endsWith('__executions__')) {
+    canvasDir = join(dirname(dir), '.principal-views');
+  } else {
+    // Fallback: look in .principal-views relative to cwd
+    canvasDir = join(cwd, '.principal-views');
+  }
+
+  // Check for .otel.canvas first (preferred)
+  const otelCanvasPath = join(canvasDir, `${canvasBasename}.otel.canvas`);
+  if (existsSync(otelCanvasPath)) {
+    return otelCanvasPath;
+  }
+
+  // Check for regular .canvas as fallback
+  const regularCanvasPath = join(canvasDir, `${canvasBasename}.canvas`);
+  if (existsSync(regularCanvasPath)) {
+    return regularCanvasPath;
+  }
+
+  return null;
 }
 
 /**
@@ -218,6 +256,22 @@ export function createValidateExecutionCommand(): Command {
           try {
             const data = loadExecutionFile(absolutePath);
             const result = validator.validate(data, relativePath);
+
+            // Check if a matching canvas file exists
+            const matchingCanvas = findMatchingCanvas(absolutePath, cwd);
+            if (!matchingCanvas) {
+              const fileName = basename(absolutePath);
+              const canvasBasename = fileName.replace(/\.otel\.json$/, '');
+
+              result.errors.push({
+                path: relativePath,
+                message: `No matching canvas file found for execution file`,
+                severity: 'error',
+                suggestion: `Create a canvas file named '${canvasBasename}.otel.canvas' in .principal-views/ directory`,
+              });
+              result.valid = false;
+            }
+
             results.push({ file: relativePath, result });
           } catch (error) {
             // Parse error

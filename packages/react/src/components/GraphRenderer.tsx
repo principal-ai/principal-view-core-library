@@ -38,6 +38,7 @@ import type {
   ExtendedCanvas,
   ComponentLibrary,
   JsonValue,
+  PVEventSchema,
 } from '@principal-ai/principal-view-core';
 import { CanvasConverter } from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
@@ -215,6 +216,14 @@ interface GraphRendererBaseProps {
    */
   showNodeDetailPanel?: boolean;
 
+  /**
+   * Optional callback to resolve event references to full event schemas.
+   * When a node has an eventRef (string reference like "order.completed"),
+   * this function is called to retrieve the full event definition.
+   * Return undefined if the event reference cannot be resolved.
+   */
+  resolveEventRef?: (eventRef: string) => PVEventSchema | undefined;
+
 }
 
 /** GraphRenderer props - canvas format only */
@@ -368,6 +377,7 @@ interface GraphRendererInnerProps {
   onSourceClick?: (nodeId: string, source: string) => void;
   onNodeClick?: (nodeId: string, event: React.MouseEvent) => void;
   showNodeDetailPanel?: boolean;
+  resolveEventRef?: (eventRef: string) => PVEventSchema | undefined;
 }
 
 /**
@@ -398,6 +408,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   onSourceClick,
   onNodeClick: onNodeClickProp,
   showNodeDetailPanel,
+  resolveEventRef,
 }) => {
   const { fitView } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
@@ -452,6 +463,17 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     targetHandle?: string;
     validTypes: string[];
   } | null>(null);
+
+  // Sync highlightedNodeId to selection state so info panel shows
+  useEffect(() => {
+    if (highlightedNodeId) {
+      setSelectedNodeIds(new Set([highlightedNodeId]));
+      setShowNodePanel(true);
+      // Clear edge selection when highlighting a node
+      setSelectedEdgeIds(new Set());
+      setShowEdgePanel(false);
+    }
+  }, [highlightedNodeId]);
 
   // ============================================
   // INTERNAL EDIT STATE
@@ -580,7 +602,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
       // Determine if we should show the panel based on showNodeDetailPanel prop
-      const shouldManagePanel = showNodeDetailPanel !== false && (showNodeDetailPanel === true || !onNodeClickProp);
+      const shouldShowPanel = showNodeDetailPanel !== false && (showNodeDetailPanel === true || !onNodeClickProp);
 
       // If custom node click handler is provided, call it
       if (onNodeClickProp) {
@@ -591,32 +613,35 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         }
       }
 
-      if (shouldManagePanel) {
-        if (event.shiftKey && editable) {
-          // Shift+click: toggle node in selection
-          setSelectedNodeIds((prev) => {
-            const next = new Set(prev);
-            if (next.has(node.id)) {
-              next.delete(node.id);
-            } else {
-              next.add(node.id);
-            }
-            return next;
-          });
-          setShowNodePanel(true);
-        } else {
-          // Regular click: single select (replace selection)
-          const shouldDeselect = selectedNodeIds.size === 1 && selectedNodeIds.has(node.id);
-          if (shouldDeselect) {
-            setSelectedNodeIds(new Set());
-            setShowNodePanel(false);
+      // Always update selection state for visual feedback (even in read-only mode)
+      if (event.shiftKey && editable) {
+        // Shift+click: toggle node in selection
+        setSelectedNodeIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(node.id)) {
+            next.delete(node.id);
           } else {
-            setSelectedNodeIds(new Set([node.id]));
+            next.add(node.id);
+          }
+          return next;
+        });
+        if (shouldShowPanel) {
+          setShowNodePanel(true);
+        }
+      } else {
+        // Regular click: single select (replace selection)
+        const shouldDeselect = selectedNodeIds.size === 1 && selectedNodeIds.has(node.id);
+        if (shouldDeselect) {
+          setSelectedNodeIds(new Set());
+          setShowNodePanel(false);
+        } else {
+          setSelectedNodeIds(new Set([node.id]));
+          if (shouldShowPanel) {
             setShowNodePanel(true);
           }
-          setSelectedEdgeIds(new Set());
-          setShowEdgePanel(false);
         }
+        setSelectedEdgeIds(new Set());
+        setShowEdgePanel(false);
       }
     },
     [editable, selectedNodeIds, onNodeClickProp, showNodeDetailPanel]
@@ -660,12 +685,15 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     setShowEdgePanel(false);
   }, []);
 
-  // Handle selection change from ReactFlow (box selection)
+  // Handle selection change from ReactFlow (box selection and clicks)
   const handleSelectionChange = useCallback(
     ({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[]; edges: Edge[] }) => {
+      // Always update selection state, even in read-only mode (for visual feedback)
+      setSelectedNodeIds(new Set(selectedNodes.map((n) => n.id)));
+      setSelectedEdgeIds(new Set(selectedEdges.map((e) => e.id)));
+
+      // Only show panels in edit mode or when explicitly enabled
       if (editable) {
-        setSelectedNodeIds(new Set(selectedNodes.map((n) => n.id)));
-        setSelectedEdgeIds(new Set(selectedEdges.map((e) => e.id)));
         // Box selection is an explicit action, so show panels
         if (selectedNodes.length > 0) {
           setShowNodePanel(true);
@@ -1207,6 +1235,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       return {
         ...node,
         ...(pendingPosition ? { position: pendingPosition } : {}),
+        selected: selectedNodeIds.has(node.id),
         data: {
           ...node.data,
           editable,
@@ -1223,7 +1252,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         } as CustomNodeData,
       };
     });
-  }, [localNodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, highlightedNodeId, activeNodeIds, editStateRef, shiftKeyPressed]);
+  }, [localNodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, highlightedNodeId, activeNodeIds, editStateRef, shiftKeyPressed, selectedNodeIds]);
 
   const baseNodesKey = useMemo(() => {
     return nodes
@@ -1240,7 +1269,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   }, [edges]);
 
   // Local xyflow nodes state for dragging
-  const [xyflowLocalNodes, setXyflowLocalNodes] = useState(xyflowNodesBase);
+  const [xyflowLocalNodes, setXyflowLocalNodes] = useState<Node<CustomNodeData>[]>(xyflowNodesBase);
 
   // Sync when base changes
   const prevBaseNodesKeyRef = useRef(baseNodesKey);
@@ -1549,6 +1578,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           onDelete={editable ? handleNodeDelete : undefined}
           onUpdate={editable ? handleNodeUpdate : undefined}
           onSourceClick={onSourceClick}
+          resolveEventRef={resolveEventRef}
         />
       )}
 
@@ -1929,6 +1959,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     onSourceClick,
     onNodeClick,
     showNodeDetailPanel,
+    resolveEventRef,
   } = props;
 
   return (
@@ -1958,6 +1989,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           onSourceClick={onSourceClick}
           onNodeClick={onNodeClick}
           showNodeDetailPanel={showNodeDetailPanel}
+          resolveEventRef={resolveEventRef}
         />
       </ReactFlowProvider>
     </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { NodeState, NodeTypeDefinition, JsonValue } from '@principal-ai/principal-view-core';
+import type { NodeState, NodeTypeDefinition, JsonValue, PVEventSchema } from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
 import { resolveIcon } from '../utils/iconResolver';
 
@@ -66,6 +66,8 @@ export interface NodeInfoPanelProps {
   onUpdate?: (nodeId: string, updates: { type?: string; data?: Record<string, JsonValue> }) => void;
   /** Optional callback when a source is clicked. Receives the node ID and source path. */
   onSourceClick?: (nodeId: string, source: string) => void;
+  /** Optional callback to resolve event references to full event schemas */
+  resolveEventRef?: (eventRef: string) => PVEventSchema | undefined;
 }
 
 /**
@@ -79,6 +81,7 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
   onDelete,
   onUpdate,
   onSourceClick,
+  resolveEventRef,
 }) => {
   const { theme } = useTheme();
 
@@ -131,12 +134,21 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
     'nodeType',
     'otel',
     'resourceMatch',
+    'event',      // Handle separately in Event section
+    'eventRef',   // Handle separately in Event section
   ];
 
   // Extract OTEL metadata
   const otelInfo = node.data?.otel as
     | { kind?: string; category?: string; isNew?: boolean }
     | undefined;
+
+  // Extract Event metadata
+  const eventInfo = node.data?.event as unknown as PVEventSchema | undefined;
+  const eventRef = node.data?.eventRef as unknown as string | undefined;
+
+  // Try to resolve eventRef to full event schema if callback is provided
+  const resolvedEvent = eventRef && resolveEventRef ? resolveEventRef(eventRef) : undefined;
 
   const nodeDataEntries = node.data
     ? Object.entries(node.data).filter(([key]) => !internalFields.includes(key))
@@ -298,6 +310,86 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                   </span>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Event Info */}
+          {(eventInfo || eventRef || resolvedEvent) && (
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
+                Event
+              </div>
+              {(() => {
+                // Use resolved event if available, otherwise use inline eventInfo
+                const displayEvent = resolvedEvent || eventInfo;
+
+                if (displayEvent) {
+                  // Show full event with schema
+                  return (
+                    <div>
+                      <div
+                        style={{
+                          fontSize: theme.fontSizes[0],
+                          fontFamily: 'monospace',
+                          padding: '6px 10px',
+                          backgroundColor: theme.colors.muted,
+                          borderRadius: '4px',
+                          color: theme.colors.primary,
+                          border: `1px solid ${theme.colors.border}`,
+                          marginBottom: '4px',
+                        }}
+                      >
+                        {displayEvent.name}
+                      </div>
+                      {displayEvent.description && (
+                        <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginTop: '4px', marginBottom: '8px' }}>
+                          {displayEvent.description}
+                        </div>
+                      )}
+                      {displayEvent.attributes && Object.keys(displayEvent.attributes).length > 0 && (
+                        <div style={{ marginTop: '8px' }}>
+                          <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
+                            Attributes
+                          </div>
+                          <pre
+                            style={{
+                              fontSize: '11px',
+                              fontFamily: 'monospace',
+                              padding: '8px',
+                              backgroundColor: theme.colors.muted,
+                              borderRadius: '4px',
+                              border: `1px solid ${theme.colors.border}`,
+                              overflow: 'auto',
+                              margin: 0,
+                              maxHeight: '200px',
+                            }}
+                          >
+                            {JSON.stringify(displayEvent.attributes, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  );
+                } else if (eventRef) {
+                  // Just show the reference string (not resolved)
+                  return (
+                    <div
+                      style={{
+                        fontSize: theme.fontSizes[0],
+                        fontFamily: 'monospace',
+                        padding: '6px 10px',
+                        backgroundColor: theme.colors.muted,
+                        borderRadius: '4px',
+                        color: theme.colors.primary,
+                        border: `1px solid ${theme.colors.border}`,
+                      }}
+                    >
+                      {eventRef}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
           )}
         </div>

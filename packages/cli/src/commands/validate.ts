@@ -1214,7 +1214,26 @@ function validateCanvas(
         type: 'error',
         message: 'OTEL canvas files must have a "pv.markdown" field pointing to documentation',
         path: 'pv.markdown',
-        suggestion: 'Add: "markdown": ".principal-views/graph-name.md" (path relative to repository root)',
+        suggestion: `Add: "markdown": ".principal-views/graph-name.md"
+
+The markdown file should explain the FEATURE, not the canvas itself.
+
+Good: "Task management lets users create, edit, and archive tasks.
+       Tasks move through a lifecycle from draft → active → archive..."
+
+Bad:  "This canvas shows telemetry events. The task.create.started
+       event is emitted when..."
+
+The canvas shows HOW we instrument it. The markdown explains WHAT the feature does and WHY.
+
+Include:
+- What problem does this feature solve?
+- What operations are available?
+- What design choices were made and why?
+- Common workflow patterns
+- Error scenarios and recovery
+
+The canvas is visual documentation. The markdown supplements it with context.`,
       });
     } else {
       // Validate that the markdown file exists (if repository path is provided)
@@ -1225,7 +1244,17 @@ function validateCanvas(
             type: 'error',
             message: `Referenced markdown file does not exist: ${pv.markdown}`,
             path: 'pv.markdown',
-            suggestion: `Create the markdown file at: ${markdownPath}`,
+            suggestion: `Create the markdown file at: ${markdownPath}
+
+The markdown should explain the FEATURE (what it does, why it exists), not describe the canvas itself.
+The canvas shows HOW we instrument it. The markdown explains WHAT the feature does and WHY.
+
+Example structure:
+- What problem does this feature solve?
+- What operations are available?
+- What design choices were made and why?
+- Common workflow patterns
+- Error scenarios and recovery`,
           });
         }
       }

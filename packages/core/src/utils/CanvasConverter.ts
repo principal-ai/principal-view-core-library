@@ -48,6 +48,8 @@ export interface ReactFlowNode {
     description?: string;
     otel?: PVOtelExtension;
     resourceMatch?: ResourceMatch;
+    event?: PVEventSchema;
+    eventRef?: string;
     events?: Record<string, PVEventSchema>;
     dataSchema?: Record<string, {
       type: 'string' | 'number' | 'boolean' | 'object' | 'array';
@@ -201,6 +203,8 @@ export class CanvasConverter {
       if (pv.sources) data.sources = pv.sources;
       // actions removed - legacy path-based
       if (pv.dataSchema) data.dataSchema = pv.dataSchema;
+      if (pv.event) (data as Record<string, unknown>).event = pv.event;
+      if (pv.eventRef) (data as Record<string, unknown>).eventRef = pv.eventRef;
     }
 
     return {
@@ -322,6 +326,8 @@ export class CanvasConverter {
         if (pv?.states) nodeData.states = pv.states as JsonValue;
         if (pv?.otel) nodeData.otel = pv.otel as JsonValue;
         if (pv?.resourceMatch) nodeData.resourceMatch = pv.resourceMatch as JsonValue;
+        if (pv?.event) nodeData.event = pv.event as unknown as JsonValue;
+        if (pv?.eventRef) nodeData.eventRef = pv.eventRef;
 
         // Add type-specific data
         if (node.type === 'text' && node.text) nodeData.text = node.text;

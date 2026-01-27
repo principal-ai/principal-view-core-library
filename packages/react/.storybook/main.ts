@@ -24,6 +24,7 @@ const config: StorybookConfig = {
       config.resolve.alias = {
         ...config.resolve.alias,
         '@storybook/blocks': '@storybook/addon-docs/blocks',
+        'handlebars': 'handlebars/dist/handlebars.js',
       };
     }
 
@@ -33,9 +34,14 @@ const config: StorybookConfig = {
         ...(config.optimizeDeps.exclude || []),
         '@principal-ai/principal-view-core',
       ];
+      config.optimizeDeps.include = [
+        ...(config.optimizeDeps.include || []),
+        'handlebars',
+      ];
     } else {
       config.optimizeDeps = {
         exclude: ['@principal-ai/principal-view-core'],
+        include: ['handlebars'],
       };
     }
 
