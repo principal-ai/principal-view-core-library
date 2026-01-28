@@ -1,140 +1,2233 @@
 {
-  "exportedAt": "2026-01-27T23:18:32.808Z",
+  "exportedAt": "2026-01-28T17:00:41.617Z",
   "serviceName": "principal-view-core-tests",
-  "spanCount": 6,
+  "spanCount": 58,
   "spans": [
     {
-      "traceId": "b4d4c7f3077cfc5459f2342e3bd94a53",
-      "spanId": "767778494f927e99",
-      "name": "test:basic-traced",
+      "traceId": "2c1b67806afdf77179c99f0c335df862",
+      "spanId": "13fae7a16eb01067",
+      "name": "rule.execute",
       "kind": "INTERNAL",
-      "startTime": 1769555912778,
-      "endTime": 1769555912789.9885,
-      "duration": 11.9885,
+      "startTime": 1769619641613,
+      "endTime": 1769619641613.3943,
+      "duration": 0.39425,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1769555912776-pxeovxp"
+        "test.run.id": "1769619641608-3m87lqw"
       },
       "attributes": {
-        "test.type": "demo"
+        "rule.id": "no-unknown-fields",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "No Unknown Fields",
+        "parent.span.id": "c7ba6b90a4ef34a3"
       },
       "status": {
         "code": "OK"
       },
-      "events": []
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641613.3662,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
     },
     {
-      "traceId": "c6ca6e527697bd3f954ed32ebe36abc6",
-      "spanId": "83877736dab9660e",
-      "name": "operation:validate",
+      "traceId": "ee414fc878a0510f2e11c10273188197",
+      "spanId": "3f25cbabd4938044",
+      "name": "rule.execute",
       "kind": "INTERNAL",
-      "startTime": 1769555912791,
-      "endTime": 1769555912796.216,
-      "duration": 5.216042,
+      "startTime": 1769619641613,
+      "endTime": 1769619641613.067,
+      "duration": 0.066834,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1769555912776-pxeovxp"
+        "test.run.id": "1769619641608-3m87lqw"
       },
       "attributes": {
-        "operation.type": "validation"
+        "rule.id": "required-metadata",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "Required Metadata",
+        "parent.span.id": "c7ba6b90a4ef34a3"
       },
       "status": {
         "code": "OK"
       },
-      "events": []
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641613.057,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
     },
     {
-      "traceId": "3794c7ff41ad0c0708e971ae661bda07",
-      "spanId": "9217e4798bf3bb4c",
-      "name": "operation:process",
+      "traceId": "b19855e0fc34fe6b5a9c741401dde60a",
+      "spanId": "722ceb9354c9b040",
+      "name": "rule.execute",
       "kind": "INTERNAL",
-      "startTime": 1769555912796,
-      "endTime": 1769555912801.952,
-      "duration": 5.951875,
+      "startTime": 1769619641614,
+      "endTime": 1769619641614.2815,
+      "duration": 0.281417,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1769555912776-pxeovxp"
+        "test.run.id": "1769619641608-3m87lqw"
       },
       "attributes": {
-        "operation.type": "processing",
-        "input": "validated"
+        "rule.id": "valid-node-types",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "Valid Node Types",
+        "parent.span.id": "c7ba6b90a4ef34a3"
       },
       "status": {
         "code": "OK"
       },
-      "events": []
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641614.2769,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
     },
     {
-      "traceId": "b18072e8c38daa629c97eadd8f958690",
-      "spanId": "e01a7f740dad333c",
-      "name": "test:nested-spans",
+      "traceId": "2d2b66b3e63fbe2a9d4e463dd7c673b9",
+      "spanId": "acf3e1eed18d7fde",
+      "name": "rule.execute",
       "kind": "INTERNAL",
-      "startTime": 1769555912791,
-      "endTime": 1769555912802.3455,
-      "duration": 11.345375,
+      "startTime": 1769619641614,
+      "endTime": 1769619641614.2563,
+      "duration": 0.256459,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1769555912776-pxeovxp"
+        "test.run.id": "1769619641608-3m87lqw"
       },
       "attributes": {
-        "test.type": "nested"
+        "rule.id": "valid-edge-types",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "Valid Edge Types",
+        "parent.span.id": "c7ba6b90a4ef34a3"
       },
       "status": {
         "code": "OK"
       },
-      "events": []
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641614.2542,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
     },
     {
-      "traceId": "62d6e66bdc13981dd34065694a097bdc",
-      "spanId": "1bad5e451187c6e8",
-      "name": "child:computation",
+      "traceId": "0f5ebcce870b4415cc47caaeb1d7488c",
+      "spanId": "f33b3d7b40ad5bc4",
+      "name": "rule.execute",
       "kind": "INTERNAL",
-      "startTime": 1769555912802,
-      "endTime": 1769555912807.5427,
-      "duration": 5.542667,
+      "startTime": 1769619641614,
+      "endTime": 1769619641614.2078,
+      "duration": 0.207666,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1769555912776-pxeovxp"
+        "test.run.id": "1769619641608-3m87lqw"
       },
       "attributes": {
-        "computation.type": "example"
+        "rule.id": "valid-color-format",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "Valid Color Format",
+        "parent.span.id": "c7ba6b90a4ef34a3"
       },
       "status": {
-        "code": "UNSET"
+        "code": "OK"
       },
-      "events": []
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641614.2043,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
     },
     {
-      "traceId": "6a62e4e6681c6e6a5a475278b2d86ab1",
-      "spanId": "b40bcba851e7b2de",
-      "name": "test:manual-span",
+      "traceId": "27f1df7a1b7bec75378233baeb9282e5",
+      "spanId": "4c72a0c2f4977230",
+      "name": "rule.execute",
       "kind": "INTERNAL",
-      "startTime": 1769555912802,
-      "endTime": 1769555912807.61,
-      "duration": 5.610125,
+      "startTime": 1769619641614,
+      "endTime": 1769619641614.0981,
+      "duration": 0.098208,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1769555912776-pxeovxp"
+        "test.run.id": "1769619641608-3m87lqw"
       },
       "attributes": {
-        "manual": true
+        "rule.id": "connection-type-references",
+        "rule.category": "reference",
+        "rule.severity": "error",
+        "rule.name": "Connection Type References",
+        "parent.span.id": "c7ba6b90a4ef34a3"
       },
       "status": {
-        "code": "UNSET"
+        "code": "OK"
       },
-      "events": []
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641614.0957,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "f19d2a871e1bb356a7371ce99b299b8c",
+      "spanId": "25dfd8993f06110d",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641614,
+      "endTime": 1769619641614.1836,
+      "duration": 0.183708,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "state-transition-references",
+        "rule.category": "reference",
+        "rule.severity": "error",
+        "rule.name": "State Transition References",
+        "parent.span.id": "c7ba6b90a4ef34a3"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641614.1814,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 1
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "7c4b65135df0a9eb5cd009442ef7ca07",
+      "spanId": "3e15916bed80327c",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641615,
+      "endTime": 1769619641615.1252,
+      "duration": 0.125166,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "minimum-node-sources",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Minimum Node Sources",
+        "parent.span.id": "c7ba6b90a4ef34a3"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641615.088,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "98e9eb25c14dd62eb7c49ab05916091e",
+      "spanId": "0d4ea495e2183df9",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641615,
+      "endTime": 1769619641615.0889,
+      "duration": 0.088958,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "orphaned-node-types",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Orphaned Node Types",
+        "parent.span.id": "c7ba6b90a4ef34a3"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641615.0845,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "0606562a54618c4d23e9fd8207eed83f",
+      "spanId": "f5ace3272df2b387",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641615,
+      "endTime": 1769619641615.0803,
+      "duration": 0.080375,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "orphaned-edge-types",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Orphaned Edge Types",
+        "parent.span.id": "c7ba6b90a4ef34a3"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641615.0752,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "376d846d95af09023e4b060f12859f25",
+      "spanId": "208920b9b9e34bed",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641615,
+      "endTime": 1769619641615.1553,
+      "duration": 0.155333,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "unreachable-states",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Unreachable States",
+        "parent.span.id": "c7ba6b90a4ef34a3"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641615.154,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "fbdb22ea1d05be00ae1ccd206e89736e",
+      "spanId": "ed568ccb86457f32",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641615,
+      "endTime": 1769619641615.126,
+      "duration": 0.125959,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "dead-end-states",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Dead End States",
+        "parent.span.id": "c7ba6b90a4ef34a3"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641615.125,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "0d88d27de3f367f799ccfcd146621d15",
+      "spanId": "2f2f5a3b8befd7c3",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641615,
+      "endTime": 1769619641615.1562,
+      "duration": 0.156167,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "valid-action-patterns",
+        "rule.category": "pattern",
+        "rule.severity": "error",
+        "rule.name": "Valid Action Patterns",
+        "parent.span.id": "c7ba6b90a4ef34a3"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641615.1553,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "0bbf08616695910a8afaa97cbcb14823",
+      "spanId": "163605ab49218bec",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641615,
+      "endTime": 1769619641615.1387,
+      "duration": 0.138584,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "library-node-type-match",
+        "rule.category": "library",
+        "rule.severity": "error",
+        "rule.name": "Library Node Type Match",
+        "parent.span.id": "c7ba6b90a4ef34a3"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641615.1367,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 1
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "2570bee77a3170d57b55b66c2ca5ff12",
+      "spanId": "c7ba6b90a4ef34a3",
+      "name": "rules.lint",
+      "kind": "INTERNAL",
+      "startTime": 1769619641613,
+      "endTime": 1769619641616.0498,
+      "duration": 3.049875,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "lint.config.path": "test-config-with-violations.yaml",
+        "lint.rules.total": 14,
+        "lint.library.provided": false
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "lint.started",
+          "timestamp": 1769619641613.1616,
+          "attributes": {
+            "rules.registered": 14
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641613.8906,
+          "attributes": {
+            "rule.id": "required-metadata",
+            "rule.category": "schema",
+            "violations.count": 1,
+            "violations.severity": "error"
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641614.1973,
+          "attributes": {
+            "rule.id": "valid-node-types",
+            "rule.category": "schema",
+            "violations.count": 1,
+            "violations.severity": "error"
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641614.699,
+          "attributes": {
+            "rule.id": "valid-color-format",
+            "rule.category": "schema",
+            "violations.count": 1,
+            "violations.severity": "error"
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641615.1433,
+          "attributes": {
+            "rule.id": "minimum-node-sources",
+            "rule.category": "structure",
+            "violations.count": 1,
+            "violations.severity": "error"
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641615.272,
+          "attributes": {
+            "rule.id": "orphaned-node-types",
+            "rule.category": "structure",
+            "violations.count": 1,
+            "violations.severity": "error"
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641615.3684,
+          "attributes": {
+            "rule.id": "orphaned-edge-types",
+            "rule.category": "structure",
+            "violations.count": 1,
+            "violations.severity": "error"
+          }
+        },
+        {
+          "name": "lint.completed",
+          "timestamp": 1769619641616.0479,
+          "attributes": {
+            "lint.rules.executed": 14,
+            "lint.rules.skipped": 0,
+            "lint.violations.total": 6,
+            "lint.violations.errors": 6,
+            "lint.violations.warnings": 0,
+            "lint.violations.fixable": 1
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "8245b092aa726309518c7a0761c9c821",
+      "spanId": "0e62b796a5833469",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0154,
+      "duration": 0.015417,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "no-unknown-fields",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "No Unknown Fields",
+        "parent.span.id": "f0df057ea31384fc"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.0146,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "6a5517211e77e64d6300aedc9c9a99db",
+      "spanId": "149881a6a322ab11",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0073,
+      "duration": 0.007292,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "required-metadata",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "Required Metadata",
+        "parent.span.id": "f0df057ea31384fc"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.0063,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "d9ea04492fb403a19a00af6439855116",
+      "spanId": "99289adce0656178",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0095,
+      "duration": 0.009458,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "valid-node-types",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "Valid Node Types",
+        "parent.span.id": "f0df057ea31384fc"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.0085,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "ff708b0110ed6b2e7b0780e113aec9e5",
+      "spanId": "62ac45c57e9f070b",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0083,
+      "duration": 0.00825,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "valid-edge-types",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "Valid Edge Types",
+        "parent.span.id": "f0df057ea31384fc"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.0073,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "a6f563deb44c7479fd53f4e25a36ba0d",
+      "spanId": "e8c42c4c8ac25ff9",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0063,
+      "duration": 0.00625,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "valid-color-format",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "Valid Color Format",
+        "parent.span.id": "f0df057ea31384fc"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.0056,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "df026cc3c8047e3d0b70702e2a8ee1ce",
+      "spanId": "edca2b659e45898f",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0098,
+      "duration": 0.009667,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "connection-type-references",
+        "rule.category": "reference",
+        "rule.severity": "error",
+        "rule.name": "Connection Type References",
+        "parent.span.id": "f0df057ea31384fc"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.009,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "4e270982965ba79206b931bc68c5e303",
+      "spanId": "c10f22b98c0fbc4e",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0068,
+      "duration": 0.00675,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "state-transition-references",
+        "rule.category": "reference",
+        "rule.severity": "error",
+        "rule.name": "State Transition References",
+        "parent.span.id": "f0df057ea31384fc"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.006,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "0dc8a0db99ddeb346ed6f5a55f982d35",
+      "spanId": "83ad6f8a94f3ac3d",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0054,
+      "duration": 0.005458,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "minimum-node-sources",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Minimum Node Sources",
+        "parent.span.id": "f0df057ea31384fc"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.005,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "4e64b47eef7c0c69e10bc77122b2b41a",
+      "spanId": "e04b3e50277b8863",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0066,
+      "duration": 0.006584,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "orphaned-node-types",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Orphaned Node Types",
+        "parent.span.id": "f0df057ea31384fc"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.006,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "a830660dcbf2c31aa6b8221d4d674c5b",
+      "spanId": "8c0344b468831033",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0112,
+      "duration": 0.01125,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "orphaned-edge-types",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Orphaned Edge Types",
+        "parent.span.id": "f0df057ea31384fc"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.0103,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "5dff96c3d7ab2cbf9e9dff019b379df4",
+      "spanId": "55ea9964626064c3",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.01,
+      "duration": 0.009917,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "unreachable-states",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Unreachable States",
+        "parent.span.id": "f0df057ea31384fc"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.009,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "26cea251eda592059ed820e3a68f47b4",
+      "spanId": "f6bc64b15176b7cc",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0146,
+      "duration": 0.014541,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "dead-end-states",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Dead End States",
+        "parent.span.id": "f0df057ea31384fc"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.013,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "ec3b4e3a3d2386ebabeb40748b4290d4",
+      "spanId": "3ad4eb4a7fdd19ac",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0103,
+      "duration": 0.01025,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "valid-action-patterns",
+        "rule.category": "pattern",
+        "rule.severity": "error",
+        "rule.name": "Valid Action Patterns",
+        "parent.span.id": "f0df057ea31384fc"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.0085,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "57a5c2263c8b05bed7e797a3b27e8d70",
+      "spanId": "31b5123875053f4c",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0107,
+      "duration": 0.010834,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "library-node-type-match",
+        "rule.category": "library",
+        "rule.severity": "error",
+        "rule.name": "Library Node Type Match",
+        "parent.span.id": "f0df057ea31384fc"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.0098,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "8ee760216d64993fcc9b24bc7e0e568e",
+      "spanId": "f0df057ea31384fc",
+      "name": "rules.lint",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.2947,
+      "duration": 0.294708,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "lint.config.path": "test-config-valid.yaml",
+        "lint.rules.total": 14,
+        "lint.library.provided": false
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "lint.started",
+          "timestamp": 1769619641616.0076,
+          "attributes": {
+            "rules.registered": 14
+          }
+        },
+        {
+          "name": "lint.completed",
+          "timestamp": 1769619641616.293,
+          "attributes": {
+            "lint.rules.executed": 14,
+            "lint.rules.skipped": 0,
+            "lint.violations.total": 0,
+            "lint.violations.errors": 0,
+            "lint.violations.warnings": 0,
+            "lint.violations.fixable": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "619f5c811f9138787df7ce0654897eb3",
+      "spanId": "cac67315aa121fc5",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0164,
+      "duration": 0.01625,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "no-unknown-fields",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "No Unknown Fields",
+        "parent.span.id": "08e17dd4fea1fec6"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.0146,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "b6d4b026d72c0558156623ce817feff2",
+      "spanId": "a2ab45b4b4235974",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0085,
+      "duration": 0.008625,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "required-metadata",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "Required Metadata",
+        "parent.span.id": "08e17dd4fea1fec6"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.006,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "288e84089b6851c87ea434c6c889223c",
+      "spanId": "851e913c1809570a",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0132,
+      "duration": 0.01325,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "valid-node-types",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "Valid Node Types",
+        "parent.span.id": "08e17dd4fea1fec6"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.011,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "1b8576938f74af302eae60192802904b",
+      "spanId": "f74929f815245b0d",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.0107,
+      "duration": 0.01075,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "valid-edge-types",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "Valid Edge Types",
+        "parent.span.id": "08e17dd4fea1fec6"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.0076,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "c32d8d1dae5e8dc82856c1166ad3660b",
+      "spanId": "acbac2c54d0e4521",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.037,
+      "duration": 0.037125,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "valid-color-format",
+        "rule.category": "schema",
+        "rule.severity": "warn",
+        "rule.name": "Valid Color Format",
+        "parent.span.id": "08e17dd4fea1fec6"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641616.0276,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "57a333cae9e61403654f0ee77897b519",
+      "spanId": "acfac843e6fc60eb",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.021,
+      "duration": 0.021041,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "connection-type-references",
+        "rule.category": "reference",
+        "rule.severity": "error",
+        "rule.name": "Connection Type References",
+        "parent.span.id": "08e17dd4fea1fec6"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0183,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "2019db1b079410fb74eafbd8ee51d132",
+      "spanId": "7e3809c780f4c4e6",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.005,
+      "duration": 0.005,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "state-transition-references",
+        "rule.category": "reference",
+        "rule.severity": "error",
+        "rule.name": "State Transition References",
+        "parent.span.id": "08e17dd4fea1fec6"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0042,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "8507eec1ef6300fa07aae014f9d1f990",
+      "spanId": "6790ba5dcecc566e",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.008,
+      "duration": 0.008,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "minimum-node-sources",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Minimum Node Sources",
+        "parent.span.id": "08e17dd4fea1fec6"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0066,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "cc0a855b3d7061c43fe2579c4a0719a0",
+      "spanId": "ece720475d1de46f",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.0063,
+      "duration": 0.006417,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "orphaned-node-types",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Orphaned Node Types",
+        "parent.span.id": "08e17dd4fea1fec6"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0051,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "21be6aee693c212699ab0b42bd81d02c",
+      "spanId": "eed159b1bed447eb",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.0051,
+      "duration": 0.005125,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "orphaned-edge-types",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Orphaned Edge Types",
+        "parent.span.id": "08e17dd4fea1fec6"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0042,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "6eae498f8f8577cc866891ed0cc5f31b",
+      "spanId": "a30b6185d8cf3ce7",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.007,
+      "duration": 0.007084,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "unreachable-states",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Unreachable States",
+        "parent.span.id": "08e17dd4fea1fec6"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.006,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "21347e3f93feb28dedc6e8d918151a17",
+      "spanId": "817072f1c12db699",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.013,
+      "duration": 0.012916,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "dead-end-states",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Dead End States",
+        "parent.span.id": "08e17dd4fea1fec6"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0125,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "cd2fb91d59fe6c80be5237cae440be25",
+      "spanId": "87cb25ad6dbf99fd",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.0037,
+      "duration": 0.003583,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "valid-action-patterns",
+        "rule.category": "pattern",
+        "rule.severity": "error",
+        "rule.name": "Valid Action Patterns",
+        "parent.span.id": "08e17dd4fea1fec6"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0032,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "124897045fe45223cfef314462ed7ad1",
+      "spanId": "3c5fec304fb87d44",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.0046,
+      "duration": 0.004625,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "library-node-type-match",
+        "rule.category": "library",
+        "rule.severity": "error",
+        "rule.name": "Library Node Type Match",
+        "parent.span.id": "08e17dd4fea1fec6"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0034,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "befae6417f63cb34decd5c263558ca2a",
+      "spanId": "08e17dd4fea1fec6",
+      "name": "rules.lint",
+      "kind": "INTERNAL",
+      "startTime": 1769619641616,
+      "endTime": 1769619641616.4768,
+      "duration": 0.47675,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "lint.config.path": "test-config-override.yaml",
+        "lint.rules.total": 14,
+        "lint.library.provided": false
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "lint.started",
+          "timestamp": 1769619641616.0046,
+          "attributes": {
+            "rules.registered": 14
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641616.0493,
+          "attributes": {
+            "rule.id": "required-metadata",
+            "rule.category": "schema",
+            "violations.count": 1,
+            "violations.severity": "error"
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641616.0806,
+          "attributes": {
+            "rule.id": "valid-node-types",
+            "rule.category": "schema",
+            "violations.count": 1,
+            "violations.severity": "error"
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641616.2705,
+          "attributes": {
+            "rule.id": "valid-color-format",
+            "rule.category": "schema",
+            "violations.count": 1,
+            "violations.severity": "warn"
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641616.396,
+          "attributes": {
+            "rule.id": "minimum-node-sources",
+            "rule.category": "structure",
+            "violations.count": 1,
+            "violations.severity": "error"
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641616.4102,
+          "attributes": {
+            "rule.id": "orphaned-node-types",
+            "rule.category": "structure",
+            "violations.count": 1,
+            "violations.severity": "error"
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641616.421,
+          "attributes": {
+            "rule.id": "orphaned-edge-types",
+            "rule.category": "structure",
+            "violations.count": 1,
+            "violations.severity": "error"
+          }
+        },
+        {
+          "name": "lint.completed",
+          "timestamp": 1769619641616.476,
+          "attributes": {
+            "lint.rules.executed": 14,
+            "lint.rules.skipped": 0,
+            "lint.violations.total": 6,
+            "lint.violations.errors": 5,
+            "lint.violations.warnings": 1,
+            "lint.violations.fixable": 1
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "3510c811eaba9da1a9819d654ee00080",
+      "spanId": "56d5620bc615f107",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.0178,
+      "duration": 0.017833,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "no-unknown-fields",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "No Unknown Fields",
+        "parent.span.id": "3e30aef249435b68"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.017,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "d0dec3899d9322da08420a2aef2efabd",
+      "spanId": "cd3f468c3d50af5f",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.0046,
+      "duration": 0.00475,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "required-metadata",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "Required Metadata",
+        "parent.span.id": "3e30aef249435b68"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0032,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "196f70cf706a748cda2565b1cd4d306c",
+      "spanId": "fac93b704ca838b6",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.0073,
+      "duration": 0.007417,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "valid-node-types",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "Valid Node Types",
+        "parent.span.id": "3e30aef249435b68"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0063,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "028ee2d8353362ed3bbdbaf30695d0a9",
+      "spanId": "d50b1eea606c5fef",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.0046,
+      "duration": 0.004584,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "valid-edge-types",
+        "rule.category": "schema",
+        "rule.severity": "error",
+        "rule.name": "Valid Edge Types",
+        "parent.span.id": "3e30aef249435b68"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0042,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "c924699c2e1a11206095c2818341fd30",
+      "spanId": "cefb844a7be2eaf8",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.006,
+      "duration": 0.006,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "connection-type-references",
+        "rule.category": "reference",
+        "rule.severity": "error",
+        "rule.name": "Connection Type References",
+        "parent.span.id": "3e30aef249435b68"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0051,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "10ff0025bcfeebe34bce7fac8eada590",
+      "spanId": "620d6bff7422e425",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.0042,
+      "duration": 0.004083,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "state-transition-references",
+        "rule.category": "reference",
+        "rule.severity": "error",
+        "rule.name": "State Transition References",
+        "parent.span.id": "3e30aef249435b68"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0037,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "f1fe986e529a08883a8df712a22c827c",
+      "spanId": "1dfe02375a034077",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.008,
+      "duration": 0.007958,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "orphaned-node-types",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Orphaned Node Types",
+        "parent.span.id": "3e30aef249435b68"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0068,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "c603d60afc71713352c1a0481e790ea7",
+      "spanId": "c483c7f48606e284",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.005,
+      "duration": 0.004875,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "orphaned-edge-types",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Orphaned Edge Types",
+        "parent.span.id": "3e30aef249435b68"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.004,
+          "attributes": {
+            "rule.violations.count": 1,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "209d80584c227f3c3ec5ea733f638e63",
+      "spanId": "7cb407211190e95d",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.004,
+      "duration": 0.003792,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "unreachable-states",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Unreachable States",
+        "parent.span.id": "3e30aef249435b68"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0034,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "4b844f2024e722256885bf3f56194272",
+      "spanId": "451c5d36474d14a6",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.0054,
+      "duration": 0.005292,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "dead-end-states",
+        "rule.category": "structure",
+        "rule.severity": "error",
+        "rule.name": "Dead End States",
+        "parent.span.id": "3e30aef249435b68"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.005,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "d07e8b37865edc855fa70122a9f62458",
+      "spanId": "72cecaa859469e20",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.0037,
+      "duration": 0.003667,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "valid-action-patterns",
+        "rule.category": "pattern",
+        "rule.severity": "error",
+        "rule.name": "Valid Action Patterns",
+        "parent.span.id": "3e30aef249435b68"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0032,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "ca22c150b8613af987b06fa7212c4ac7",
+      "spanId": "e47d07b7460b0596",
+      "name": "rule.execute",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.0037,
+      "duration": 0.003625,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "rule.id": "library-node-type-match",
+        "rule.category": "library",
+        "rule.severity": "error",
+        "rule.name": "Library Node Type Match",
+        "parent.span.id": "3e30aef249435b68"
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "rule.completed",
+          "timestamp": 1769619641617.0032,
+          "attributes": {
+            "rule.violations.count": 0,
+            "rule.duration.ms": 0
+          }
+        }
+      ]
+    },
+    {
+      "traceId": "b13f7ab90901f9f44215d4b34d799067",
+      "spanId": "3e30aef249435b68",
+      "name": "rules.lint",
+      "kind": "INTERNAL",
+      "startTime": 1769619641617,
+      "endTime": 1769619641617.1797,
+      "duration": 0.179666,
+      "resource": {
+        "service.name": "principal-view-core-tests",
+        "service.version": "0.0.0",
+        "test.framework": "bun:test",
+        "test.run.id": "1769619641608-3m87lqw"
+      },
+      "attributes": {
+        "lint.config.path": "test-config-disabled.yaml",
+        "lint.rules.total": 14,
+        "lint.library.provided": false
+      },
+      "status": {
+        "code": "OK"
+      },
+      "events": [
+        {
+          "name": "lint.started",
+          "timestamp": 1769619641617.0063,
+          "attributes": {
+            "rules.registered": 14
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641617.0417,
+          "attributes": {
+            "rule.id": "required-metadata",
+            "rule.category": "schema",
+            "violations.count": 1,
+            "violations.severity": "error"
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641617.0554,
+          "attributes": {
+            "rule.id": "valid-node-types",
+            "rule.category": "schema",
+            "violations.count": 1,
+            "violations.severity": "error"
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641617.1135,
+          "attributes": {
+            "rule.id": "orphaned-node-types",
+            "rule.category": "structure",
+            "violations.count": 1,
+            "violations.severity": "error"
+          }
+        },
+        {
+          "name": "violations.detected",
+          "timestamp": 1769619641617.1255,
+          "attributes": {
+            "rule.id": "orphaned-edge-types",
+            "rule.category": "structure",
+            "violations.count": 1,
+            "violations.severity": "error"
+          }
+        },
+        {
+          "name": "lint.completed",
+          "timestamp": 1769619641617.1772,
+          "attributes": {
+            "lint.rules.executed": 12,
+            "lint.rules.skipped": 2,
+            "lint.violations.total": 4,
+            "lint.violations.errors": 4,
+            "lint.violations.warnings": 0,
+            "lint.violations.fixable": 0
+          }
+        }
+      ]
     }
   ]
 }
