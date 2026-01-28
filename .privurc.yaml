@@ -11,6 +11,10 @@ include:
 exclude:
   - "**/node_modules/**"
   - ".principal-views/library.yaml"
+  - ".principal-views/**/*.workflow.json"  # Workflow files have different schema
+  - ".principal-views/**/__executions__/**"  # Execution artifacts
+  - ".principal-views/**/*.canvas"  # Canvas files use validate command, not lint
+  - ".principal-views/**/*.otel.canvas"  # Canvas files use validate command, not lint
 
 # Path to component library (optional)
 library: ".principal-views/library.yaml"
