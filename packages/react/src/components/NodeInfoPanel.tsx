@@ -92,6 +92,7 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
   // Local state for UI
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Current icon - either from node data override or type definition
   const currentIcon = (node.data?.icon as string) || typeDefinition?.icon;
@@ -182,11 +183,13 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
         backgroundColor: theme.colors.background,
         color: theme.colors.text,
         borderTop: `2px solid ${nodeColor}`,
+        borderBottom: `2px solid ${nodeColor}`,
         boxShadow: '0 -4px 12px rgba(0,0,0,0.15)',
         padding: '16px 24px',
         zIndex: 1000,
-        maxHeight: '40%',
+        maxHeight: isExpanded ? '90%' : '40%',
         overflowY: 'auto',
+        transition: 'max-height 0.3s ease',
       }}
     >
       {/* Header - shows node name */}
@@ -194,7 +197,7 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'flex-start',
+          alignItems: 'center',
           marginBottom: '16px',
         }}
       >
@@ -202,37 +205,67 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
           <div style={{ fontWeight: theme.fontWeights.bold, fontSize: theme.fontSizes[2], fontFamily: theme.fonts.body, color: nodeColor }}>
             {node.name || node.id}
           </div>
-          <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textMuted }}>
-            {node.type}
-          </div>
         </div>
-        <button
-          onClick={onClose}
-          style={{
-            border: 'none',
-            background: 'none',
-            cursor: 'pointer',
-            fontSize: theme.fontSizes[3],
-            fontFamily: theme.fonts.body,
-            color: theme.colors.textSecondary,
-            padding: '4px',
-            width: '28px',
-            height: '28px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '4px',
-            transition: 'background-color 0.15s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = theme.colors.muted;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-          }}
-        >
-          ×
-        </button>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            style={{
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              fontSize: theme.fontSizes[2],
+              fontFamily: theme.fonts.body,
+              color: theme.colors.textSecondary,
+              padding: '4px',
+              width: '28px',
+              height: '28px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '4px',
+              transition: 'background-color 0.15s',
+              marginTop: '-8px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = theme.colors.muted;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+            title={isExpanded ? 'Collapse panel' : 'Expand panel'}
+          >
+            {isExpanded ? '▼' : '▲'}
+          </button>
+          <button
+            onClick={onClose}
+            style={{
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              fontSize: theme.fontSizes[3],
+              fontFamily: theme.fonts.body,
+              color: theme.colors.textSecondary,
+              padding: '4px',
+              width: '28px',
+              height: '28px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '4px',
+              transition: 'background-color 0.15s',
+              marginRight: '-8px',
+              marginTop: '-8px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = theme.colors.muted;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+          >
+            ×
+          </button>
+        </div>
       </div>
 
       {/* Content - use horizontal layout for better space usage */}
@@ -315,10 +348,7 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
 
           {/* Event Info */}
           {(eventInfo || eventRef || resolvedEvent) && (
-            <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
-                Event
-              </div>
+            <div style={{ marginBottom: '12px', marginTop: '-4px' }}>
               {(() => {
                 // Use resolved event if available, otherwise use inline eventInfo
                 const displayEvent = resolvedEvent || eventInfo;
@@ -329,13 +359,9 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                     <div>
                       <div
                         style={{
-                          fontSize: theme.fontSizes[0],
+                          fontSize: theme.fontSizes[1],
                           fontFamily: 'monospace',
-                          padding: '6px 10px',
-                          backgroundColor: theme.colors.muted,
-                          borderRadius: '4px',
                           color: theme.colors.primary,
-                          border: `1px solid ${theme.colors.border}`,
                           marginBottom: '4px',
                         }}
                       >
@@ -347,25 +373,76 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                         </div>
                       )}
                       {displayEvent.attributes && Object.keys(displayEvent.attributes).length > 0 && (
-                        <div style={{ marginTop: '8px' }}>
-                          <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
-                            Attributes
+                        <div style={{ marginTop: '16px' }}>
+                          <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '8px' }}>
+                            Event Attributes
                           </div>
-                          <pre
-                            style={{
-                              fontSize: '11px',
-                              fontFamily: 'monospace',
-                              padding: '8px',
-                              backgroundColor: theme.colors.muted,
-                              borderRadius: '4px',
-                              border: `1px solid ${theme.colors.border}`,
-                              overflow: 'auto',
-                              margin: 0,
-                              maxHeight: '200px',
-                            }}
-                          >
-                            {JSON.stringify(displayEvent.attributes, null, 2)}
-                          </pre>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {Object.entries(displayEvent.attributes).map(([attrName, attrSchema]: [string, any]) => (
+                              <div
+                                key={attrName}
+                                style={{
+                                  padding: '8px 12px',
+                                  backgroundColor: theme.colors.muted,
+                                  borderRadius: '4px',
+                                  border: `1px solid ${theme.colors.border}`,
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                  <span
+                                    style={{
+                                      fontSize: theme.fontSizes[0],
+                                      fontFamily: 'monospace',
+                                      fontWeight: theme.fontWeights.semibold,
+                                      color: theme.colors.text,
+                                    }}
+                                  >
+                                    {attrName}
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: '10px',
+                                      fontFamily: theme.fonts.body,
+                                      padding: '2px 6px',
+                                      borderRadius: '3px',
+                                      backgroundColor: theme.colors.surface,
+                                      color: theme.colors.textSecondary,
+                                      border: `1px solid ${theme.colors.border}`,
+                                    }}
+                                  >
+                                    {attrSchema.type || 'any'}
+                                  </span>
+                                  {attrSchema.required && (
+                                    <span
+                                      style={{
+                                        fontSize: '10px',
+                                        fontFamily: theme.fonts.body,
+                                        fontWeight: theme.fontWeights.semibold,
+                                        padding: '2px 6px',
+                                        borderRadius: '3px',
+                                        backgroundColor: '#ef4444',
+                                        color: 'white',
+                                      }}
+                                    >
+                                      required
+                                    </span>
+                                  )}
+                                </div>
+                                {attrSchema.description && (
+                                  <div
+                                    style={{
+                                      fontSize: theme.fontSizes[0],
+                                      fontFamily: theme.fonts.body,
+                                      color: theme.colors.textSecondary,
+                                      marginTop: '4px',
+                                    }}
+                                  >
+                                    {attrSchema.description}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -470,39 +547,41 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
 
       </div>
 
-      {/* Expand/Collapse button for additional details */}
-      <button
-        onClick={() => setShowDetails(!showDetails)}
-        style={{
-          width: '100%',
-          padding: '8px',
-          backgroundColor: theme.colors.surface,
-          border: `1px solid ${theme.colors.border}`,
-          borderRadius: '4px',
-          cursor: 'pointer',
-          fontSize: theme.fontSizes[0],
-          fontFamily: theme.fonts.body,
-          color: theme.colors.textSecondary,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '6px',
-          marginBottom: showDetails ? '12px' : '0',
-        }}
-      >
-        <span
+      {/* Expand/Collapse button for additional details - only show in editable mode */}
+      {canEdit && (
+        <button
+          onClick={() => setShowDetails(!showDetails)}
           style={{
-            transform: showDetails ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 0.2s',
+            width: '100%',
+            padding: '8px',
+            backgroundColor: theme.colors.surface,
+            border: `1px solid ${theme.colors.border}`,
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: theme.fontSizes[0],
+            fontFamily: theme.fonts.body,
+            color: theme.colors.textSecondary,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            marginBottom: showDetails ? '12px' : '0',
           }}
         >
-          ▼
-        </span>
-        {showDetails ? 'Hide Details' : 'Show Details'}
-      </button>
+          <span
+            style={{
+              transform: showDetails ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.2s',
+            }}
+          >
+            ▼
+          </span>
+          {showDetails ? 'Hide Details' : 'Show Details'}
+        </button>
+      )}
 
-      {/* Expandable details section */}
-      {showDetails && (
+      {/* Expandable details section - only show in editable mode */}
+      {canEdit && showDetails && (
         <>
           {/* Icon Selector */}
           <div style={{ marginBottom: '12px' }}>

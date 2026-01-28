@@ -431,44 +431,54 @@ const serviceArchitectureCanvas: ExtendedCanvas = {
 // Stories
 // ============================================================================
 
+const DefaultTemplate = () => (
+  <div style={{ width: '100%', height: '600px' }}>
+    <GraphRenderer canvas={sampleCanvas} />
+  </div>
+);
+
 export const Default: Story = {
-  args: {
-    canvas: sampleCanvas,
-    width: 800,
-    height: 600,
-  },
+  render: () => <DefaultTemplate />,
 };
+
+const EmptyGraphTemplate = () => (
+  <div style={{ width: '100%', height: '600px' }}>
+    <GraphRenderer canvas={emptyCanvas} />
+  </div>
+);
 
 export const EmptyGraph: Story = {
-  args: {
-    canvas: emptyCanvas,
-    width: 800,
-    height: 600,
-  },
+  render: () => <EmptyGraphTemplate />,
 };
+
+const SingleNodeTemplate = () => (
+  <div style={{ width: '100%', height: '600px' }}>
+    <GraphRenderer canvas={singleNodeCanvas} />
+  </div>
+);
 
 export const SingleNode: Story = {
-  args: {
-    canvas: singleNodeCanvas,
-    width: 800,
-    height: 600,
-  },
+  render: () => <SingleNodeTemplate />,
 };
+
+const LargeGraphTemplate = () => (
+  <div style={{ width: '100%', height: '600px' }}>
+    <GraphRenderer canvas={largeCanvas} />
+  </div>
+);
 
 export const LargeGraph: Story = {
-  args: {
-    canvas: largeCanvas,
-    width: 800,
-    height: 600,
-  },
+  render: () => <LargeGraphTemplate />,
 };
 
+const ServiceArchitectureTemplate = () => (
+  <div style={{ width: '100%', height: '600px' }}>
+    <GraphRenderer canvas={serviceArchitectureCanvas} />
+  </div>
+);
+
 export const ServiceArchitecture: Story = {
-  args: {
-    canvas: serviceArchitectureCanvas,
-    width: 900,
-    height: 600,
-  },
+  render: () => <ServiceArchitectureTemplate />,
   parameters: {
     docs: {
       description: {
@@ -571,14 +581,14 @@ const EditableTemplate = () => {
           </div>
         )}
       </div>
-      <GraphRenderer
-        ref={graphRef}
-        canvas={sampleCanvas}
-        width={800}
-        height={500}
-        editable={true}
-        onPendingChangesChange={setHasChanges}
-      />
+      <div style={{ width: '100%', height: '500px' }}>
+        <GraphRenderer
+          ref={graphRef}
+          canvas={sampleCanvas}
+          editable={true}
+          onPendingChangesChange={setHasChanges}
+        />
+      </div>
     </div>
   );
 };
@@ -616,14 +626,14 @@ const ServiceArchitectureEditableTemplate = () => {
           {hasChanges && <span style={{ marginLeft: 8, color: '#f97316' }}>(unsaved changes)</span>}
         </div>
       </div>
-      <GraphRenderer
-        ref={graphRef}
-        canvas={serviceArchitectureCanvas}
-        width={900}
-        height={500}
-        editable={true}
-        onPendingChangesChange={setHasChanges}
-      />
+      <div style={{ width: '100%', height: '500px' }}>
+        <GraphRenderer
+          ref={graphRef}
+          canvas={serviceArchitectureCanvas}
+          editable={true}
+          onPendingChangesChange={setHasChanges}
+        />
+      </div>
     </div>
   );
 };
@@ -1051,12 +1061,14 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
   },
 };
 
+const OtelLogAssociationTemplate = () => (
+  <div style={{ width: '100%', height: '800px' }}>
+    <GraphRenderer canvas={otelLogAssociationCanvas} />
+  </div>
+);
+
 export const OtelLogAssociation: Story = {
-  args: {
-    canvas: otelLogAssociationCanvas,
-    width: 1000,
-    height: 800,
-  },
+  render: () => <OtelLogAssociationTemplate />,
   parameters: {
     docs: {
       description: {
@@ -1287,12 +1299,12 @@ const SourcesInTooltipTemplate = () => {
           </div>
         </div>
       )}
-      <GraphRenderer
-        canvas={sourcesTooltipCanvas}
-        width={900}
-        height={550}
-        onSourceClick={handleSourceClick}
-      />
+      <div style={{ width: '100%', height: '550px' }}>
+        <GraphRenderer
+          canvas={sourcesTooltipCanvas}
+          onSourceClick={handleSourceClick}
+        />
+      </div>
     </div>
   );
 };
@@ -1400,14 +1412,14 @@ const EditModeToggleTemplate = () => {
           the NaN error fix.
         </div>
       </div>
-      <GraphRenderer
-        ref={graphRef}
-        canvas={sampleCanvas}
-        width={800}
-        height={500}
-        editable={isEditMode}
-        onPendingChangesChange={setHasChanges}
-      />
+      <div style={{ width: '100%', height: '500px' }}>
+        <GraphRenderer
+          ref={graphRef}
+          canvas={sampleCanvas}
+          editable={isEditMode}
+          onPendingChangesChange={setHasChanges}
+        />
+      </div>
     </div>
   );
 };
@@ -1602,12 +1614,12 @@ const SelectionStylingTemplate = () => {
           </p>
         </div>
       </div>
-      <GraphRenderer
-        canvas={selectionStylingCanvas}
-        width={800}
-        height={500}
-        showNodeDetailPanel={false}
-      />
+      <div style={{ width: '100%', height: '500px' }}>
+        <GraphRenderer
+          canvas={selectionStylingCanvas}
+          showNodeDetailPanel={false}
+        />
+      </div>
     </div>
   );
 };
@@ -1775,14 +1787,14 @@ const HighlightedNodeSyncTemplate = () => {
           </ul>
         </div>
       </div>
-      <GraphRenderer
-        canvas={selectionStylingCanvas}
-        width={800}
-        height={500}
-        highlightedNodeId={highlightedNodeId}
-        showNodeDetailPanel={true}
-        resolveEventRef={resolveEventRef}
-      />
+      <div style={{ width: '100%', height: '500px' }}>
+        <GraphRenderer
+          canvas={selectionStylingCanvas}
+          highlightedNodeId={highlightedNodeId}
+          showNodeDetailPanel={true}
+          resolveEventRef={resolveEventRef}
+        />
+      </div>
     </div>
   );
 };
