@@ -12,6 +12,7 @@ import { resolve, relative } from 'node:path';
 import chalk from 'chalk';
 import { globby } from 'globby';
 import yaml from 'js-yaml';
+import { CanvasDiscovery, buildFileTreeFromDirectory } from '@principal-ai/principal-view-core/node';
 
 interface StalenessIssue {
   type: 'error' | 'warning' | 'info';
@@ -218,22 +219,13 @@ export function createDoctorCommand(): Command {
           ignore: ['README.md'],
         });
 
-        if (configFiles.length === 0) {
-          if (options.json) {
-            console.log(
-              JSON.stringify({ error: 'No config files found in .principal-views', results: [] })
-            );
-          } else {
-            console.log(chalk.yellow('No configuration files found in .principal-views/'));
-          }
-          return;
-        }
-
-        // Check each config
+        // Check each config (if any)
         const results: DoctorResult[] = [];
-        for (const configFile of configFiles) {
-          const result = await checkConfig(configFile, projectRoot);
-          results.push(result);
+        if (configFiles.length > 0) {
+          for (const configFile of configFiles) {
+            const result = await checkConfig(configFile, projectRoot);
+            results.push(result);
+          }
         }
 
         // Aggregate stats
@@ -284,8 +276,13 @@ export function createDoctorCommand(): Command {
             )
           );
         } else {
-          if (!options.quiet && !options.errorsOnly) {
+          if (!options.quiet && !options.errorsOnly && results.length > 0) {
             console.log(chalk.bold(`\nChecking ${results.length} configuration file(s)...\n`));
+          }
+
+          if (results.length === 0 && !options.quiet && !options.errorsOnly) {
+            console.log(chalk.yellow('No YAML configuration files found in .principal-views/'));
+            console.log(chalk.dim('Checking file structure...\n'));
           }
 
           for (const result of results) {
@@ -320,9 +317,30 @@ export function createDoctorCommand(): Command {
             }
           }
 
-          // Summary
+          // Check for deprecated file structure
+          let deprecationWarningCount = 0;
           if (!options.errorsOnly) {
-            console.log(chalk.dim('─'.repeat(50)));
+            try {
+              const fileTree = await buildFileTreeFromDirectory(projectRoot);
+              const discovery = new CanvasDiscovery();
+              const discoveryResult = await discovery.discover(fileTree);
+
+              if (discoveryResult.warnings.length > 0) {
+                console.log(chalk.yellow('\n⚠ File Structure Warnings:\n'));
+                for (const warning of discoveryResult.warnings) {
+                  console.log(chalk.yellow(`  ⚠ ${warning.path}`));
+                  console.log(chalk.dim(`    ${warning.message}`));
+                }
+                deprecationWarningCount = discoveryResult.warnings.length;
+              }
+            } catch (error) {
+              // Silently ignore discovery errors in doctor command
+            }
+          }
+
+          // Summary
+          if (!options.errorsOnly && results.length > 0) {
+            console.log(chalk.dim('\n' + '─'.repeat(50)));
             console.log(
               chalk.dim(
                 `Checked ${totalStats.nodeTypesChecked} node types, ` +
@@ -332,14 +350,20 @@ export function createDoctorCommand(): Command {
             );
           }
 
+          const totalWarnings = warningCount + deprecationWarningCount;
+
           if (errorCount > 0) {
             console.log(chalk.red(`\n✗ ${errorCount} error(s) found`));
             process.exit(1);
-          } else if (warningCount > 0 && options.errorsOnly) {
+          } else if (totalWarnings > 0 && options.errorsOnly) {
             // In errors-only mode, don't fail on warnings
             process.exit(0);
-          } else if (warningCount > 0) {
-            console.log(chalk.yellow(`\n⚠ ${warningCount} warning(s) found`));
+          } else if (totalWarnings > 0) {
+            console.log(chalk.yellow(`\n⚠ ${totalWarnings} warning(s) found`));
+            if (deprecationWarningCount > 0) {
+              console.log(chalk.dim(`  (including ${deprecationWarningCount} file structure deprecation(s))`));
+              console.log(chalk.dim(`  See: docs/MIGRATION_GUIDE.md for migration instructions`));
+            }
           } else if (!options.quiet && !options.errorsOnly) {
             console.log(chalk.green(`\n✓ All configurations are up to date`));
           }

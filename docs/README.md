@@ -21,10 +21,26 @@ Complete documentation for the Visual Validation React component library.
    - Real-time streaming examples
 
 3. **[Usage Guide](./USAGE.md)**
+
    - Installation and setup
    - Component API reference
    - Building complete panels
    - Advanced patterns and recipes
+
+### 🗂️ Project Organization
+
+4. **[Storyboard Discovery Design](./STORYBOARD_DISCOVERY_DESIGN.md)** ⭐ Recommended
+
+   - Hierarchical storyboard structure (canvas → workflows → executions)
+   - Organizing multiple workflows per feature
+   - Discovery system and validation
+   - Technical specification
+
+5. **[Migration Guide](./MIGRATION_GUIDE.md)**
+   - Migrating from legacy flat structure to storyboards
+   - Step-by-step migration instructions
+   - Common issues and solutions
+   - Best practices for organization
 
 ### 🎨 Visual Examples
 
@@ -93,6 +109,16 @@ Each example includes:
 - Use [Event System Guide](./EVENT_SYSTEM.md) to learn how to update the graph
 - Follow [Usage Guide](./USAGE.md) to integrate with your React application
 - Run Storybook (`bun run storybook`) to see live examples
+
+### ⚠️ Important: File Structure
+
+**If you're using the legacy flat structure** (canvas files directly in `.principal-views/` with `__executions__/` subdirectory):
+
+- This structure is **deprecated** as of v0.15.0 and will show warnings
+- **Recommended:** Migrate to the storyboard structure for better organization
+- **See:** [Migration Guide](./MIGRATION_GUIDE.md) for step-by-step instructions
+
+**For new projects:** Use the storyboard structure described in [Storyboard Discovery Design](./STORYBOARD_DISCOVERY_DESIGN.md)
 
 ### 🐛 Troubleshooting
 

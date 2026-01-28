@@ -128,6 +128,8 @@ export interface CanvasDiscoveryResult {
   storyboards: DiscoveredStoryboard[];
   /** Any errors encountered during discovery */
   errors: Array<{ path: string; error: string }>;
+  /** Deprecation warnings for legacy structures */
+  warnings: Array<{ path: string; message: string; type: 'deprecation' }>;
 }
 
 /**
@@ -199,4 +201,5 @@ export interface CanvasDiscoveryResultWithContent {
   executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[];
   storyboards: (DiscoveredStoryboard | DiscoveredStoryboardWithContent)[];
   errors: Array<{ path: string; error: string }>;
+  warnings: Array<{ path: string; message: string; type: 'deprecation' }>;
 }

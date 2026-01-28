@@ -397,10 +397,19 @@ See the [packages README files](./packages/) for detailed API documentation.
 
 ## Project Structure
 
+### Recommended: Storyboard Structure (v0.15.0+)
+
 ```
 principal-view/
-├── .principal-views/           # Your architecture canvas files
-│   ├── my-architecture.canvas
+├── .principal-views/           # Your architecture files
+│   ├── checkout-flow/          # Storyboard: feature/component grouping
+│   │   ├── checkout-flow.otel.canvas
+│   │   ├── happy-path/         # Workflow: scenario variations
+│   │   │   ├── happy-path.workflow.json
+│   │   │   └── success-1.otel.json    # Execution files
+│   │   └── payment-failures/
+│   │       ├── payment-failures.workflow.json
+│   │       └── declined-1.otel.json
 │   ├── library.yaml           # Optional component library
 │   └── .privurc               # Linting configuration
 ├── packages/
@@ -410,6 +419,22 @@ principal-view/
 │   └── logger/                # Logging utilities
 └── README.md
 ```
+
+**Hierarchy:** Storyboard (feature) → Workflows (scenarios) → Executions (test runs)
+
+See [Storyboard Discovery Design](./docs/STORYBOARD_DISCOVERY_DESIGN.md) for details.
+
+### Legacy Flat Structure (Deprecated)
+
+```
+.principal-views/
+├── my-architecture.canvas
+├── my-architecture.workflow.json
+└── __executions__/
+    └── test-1.otel.json
+```
+
+⚠️ **This structure is deprecated as of v0.15.0.** See [Migration Guide](./docs/MIGRATION_GUIDE.md) to upgrade.
 
 ## Development
 
@@ -445,11 +470,16 @@ bun run format
 
 ## Documentation
 
+### 📚 Getting Started
+- **[Storyboard Discovery Design](./docs/STORYBOARD_DISCOVERY_DESIGN.md)** - ⭐ Recommended project organization
+- **[Migration Guide](./docs/MIGRATION_GUIDE.md)** - Upgrade from legacy flat structure
+- **[Configuration Docs](./docs/CONFIGURATION.md)** - Canvas format details
+- **[Full Documentation](./docs/README.md)** - Complete guide index
+
+### 📦 Package Documentation
 - **[CLI Package README](./packages/cli/README.md)** - Detailed CLI documentation
 - **[Core Package README](./packages/core/README.md)** - Core API documentation
 - **[React Package README](./packages/react/README.md)** - React components guide
-- **[Configuration Docs](./docs/CONFIGURATION.md)** - Canvas format details
-- **[Examples](./docs/EXAMPLES.md)** - Complete architecture examples
 
 ## Requirements
 

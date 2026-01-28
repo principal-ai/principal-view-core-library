@@ -65,6 +65,7 @@ export class CanvasDiscovery {
     options: DiscoveryOptions = {}
   ): Promise<CanvasDiscoveryResult> {
     const errors: Array<{ path: string; error: string }> = [];
+    const warnings: Array<{ path: string; message: string; type: 'deprecation' }> = [];
 
     // 1. Discover packages (with caching by fileTree.sha)
     const packages = await this.discoverPackagesWithCache(fileTree, options.fileReader);
@@ -81,12 +82,15 @@ export class CanvasDiscovery {
     // 5. Discover storyboards (hierarchical organization)
     const storyboards = await this.discoverStoryboards(fileTree, packageMap, canvases, executions, options, errors);
 
-    // 6. Sort results
+    // 6. Detect legacy structures and add deprecation warnings
+    this.detectLegacyStructures(canvases, executions, storyboards, warnings);
+
+    // 7. Sort results
     canvases.sort(this.compareByPackageThenName);
     executions.sort(this.compareByPackageThenName);
     storyboards.sort(this.compareByPackageThenName);
 
-    return { canvases, executions, storyboards, errors };
+    return { canvases, executions, storyboards, errors, warnings };
   }
 
   /**
@@ -613,5 +617,61 @@ export class CanvasDiscovery {
 
     // Within same package/root, sort by name
     return a.name.localeCompare(b.name);
+  }
+
+  /**
+   * Detect legacy flat structures and add deprecation warnings
+   */
+  private detectLegacyStructures(
+    canvases: DiscoveredCanvas[],
+    executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[],
+    storyboards: (DiscoveredStoryboard | DiscoveredStoryboardWithContent)[],
+    warnings: Array<{ path: string; message: string; type: 'deprecation' }>
+  ): void {
+    // Build a set of storyboard canvas IDs for quick lookup
+    const storyboardCanvasIds = new Set(storyboards.map(s => s.canvas.id));
+
+    // Build a set of execution IDs that are part of storyboards
+    const storyboardExecutionIds = new Set<string>();
+    for (const storyboard of storyboards) {
+      for (const workflow of storyboard.workflows) {
+        for (const execution of workflow.executions) {
+          storyboardExecutionIds.add(execution.id);
+        }
+      }
+    }
+
+    // Check for legacy flat canvases (not part of any storyboard)
+    for (const canvas of canvases) {
+      if (!storyboardCanvasIds.has(canvas.id)) {
+        // This is a legacy flat canvas
+        const canvasDir = canvas.path.split('/').slice(0, -1).join('/');
+        const parts = canvasDir.split('/');
+        const pvIndex = parts.indexOf(CanvasDiscovery.CANVAS_DIR);
+
+        // Only warn if it's directly in .principal-views/ (flat structure)
+        if (pvIndex !== -1 && parts.length === pvIndex + 1) {
+          warnings.push({
+            path: canvas.path,
+            message: 'Legacy flat canvas structure is deprecated. Consider migrating to the storyboard structure. See migration guide for details.',
+            type: 'deprecation',
+          });
+        }
+      }
+    }
+
+    // Check for legacy executions in __executions__/ directory
+    for (const execution of executions) {
+      if (!storyboardExecutionIds.has(execution.id)) {
+        // Check if this execution is in __executions__/ directory
+        if (execution.path.includes(`/${CanvasDiscovery.EXECUTIONS_DIR}/`)) {
+          warnings.push({
+            path: execution.path,
+            message: 'Legacy __executions__/ directory is deprecated. Consider migrating executions to workflow folders within storyboards. See migration guide for details.',
+            type: 'deprecation',
+          });
+        }
+      }
+    }
   }
 }

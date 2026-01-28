@@ -1,5 +1,22 @@
 # Storyboard Discovery Design
 
+## Implementation Status
+
+**Version:** 0.15.0
+**Phase:** Phase 2 (Soft Deprecation)
+**Status:** ✅ Implemented
+
+**What's Available:**
+- ✅ Storyboard discovery system (hierarchical structure support)
+- ✅ Deprecation warnings for legacy flat structure
+- ✅ Full backward compatibility with legacy structure
+- ✅ Documentation and migration guide
+- ⏸️ CLI automated migration tools (future enhancement)
+
+**Migration:** Legacy flat structure is deprecated but continues to work. See [Migration Guide](./MIGRATION_GUIDE.md) for upgrade instructions.
+
+---
+
 ## Overview
 
 This document describes the enhanced discovery system that introduces **storyboards** as a first-class organizational concept for Principal Views. A storyboard groups a canvas with its related workflows and executions in a hierarchical folder structure.
@@ -494,23 +511,30 @@ The rules engine will include new rules for storyboard structure validation:
 
 ## Migration Path
 
-### Phase 1: Dual Support (Current)
+### Phase 1: Dual Support (Completed)
 
 - ✅ Old flat structure keeps working
 - ✅ New storyboard structure is available
 - ✅ Discovery returns both formats
 - ✅ All tools support both structures
 
-**Timeline:** Immediate
+**Status:** Completed
 
-### Phase 2: Recommend New Structure
+### Phase 2: Recommend New Structure (Current - v0.15.0)
 
-- 📝 CLI `init` generates storyboard structure by default
-- 📝 Documentation shows storyboard as preferred pattern
-- 📝 Migration guide: flat → storyboard
-- 📝 CLI command: `privu migrate storyboard`
+- ✅ Deprecation warnings in CanvasDiscovery for legacy structures
+- ✅ Documentation shows storyboard as preferred pattern
+- ✅ Migration guide: flat → storyboard (manual)
+- ⏸️ CLI `init` generates storyboard structure by default (future)
+- ⏸️ CLI command: `privu migrate storyboard` (decided against automated migration for now)
 
-**Timeline:** Next minor version (0.15.0)
+**Status:** Implemented (v0.15.0)
+
+**What's working:**
+- Discovery system emits deprecation warnings for flat canvas and `__executions__/` structures
+- All documentation updated to recommend storyboards
+- Comprehensive migration guide with step-by-step instructions
+- Both structures continue to work (backward compatibility maintained)
 
 ### Phase 3: Deprecate Flat (Future)
 
