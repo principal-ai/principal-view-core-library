@@ -104,12 +104,16 @@ export { CanvasDiscovery } from './discovery/CanvasDiscovery';
 export type {
   DiscoveredCanvas,
   DiscoveredExecution,
+  DiscoveredWorkflow,
+  DiscoveredStoryboard,
   CanvasDiscoveryResult,
   DiscoveryOptions,
   CanvasType,
   ExecutionType,
   DiscoveredCanvasWithContent,
   DiscoveredExecutionWithContent,
+  DiscoveredWorkflowWithContent,
+  DiscoveredStoryboardWithContent,
   CanvasDiscoveryResultWithContent,
 } from './discovery/types';
 

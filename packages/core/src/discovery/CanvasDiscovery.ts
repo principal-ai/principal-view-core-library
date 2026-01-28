@@ -9,6 +9,10 @@ import type {
   DiscoveredCanvasWithContent,
   DiscoveredExecution,
   DiscoveredExecutionWithContent,
+  DiscoveredWorkflow,
+  DiscoveredWorkflowWithContent,
+  DiscoveredStoryboard,
+  DiscoveredStoryboardWithContent,
   CanvasDiscoveryResult,
   DiscoveryOptions,
   CanvasType,
@@ -40,6 +44,7 @@ import type {
 export class CanvasDiscovery {
   private static readonly CANVAS_DIR = '.principal-views';
   private static readonly EXECUTIONS_DIR = '__executions__';
+  private static readonly WORKFLOW_EXTENSION = '.workflow.json';
 
   private packageModule: PackageLayerModule;
   private packageCache: Map<string, PackageLayer[]> = new Map();
@@ -53,7 +58,7 @@ export class CanvasDiscovery {
    *
    * @param fileTree - FileTree from repository-abstraction
    * @param options - Discovery options (fileReader, includeContent)
-   * @returns Discovery result with canvases, executions, and errors
+   * @returns Discovery result with canvases, executions, storyboards, and errors
    */
   async discover(
     fileTree: FileTree,
@@ -73,11 +78,15 @@ export class CanvasDiscovery {
     // 4. Discover execution files
     const executions = await this.discoverExecutionFiles(fileTree, packageMap, options, errors);
 
-    // 5. Sort results
+    // 5. Discover storyboards (hierarchical organization)
+    const storyboards = await this.discoverStoryboards(fileTree, packageMap, canvases, executions, options, errors);
+
+    // 6. Sort results
     canvases.sort(this.compareByPackageThenName);
     executions.sort(this.compareByPackageThenName);
+    storyboards.sort(this.compareByPackageThenName);
 
-    return { canvases, executions, errors };
+    return { canvases, executions, storyboards, errors };
   }
 
   /**
@@ -123,6 +132,179 @@ export class CanvasDiscovery {
    */
   clearCache(): void {
     this.packageCache.clear();
+  }
+
+  /**
+   * Discover storyboards (hierarchical organization of canvas + workflows + executions)
+   */
+  private async discoverStoryboards(
+    fileTree: FileTree,
+    packageMap: Map<string, PackageLayer>,
+    canvases: DiscoveredCanvas[],
+    executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[],
+    options: DiscoveryOptions,
+    errors: Array<{ path: string; error: string }>
+  ): Promise<(DiscoveredStoryboard | DiscoveredStoryboardWithContent)[]> {
+    const storyboards: (DiscoveredStoryboard | DiscoveredStoryboardWithContent)[] = [];
+
+    // Build a map of directories to check for storyboards
+    const storyboardDirs = new Map<string, Set<string>>();
+
+    // Find all directories in .principal-views/ that have subdirectories
+    for (const file of fileTree.allFiles) {
+      const path = file.relativePath || file.path || '';
+      const parts = path.split('/');
+
+      // Look for paths like: .principal-views/storyboard-name/workflow-name/...
+      // Or: packages/core/.principal-views/storyboard-name/workflow-name/...
+      const pvIndex = parts.indexOf(CanvasDiscovery.CANVAS_DIR);
+      if (pvIndex === -1 || parts.length < pvIndex + 3) continue;
+
+      const storyboardName = parts[pvIndex + 1];
+      const storyboardPath = parts.slice(0, pvIndex + 2).join('/');
+
+      if (!storyboardDirs.has(storyboardPath)) {
+        storyboardDirs.set(storyboardPath, new Set());
+      }
+      storyboardDirs.get(storyboardPath)!.add(storyboardName);
+    }
+
+    // For each potential storyboard directory, check if it has a canvas
+    for (const [storyboardParentPath, storyboardNames] of storyboardDirs) {
+      for (const storyboardName of storyboardNames) {
+        const storyboardPath = `${storyboardParentPath}/${storyboardName}`;
+
+        // Skip __executions__ directory
+        if (storyboardName === CanvasDiscovery.EXECUTIONS_DIR) continue;
+
+        // Find canvas for this storyboard
+        const storyboardCanvas = canvases.find(c => {
+          const canvasDir = c.path.split('/').slice(0, -1).join('/');
+          return canvasDir === storyboardPath && c.basename === storyboardName;
+        });
+
+        if (!storyboardCanvas) continue;
+
+        // This is a storyboard! Now discover workflows
+        const workflows = await this.discoverWorkflowsInStoryboard(
+          fileTree,
+          storyboardPath,
+          storyboardName,
+          packageMap,
+          executions,
+          options,
+          errors
+        );
+
+        // Only create storyboard if it has workflows
+        if (workflows.length === 0) continue;
+
+        // Determine package context
+        const packageInfo = this.findPackageForPath(storyboardPath, packageMap);
+
+        // Generate unique ID
+        const id = packageInfo
+          ? `${packageInfo.packageData.name}/${storyboardName}`
+          : storyboardName;
+
+        // Create discovered storyboard
+        const storyboard: DiscoveredStoryboard | DiscoveredStoryboardWithContent = {
+          id,
+          name: this.toDisplayName(storyboardName),
+          path: storyboardPath,
+          basename: storyboardName,
+          canvas: storyboardCanvas,
+          workflows,
+          packageName: packageInfo?.packageData.name,
+          packagePath: packageInfo?.packageData.path,
+          scope: packageInfo ? 'package' : 'root',
+        };
+
+        storyboards.push(storyboard);
+      }
+    }
+
+    return storyboards;
+  }
+
+  /**
+   * Discover workflows within a storyboard folder
+   */
+  private async discoverWorkflowsInStoryboard(
+    fileTree: FileTree,
+    storyboardPath: string,
+    storyboardName: string,
+    packageMap: Map<string, PackageLayer>,
+    executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[],
+    options: DiscoveryOptions,
+    errors: Array<{ path: string; error: string }>
+  ): Promise<(DiscoveredWorkflow | DiscoveredWorkflowWithContent)[]> {
+    const workflows: (DiscoveredWorkflow | DiscoveredWorkflowWithContent)[] = [];
+
+    // Find all workflow files in this storyboard
+    for (const file of fileTree.allFiles) {
+      const path = file.relativePath || file.path || '';
+
+      // Check if file is in this storyboard
+      if (!path.startsWith(storyboardPath + '/')) continue;
+
+      // Check if it's a workflow file
+      if (!path.endsWith(CanvasDiscovery.WORKFLOW_EXTENSION)) continue;
+
+      // Extract workflow info
+      const filename = path.split('/').pop();
+      if (!filename) continue;
+
+      const basename = filename.replace(CanvasDiscovery.WORKFLOW_EXTENSION, '');
+      const workflowDir = path.split('/').slice(0, -1).join('/');
+
+      // Determine package context
+      const packageInfo = this.findPackageForPath(path, packageMap);
+
+      // Generate unique ID
+      const id = packageInfo
+        ? `${packageInfo.packageData.name}/${storyboardName}/${basename}`
+        : `${storyboardName}/${basename}`;
+
+      // Find executions for this workflow (in the same directory as workflow.json)
+      const workflowExecutions = executions.filter(e => {
+        const execDir = e.path.split('/').slice(0, -1).join('/');
+        return execDir === workflowDir;
+      });
+
+      // Create discovered workflow
+      let workflow: DiscoveredWorkflow | DiscoveredWorkflowWithContent = {
+        id,
+        name: this.toDisplayName(basename),
+        path,
+        basename,
+        storyboardId: packageInfo
+          ? `${packageInfo.packageData.name}/${storyboardName}`
+          : storyboardName,
+        packageName: packageInfo?.packageData.name,
+        packagePath: packageInfo?.packageData.path,
+        scope: packageInfo ? 'package' : 'root',
+        executions: workflowExecutions,
+      };
+
+      // Optionally load content
+      if (options.includeContent && options.fileReader) {
+        try {
+          const content = await options.fileReader(path);
+          const parsedContent = JSON.parse(content);
+          workflow = { ...workflow, content: parsedContent } as DiscoveredWorkflowWithContent;
+        } catch (error) {
+          errors.push({
+            path,
+            error: `Failed to parse workflow content: ${(error as Error).message}`,
+          });
+        }
+      }
+
+      workflows.push(workflow);
+    }
+
+    return workflows;
   }
 
   /**
@@ -416,8 +598,8 @@ export class CanvasDiscovery {
    * Sort by package then name
    */
   private compareByPackageThenName(
-    a: DiscoveredCanvas | DiscoveredExecution,
-    b: DiscoveredCanvas | DiscoveredExecution
+    a: DiscoveredCanvas | DiscoveredExecution | DiscoveredStoryboard,
+    b: DiscoveredCanvas | DiscoveredExecution | DiscoveredStoryboard
   ): number {
     // Package files first, then root
     if (a.packageName && !b.packageName) return -1;
