@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "canvas": "validation.otel.canvas",
+  "canvas": ".principal-views/validation/validation.otel.canvas",
   "name": "Validation Pipeline",
   "description": "Comprehensive validation workflow workflows for all Principal View validation types",
   "mode": "span-tree",

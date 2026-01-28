@@ -12,7 +12,9 @@ exclude:
   - "**/node_modules/**"
   - ".principal-views/library.yaml"
   - ".principal-views/**/*.workflow.json"  # Workflow files have different schema
-  - ".principal-views/**/__executions__/**"  # Execution artifacts
+  - ".principal-views/**/__executions__/**"  # Execution artifacts (legacy location)
+  - ".principal-views/**/*.otel.json"  # OTEL execution traces
+  - ".principal-views/**/*.spans.json"  # OTEL span execution traces
   - ".principal-views/**/*.canvas"  # Canvas files use validate command, not lint
   - ".principal-views/**/*.otel.canvas"  # Canvas files use validate command, not lint
 
