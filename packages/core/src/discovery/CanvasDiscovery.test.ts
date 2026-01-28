@@ -128,8 +128,9 @@ describe('CanvasDiscovery', () => {
       });
 
       expect(result.canvases).toHaveLength(1);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].path).toBe('.principal-views/bad.canvas');
+      expect(result.errors).toHaveLength(2); // Parse error + deprecation error for flat structure
+      expect(result.errors.some(e => e.path === '.principal-views/bad.canvas' && e.error.includes('JSON'))).toBe(true);
+      expect(result.errors.some(e => e.path === '.principal-views/bad.canvas' && e.error.includes('DEPRECATED'))).toBe(true);
     });
 
     test('ignores canvas files in __executions__ directory', async () => {

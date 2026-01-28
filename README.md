@@ -434,7 +434,7 @@ See [Storyboard Discovery Design](./docs/STORYBOARD_DISCOVERY_DESIGN.md) for det
     └── test-1.otel.json
 ```
 
-⚠️ **This structure is deprecated as of v0.15.0.** See [Migration Guide](./docs/MIGRATION_GUIDE.md) to upgrade.
+🚫 **This structure is fully deprecated as of v1.0.0 and will produce validation errors.** Migrate immediately using the [Migration Guide](./docs/MIGRATION_GUIDE.md).
 
 ## Development
 

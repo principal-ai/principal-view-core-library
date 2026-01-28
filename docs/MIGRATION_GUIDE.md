@@ -4,7 +4,7 @@
 
 This guide will help you migrate from the legacy flat structure to the new hierarchical storyboard structure for organizing Principal Views.
 
-**Status:** The legacy flat structure is deprecated as of version 0.15.0 and will show deprecation warnings. Both structures are currently supported for backward compatibility.
+**Status:** The legacy flat structure is **fully deprecated** as of version 1.0.0 and will produce validation errors. Both structures are currently supported for backward compatibility, but the flat structure is no longer recommended and will be removed in v2.0.0.
 
 ## Why Migrate?
 
@@ -283,14 +283,14 @@ When creating or updating workflow files, ensure the `canvas` field correctly re
 
 ## Common Issues and Solutions
 
-### Issue 1: Deprecation Warnings
+### Issue 1: Deprecation Errors
 
-**Problem:** You see warnings like:
+**Problem:** You see errors like:
 ```
-⚠ Legacy flat canvas structure is deprecated. Consider migrating to the storyboard structure.
+✖ DEPRECATED: Legacy flat canvas structure is no longer supported. Migrate to the storyboard structure immediately.
 ```
 
-**Solution:** Follow this migration guide to move to the storyboard structure.
+**Solution:** The flat structure is fully deprecated and produces validation errors. Follow this migration guide to move to the storyboard structure immediately.
 
 ### Issue 2: Canvas Reference Not Found
 
@@ -420,9 +420,9 @@ Use this checklist to ensure complete migration:
 
 ## Timeline
 
-- **v0.15.0 (Current):** Legacy structure shows deprecation warnings but still works
-- **v1.x (Future):** Legacy structure continues to work with warnings
-- **v2.0 (Future):** Legacy structure may be removed (with sufficient notice)
+- **v0.15.0:** Legacy structure shows deprecation warnings but still works
+- **v1.0.0 (Current):** Legacy structure produces validation errors but still works for backward compatibility
+- **v2.0.0 (Future):** Legacy structure will be completely removed
 
 ## Getting Help
 

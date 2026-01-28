@@ -87,7 +87,7 @@ describe('WorkflowValidator', () => {
           width: 200,
           height: 100,
           pv: {
-            event: 'test.started',
+            eventRef: 'test.started',
           },
         },
         {
@@ -98,7 +98,7 @@ describe('WorkflowValidator', () => {
           width: 200,
           height: 100,
           pv: {
-            event: 'test.complete',
+            eventRef: 'test.complete',
           },
         },
         {
@@ -109,7 +109,7 @@ describe('WorkflowValidator', () => {
           width: 200,
           height: 100,
           pv: {
-            event: 'test.error',
+            eventRef: 'test.error',
           },
         },
       ],

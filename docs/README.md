@@ -114,9 +114,9 @@ Each example includes:
 
 **If you're using the legacy flat structure** (canvas files directly in `.principal-views/` with `__executions__/` subdirectory):
 
-- This structure is **deprecated** as of v0.15.0 and will show warnings
-- **Recommended:** Migrate to the storyboard structure for better organization
-- **See:** [Migration Guide](./MIGRATION_GUIDE.md) for step-by-step instructions
+- This structure is **fully deprecated** as of v1.0.0 and will produce validation errors
+- **Required:** Migrate to the storyboard structure immediately
+- **See:** [Migration Guide](./MIGRATION_GUIDE.md) for step-by-step upgrade instructions
 
 **For new projects:** Use the storyboard structure described in [Storyboard Discovery Design](./STORYBOARD_DISCOVERY_DESIGN.md)
 

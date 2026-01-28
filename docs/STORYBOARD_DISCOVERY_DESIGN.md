@@ -2,18 +2,19 @@
 
 ## Implementation Status
 
-**Version:** 0.15.0
-**Phase:** Phase 2 (Soft Deprecation)
+**Version:** 1.0.0
+**Phase:** Phase 3 (Full Deprecation)
 **Status:** ✅ Implemented
 
 **What's Available:**
 - ✅ Storyboard discovery system (hierarchical structure support)
 - ✅ Deprecation warnings for legacy flat structure
-- ✅ Full backward compatibility with legacy structure
+- ✅ Lint errors for flat structure usage
+- ✅ Full backward compatibility with legacy structure (deprecated)
 - ✅ Documentation and migration guide
 - ⏸️ CLI automated migration tools (future enhancement)
 
-**Migration:** Legacy flat structure is deprecated but continues to work. See [Migration Guide](./MIGRATION_GUIDE.md) for upgrade instructions.
+**Migration:** **IMPORTANT:** Legacy flat structure is fully deprecated and will show lint errors. Upgrade to storyboard structure immediately. See [Migration Guide](./MIGRATION_GUIDE.md) for upgrade instructions.
 
 ---
 
@@ -520,29 +521,39 @@ The rules engine will include new rules for storyboard structure validation:
 
 **Status:** Completed
 
-### Phase 2: Recommend New Structure (Current - v0.15.0)
+### Phase 2: Recommend New Structure (Completed - v0.15.0)
 
 - ✅ Deprecation warnings in CanvasDiscovery for legacy structures
 - ✅ Documentation shows storyboard as preferred pattern
 - ✅ Migration guide: flat → storyboard (manual)
-- ⏸️ CLI `init` generates storyboard structure by default (future)
+- ✅ CLI `init` generates storyboard structure by default
 - ⏸️ CLI command: `privu migrate storyboard` (decided against automated migration for now)
 
-**Status:** Implemented (v0.15.0)
+**Status:** Completed (v0.15.0)
 
-**What's working:**
+**What was delivered:**
 - Discovery system emits deprecation warnings for flat canvas and `__executions__/` structures
 - All documentation updated to recommend storyboards
 - Comprehensive migration guide with step-by-step instructions
 - Both structures continue to work (backward compatibility maintained)
 
-### Phase 3: Deprecate Flat (Future)
+### Phase 3: Full Deprecation (Current - v1.0.0)
 
-- ⚠️ Lint warnings for flat structure
-- 📝 Auto-migration in `privu lint --fix`
-- 📝 Clear deprecation timeline
+- ✅ Lint errors for flat structure
+- ✅ Clear deprecation messaging in all documentation
+- ✅ Flat structure support maintained for backward compatibility (with errors)
+- ⏸️ Auto-migration in `privu lint --fix` (future enhancement)
 
-**Timeline:** Future major version (2.0.0)
+**Status:** Implemented (v1.0.0)
+
+**What's working:**
+- Discovery system now emits **errors** (not warnings) for flat canvas and `__executions__/` structures
+- All documentation clearly states flat structure is fully deprecated
+- Storyboard structure is the only supported approach going forward
+- Legacy structure still works but produces validation errors
+- Migration guide provides clear upgrade path
+
+**Timeline:** Legacy flat structure will be removed in v2.0.0
 
 ## Examples
 

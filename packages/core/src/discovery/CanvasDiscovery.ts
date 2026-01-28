@@ -82,8 +82,8 @@ export class CanvasDiscovery {
     // 5. Discover storyboards (hierarchical organization)
     const storyboards = await this.discoverStoryboards(fileTree, packageMap, canvases, executions, options, errors);
 
-    // 6. Detect legacy structures and add deprecation warnings
-    this.detectLegacyStructures(canvases, executions, storyboards, warnings);
+    // 6. Detect legacy structures and add deprecation errors
+    this.detectLegacyStructures(canvases, executions, storyboards, errors);
 
     // 7. Sort results
     canvases.sort(this.compareByPackageThenName);
@@ -620,13 +620,13 @@ export class CanvasDiscovery {
   }
 
   /**
-   * Detect legacy flat structures and add deprecation warnings
+   * Detect legacy flat structures and add deprecation errors
    */
   private detectLegacyStructures(
     canvases: DiscoveredCanvas[],
     executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[],
     storyboards: (DiscoveredStoryboard | DiscoveredStoryboardWithContent)[],
-    warnings: Array<{ path: string; message: string; type: 'deprecation' }>
+    errors: Array<{ path: string; error: string }>
   ): void {
     // Build a set of storyboard canvas IDs for quick lookup
     const storyboardCanvasIds = new Set(storyboards.map(s => s.canvas.id));
@@ -649,12 +649,11 @@ export class CanvasDiscovery {
         const parts = canvasDir.split('/');
         const pvIndex = parts.indexOf(CanvasDiscovery.CANVAS_DIR);
 
-        // Only warn if it's directly in .principal-views/ (flat structure)
+        // Only error if it's directly in .principal-views/ (flat structure)
         if (pvIndex !== -1 && parts.length === pvIndex + 1) {
-          warnings.push({
+          errors.push({
             path: canvas.path,
-            message: 'Legacy flat canvas structure is deprecated. Consider migrating to the storyboard structure. See migration guide for details.',
-            type: 'deprecation',
+            error: 'DEPRECATED: Legacy flat canvas structure is no longer supported. Migrate to the storyboard structure immediately. See migration guide at docs/MIGRATION_GUIDE.md for details.',
           });
         }
       }
@@ -665,10 +664,9 @@ export class CanvasDiscovery {
       if (!storyboardExecutionIds.has(execution.id)) {
         // Check if this execution is in __executions__/ directory
         if (execution.path.includes(`/${CanvasDiscovery.EXECUTIONS_DIR}/`)) {
-          warnings.push({
+          errors.push({
             path: execution.path,
-            message: 'Legacy __executions__/ directory is deprecated. Consider migrating executions to workflow folders within storyboards. See migration guide for details.',
-            type: 'deprecation',
+            error: 'DEPRECATED: Legacy __executions__/ directory is no longer supported. Migrate executions to workflow folders within storyboards immediately. See migration guide at docs/MIGRATION_GUIDE.md for details.',
           });
         }
       }
