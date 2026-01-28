@@ -9,6 +9,7 @@ import chalk from 'chalk';
 import { globby } from 'globby';
 import yaml from 'js-yaml';
 import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
+import { CanvasDiscovery, buildFileTreeFromDirectory, createNodeFileReader } from '@principal-ai/principal-view-core/node';
 
 interface ValidationIssue {
   type: 'error' | 'warning';
@@ -1304,6 +1305,78 @@ function validateFile(
   }
 }
 
+/**
+ * Output validation results
+ */
+function outputResults(
+  results: ValidationResult[],
+  libraryResult: ValidationResult | null,
+  options: { json?: boolean; quiet?: boolean }
+) {
+  const allResults = libraryResult ? [libraryResult, ...results] : results;
+  const validCount = allResults.filter((r) => r.isValid).length;
+  const invalidCount = allResults.length - validCount;
+
+  if (options.json) {
+    console.log(
+      JSON.stringify(
+        {
+          files: allResults,
+          summary: { total: allResults.length, valid: validCount, invalid: invalidCount },
+        },
+        null,
+        2
+      )
+    );
+  } else {
+    if (!options.quiet) {
+      const fileCount = libraryResult
+        ? `${results.length} canvas file(s) + library`
+        : `${results.length} canvas file(s)`;
+      console.log(chalk.bold(`\nValidating ${fileCount}...\n`));
+    }
+
+    for (const result of allResults) {
+      if (result.isValid) {
+        if (!options.quiet) {
+          console.log(chalk.green(`✓ ${result.file}`));
+          const warnings = result.issues.filter((i) => i.type === 'warning');
+          if (warnings.length > 0) {
+            warnings.forEach((w) => {
+              console.log(chalk.yellow(`  ⚠ ${w.message}`));
+            });
+          }
+        }
+      } else {
+        console.log(chalk.red(`✗ ${result.file}`));
+        result.issues.forEach((issue) => {
+          const icon = issue.type === 'error' ? '✗' : '⚠';
+          const color = issue.type === 'error' ? chalk.red : chalk.yellow;
+          console.log(color(`  ${icon} ${issue.message}`));
+          if (issue.suggestion) {
+            console.log(chalk.dim(`    → ${issue.suggestion}`));
+          }
+        });
+      }
+    }
+
+    // Summary
+    console.log('');
+    if (invalidCount === 0) {
+      console.log(chalk.green(`✓ All ${validCount} file(s) are valid`));
+    } else {
+      console.log(
+        chalk.red(`✗ ${invalidCount} of ${allResults.length} file(s) failed validation`)
+      );
+    }
+  }
+
+  // Exit with error if validation failed
+  if (invalidCount > 0) {
+    process.exit(1);
+  }
+}
+
 export function createValidateCommand(): Command {
   const command = new Command('validate');
 
@@ -1321,33 +1394,67 @@ export function createValidateCommand(): Command {
     )
     .action(async (files: string[], options) => {
       try {
-        // Default to .principal-views/*.canvas if no files specified
-        const patterns = files.length > 0 ? files : ['.principal-views/*.canvas'];
+        // Determine repository path for source file validation
+        const repositoryPath = options.repository
+          ? resolve(options.repository)
+          : process.cwd();
 
-        // Find all matching files
-        const matchedFiles = await globby(patterns, {
-          expandDirectories: false,
+        // If specific files are provided, fall back to legacy glob-based validation
+        if (files.length > 0) {
+          const matchedFiles = await globby(files, {
+            expandDirectories: false,
+          });
+
+          if (matchedFiles.length === 0) {
+            if (options.json) {
+              console.log(JSON.stringify({ files: [], summary: { total: 0, valid: 0, invalid: 0 } }));
+            } else {
+              console.log(chalk.yellow('No .canvas files found matching the specified patterns.'));
+              console.log(chalk.dim(`Patterns searched: ${files.join(', ')}`));
+            }
+            return;
+          }
+
+          const library = loadLibrary(resolve(repositoryPath, '.principal-views'));
+          const results: ValidationResult[] = matchedFiles.map((f) =>
+            validateFile(f, library, repositoryPath)
+          );
+
+          return outputResults(results, null, options);
+        }
+
+        // Use CanvasDiscovery to find all canvases (including storyboards)
+        const fileTree = await buildFileTreeFromDirectory(repositoryPath);
+        const discovery = new CanvasDiscovery();
+        const discoveryResult = await discovery.discover(fileTree, {
+          fileReader: createNodeFileReader(repositoryPath),
+          includeContent: true,
         });
 
-        if (matchedFiles.length === 0) {
+        // Check if any canvases were found
+        if (discoveryResult.canvases.length === 0) {
           if (options.json) {
-            console.log(JSON.stringify({ files: [], summary: { total: 0, valid: 0, invalid: 0 } }));
+            console.log(JSON.stringify({
+              files: [],
+              discoveryErrors: discoveryResult.errors,
+              summary: { total: 0, valid: 0, invalid: 0 }
+            }));
           } else {
-            console.log(chalk.yellow('No .canvas files found matching the specified patterns.'));
-            console.log(chalk.dim(`Patterns searched: ${patterns.join(', ')}`));
+            console.log(chalk.yellow('No .canvas files found.'));
+            if (discoveryResult.errors.length > 0) {
+              console.log(chalk.red('\nDiscovery errors:'));
+              discoveryResult.errors.forEach(err => {
+                console.log(chalk.red(`  ✗ ${err.path}: ${err.error}`));
+              });
+            }
             console.log(chalk.dim('\nTo create a new .principal-views folder, run: npx @principal-ai/principal-view-cli init'));
           }
           return;
         }
 
         // Load library from .principal-views directory (used for type validation)
-        const principalViewsDir = resolve(process.cwd(), '.principal-views');
+        const principalViewsDir = resolve(repositoryPath, '.principal-views');
         const library = loadLibrary(principalViewsDir);
-
-        // Determine repository path for source file validation
-        const repositoryPath = options.repository
-          ? resolve(options.repository)
-          : process.cwd();
 
         // Validate library if present
         let libraryResult: ValidationResult | null = null;
@@ -1355,77 +1462,62 @@ export function createValidateCommand(): Command {
           const libraryIssues = validateLibrary(library);
           const libraryHasErrors = libraryIssues.some((i) => i.type === 'error');
           libraryResult = {
-            file: relative(process.cwd(), library.path),
+            file: relative(repositoryPath, library.path),
             isValid: !libraryHasErrors,
             issues: libraryIssues,
           };
         }
 
-        // Validate all canvas files
-        const results: ValidationResult[] = matchedFiles.map((f) =>
-          validateFile(f, library, repositoryPath)
-        );
+        // Convert discovery results to validation results
+        const results: ValidationResult[] = [];
 
-        // Combine results
-        const allResults = libraryResult ? [libraryResult, ...results] : results;
-        const validCount = allResults.filter((r) => r.isValid).length;
-        const invalidCount = allResults.length - validCount;
-
-        // Output results
-        if (options.json) {
-          console.log(
-            JSON.stringify(
-              {
-                files: allResults,
-                summary: { total: allResults.length, valid: validCount, invalid: invalidCount },
-              },
-              null,
-              2
-            )
-          );
-        } else {
-          if (!options.quiet) {
-            const fileCount = libraryResult
-              ? `${results.length} canvas file(s) + library`
-              : `${results.length} canvas file(s)`;
-            console.log(chalk.bold(`\nValidating ${fileCount}...\n`));
-          }
-
-          for (const result of allResults) {
-            if (result.isValid) {
-              if (!options.quiet) {
-                console.log(chalk.green(`✓ ${result.file}`));
-                const warnings = result.issues.filter((i) => i.type === 'warning');
-                if (warnings.length > 0) {
-                  warnings.forEach((w) => {
-                    console.log(chalk.yellow(`  ⚠ ${w.message}`));
-                  });
-                }
-              }
-            } else {
-              console.log(chalk.red(`✗ ${result.file}`));
-              result.issues.forEach((issue) => {
-                const icon = issue.type === 'error' ? '✗' : '⚠';
-                const color = issue.type === 'error' ? chalk.red : chalk.yellow;
-                console.log(color(`  ${icon} ${issue.message}`));
-                if (issue.suggestion) {
-                  console.log(chalk.dim(`    → ${issue.suggestion}`));
-                }
-              });
-            }
-          }
-
-          // Summary
-          console.log('');
-          if (invalidCount === 0) {
-            console.log(chalk.green(`✓ All ${validCount} file(s) are valid`));
-          } else {
-            console.log(
-              chalk.red(`✗ ${invalidCount} of ${allResults.length} file(s) failed validation`)
-            );
-            process.exit(1);
-          }
+        // Add discovery errors as validation failures
+        for (const error of discoveryResult.errors) {
+          results.push({
+            file: error.path,
+            isValid: false,
+            issues: [{
+              type: 'error',
+              message: error.error,
+              path: error.path,
+            }],
+          });
         }
+
+        // Add discovery warnings (though these should now be errors in v1.0.0)
+        for (const warning of discoveryResult.warnings) {
+          // Find existing result for this path or create new one
+          let result = results.find(r => r.file === warning.path);
+          if (!result) {
+            result = {
+              file: warning.path,
+              isValid: true,
+              issues: [],
+            };
+            results.push(result);
+          }
+          result.issues.push({
+            type: 'warning',
+            message: warning.message,
+            path: warning.path,
+          });
+        }
+
+        // Validate all discovered canvases
+        for (const canvas of discoveryResult.canvases) {
+          // Check if we already have a result for this canvas (from discovery errors)
+          const existingResult = results.find(r => r.file === canvas.path);
+          if (existingResult) {
+            // Already has errors/warnings, skip validation
+            continue;
+          }
+
+          const validationResult = validateFile(canvas.path, library, repositoryPath);
+          results.push(validationResult);
+        }
+
+        // Output results using helper function
+        outputResults(results, libraryResult, options);
       } catch (error) {
         console.error(chalk.red('Error:'), (error as Error).message);
         process.exit(1);
