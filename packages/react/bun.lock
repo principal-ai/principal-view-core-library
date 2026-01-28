@@ -6,7 +6,7 @@
       "dependencies": {
         "@principal-ade/industry-theme": "0.1.7",
         "@principal-ai/codebase-composition": "^0.2.41",
-        "@principal-ai/principal-view-core": "0.15.1",
+        "@principal-ai/principal-view-core": "0.15.2",
         "@principal-ai/principal-view-react": "0.10.0",
         "@xyflow/react": "12.0.0",
         "js-yaml": "4.1.1",
@@ -170,7 +170,7 @@
 
     "@principal-ai/codebase-quality-lenses": ["@principal-ai/codebase-quality-lenses@0.1.62", "", { "peerDependencies": { "@a24z/alexandria-cli": ">=0.2.0" }, "optionalPeers": ["@a24z/alexandria-cli"] }, "sha512-8IMPabTVV3jbWq1xZv46HmmEFfc1TrEmfVRow67YWPZ/Yl76A8P/vA/DIO/Z2CgnJ2GlNLJqFVL/a3MZgSKsjQ=="],
 
-    "@principal-ai/principal-view-core": ["@principal-ai/principal-view-core@0.15.1", "", { "dependencies": { "@opentelemetry/api": "1.9.0", "@opentelemetry/exporter-trace-otlp-http": "0.208.0", "@opentelemetry/otlp-transformer": "^0.211.0", "@opentelemetry/resources": "2.2.0", "@opentelemetry/sdk-trace-base": "2.2.0", "@opentelemetry/semantic-conventions": "1.38.0", "@principal-ai/codebase-composition": "^0.2.41", "@principal-ai/repository-abstraction": "0.2.6", "date-fns": "3.0.0", "handlebars": "^4.7.8", "js-yaml": "4.1.0", "zod": "3.22.0" } }, "sha512-dhtHFCWdE/nF1YIOEEv+6lOTmGZVth+YcdExD7EhjNgd+Bn7Ue1m7t7lG2rMQnesckjnFwtVJr5p0sDpkdxZ2w=="],
+    "@principal-ai/principal-view-core": ["@principal-ai/principal-view-core@0.15.2", "", { "dependencies": { "@opentelemetry/api": "1.9.0", "@opentelemetry/exporter-trace-otlp-http": "0.208.0", "@opentelemetry/otlp-transformer": "^0.211.0", "@opentelemetry/resources": "2.2.0", "@opentelemetry/sdk-trace-base": "2.2.0", "@opentelemetry/semantic-conventions": "1.38.0", "@principal-ai/codebase-composition": "^0.2.41", "@principal-ai/repository-abstraction": "0.2.6", "date-fns": "3.0.0", "handlebars": "^4.7.8", "js-yaml": "4.1.0", "zod": "3.22.0" } }, "sha512-RGCDJq71s+27TB4HP4D0mMG602sw0TW22JTIYhlaeCqlb0Ofd8fq0yPyR8tqd7ASBADNszC/OT3KSQxB+kbh4Q=="],
 
     "@principal-ai/principal-view-react": ["@principal-ai/principal-view-react@0.10.0", "", { "dependencies": { "@principal-ade/industry-theme": "0.1.7", "@principal-ai/codebase-composition": "^0.2.41", "@principal-ai/principal-view-core": "0.15.0", "@principal-ai/principal-view-react": "0.10.0", "@xyflow/react": "12.0.0", "js-yaml": "4.1.1", "lucide-react": "0.554.0", "zustand": "4.5.0" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" } }, "sha512-8Z2KP4MY6E/rw8R5zkB50VE7iHA3QBZD4heJ3YdyizjQhksXVSLYc7Dj9X25ZqAXeEJEFgq17pkZLV6y02oGrA=="],
 

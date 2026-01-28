@@ -174,10 +174,8 @@ export class CanvasDiscovery {
     }
 
     // For each potential storyboard directory, check if it has a canvas
-    for (const [storyboardParentPath, storyboardNames] of storyboardDirs) {
+    for (const [storyboardPath, storyboardNames] of storyboardDirs) {
       for (const storyboardName of storyboardNames) {
-        const storyboardPath = `${storyboardParentPath}/${storyboardName}`;
-
         // Skip __executions__ directory
         if (storyboardName === CanvasDiscovery.EXECUTIONS_DIR) continue;
 
