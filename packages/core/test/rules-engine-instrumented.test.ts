@@ -264,7 +264,7 @@ describe('Rules Engine with Telemetry', () => {
 
     const outputPath = path.join(
       __dirname,
-      '../.principal-views/__executions__/rules-engine-execution.otel.json'
+      '../../../.principal-views/validation/validation-workflow/rules-engine-execution.otel.json'
     );
 
     // Ensure directory exists
