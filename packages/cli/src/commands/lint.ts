@@ -1,5 +1,8 @@
 /**
  * Lint command - Lint graph configuration files using the rules engine
+ *
+ * This command focuses on style, conventions, and configurable linting rules.
+ * For structural validation of workflows and executions, use the `validate` command.
  */
 
 import { Command } from 'commander';
@@ -336,7 +339,7 @@ export function createLintCommand(): Command {
   const command = new Command('lint');
 
   command
-    .description('Lint graph configuration files')
+    .description('Lint configuration files for style and best practices (use `validate` for structural validation)')
     .argument(
       '[files...]',
       'Files or glob patterns to lint (defaults to .principal-views/**/*.yaml)'

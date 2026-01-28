@@ -7,7 +7,6 @@
 
 import { Command } from 'commander';
 import { createValidateCommand } from './commands/validate.js';
-import { createValidateExecutionCommand } from './commands/validate-execution.js';
 import { createInitCommand } from './commands/init.js';
 import { createListCommand } from './commands/list.js';
 import { createSchemaCommand } from './commands/schema.js';
@@ -20,7 +19,7 @@ import { createCoverageCommand } from './commands/coverage.js';
 import { createWorkflowCommand } from './commands/workflow/index.js';
 
 // Version is injected at build time via package.json
-const VERSION = '0.8.4';
+const VERSION = '0.9.0';
 
 const program = new Command();
 
@@ -29,12 +28,11 @@ program
   .description('Principal View CLI - Validate and manage .canvas configuration files')
   .version(VERSION);
 
-// Add commands
+// Add commands in logical order
 program.addCommand(createInitCommand());
 program.addCommand(createCreateCommand());
-program.addCommand(createValidateCommand());
-program.addCommand(createValidateExecutionCommand());
-program.addCommand(createLintCommand());
+program.addCommand(createValidateCommand()); // Comprehensive structural validation
+program.addCommand(createLintCommand()); // Style and conventions
 program.addCommand(createListCommand());
 program.addCommand(createSchemaCommand());
 program.addCommand(createFormatsCommand());

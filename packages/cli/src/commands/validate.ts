@@ -1,15 +1,22 @@
 /**
- * Validate command - Validate .canvas configuration files
+ * Validate command - Comprehensive validation of all Principal View artifacts
+ *
+ * This command validates:
+ * - Canvas files (.canvas, .otel.canvas)
+ * - Workflow templates (.workflow.json)
+ * - Execution artifacts (.otel.json)
+ * - Component library (library.yaml)
  */
 
 import { Command } from 'commander';
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve, relative } from 'node:path';
+import { resolve, relative, dirname, basename } from 'node:path';
 import chalk from 'chalk';
 import { globby } from 'globby';
 import yaml from 'js-yaml';
-import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
-import { CanvasDiscovery, buildFileTreeFromDirectory, createNodeFileReader } from '@principal-ai/principal-view-core/node';
+import type { ExtendedCanvas, WorkflowTemplate, ExecutionData } from '@principal-ai/principal-view-core';
+import { createExecutionValidator } from '@principal-ai/principal-view-core';
+import { CanvasDiscovery, buildFileTreeFromDirectory, createNodeFileReader, createWorkflowValidator } from '@principal-ai/principal-view-core/node';
 
 interface ValidationIssue {
   type: 'error' | 'warning';
@@ -20,6 +27,7 @@ interface ValidationIssue {
 
 interface ValidationResult {
   file: string;
+  fileType: 'canvas' | 'workflow' | 'execution' | 'library';
   isValid: boolean;
   issues: ValidationIssue[];
   canvas?: ExtendedCanvas;
@@ -466,6 +474,92 @@ function findSimilarField(field: string, allowedFields: string[]): string | null
       if (differences <= 2) return allowed;
     }
   }
+  return null;
+}
+
+/**
+ * Load a workflow template file
+ */
+function loadWorkflowTemplate(filePath: string): WorkflowTemplate | null {
+  if (!existsSync(filePath)) {
+    return null;
+  }
+
+  try {
+    const content = readFileSync(filePath, 'utf8');
+    return JSON.parse(content) as WorkflowTemplate;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Load an execution artifact file
+ */
+function loadExecutionFile(filePath: string): ExecutionData | null {
+  if (!existsSync(filePath)) {
+    return null;
+  }
+
+  try {
+    const content = readFileSync(filePath, 'utf8');
+    return JSON.parse(content) as ExecutionData;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Determine file type based on naming convention
+ */
+function determineFileType(filePath: string): 'canvas' | 'workflow' | 'execution' | 'library' {
+  const name = basename(filePath).toLowerCase();
+
+  if (name.startsWith('library.')) {
+    return 'library';
+  }
+  if (name.endsWith('.workflow.json')) {
+    return 'workflow';
+  }
+  if (name.endsWith('.otel.json')) {
+    return 'execution';
+  }
+  return 'canvas';
+}
+
+/**
+ * Find matching canvas file for an execution artifact
+ */
+function findMatchingCanvas(executionPath: string, repositoryPath: string): string | null {
+  const fileName = basename(executionPath);
+  const dir = dirname(executionPath);
+
+  // Extract basename by removing .otel.json extension
+  const canvasBasename = fileName.replace(/\.otel\.json$/, '');
+
+  // Determine canvas directory (go up from __executions__ to .principal-views)
+  let canvasDir: string;
+  if (dir.includes('.principal-views/__executions__')) {
+    canvasDir = dir.replace('/__executions__', '');
+  } else if (dir.endsWith('__executions__')) {
+    canvasDir = resolve(dirname(dir), '.principal-views');
+  } else {
+    // Fallback: look in .principal-views relative to repository root
+    canvasDir = resolve(repositoryPath, '.principal-views');
+  }
+
+  // Check for .otel.canvas first (preferred)
+  const otelCanvasPath = resolve(canvasDir, `${canvasBasename}.otel.canvas`);
+  if (existsSync(otelCanvasPath)) {
+    return otelCanvasPath;
+  }
+
+  // Check for regular .canvas as fallback
+  const regularCanvasPath = resolve(canvasDir, `${canvasBasename}.canvas`);
+  if (existsSync(regularCanvasPath)) {
+    return regularCanvasPath;
+  }
+
   return null;
 }
 
@@ -1266,6 +1360,161 @@ Example structure:
 }
 
 /**
+ * Validate a workflow template
+ */
+async function validateWorkflow(
+  filePath: string,
+  allWorkflowEvents: Set<string> | undefined,
+  repositoryPath: string
+): Promise<ValidationResult> {
+  const relativePath = relative(repositoryPath, filePath);
+
+  if (!existsSync(filePath)) {
+    return {
+      file: relativePath,
+      fileType: 'workflow',
+      isValid: false,
+      issues: [{ type: 'error', message: `File not found: ${filePath}` }],
+    };
+  }
+
+  try {
+    const workflow = loadWorkflowTemplate(filePath);
+    if (!workflow) {
+      return {
+        file: relativePath,
+        fileType: 'workflow',
+        isValid: false,
+        issues: [{ type: 'error', message: 'Could not parse workflow file' }],
+      };
+    }
+
+    // Load referenced canvas if it exists
+    const canvasPath = workflow.canvas
+      ? resolve(dirname(filePath), workflow.canvas)
+      : undefined;
+    const canvas = canvasPath && existsSync(canvasPath)
+      ? JSON.parse(readFileSync(canvasPath, 'utf8')) as ExtendedCanvas
+      : undefined;
+
+    // Validate using workflow validator
+    const validator = createWorkflowValidator();
+    const rawContent = readFileSync(filePath, 'utf8');
+
+    const result = await validator.validate({
+      workflow,
+      workflowPath: relativePath,
+      canvas,
+      canvasPath: canvasPath ? relative(repositoryPath, canvasPath) : undefined,
+      basePath: dirname(filePath),
+      rawContent,
+      allWorkflowEvents,
+    });
+
+    // Convert workflow violations to validation issues
+    const issues: ValidationIssue[] = result.violations.map(v => ({
+      type: v.severity === 'error' ? 'error' : 'warning',
+      message: v.message,
+      path: v.path,
+      suggestion: v.suggestion,
+    }));
+
+    return {
+      file: relativePath,
+      fileType: 'workflow',
+      isValid: result.errorCount === 0,
+      issues,
+    };
+  } catch (error) {
+    return {
+      file: relativePath,
+      fileType: 'workflow',
+      isValid: false,
+      issues: [{ type: 'error', message: `Failed to validate: ${(error as Error).message}` }],
+    };
+  }
+}
+
+/**
+ * Validate an execution artifact
+ */
+function validateExecution(
+  filePath: string,
+  repositoryPath: string
+): ValidationResult {
+  const relativePath = relative(repositoryPath, filePath);
+
+  if (!existsSync(filePath)) {
+    return {
+      file: relativePath,
+      fileType: 'execution',
+      isValid: false,
+      issues: [{ type: 'error', message: `File not found: ${filePath}` }],
+    };
+  }
+
+  try {
+    const data = loadExecutionFile(filePath);
+    if (!data) {
+      return {
+        file: relativePath,
+        fileType: 'execution',
+        isValid: false,
+        issues: [{ type: 'error', message: 'Could not parse execution file' }],
+      };
+    }
+
+    // Validate using execution validator
+    const validator = createExecutionValidator();
+    const result = validator.validate(data, relativePath);
+
+    // Check if matching canvas exists
+    const matchingCanvas = findMatchingCanvas(filePath, repositoryPath);
+    if (!matchingCanvas) {
+      const fileName = basename(filePath);
+      const canvasBasename = fileName.replace(/\.otel\.json$/, '');
+      result.errors.push({
+        path: relativePath,
+        message: 'No matching canvas file found for execution artifact',
+        severity: 'error',
+        suggestion: `Create a canvas file named '${canvasBasename}.otel.canvas' in .principal-views/ directory`,
+      });
+      result.valid = false;
+    }
+
+    // Convert execution validation result to validation issues
+    const issues: ValidationIssue[] = [
+      ...result.errors.map(e => ({
+        type: 'error' as const,
+        message: e.message,
+        path: e.path,
+        suggestion: e.suggestion,
+      })),
+      ...result.warnings.map(w => ({
+        type: 'warning' as const,
+        message: w.message,
+        path: w.path,
+        suggestion: w.suggestion,
+      })),
+    ];
+
+    return {
+      file: relativePath,
+      fileType: 'execution',
+      isValid: result.valid,
+      issues,
+    };
+  } catch (error) {
+    return {
+      file: relativePath,
+      fileType: 'execution',
+      isValid: false,
+      issues: [{ type: 'error', message: `Failed to validate: ${(error as Error).message}` }],
+    };
+  }
+}
+
+/**
  * Validate a single .canvas file
  */
 function validateFile(
@@ -1279,6 +1528,7 @@ function validateFile(
   if (!existsSync(absolutePath)) {
     return {
       file: relativePath,
+      fileType: 'canvas',
       isValid: false,
       issues: [{ type: 'error', message: `File not found: ${filePath}` }],
     };
@@ -1292,6 +1542,7 @@ function validateFile(
 
     return {
       file: relativePath,
+      fileType: 'canvas',
       isValid: !hasErrors,
       issues,
       canvas: hasErrors ? undefined : canvas,
@@ -1299,6 +1550,7 @@ function validateFile(
   } catch (error) {
     return {
       file: relativePath,
+      fileType: 'canvas',
       isValid: false,
       issues: [{ type: 'error', message: `Failed to parse JSON: ${(error as Error).message}` }],
     };
@@ -1306,7 +1558,7 @@ function validateFile(
 }
 
 /**
- * Output validation results
+ * Output validation results, organized by file type
  */
 function outputResults(
   results: ValidationResult[],
@@ -1317,12 +1569,30 @@ function outputResults(
   const validCount = allResults.filter((r) => r.isValid).length;
   const invalidCount = allResults.length - validCount;
 
+  // Group by file type
+  const byType = {
+    canvas: allResults.filter(r => r.fileType === 'canvas'),
+    workflow: allResults.filter(r => r.fileType === 'workflow'),
+    execution: allResults.filter(r => r.fileType === 'execution'),
+    library: allResults.filter(r => r.fileType === 'library'),
+  };
+
   if (options.json) {
     console.log(
       JSON.stringify(
         {
           files: allResults,
-          summary: { total: allResults.length, valid: validCount, invalid: invalidCount },
+          summary: {
+            total: allResults.length,
+            valid: validCount,
+            invalid: invalidCount,
+            byType: {
+              canvas: byType.canvas.length,
+              workflow: byType.workflow.length,
+              execution: byType.execution.length,
+              library: byType.library.length,
+            },
+          },
         },
         null,
         2
@@ -1330,38 +1600,56 @@ function outputResults(
     );
   } else {
     if (!options.quiet) {
-      const fileCount = libraryResult
-        ? `${results.length} canvas file(s) + library`
-        : `${results.length} canvas file(s)`;
-      console.log(chalk.bold(`\nValidating ${fileCount}...\n`));
+      const counts = [];
+      if (byType.canvas.length > 0) counts.push(`${byType.canvas.length} canvas`);
+      if (byType.workflow.length > 0) counts.push(`${byType.workflow.length} workflow`);
+      if (byType.execution.length > 0) counts.push(`${byType.execution.length} execution`);
+      if (byType.library.length > 0) counts.push(`${byType.library.length} library`);
+
+      console.log(chalk.bold(`\nValidating ${counts.join(', ')} file(s)...\n`));
     }
 
-    for (const result of allResults) {
-      if (result.isValid) {
-        if (!options.quiet) {
-          console.log(chalk.green(`✓ ${result.file}`));
-          const warnings = result.issues.filter((i) => i.type === 'warning');
-          if (warnings.length > 0) {
-            warnings.forEach((w) => {
-              console.log(chalk.yellow(`  ⚠ ${w.message}`));
-            });
-          }
-        }
-      } else {
-        console.log(chalk.red(`✗ ${result.file}`));
-        result.issues.forEach((issue) => {
-          const icon = issue.type === 'error' ? '✗' : '⚠';
-          const color = issue.type === 'error' ? chalk.red : chalk.yellow;
-          console.log(color(`  ${icon} ${issue.message}`));
-          if (issue.suggestion) {
-            console.log(chalk.dim(`    → ${issue.suggestion}`));
-          }
-        });
+    // Output by type for better organization
+    const outputByType = (type: string, results: ValidationResult[]) => {
+      if (results.length === 0) return;
+
+      if (!options.quiet) {
+        console.log(chalk.bold(`${type.charAt(0).toUpperCase() + type.slice(1)} Files:`));
       }
-    }
+
+      for (const result of results) {
+        if (result.isValid) {
+          if (!options.quiet) {
+            console.log(chalk.green(`✓ ${result.file}`));
+            const warnings = result.issues.filter((i) => i.type === 'warning');
+            if (warnings.length > 0) {
+              warnings.forEach((w) => {
+                console.log(chalk.yellow(`  ⚠ ${w.message}`));
+              });
+            }
+          }
+        } else {
+          console.log(chalk.red(`✗ ${result.file}`));
+          result.issues.forEach((issue) => {
+            const icon = issue.type === 'error' ? '✗' : '⚠';
+            const color = issue.type === 'error' ? chalk.red : chalk.yellow;
+            console.log(color(`  ${icon} ${issue.message}`));
+            if (issue.suggestion) {
+              console.log(chalk.dim(`    → ${issue.suggestion}`));
+            }
+          });
+        }
+      }
+      if (!options.quiet) console.log('');
+    };
+
+    // Output in logical order
+    outputByType('Library', byType.library);
+    outputByType('Canvas', byType.canvas);
+    outputByType('Workflow', byType.workflow);
+    outputByType('Execution', byType.execution);
 
     // Summary
-    console.log('');
     if (invalidCount === 0) {
       console.log(chalk.green(`✓ All ${validCount} file(s) are valid`));
     } else {
@@ -1381,10 +1669,10 @@ export function createValidateCommand(): Command {
   const command = new Command('validate');
 
   command
-    .description('Validate .canvas configuration files')
+    .description('Validate all Principal View artifacts (canvas, workflow, execution files)')
     .argument(
       '[files...]',
-      'Files or glob patterns to validate (defaults to .principal-views/*.canvas)'
+      'Files or glob patterns to validate (defaults to all Principal View files)'
     )
     .option('-q, --quiet', 'Only output errors')
     .option('--json', 'Output results as JSON')
@@ -1392,6 +1680,9 @@ export function createValidateCommand(): Command {
       '-r, --repository <path>',
       'Repository root path for validating source file references (defaults to current directory)'
     )
+    .option('--canvas-only', 'Only validate canvas files')
+    .option('--workflow-only', 'Only validate workflow files')
+    .option('--execution-only', 'Only validate execution files')
     .action(async (files: string[], options) => {
       try {
         // Determine repository path for source file validation
@@ -1423,6 +1714,11 @@ export function createValidateCommand(): Command {
           return outputResults(results, null, options);
         }
 
+        // Determine which file types to validate
+        const validateCanvases = !options.workflowOnly && !options.executionOnly;
+        const validateWorkflows = !options.canvasOnly && !options.executionOnly;
+        const validateExecutions = !options.canvasOnly && !options.workflowOnly;
+
         // Use CanvasDiscovery to find all canvases (including storyboards)
         const fileTree = await buildFileTreeFromDirectory(repositoryPath);
         const discovery = new CanvasDiscovery();
@@ -1431,16 +1727,38 @@ export function createValidateCommand(): Command {
           includeContent: true,
         });
 
-        // Check if any canvases were found
-        if (discoveryResult.canvases.length === 0) {
+        // Find workflows and executions using glob
+        const workflowFiles = validateWorkflows
+          ? await globby([
+              '.principal-views/**/*.workflow.json',
+              '**/*.workflow.json',
+            ], {
+              cwd: repositoryPath,
+              ignore: ['**/node_modules/**'],
+            })
+          : [];
+
+        const executionFiles = validateExecutions
+          ? await globby([
+              '**/__executions__/*.otel.json',
+              '.principal-views/__executions__/*.otel.json',
+            ], {
+              cwd: repositoryPath,
+              ignore: ['**/node_modules/**'],
+            })
+          : [];
+
+        // Check if any files were found
+        const totalFiles = discoveryResult.canvases.length + workflowFiles.length + executionFiles.length;
+        if (totalFiles === 0) {
           if (options.json) {
             console.log(JSON.stringify({
               files: [],
               discoveryErrors: discoveryResult.errors,
-              summary: { total: 0, valid: 0, invalid: 0 }
+              summary: { total: 0, valid: 0, invalid: 0, byType: { canvas: 0, workflow: 0, execution: 0, library: 0 } }
             }));
           } else {
-            console.log(chalk.yellow('No .canvas files found.'));
+            console.log(chalk.yellow('No Principal View files found.'));
             if (discoveryResult.errors.length > 0) {
               console.log(chalk.red('\nDiscovery errors:'));
               discoveryResult.errors.forEach(err => {
@@ -1463,6 +1781,7 @@ export function createValidateCommand(): Command {
           const libraryHasErrors = libraryIssues.some((i) => i.type === 'error');
           libraryResult = {
             file: relative(repositoryPath, library.path),
+            fileType: 'library',
             isValid: !libraryHasErrors,
             issues: libraryIssues,
           };
@@ -1475,6 +1794,7 @@ export function createValidateCommand(): Command {
         for (const error of discoveryResult.errors) {
           results.push({
             file: error.path,
+            fileType: 'canvas',
             isValid: false,
             issues: [{
               type: 'error',
@@ -1484,13 +1804,14 @@ export function createValidateCommand(): Command {
           });
         }
 
-        // Add discovery warnings (though these should now be errors in v1.0.0)
+        // Add discovery warnings
         for (const warning of discoveryResult.warnings) {
           // Find existing result for this path or create new one
           let result = results.find(r => r.file === warning.path);
           if (!result) {
             result = {
               file: warning.path,
+              fileType: 'canvas',
               isValid: true,
               issues: [],
             };
@@ -1503,17 +1824,85 @@ export function createValidateCommand(): Command {
           });
         }
 
-        // Validate all discovered canvases
-        for (const canvas of discoveryResult.canvases) {
-          // Check if we already have a result for this canvas (from discovery errors)
-          const existingResult = results.find(r => r.file === canvas.path);
-          if (existingResult) {
-            // Already has errors/warnings, skip validation
-            continue;
-          }
+        // PHASE 1: Group workflows by canvas and collect all events used
+        const workflowsByCanvas = new Map<string, Set<string>>();
 
-          const validationResult = validateFile(canvas.path, library, repositoryPath);
-          results.push(validationResult);
+        for (const workflowFile of workflowFiles) {
+          const absolutePath = resolve(repositoryPath, workflowFile);
+          const workflow = loadWorkflowTemplate(absolutePath);
+          if (!workflow || !workflow.canvas) continue;
+
+          const canvasPath = resolve(dirname(absolutePath), workflow.canvas);
+          const canvasKey = relative(repositoryPath, canvasPath);
+
+          // Collect events from this workflow
+          if (!workflowsByCanvas.has(canvasKey)) {
+            workflowsByCanvas.set(canvasKey, new Set<string>());
+          }
+          const workflowEvents = workflowsByCanvas.get(canvasKey)!;
+
+          for (const scenario of workflow.scenarios) {
+            if (scenario.condition?.requires) {
+              for (const eventPattern of scenario.condition.requires) {
+                if (!eventPattern.includes('*')) {
+                  workflowEvents.add(eventPattern);
+                }
+              }
+            }
+            if (scenario.template?.events) {
+              for (const eventName of Object.keys(scenario.template.events)) {
+                if (!eventName.includes('*')) {
+                  workflowEvents.add(eventName);
+                }
+              }
+            }
+          }
+        }
+
+        // PHASE 2: Validate canvases
+        if (validateCanvases) {
+          for (const canvas of discoveryResult.canvases) {
+            // Check if we already have a result for this canvas (from discovery errors)
+            const existingResult = results.find(r => r.file === canvas.path);
+            if (existingResult) {
+              // Already has errors/warnings, skip validation
+              continue;
+            }
+
+            const validationResult = validateFile(canvas.path, library, repositoryPath);
+            results.push(validationResult);
+          }
+        }
+
+        // PHASE 3: Validate workflows with canvas-wide event knowledge
+        if (validateWorkflows) {
+          for (const workflowFile of workflowFiles) {
+            const absolutePath = resolve(repositoryPath, workflowFile);
+            const workflow = loadWorkflowTemplate(absolutePath);
+            if (!workflow) continue;
+
+            const canvasPath = workflow.canvas
+              ? resolve(dirname(absolutePath), workflow.canvas)
+              : undefined;
+            const canvasKey = canvasPath ? relative(repositoryPath, canvasPath) : undefined;
+            const allWorkflowEvents = canvasKey ? workflowsByCanvas.get(canvasKey) : undefined;
+
+            const validationResult = await validateWorkflow(
+              absolutePath,
+              allWorkflowEvents,
+              repositoryPath
+            );
+            results.push(validationResult);
+          }
+        }
+
+        // PHASE 4: Validate execution artifacts
+        if (validateExecutions) {
+          for (const executionFile of executionFiles) {
+            const absolutePath = resolve(repositoryPath, executionFile);
+            const validationResult = validateExecution(absolutePath, repositoryPath);
+            results.push(validationResult);
+          }
         }
 
         // Output results using helper function
