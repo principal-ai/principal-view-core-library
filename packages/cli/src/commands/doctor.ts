@@ -362,7 +362,7 @@ export function createDoctorCommand(): Command {
             console.log(chalk.yellow(`\n⚠ ${totalWarnings} warning(s) found`));
             if (deprecationWarningCount > 0) {
               console.log(chalk.dim(`  (including ${deprecationWarningCount} file structure deprecation(s))`));
-              console.log(chalk.dim(`  See: docs/MIGRATION_GUIDE.md for migration instructions`));
+              console.log(chalk.dim(`  Run ${chalk.cyan('privu migration')} to see the migration guide`));
             }
           } else if (!options.quiet && !options.errorsOnly) {
             console.log(chalk.green(`\n✓ All configurations are up to date`));

@@ -17,9 +17,10 @@ import { createCreateCommand } from './commands/create.js';
 import { createLintCommand } from './commands/lint.js';
 import { createCoverageCommand } from './commands/coverage.js';
 import { createWorkflowCommand } from './commands/workflow/index.js';
+import { createMigrationCommand } from './commands/migration.js';
 
 // Version is injected at build time via package.json
-const VERSION = '0.9.1';
+const VERSION = '0.10.0';
 
 const program = new Command();
 
@@ -37,6 +38,7 @@ program.addCommand(createListCommand());
 program.addCommand(createSchemaCommand());
 program.addCommand(createFormatsCommand());
 program.addCommand(createDoctorCommand());
+program.addCommand(createMigrationCommand()); // Migration guide
 program.addCommand(createHooksCommand());
 program.addCommand(createCoverageCommand());
 program.addCommand(createWorkflowCommand());
