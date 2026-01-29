@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 
 /**
- * Anchor Suggestion Script
+ * Source Suggestion Script
  *
- * Suggests file anchors for canvas nodes based on naming conventions
+ * Suggests file sources for canvas nodes based on naming conventions
  */
 
 import { readFile } from 'fs/promises';
@@ -16,13 +16,12 @@ interface CanvasNode {
   pv?: {
     name?: string;
     nodeType?: string;
+    sources?: string[];
   };
-  [key: string]: any;
 }
 
 interface Canvas {
   nodes?: CanvasNode[];
-  [key: string]: any;
 }
 
 interface Suggestion {
@@ -115,8 +114,8 @@ async function generateSuggestions(rootDir: string): Promise<Suggestion[]> {
     if (!canvas.nodes) continue;
 
     for (const node of canvas.nodes) {
-      // Skip if already has anchors
-      if (node.anchors && node.anchors.length > 0) continue;
+      // Skip if already has sources
+      if (node.pv?.sources && node.pv.sources.length > 0) continue;
 
       const nodeName = node.pv?.name || node.text?.split('\n')[0].replace('#', '').trim() || node.id;
       const { files, confidence } = suggestFilesForNode(node.id, nodeName, sourceFiles);
@@ -136,7 +135,7 @@ async function generateSuggestions(rootDir: string): Promise<Suggestion[]> {
 
 function printSuggestions(suggestions: Suggestion[]): void {
   console.log('\n' + '='.repeat(70));
-  console.log('🔗 ANCHOR SUGGESTIONS');
+  console.log('🔗 SOURCE SUGGESTIONS');
   console.log('='.repeat(70));
 
   // Group by canvas file
@@ -166,10 +165,10 @@ function printSuggestions(suggestions: Suggestion[]): void {
   }
 
   console.log('\n' + '='.repeat(70));
-  console.log('\n💡 Usage: Add anchors to your canvas nodes like this:\n');
-  console.log('  "anchors": [');
-  console.log('    { "path": "packages/core/src/utils/GraphConverter.ts" }');
-  console.log('  ]\n');
+  console.log('\n💡 Usage: Add sources to your canvas nodes like this:\n');
+  console.log('  "pv": {');
+  console.log('    "sources": ["packages/core/src/utils/GraphConverter.ts"]');
+  console.log('  }\n');
   console.log('Legend:');
   console.log('  ✅ High confidence - exact or very close match');
   console.log('  🟡 Medium confidence - partial match');

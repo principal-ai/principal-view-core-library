@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { EventRecorderService } from './EventRecorderService';
-import type { ComponentActivityEvent } from './types/path-based-config';
+import type { ComponentActivityEvent, PathBasedEvent } from './types/path-based-config';
 import type {
   SessionStartMessage,
   SessionEndMessage,
@@ -12,6 +12,7 @@ import type {
 } from './EventRecorderService';
 import type { PathBasedGraphConfiguration } from './types/path-based-config';
 import type { LogEntry } from './PathBasedEventProcessor';
+import type { GraphEvent } from './types/index';
 
 describe('EventRecorderService', () => {
   // Sample configuration
@@ -153,7 +154,7 @@ describe('EventRecorderService', () => {
       it('should emit events to listeners', () => {
         service.startSession({ name: 'Test Session' });
 
-        const receivedEvents: any[] = [];
+        const receivedEvents: Array<PathBasedEvent | GraphEvent> = [];
         service.onEvent((event) => {
           receivedEvents.push(event);
         });
@@ -166,7 +167,7 @@ describe('EventRecorderService', () => {
       it('should unsubscribe event listener', () => {
         service.startSession({ name: 'Test Session' });
 
-        const receivedEvents: any[] = [];
+        const receivedEvents: Array<PathBasedEvent | GraphEvent> = [];
         const unsubscribe = service.onEvent((event) => {
           receivedEvents.push(event);
         });
@@ -320,7 +321,7 @@ describe('EventRecorderService', () => {
           payload: createLogEntry('Lock acquired', 'lib/lock-manager.ts'),
         };
 
-        const receivedEvents: any[] = [];
+        const receivedEvents: Array<PathBasedEvent | GraphEvent> = [];
         service.onEvent((event) => receivedEvents.push(event));
 
         service.processMessage(message, 'conn-1');
@@ -378,7 +379,7 @@ describe('EventRecorderService', () => {
           },
         };
 
-        const receivedEvents: any[] = [];
+        const receivedEvents: Array<PathBasedEvent | GraphEvent> = [];
         service.onEvent((event) => receivedEvents.push(event));
 
         service.processMessage(message, 'conn-1');
@@ -520,7 +521,7 @@ describe('EventRecorderService', () => {
 
       batchService.startSession({ name: 'Test Session' });
 
-      const receivedBatches: any[][] = [];
+      const receivedBatches: Array<Array<PathBasedEvent | GraphEvent>> = [];
       batchService.onEventBatch((events) => {
         receivedBatches.push(events);
       });

@@ -948,7 +948,7 @@ describe('WorkflowValidator', () => {
         formatting: {
           showAttributes: 'invalid',
         },
-      } as any;
+      } as unknown as WorkflowTemplate;
 
       const context: WorkflowValidationContext = {
         workflow,

@@ -616,16 +616,23 @@ export class WorkflowValidator {
    * Check that template uses valid fields (not legacy format)
    */
   private checkTemplateStructure(
-    template: any,
+    template: unknown,
     file: string,
     scenarioIdx: number
   ): WorkflowViolation[] {
     const violations: WorkflowViolation[] = [];
     const validFields = ['introduction', 'events', 'logs', 'flow', 'summary', 'span', 'children'];
-    const templateKeys = Object.keys(template);
+
+    // Type guard: ensure template is an object
+    if (typeof template !== 'object' || template === null) {
+      return violations;
+    }
+
+    const templateRecord = template as Record<string, unknown>;
+    const templateKeys = Object.keys(templateRecord);
 
     // Check that events field is present and is an object
-    if (!template.events) {
+    if (!templateRecord.events) {
       violations.push({
         ruleId: 'workflow-template-structure',
         severity: 'error',
@@ -636,7 +643,7 @@ export class WorkflowValidator {
         suggestion: 'Add "events: { eventName: template }" to map event names to templates',
         fixable: false,
       });
-    } else if (typeof template.events !== 'object' || Array.isArray(template.events)) {
+    } else if (typeof templateRecord.events !== 'object' || Array.isArray(templateRecord.events)) {
       violations.push({
         ruleId: 'workflow-template-structure',
         severity: 'error',
@@ -647,7 +654,7 @@ export class WorkflowValidator {
         suggestion: 'Use object format: { "event.name": "template string" }',
         fixable: false,
       });
-    } else if (Object.keys(template.events).length === 0) {
+    } else if (typeof templateRecord.events === 'object' && templateRecord.events !== null && Object.keys(templateRecord.events).length === 0) {
       violations.push({
         ruleId: 'workflow-template-structure',
         severity: 'error',

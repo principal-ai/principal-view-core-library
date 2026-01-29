@@ -201,8 +201,8 @@ describe('PathBasedEventProcessor', () => {
       const events = processor.processLogs(logs);
       expect(events).toHaveLength(3);
       expect((events[0] as ComponentActivityEvent).componentId).toBe('lock-manager');
-      expect((events[1] as any).componentId).toBe('github-api');
-      expect((events[2] as any).componentId).toBe('request-handler');
+      expect((events[1] as ComponentActivityEvent).componentId).toBe('github-api');
+      expect((events[2] as ComponentActivityEvent).componentId).toBe('request-handler');
     });
   });
 
@@ -329,8 +329,8 @@ describe('PathBasedEventProcessor', () => {
 
       expect(events).toHaveLength(3);
       expect((events[0] as ComponentActivityEvent).instanceId).toBe('client-1');
-      expect((events[1] as any).instanceId).toBe('client-2');
-      expect((events[2] as any).instanceId).toBeUndefined();
+      expect((events[1] as ComponentActivityEvent).instanceId).toBe('client-2');
+      expect((events[2] as ComponentActivityEvent).instanceId).toBeUndefined();
     });
   });
 });

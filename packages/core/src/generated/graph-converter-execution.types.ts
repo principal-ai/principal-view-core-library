@@ -170,7 +170,7 @@ export type AllEventNames = 'conversion.started' | 'conversion.processingNodes' 
  */
 export type NodeEmitter<
   TEventName extends string,
-  TEvent extends { name: TEventName; attributes: Record<string, any> }
+  TEvent extends { name: TEventName; attributes: Record<string, unknown> }
 > = (event: TEvent) => void;
 
 /**
@@ -186,7 +186,7 @@ export type NodeEmitter<
  * ```
  */
 export type NodeEmitterByName<
-  TEvent extends { name: string; attributes: Record<string, any> }
+  TEvent extends { name: string; attributes: Record<string, unknown> }
 > = <TName extends TEvent['name']>(
   eventName: TName,
   attributes: Extract<TEvent, { name: TName }>['attributes']

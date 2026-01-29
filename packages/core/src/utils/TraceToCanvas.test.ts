@@ -5,7 +5,7 @@ import {
   type TraceExport,
   type TraceSpan,
 } from './TraceToCanvas';
-import type { ExtendedCanvasTextNode } from '../types/canvas';
+import type { ExtendedCanvasTextNode, CanvasGroupNode } from '../types/canvas';
 
 describe('TraceToCanvas', () => {
   const createSpan = (overrides: Partial<TraceSpan> = {}): TraceSpan => ({
@@ -141,8 +141,8 @@ describe('TraceToCanvas', () => {
 
       const groupNode = result.canvas.nodes?.find((n) => n.type === 'group');
       expect(groupNode).toBeDefined();
-      expect((groupNode as any).label).toBe('my-service');
-      expect((groupNode as any).pv?.nodeType).toBe('service');
+      expect((groupNode as CanvasGroupNode).label).toBe('my-service');
+      expect((groupNode as CanvasGroupNode).pv?.nodeType).toBe('service');
     });
 
     test('skips service grouping when disabled', () => {

@@ -25,6 +25,9 @@ import type { JsonValue } from './index';
 /**
  * Canvas color - either a hex string or preset number (1-6)
  * Presets: 1=red, 2=orange, 3=yellow, 4=green, 5=cyan, 6=purple
+ *
+ * Note: Obsidian Canvas saves numeric presets as strings ("1"-"6"),
+ * so we accept both number and string formats.
  */
 export type CanvasColor = string | 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -663,11 +666,26 @@ export const CANVAS_COLOR_PRESETS: Record<number, string> = {
 
 /**
  * Resolve a canvas color to a hex string
+ *
+ * Supports:
+ * - Hex strings: "#22c55e" or "#3f6"
+ * - Numeric presets: 1-6
+ * - Numeric string presets: "1"-"6" (Obsidian Canvas format)
  */
 export function resolveCanvasColor(color: CanvasColor | undefined): string | undefined {
   if (color === undefined) return undefined;
+
+  // Handle numeric presets
   if (typeof color === 'number') {
     return CANVAS_COLOR_PRESETS[color];
   }
+
+  // Handle numeric string presets (from Obsidian Canvas)
+  const numericValue = parseInt(color, 10);
+  if (!isNaN(numericValue) && numericValue >= 1 && numericValue <= 6) {
+    return CANVAS_COLOR_PRESETS[numericValue];
+  }
+
+  // Return hex strings as-is
   return color;
 }
