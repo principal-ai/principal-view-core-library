@@ -1390,8 +1390,9 @@ async function validateWorkflow(
     }
 
     // Load referenced canvas if it exists
+    // Canvas paths are always relative to repository root
     const canvasPath = workflow.canvas
-      ? resolve(dirname(filePath), workflow.canvas)
+      ? resolve(repositoryPath, workflow.canvas)
       : undefined;
     const canvas = canvasPath && existsSync(canvasPath)
       ? JSON.parse(readFileSync(canvasPath, 'utf8')) as ExtendedCanvas
@@ -1405,8 +1406,8 @@ async function validateWorkflow(
       workflow,
       workflowPath: relativePath,
       canvas,
-      canvasPath: canvasPath ? relative(repositoryPath, canvasPath) : undefined,
-      basePath: dirname(filePath),
+      canvasPath,
+      basePath: repositoryPath,
       rawContent,
       allWorkflowEvents,
     });
@@ -1909,8 +1910,9 @@ export function createValidateCommand(): Command {
             const workflow = loadWorkflowTemplate(absolutePath);
             if (!workflow) continue;
 
+            // Canvas paths are always relative to repository root
             const canvasPath = workflow.canvas
-              ? resolve(dirname(absolutePath), workflow.canvas)
+              ? resolve(repositoryPath, workflow.canvas)
               : undefined;
             const canvasKey = canvasPath ? relative(repositoryPath, canvasPath) : undefined;
             const allWorkflowEvents = canvasKey ? workflowsByCanvas.get(canvasKey) : undefined;

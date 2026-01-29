@@ -198,9 +198,6 @@ export class CanvasDiscovery {
           errors
         );
 
-        // Only create storyboard if it has workflows
-        if (workflows.length === 0) continue;
-
         // Determine package context
         const packageInfo = this.findPackageForPath(storyboardPath, packageMap);
 

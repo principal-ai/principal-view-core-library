@@ -714,8 +714,10 @@ Resources:
   - `workflow test <workflow> <execution>` - Test scenario matching
   - `workflow list` - List all workflow files in project
 - **CLI validation commands**:
-  - `validate` - Validate .canvas configuration files
-  - `validate-execution` - Validate .otel.json execution files
+  - `validate` - Validate all OTEL canvas files, workflow templates, and execution artifacts
+  - `validate --canvas-only` - Validate only .otel.canvas files (skips regular .canvas files)
+  - `validate --workflow-only` - Validate only .workflow.json files
+  - `validate --execution-only` - Validate only .otel.json execution files
 - **OpenTelemetry JavaScript Libraries**:
   - Main repository: https://github.com/open-telemetry/opentelemetry-js
   - API repository: https://github.com/open-telemetry/opentelemetry-js-api

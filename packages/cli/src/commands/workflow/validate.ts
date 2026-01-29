@@ -37,13 +37,13 @@ export function createValidateCommand(): Command {
         const workflow = await loadWorkflow(workflowPath);
 
         // Resolve canvas path
+        // Canvas paths are always relative to repository root
         let canvasPath: string | undefined;
         let canvas: ExtendedCanvas | undefined;
         if (options.canvas) {
           canvasPath = resolvePath(options.canvas, baseDir);
         } else if (workflow.canvas) {
-          const workflowDir = dirname(workflowPath);
-          canvasPath = resolve(workflowDir, workflow.canvas);
+          canvasPath = resolve(baseDir, workflow.canvas);
         }
 
         // Load canvas if path exists
