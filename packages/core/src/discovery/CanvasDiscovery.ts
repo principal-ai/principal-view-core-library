@@ -294,7 +294,9 @@ export class CanvasDiscovery {
       if (fileDir !== workflowDir) continue;
 
       // Check if it's an execution file (.otel.json)
-      if (!path.endsWith('.otel.json')) continue;
+      if (!path.endsWith('.otel.json')) {
+        continue;
+      }
 
       // Extract execution metadata
       const filename = path.split('/').pop();
@@ -450,21 +452,28 @@ export class CanvasDiscovery {
    * Discover execution files in the file tree
    */
   /**
-   * Check if path is in .principal-views directory (directly, not in subdirectories)
+   * Check if path is in .principal-views directory
+   * Supports both flat (.principal-views/file.canvas) and hierarchical (.principal-views/storyboard/file.canvas) structures
    */
   private isInCanvasDir(path: string): boolean {
     const parts = path.split('/');
 
-    // Root: .principal-views/file.canvas
+    // Root flat: .principal-views/file.canvas (2 parts)
     if (parts[0] === CanvasDiscovery.CANVAS_DIR && parts.length === 2) {
       return true;
     }
 
-    // Package: packages/core/.principal-views/file.canvas
+    // Root hierarchical: .principal-views/storyboard/file.canvas (3 parts)
+    if (parts[0] === CanvasDiscovery.CANVAS_DIR && parts.length === 3) {
+      return true;
+    }
+
+    // Package structures
     if (parts.includes(CanvasDiscovery.CANVAS_DIR)) {
       const idx = parts.indexOf(CanvasDiscovery.CANVAS_DIR);
-      // Must be directly in .principal-views/, not in a subdirectory
-      return parts.length === idx + 2;
+      // Package flat: packages/core/.principal-views/file.canvas (idx + 2 parts)
+      // Package hierarchical: packages/core/.principal-views/storyboard/file.canvas (idx + 3 parts)
+      return parts.length === idx + 2 || parts.length === idx + 3;
     }
 
     return false;

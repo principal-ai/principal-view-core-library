@@ -133,6 +133,83 @@ describe('CanvasDiscovery', () => {
       expect(result.errors.some(e => e.path === '.principal-views/bad.canvas' && e.error.includes('DEPRECATED'))).toBe(true);
     });
 
+    test('discovers hierarchical canvas files in storyboard subdirectories', async () => {
+      const fileTree = createMockFileTree([
+        '.principal-views/checkout-flow/checkout-flow.otel.canvas',
+        '.principal-views/user-flow/user-flow.canvas',
+      ]);
+
+      const result = await discovery.discover(fileTree);
+
+      expect(result.canvases).toHaveLength(2);
+      expect(result.canvases[0]).toMatchObject({
+        id: 'checkout-flow',
+        name: 'Checkout Flow',
+        basename: 'checkout-flow',
+        type: 'otel',
+        scope: 'root',
+      });
+      expect(result.canvases[1]).toMatchObject({
+        id: 'user-flow',
+        name: 'User Flow',
+        basename: 'user-flow',
+        type: 'regular',
+        scope: 'root',
+      });
+    });
+
+    test('discovers hierarchical canvas files in package subdirectories', async () => {
+      const fileTree = createMockFileTree([
+        'packages/core/.principal-views/auth-flow/auth-flow.canvas',
+        'packages/api/.principal-views/request-flow/request-flow.otel.canvas',
+        'packages/core/package.json',
+        'packages/api/package.json',
+      ]);
+
+      const result = await discovery.discover(fileTree, {
+        fileReader: async (path) => {
+          if (path.endsWith('core/package.json')) {
+            return JSON.stringify({ name: 'core' });
+          }
+          if (path.endsWith('api/package.json')) {
+            return JSON.stringify({ name: 'api' });
+          }
+          return '';
+        },
+      });
+
+      expect(result.canvases).toHaveLength(2);
+      expect(result.canvases[0]).toMatchObject({
+        id: 'api/request-flow',
+        name: 'Request Flow',
+        basename: 'request-flow',
+        type: 'otel',
+        scope: 'package',
+        packageName: 'api',
+      });
+      expect(result.canvases[1]).toMatchObject({
+        id: 'core/auth-flow',
+        name: 'Auth Flow',
+        basename: 'auth-flow',
+        type: 'regular',
+        scope: 'package',
+        packageName: 'core',
+      });
+    });
+
+    test('handles mixed flat and hierarchical canvas structures', async () => {
+      const fileTree = createMockFileTree([
+        '.principal-views/flat.canvas',
+        '.principal-views/storyboard/hierarchical.canvas',
+      ]);
+
+      const result = await discovery.discover(fileTree);
+
+      expect(result.canvases).toHaveLength(2);
+      // Both should be discovered
+      expect(result.canvases.map(c => c.basename).sort()).toEqual(['flat', 'hierarchical']);
+    });
+
   });
 
   describe('caching', () => {
