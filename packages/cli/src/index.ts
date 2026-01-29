@@ -19,7 +19,7 @@ import { createCoverageCommand } from './commands/coverage.js';
 import { createWorkflowCommand } from './commands/workflow/index.js';
 
 // Version is injected at build time via package.json
-const VERSION = '0.9.0';
+const VERSION = '0.9.1';
 
 const program = new Command();
 
