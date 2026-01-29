@@ -429,12 +429,23 @@ When creating an .otel.canvas file:
 ## Examples in the Codebase
 
 See these files for complete examples:
-- `.principal-views/forge-otel-events.otel.canvas` - Feature telemetry map for Jira Forge integration
-  - Shows all events involved in "Break into tasks" feature
-  - Includes success validation and error telemetry
-  - Demonstrates cross-service correlation (Forge → Claude)
-- `.principal-views/graph-converter-execution.otel.canvas` - Execution flow with event schemas
-- `.principal-views/otel-log-association.otel.canvas` - OTEL log routing architecture
+- `.principal-views/validation/validation.otel.canvas` - Real storyboard structure example
+  - Shows proper hierarchical organization
+  - Demonstrates event schemas and validation
+  - Includes workflow folder structure
+
+**IMPORTANT: File Organization**
+All .otel.canvas files must use the storyboard structure:
+```
+.principal-views/
+  └── <storyboard-name>/
+      ├── <storyboard-name>.otel.canvas     ← Canvas at storyboard root
+      └── <workflow-name>/                   ← Workflow folders
+          ├── <workflow-name>.workflow.json
+          └── <execution>.otel.json
+```
+
+The flat structure (files directly in `.principal-views/`) is deprecated.
 
 ## Validation
 

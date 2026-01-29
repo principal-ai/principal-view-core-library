@@ -40,9 +40,15 @@ A .workflow.json file contains metadata, rendering configuration, and multiple s
 ### File Naming Convention
 
 **REQUIRED**: Workflow files MUST:
-- Use the `.workflow.json` extension (e.g., `order-processing.workflow.json`)
-- Be co-located with their corresponding .otel.canvas file
-- Have a matching base name (e.g., `order-processing.otel.canvas` ↔ `order-processing.workflow.json`)
+- Use the `.workflow.json` extension (e.g., `success-path.workflow.json`)
+- Be placed in a workflow folder within the storyboard structure
+- The workflow folder should be inside the storyboard folder that contains the canvas
+
+**Example:**
+- Canvas: `.principal-views/order-processing/order-processing.otel.canvas`
+- Workflow: `.principal-views/order-processing/success-path/success-path.workflow.json`
+
+**DEPRECATED:** The flat structure where workflow files are siblings to canvas files is no longer supported.
 
 ### Complete Structure
 
@@ -670,15 +676,24 @@ If variables show as `{{missing.var}}`:
 
 ## File Organization
 
+**IMPORTANT: Must use storyboard structure:**
+
 ```
 .principal-views/
-├── order-processing.otel.canvas       # Canvas definition
-├── order-processing.workflow.json    # Workflow scenarios
-└── __executions__/
-    ├── order-success.otel.json        # Test execution data
-    ├── order-failure.otel.json
-    └── order-timeout.otel.json
+└── order-processing/                          # Storyboard folder
+    ├── order-processing.otel.canvas          # Canvas at storyboard root
+    ├── success-path/                          # Workflow folder
+    │   ├── success-path.workflow.json        # Workflow definition
+    │   ├── order-success-1.otel.json         # Execution data
+    │   └── order-success-2.otel.json
+    ├── failure-scenarios/                     # Another workflow
+    │   ├── failure-scenarios.workflow.json
+    │   ├── order-failure.otel.json
+    │   └── order-timeout.otel.json
+    └── ...                                    # More workflows as needed
 ```
+
+**DEPRECATED:** The flat structure with `__executions__/` directory is no longer supported.
 
 ## CLI Commands Reference
 
@@ -712,8 +727,11 @@ When workflows are available, ExecutionViewerPanel:
 ## Real Examples in Codebase
 
 See working examples at:
-- `.principal-views/graph-converter.workflow.json` - Canvas conversion scenarios
-- Look for `.workflow.json` files in other projects
+- `.principal-views/validation/validation-workflow/validation-workflow.workflow.json` - Real storyboard structure example
+- This follows the correct hierarchical organization pattern
+- Look for other `.workflow.json` files in `.principal-views/*/*/` directories
+
+**Note:** Legacy flat structure examples may exist but are deprecated.
 
 ## Common Pitfalls
 

@@ -19,7 +19,7 @@ This skill provides an **interactive, step-by-step workflow** to:
 3. Set up OTEL test infrastructure (tracer, helpers, exporters)
 4. Instrument tests to emit spans and events
 5. Validate that emitted events match canvas schemas
-6. Export test data to `__executions__/*.otel.json` format
+6. Export test data to workflow folders in storyboard structure (`.principal-views/<storyboard>/<workflow>/*.otel.json`)
 7. Troubleshoot common issues
 
 ## Interactive Workflow
@@ -192,7 +192,7 @@ Guide the user through instrumenting their tests:
    ```typescript
    import { test, expect } from 'bun:test';
    import { startTestSpan, createValidatedSpanEmitter } from './otel-setup';
-   import canvas from '../.principal-views/my-feature.otel.canvas';
+   import canvas from '../.principal-views/my-feature/my-feature.otel.canvas';
 
    test('graph converter emits correct telemetry', async () => {
      const span = startTestSpan('test: graph converter telemetry');
@@ -254,13 +254,14 @@ Set up validation to ensure tests emit correct events:
 
 ### Phase 6: Export Configuration
 
-Set up export to `__executions__/*.otel.json`:
+Set up export to workflow folders in storyboard structure:
 
 1. **Add afterAll hook to otel-setup.ts:**
    ```typescript
    afterAll(() => {
      const spans = memoryExporter.getFinishedSpans();
-     const outputPath = join(__dirname, '../__executions__/test-run.otel.json');
+     // Export to workflow folder within storyboard structure
+     const outputPath = join(__dirname, '../.principal-views/my-feature/test-execution/test-run.otel.json');
 
      mkdirSync(dirname(outputPath), { recursive: true });
 
@@ -289,16 +290,25 @@ Set up export to `__executions__/*.otel.json`:
    });
    ```
 
-2. **IMPORTANT: Do NOT add __executions__ to .gitignore**
+   **Structure:**
+   ```
+   .principal-views/
+     └── my-feature/              ← Storyboard folder
+         ├── my-feature.otel.canvas
+         └── test-execution/       ← Workflow folder for test outputs
+             └── test-run.otel.json ← Execution file
+   ```
+
+2. **IMPORTANT: Execution files must be git-tracked**
    - Canvas viewers need to find these files in the repository
-   - The execution artifacts must be git-tracked for visualization
-   - If `__executions__` is currently gitignored, remove it from .gitignore
-   - Use `git add -f __executions__/*.otel.json` if needed to force-add
+   - The execution artifacts must be committed for visualization
+   - Ensure `.principal-views/` is tracked in git (not gitignored)
+   - **DEPRECATED:** The `__executions__/` directory structure is no longer used
 
 3. **Show how to use exported data:**
    ```typescript
    // In Storybook stories
-   import testSpans from '../__executions__/test-run.otel.json';
+   import testSpans from '../.principal-views/my-feature/test-execution/test-run.otel.json';
 
    export const RealTestExecution: Story = {
      args: {
@@ -353,10 +363,12 @@ Offer to help with common issues:
    - Mark timing/debug data as `required: false`
 
 5. **Export Organization:**
-   - Use `__executions__/` directory for all execution artifacts
-   - Name files to match canvas names: `my-feature.otel.canvas` → `my-feature.otel.json`
+   - Use workflow folders within storyboard structure for execution artifacts
+   - Structure: `.principal-views/<storyboard>/<workflow>/<execution>.otel.json`
+   - Create a dedicated workflow folder for test outputs (e.g., `test-execution/`)
    - **DO NOT gitignore** - canvas viewers need these files tracked in git
    - Files should be committed so visualization works for all team members
+   - **DEPRECATED:** The `__executions__/` directory is no longer used
 
 ## Templates to Use
 
@@ -387,7 +399,7 @@ Location: `templates/export-config.ts`
 User should be able to:
 - ✅ Run tests that emit OTEL spans and events
 - ✅ See validation errors when events don't match schema
-- ✅ Export test execution data to __executions__/
+- ✅ Export test execution data to workflow folders in storyboard structure
 - ✅ Load exported data in Storybook for visualization
 - ✅ Understand the canvas → test → visualization workflow
 
@@ -402,7 +414,7 @@ Claude: "I'd be happy to help! Let me ask a few questions to understand your set
 2. What test framework are you using (Bun, Vitest, Jest)?
 3. What component or flow are you testing?"
 
-User: "I have a canvas at .principal-views/data-pipeline.otel.canvas, using Bun"
+User: "I have a canvas at .principal-views/data-pipeline/data-pipeline.otel.canvas, using Bun"
 
 Claude: [Reads canvas, analyzes event schemas]
 
@@ -415,7 +427,7 @@ Node: data-processor
 Let me set up OTEL testing for you. I'll:
 1. Create test/otel-setup.ts with helpers
 2. Generate example test instrumentation
-3. Configure export to __executions__/
+3. Configure export to workflow folders in storyboard structure
 
 [Creates files and shows examples]
 
@@ -429,7 +441,7 @@ Claude: [Shows specific changes to make to existing test files]
   bun test
 
 The tests will validate events against your canvas and export to:
-  __executions__/data-pipeline.otel.json
+  .principal-views/data-pipeline/test-execution/test-run.otel.json
 
 You can then load this in Storybook for visualization!"
 ```

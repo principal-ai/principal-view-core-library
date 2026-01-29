@@ -17,7 +17,7 @@ Principal View OTEL is a workflow for documenting and validating OpenTelemetry e
 
 1. **`.otel.canvas`** - Defines your feature and its OTEL event schemas (what events should be emitted and their attributes)
 2. **`.workflow.json`** - Defines how to render execution traces as human-readable workflows
-3. **`.otel.json`** - Actual execution data captured from instrumented tests (stored in `__executions__/`)
+3. **`.otel.json`** - Actual execution data captured from instrumented tests (stored in workflow folders within storyboard structure)
 
 These files work together: the canvas defines the schema, workflows define how to present executions, and execution files contain actual telemetry data that gets validated against the canvas and rendered using workflows.
 
@@ -107,8 +107,21 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
 
 3. **Create the canvas file** with proper structure:
    ```bash
-   # Example: .principal-views/data-validator.otel.canvas
+   # Example: .principal-views/data-validator/data-validator.otel.canvas
    ```
+
+   **IMPORTANT: Storyboard Structure**
+   All canvases must use the hierarchical storyboard structure:
+   ```
+   .principal-views/
+     └── <storyboard-name>/
+         ├── <storyboard-name>.otel.canvas
+         └── <workflow-name>/
+             ├── <workflow-name>.workflow.json
+             └── <execution>.otel.json
+   ```
+
+   The flat structure (files directly in `.principal-views/`) is deprecated and will produce validation errors.
 
    **IMPORTANT: Canvas Structure**
    - **One node per event type** - Each event gets its own node in the canvas
@@ -180,10 +193,16 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
 
 Use the `create-workflow-scenarios` skill to create scenarios:
 
-1. **Create .workflow.json file** co-located with canvas:
+1. **Create .workflow.json file** in a workflow folder within the storyboard:
    ```bash
-   # Example: .principal-views/data-validator.workflow.json
+   # Example: .principal-views/data-validator/happy-path/happy-path.workflow.json
    ```
+
+   **Structure:**
+   - Storyboard folder: `.principal-views/data-validator/`
+   - Canvas at storyboard root: `.principal-views/data-validator/data-validator.otel.canvas`
+   - Workflow in subfolder: `.principal-views/data-validator/happy-path/`
+   - Workflow file: `.principal-views/data-validator/happy-path/happy-path.workflow.json`
 
    **Format reference**: See existing workflow files in `.principal-views/` for examples. Run `npx @principal-ai/principal-view-cli workflow validate <file>` to validate your workflow file
 
@@ -241,11 +260,12 @@ Use the `setup-otel-testing` skill to set up OTEL in tests:
 3. **Create `test/otel-setup.ts`** (or similar):
    - Set up tracer with InMemorySpanExporter
    - Create helper functions: `startTestSpan()`, `createValidatedSpanEmitter()`
-   - Add afterAll hook to export spans to `__executions__/*.otel.json`
+   - Add afterAll hook to export spans to workflow folders (e.g., `.principal-views/data-validator/test-execution/`)
 
-4. **IMPORTANT: Ensure `__executions__/` is NOT gitignored**:
-   - Check .gitignore - remove `__executions__` if present
-   - Execution files must be committed for visualization
+4. **IMPORTANT: Execution files must be committed to git**:
+   - Ensure workflow folders are NOT in .gitignore
+   - Execution files (.otel.json) must be committed for visualization
+   - Check that `.principal-views/` is tracked in git
 
 **Goal**: Working OTEL test infrastructure ready to use.
 
@@ -324,11 +344,11 @@ Instrument the actual source code, then create a test that captures its telemetr
 
 5. **Check exported file**:
    ```bash
-   ls __executions__/
-   # Should see: data-validator.otel.json (or test-run.otel.json)
+   ls .principal-views/data-validator/test-execution/
+   # Should see: test-run.otel.json or specific test execution files
    ```
 
-   **Format reference**: Execution files are OpenTelemetry span data in JSON format. Run `npx @principal-ai/principal-view-cli validate-execution __executions__/*.otel.json` to validate execution files
+   **Format reference**: Execution files are OpenTelemetry span data in JSON format. Run `npx @principal-ai/principal-view-cli validate-execution .principal-views/*/*/*.otel.json` to validate execution files
 
 **Goal**: Instrumented source code with one passing test that captures real telemetry and exports execution data.
 
@@ -380,12 +400,13 @@ Walk through the end-to-end flow:
 3. **Tests run and emit OTEL**: ✅
    ```bash
    bun test
-   # See: "Exported N spans to __executions__/..."
+   # See: "Exported N spans to .principal-views/.../..."
    ```
 
 4. **Execution files exist**: ✅
    ```bash
-   ls __executions__/*.otel.json
+   ls .principal-views/data-validator/*/\*.otel.json
+   # Lists all execution files in workflow folders
    ```
 
 5. **Show next steps**:
@@ -499,11 +520,13 @@ A: **Instrument your actual source code**, then write tests that call it:
 - Tests use `strict: true` validation to ensure events match your canvas schema
 
 **Q: "Where do execution files go?"**
-A: Always `__executions__/` directory:
-- Co-located with canvases: `.principal-views/__executions__/`
-- Or in test directory: `test/__executions__/`
+A: In workflow folders within the storyboard structure:
+- Inside workflow folders: `.principal-views/data-validator/happy-path/success-1.otel.json`
+- Multiple executions per workflow: `.principal-views/data-validator/happy-path/success-2.otel.json`
 - **MUST be committed to git** (not gitignored)
 - Visualization tools need these files tracked
+
+**DEPRECATED:** The `__executions__/` directory structure is no longer supported. Use workflow folders instead.
 
 ## Success Criteria
 
@@ -524,7 +547,7 @@ After completing onboarding, user should have:
 ✅ **Test infrastructure** (otel-setup.ts)
 - Tracer configured
 - Helper functions
-- Export to __executions__/
+- Export to workflow folders in storyboard structure
 
 ✅ **Instrumented source code** (feature implementation)
 - Source code emits OTEL events as it executes
@@ -536,8 +559,8 @@ After completing onboarding, user should have:
 - Both call instrumented code and capture real telemetry
 - Both export execution data
 
-✅ **Execution files** (__executions__/*.otel.json)
-- Exported from test runs
+✅ **Execution files** (.principal-views/<storyboard>/<workflow>/*.otel.json)
+- Exported from test runs to workflow folders
 - Committed to git
 - Ready for visualization
 
@@ -554,9 +577,9 @@ After completing onboarding, user should have:
 - Don't proceed with invalid files
 
 ❌ **Don't gitignore executions**:
-- __executions__/ must be committed
+- Workflow folders with .otel.json files must be committed
 - Canvas viewers need these files
-- Remove from .gitignore if present
+- Ensure `.principal-views/` is tracked in git
 
 ❌ **Don't emit fake events in tests**:
 - Instrument your actual source code, not test files
@@ -652,7 +675,7 @@ Claude: [Creates test file]
 
 This will:
 1. Validate events match your canvas schema across the full import workflow
-2. Export execution to __executions__/import-command.otel.json
+2. Export execution to .principal-views/import-command/test-execution/run.otel.json
 
 After running, you can visualize the complete import operation execution
 in Storybook or ADE!"
@@ -668,9 +691,11 @@ This skill orchestrates the other three:
 ## Templates to Reference
 
 Point users to these examples after onboarding:
-- `.principal-views/graph-converter-execution.otel.canvas` - Simple converter example
-- `.principal-views/forge-otel-events.otel.canvas` - Real-world feature example
+- `.principal-views/validation/validation.otel.canvas` - Real storyboard structure example
+- `.principal-views/validation/validation-workflow/` - Example workflow folder
 - Test examples in the codebase with OTEL instrumentation
+
+**Note:** Legacy flat structure examples may exist but are deprecated.
 
 ## Final Message
 
@@ -723,5 +748,5 @@ Resources:
   - API repository: https://github.com/open-telemetry/opentelemetry-js-api
   - Packages used: `@opentelemetry/api` (core tracing API) and `@opentelemetry/sdk-trace-base` (SDK for test infrastructure)
   - If you encounter issues with OTEL instrumentation, configuration, or API usage, refer to these repositories for documentation and troubleshooting
-- **Example files**: See `.principal-views/*.otel.canvas` and `.principal-views/*.workflow.json` in the repository
+- **Example files**: See `.principal-views/validation/` storyboard structure in the repository for the correct organization pattern
 - docs/guides/adding-opentelemetry-to-tests.md: OTEL patterns and test setup
