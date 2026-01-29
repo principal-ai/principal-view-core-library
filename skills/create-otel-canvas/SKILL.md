@@ -1,6 +1,6 @@
 # Create OTEL Canvas Skill
 
-Create .otel.canvas files that map all telemetry involved in a feature to enable validation and debugging.
+Create .otel.canvas files that map all telemetry involved in a feature to enable validation and debugging
 
 ## Purpose
 

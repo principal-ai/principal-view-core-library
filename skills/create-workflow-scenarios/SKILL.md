@@ -1,6 +1,6 @@
 # Create Workflow Scenarios Skill
 
-Create .workflow.json files that transform OTEL execution data into human-readable workflows for debugging and validation.
+Create .workflow.json files that transform OTEL execution data into human-readable workflows for debugging and validation
 
 ## Purpose
 
