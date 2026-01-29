@@ -21,7 +21,7 @@ Principal View OTEL is a workflow for documenting and validating OpenTelemetry e
 
 These files work together: the canvas defines the schema, workflows define how to present executions, and execution files contain actual telemetry data that gets validated against the canvas and rendered using workflows.
 
-## When to Use This Skill
+## When to Use This Skill 
 
 Use this skill when the user wants to:
 - Get started with Principal View OTEL for the first time
