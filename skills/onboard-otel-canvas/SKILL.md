@@ -13,13 +13,34 @@ This skill provides a **focused onboarding experience** for users who want to st
 
 ## What is Principal View OTEL?
 
-Principal View OTEL is a workflow for documenting and validating OpenTelemetry event schemas using three file types:
+Principal View OTEL is a workflow for documenting and validating OpenTelemetry event schemas using a hierarchical structure:
 
-1. **`.otel.canvas`** - Defines your feature and its OTEL event schemas (what events should be emitted and their attributes)
-2. **`.workflow.json`** - Defines how to render execution traces as human-readable workflows
-3. **`.otel.json`** - Actual execution data captured from instrumented tests (stored in workflow folders within storyboard structure)
+### The Hierarchy
 
-These files work together: the canvas defines the schema, workflows define how to present executions, and execution files contain actual telemetry data that gets validated against the canvas and rendered using workflows.
+**Storyboard** (Feature Area) → **Workflow** (Span/Use Case) → **Scenario** (Execution Outcome)
+
+**File Types:**
+1. **`.otel.canvas`** - Defines event schemas (what events can be emitted and their attributes)
+2. **`.workflow.json`** - Defines how to render span events as human-readable text (contains scenarios)
+3. **`.otel.json`** - Actual OTEL trace data captured from instrumented code
+
+### Key Concepts
+
+**Storyboard:** Organizational folder for a feature area (e.g., `checkout/`, `data-validation/`)
+- Groups related workflows together
+- Contains one canvas defining event schemas for the entire feature
+
+**Workflow:** ONE span in your code - a specific use case or variation (e.g., `credit-card-payment/`, `csv-import/`)
+- Create separate workflows for semantically different operations
+- Each workflow = one span name in your instrumentation
+- Don't create workflows for parameter variations (use scenarios instead)
+
+**Scenario:** Conditional template based on execution outcome (e.g., success, failure, timeout)
+- Multiple scenarios per workflow.json file
+- Same span, different event combinations
+- Matched based on which events/attributes appear
+
+**See:** `docs/STORYBOARDS_WORKFLOWS_SCENARIOS_GUIDE.md` for detailed guidance on when to create workflows vs scenarios.
 
 ## When to Use This Skill 
 
@@ -84,9 +105,26 @@ This skill provides an **interactive, step-by-step workflow** to:
    - Understand inputs, outputs, and what it does
    - Identify entry and exit points
 
-3. **Ask about scenarios**: "What are the success and failure cases for this feature?"
+3. **Ask about use case variations**: "Are there different variations of this operation?"
+
+   **Determine if you need multiple workflows or one workflow with scenarios:**
+
+   **Multiple workflows (different span names)** if:
+   - Different events emitted (e.g., `card.authorized` vs `ach.verified`)
+   - Different implementations/services (e.g., Stripe API vs bank API)
+   - Semantically different operations (e.g., `oauth-signup` vs `standard-signup`)
+
+   **One workflow with scenarios** if:
+   - Same operation, different outcomes (success vs failure)
+   - Same events, different attribute values
+   - Parameter variations (priority: high/medium/low)
+
+   **See:** `docs/STORYBOARDS_WORKFLOWS_SCENARIOS_GUIDE.md` for detailed decision tree
+
+4. **Ask about execution outcomes**: "What are the success and failure cases?"
    - Success: Happy path execution
    - Failure: Common error scenarios (1-2 examples)
+   - These become scenarios in workflow.json files
 
 **Goal**: Identify a single, concrete feature to document with full context.
 
@@ -193,16 +231,33 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
 
 Use the `create-workflow-scenarios` skill to create scenarios:
 
-1. **Create .workflow.json file** in a workflow folder within the storyboard:
+1. **Determine workflow structure** based on Phase 1 discovery:
+
+   **If you have ONE use case/variation:**
    ```bash
-   # Example: .principal-views/data-validator/happy-path/happy-path.workflow.json
+   # Example: Simple data validator with one execution path
+   .principal-views/data-validator/
+   ├── data-validator.otel.canvas
+   └── validate-data/                              ← One workflow
+       └── validate-data.workflow.json             ← Scenarios: success, failure, timeout
    ```
 
-   **Structure:**
-   - Storyboard folder: `.principal-views/data-validator/`
-   - Canvas at storyboard root: `.principal-views/data-validator/data-validator.otel.canvas`
-   - Workflow in subfolder: `.principal-views/data-validator/happy-path/`
-   - Workflow file: `.principal-views/data-validator/happy-path/happy-path.workflow.json`
+   **If you have MULTIPLE use case variations:**
+   ```bash
+   # Example: Data import with different format types
+   .principal-views/data-import/
+   ├── data-import.otel.canvas
+   ├── csv-import/                                 ← Workflow variation 1
+   │   └── csv-import.workflow.json                ← Scenarios: success, parse-error
+   ├── json-import/                                ← Workflow variation 2
+   │   └── json-import.workflow.json               ← Scenarios: success, schema-error
+   └── xml-import/                                 ← Workflow variation 3
+       └── xml-import.workflow.json                ← Scenarios: success, dtd-error
+   ```
+
+   **Key principle:** Each workflow = ONE span name in your instrumentation
+
+2. **Create workflow.json files** for each variation identified in Phase 1
 
    **Format reference**: See existing workflow files in `.principal-views/` for examples. Run `npx @principal-ai/principal-view-cli workflow validate <file>` to validate your workflow file
 
@@ -214,26 +269,32 @@ Use the `create-workflow-scenarios` skill to create scenarios:
    - Focus on WHAT the feature does, not WHAT the file contains
    - Keep it concise and domain-focused
 
-2. **Define scenarios** (start with 2-3):
-   - **Success scenario** (priority 1): Feature worked correctly
+3. **Define scenarios within each workflow.json** (start with 2-3 per file):
+
+   **Remember:** Scenarios are execution outcomes WITHIN the same workflow (same span)
+
+   - **Success scenario** (priority 1): Workflow completed successfully
      - Condition: Check for completion event + success attributes
      - Template: "✅ Validated {{record.count}} records successfully"
+     - Example: `{ "requires": ["validation.complete"], "assertions": { "errors.count": { "$eq": 0 } } }`
 
-   - **Failure scenario** (priority 2): Feature failed
+   - **Failure scenario** (priority 2): Workflow failed
      - Condition: Check for error event or error attributes
      - Template: "❌ Validation failed: {{error.message}}"
+     - Example: `{ "requires": ["validation.error"] }`
 
-   - **Fallback scenario** (priority 999): Generic execution
-     - Condition: Any event
-     - Template: "📋 Execution captured with {{event.count}} events"
+   - **Fallback scenario** (priority 999): Generic execution catch-all
+     - Condition: `{ "default": true }`
+     - Template: "📋 Execution captured with {{events.count}} events"
+     - Always include this as a safety net
 
-3. **Keep templates simple**:
+5. **Keep templates simple**:
    - Clear summary line
    - 3-5 steps showing flow
    - Key details (IDs, counts, errors)
    - Use emojis for visual scanning
 
-4. **Validate**:
+6. **Validate**:
    ```bash
    npx @principal-ai/principal-view-cli validate
    ```
