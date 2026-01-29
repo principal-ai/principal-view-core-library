@@ -1212,6 +1212,34 @@ export class WorkflowValidator {
       return violations;
     }
 
+    // Check for multiple traces in single files (anti-pattern)
+    for (const { path, data } of executions) {
+      const traceIds = new Set<string>();
+
+      data.resourceSpans?.forEach((rs) => {
+        rs.scopeSpans?.forEach((ss) => {
+          ss.spans?.forEach((span) => {
+            if (span.traceId) {
+              traceIds.add(typeof span.traceId === 'string' ? span.traceId : Buffer.from(span.traceId).toString('hex'));
+            }
+          });
+        });
+      });
+
+      if (traceIds.size > 1) {
+        const fileName = path.split('/').pop() || path;
+        violations.push({
+          ruleId: 'workflow-execution-multiple-traces',
+          severity: 'warn',
+          file: path,
+          message: `Execution file contains ${traceIds.size} traces - should contain only one trace per file`,
+          impact: 'Cannot establish clear trace-to-scenario association, makes debugging harder',
+          suggestion: `Split ${fileName} into ${traceIds.size} separate files, one per test case (e.g., success.otel.json, error.otel.json)`,
+          fixable: false,
+        });
+      }
+    }
+
     // For each scenario, check if execution data can satisfy the template
     workflow.scenarios.forEach((scenario, scenarioIdx) => {
       if (!scenario.template) return;

@@ -341,6 +341,73 @@ Select the first matching scenario from a template.
 - Live event streaming
 - Interactive template editor
 
+## Best Practices
+
+### One Trace Per File
+
+**Always store one trace per execution file.** This pattern provides:
+
+✅ **Clear associations**: One file = one test case = one expected scenario
+✅ **Descriptive naming**: File names document what each test validates
+✅ **Better debugging**: Know exactly which test case failed
+✅ **Easier validation**: CLI can validate each trace independently
+
+#### ❌ Anti-pattern: Multiple traces in one file
+
+```
+draft-workflow/
+  ├── draft-promote.workflow.json
+  └── draft-management.otel.json       # Contains 4 different test cases
+```
+
+Problems:
+- Can't tell which test case a file represents
+- Ambiguous trace-to-scenario associations
+- Hard to debug failures
+- Validation warnings are unclear
+
+#### ✅ Recommended: One trace per file
+
+```
+draft-workflow/
+  ├── draft-promote.workflow.json
+  ├── promote-with-commit.otel.json      # Happy path with git commit
+  ├── promote-without-commit.otel.json   # Success without committing
+  ├── promote-not-found.otel.json        # Error: draft doesn't exist
+  └── promote-invalid-state.otel.json    # Error: draft in wrong state
+```
+
+Benefits:
+- File name describes the test scenario
+- Clear 1:1 mapping to expected workflow scenario
+- Easy to identify which test is failing
+- CLI validation warns about each file independently
+
+**The CLI will warn you** if it detects multiple traces in a single file:
+
+```
+⚠ Warning: Execution file contains 4 traces - should contain only one trace per file
+  Impact: Cannot establish clear trace-to-scenario association, makes debugging harder
+  Suggestion: Split draft-management.otel.json into 4 separate files, one per test case
+```
+
+### Co-location with Workflows
+
+Store execution files in the same directory as their workflow file:
+
+```
+.principal-views/
+  └── checkout-flow/
+      ├── checkout-flow.otel.canvas
+      └── complete-checkout/
+          ├── complete-checkout.workflow.json
+          ├── success.otel.json           # Co-located execution
+          ├── payment-declined.otel.json  # Co-located execution
+          └── timeout.otel.json           # Co-located execution
+```
+
+The CLI automatically discovers co-located execution files for validation.
+
 ## Testing
 
 Run the test suite:
