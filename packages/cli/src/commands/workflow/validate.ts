@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { resolve, dirname } from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 // Node.js-specific imports (validator)
 import { WorkflowValidator } from '@principal-ai/principal-view-core/node';
 // Browser-safe imports
@@ -93,6 +93,20 @@ export function createValidateCommand(): Command {
           }
         }
 
+        // Discover co-located execution files for template completeness validation
+        const workflowDir = dirname(workflowPath);
+        const executionFiles: string[] = [];
+        try {
+          const filesInDir = readdirSync(workflowDir);
+          for (const file of filesInDir) {
+            if (file.endsWith('.otel.json')) {
+              executionFiles.push(resolve(workflowDir, file));
+            }
+          }
+        } catch (error) {
+          // Directory not readable, skip co-located file discovery
+        }
+
         // Create validator
         const validator = new WorkflowValidator();
 
@@ -104,6 +118,7 @@ export function createValidateCommand(): Command {
           canvas,
           basePath: baseDir,
           executionData,
+          executionFiles,
         };
 
         const result = await validator.validate(context);
@@ -221,6 +236,12 @@ export function createValidateCommand(): Command {
             console.log(
               chalk.gray('  • Attribute validation:'),
               chalk.gray('skipped (use --execution to enable)')
+            );
+          }
+
+          if (executionFiles.length > 0) {
+            console.log(
+              chalk.gray(`  • Co-located executions: ${executionFiles.length} file(s) checked`)
             );
           }
 

@@ -5,8 +5,9 @@
 
 import type { WorkflowTemplate } from './types';
 import type { ExtendedCanvas } from '../types/canvas';
-import { existsSync } from 'fs';
-import { resolve } from 'path';
+import { existsSync, readFileSync } from 'fs';
+import { resolve, dirname, basename } from 'path';
+import type { IExportTraceServiceRequest } from '@opentelemetry/otlp-transformer/build/src/trace/internal-types';
 
 // ============================================================================
 // Validation Types
@@ -38,6 +39,12 @@ export interface WorkflowValidationContext {
     /** Attributes grouped by event name */
     eventAttributes: Map<string, Record<string, unknown>>;
   };
+
+  /**
+   * Co-located execution files for validating template completeness.
+   * Array of paths to .otel.json files in the same directory as the workflow.
+   */
+  executionFiles?: string[];
 
   /**
    * Optional: Events used across all workflows that reference this canvas.
@@ -122,6 +129,11 @@ export class WorkflowValidator {
 
     violations.push(...this.checkTemplateSyntax(context));
     violations.push(...this.checkFormattingOptions(context));
+
+    // Check execution data completeness if execution files are provided
+    if (context.executionFiles && context.executionFiles.length > 0) {
+      violations.push(...this.checkExecutionDataCompleteness(context));
+    }
 
     return this.aggregateResults(violations);
   }
@@ -1167,6 +1179,225 @@ export class WorkflowValidator {
     }
 
     return violations;
+  }
+
+  /**
+   * Check execution data completeness
+   *
+   * Validates that co-located execution files contain the events and attributes
+   * that workflow templates reference.
+   */
+  private checkExecutionDataCompleteness(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { workflow, workflowPath, executionFiles } = context;
+
+    if (!executionFiles || executionFiles.length === 0) {
+      return violations;
+    }
+
+    // Load and parse all execution files
+    const executions: Array<{path: string; data: IExportTraceServiceRequest}> = [];
+    for (const execPath of executionFiles) {
+      try {
+        const content = readFileSync(execPath, 'utf-8');
+        const data = JSON.parse(content) as IExportTraceServiceRequest;
+        executions.push({ path: execPath, data });
+      } catch (error) {
+        // Skip files that can't be loaded/parsed
+        continue;
+      }
+    }
+
+    if (executions.length === 0) {
+      return violations;
+    }
+
+    // For each scenario, check if execution data can satisfy the template
+    workflow.scenarios.forEach((scenario, scenarioIdx) => {
+      if (!scenario.template) return;
+
+      // Extract all template variables from this scenario
+      const templateVars = new Set<string>();
+      const eventTemplates = new Map<string, Set<string>>();
+
+      // Extract variables from summary
+      if (scenario.template.summary) {
+        this.extractTemplateVariables(scenario.template.summary).forEach(v => templateVars.add(v));
+      }
+
+      // Extract variables from introduction
+      if (scenario.template.introduction) {
+        this.extractTemplateVariables(scenario.template.introduction).forEach(v => templateVars.add(v));
+      }
+
+      // Extract variables from event templates
+      if (scenario.template.events) {
+        Object.entries(scenario.template.events).forEach(([eventName, template]) => {
+          const vars = this.extractTemplateVariables(template);
+          if (!eventTemplates.has(eventName)) {
+            eventTemplates.set(eventName, new Set());
+          }
+          vars.forEach(v => {
+            templateVars.add(v);
+            eventTemplates.get(eventName)!.add(v);
+          });
+        });
+      }
+
+      // Check if ANY execution file has the data needed
+      const hasCompleteData = executions.some(({ data }) => {
+        return this.executionHasTemplateData(data, scenario.template, templateVars, eventTemplates);
+      });
+
+      if (!hasCompleteData && templateVars.size > 0) {
+        const missingInfo = this.findMissingTemplateData(executions, scenario.template, eventTemplates);
+
+        violations.push({
+          ruleId: 'workflow-execution-data-incomplete',
+          severity: 'warn',
+          file: workflowPath,
+          path: `scenarios[${scenarioIdx}].template`,
+          message: `Template references data not found in co-located execution files`,
+          impact: 'Template variables will not resolve when viewing executions',
+          suggestion: missingInfo.length > 0
+            ? `Missing: ${missingInfo.slice(0, 3).join(', ')}${missingInfo.length > 3 ? ` and ${missingInfo.length - 3} more` : ''}`
+            : 'Ensure execution files contain the events and attributes referenced in templates',
+          fixable: false,
+        });
+      }
+    });
+
+    return violations;
+  }
+
+  /**
+   * Extract template variable references from a template string
+   * Matches {{variableName}} patterns
+   */
+  private extractTemplateVariables(template: string): string[] {
+    const vars: string[] = [];
+    // Match {{variableName}} or {{object.property}} but not {{#if}} {{/if}} {{else}}
+    const pattern = /\{\{(?!\s*[#/])\s*([a-zA-Z_][a-zA-Z0-9._]*)\s*\}\}/g;
+    let match;
+
+    while ((match = pattern.exec(template)) !== null) {
+      const varName = match[1];
+      // Skip Handlebars helpers and keywords
+      if (!['this', 'else', 'each', 'if', 'unless', 'with'].includes(varName)) {
+        vars.push(varName);
+      }
+    }
+
+    return vars;
+  }
+
+  /**
+   * Check if execution data contains the template data needed
+   */
+  private executionHasTemplateData(
+    execution: IExportTraceServiceRequest,
+    template: any,
+    templateVars: Set<string>,
+    eventTemplates: Map<string, Set<string>>
+  ): boolean {
+    // Collect all events and their attributes from the execution
+    const executionEvents = new Map<string, Set<string>>();
+
+    execution.resourceSpans?.forEach((rs) => {
+      rs.scopeSpans?.forEach((ss) => {
+        ss.spans?.forEach((span) => {
+          // Add span events
+          span.events?.forEach((event) => {
+            const eventName = event.name;
+            if (!executionEvents.has(eventName)) {
+              executionEvents.set(eventName, new Set());
+            }
+            // Add event attributes
+            event.attributes?.forEach((attr) => {
+              executionEvents.get(eventName)!.add(attr.key);
+            });
+          });
+
+          // Also check span-level attributes (available as aggregates)
+          if (span.name) {
+            if (!executionEvents.has(span.name)) {
+              executionEvents.set(span.name, new Set());
+            }
+            span.attributes?.forEach((attr) => {
+              executionEvents.get(span.name)!.add(attr.key);
+            });
+          }
+        });
+      });
+    });
+
+    // Check if the execution has the events referenced in templates
+    let hasAllData = true;
+
+    for (const [eventName, requiredVars] of eventTemplates.entries()) {
+      // Check if this event exists in execution
+      const eventData = executionEvents.get(eventName);
+      if (!eventData) {
+        // Event doesn't exist - this is incomplete
+        hasAllData = false;
+        break;
+      }
+
+      // Check if event has all required attributes
+      for (const varName of requiredVars) {
+        const baseVar = varName.split('.')[0]; // Handle nested properties
+        if (!eventData.has(baseVar)) {
+          hasAllData = false;
+          break;
+        }
+      }
+
+      if (!hasAllData) break;
+    }
+
+    return hasAllData;
+  }
+
+  /**
+   * Find what specific data is missing from executions
+   */
+  private findMissingTemplateData(
+    executions: Array<{path: string; data: IExportTraceServiceRequest}>,
+    template: any,
+    eventTemplates: Map<string, Set<string>>
+  ): string[] {
+    const missing: string[] = [];
+    const allEvents = new Set<string>();
+
+    // Collect all events from all executions
+    executions.forEach(({ data }) => {
+      data.resourceSpans?.forEach((rs) => {
+        rs.scopeSpans?.forEach((ss) => {
+          ss.spans?.forEach((span) => {
+            span.events?.forEach((event) => {
+              allEvents.add(event.name);
+            });
+            if (span.name) {
+              allEvents.add(span.name);
+            }
+          });
+        });
+      });
+    });
+
+    // Check what's missing
+    for (const [eventName, requiredVars] of eventTemplates.entries()) {
+      if (!allEvents.has(eventName)) {
+        missing.push(`event "${eventName}"`);
+      } else {
+        // Event exists, check attributes
+        requiredVars.forEach(varName => {
+          missing.push(`attribute "${varName}" in event "${eventName}"`);
+        });
+      }
+    }
+
+    return missing;
   }
 
   /**
