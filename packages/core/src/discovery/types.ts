@@ -12,10 +12,10 @@ import type { WorkflowTemplate } from '../workflow/types';
 export type CanvasType = 'otel' | 'regular';
 
 /**
- * Execution file type discriminator based on extension
+ * Test trace file type discriminator based on extension
  * Only .otel.json files are supported
  */
-export type ExecutionType = 'otel';
+export type TestTraceType = 'otel';
 
 /**
  * Discovered canvas file with package metadata
@@ -45,20 +45,20 @@ export interface DiscoveredCanvas {
 }
 
 /**
- * Discovered execution file with package metadata
+ * Discovered test trace file with package metadata
  */
-export interface DiscoveredExecution {
+export interface DiscoveredTestTrace {
   /** Unique ID with package prefix (e.g., "core/api-tests" or "api-tests") */
   id: string;
   /** Display name (Title Case from basename) */
   name: string;
   /** Full relative path from repo root */
   path: string;
-  /** Execution basename (without .otel.json extension) */
+  /** Test trace basename (without .otel.json extension) */
   basename: string;
-  /** Execution file type */
-  type: ExecutionType;
-  /** Canvas basename this execution is linked to */
+  /** Test trace file type */
+  type: TestTraceType;
+  /** Canvas basename this test trace is linked to */
   canvasBasename: string;
   /** Package name if in a package */
   packageName?: string;
@@ -88,8 +88,8 @@ export interface DiscoveredWorkflow {
   packagePath?: string;
   /** Whether this is from repo root vs package */
   scope: 'root' | 'package';
-  /** Associated execution files for this workflow */
-  executions: DiscoveredExecution[];
+  /** Associated test trace files for this workflow */
+  testTraces: DiscoveredTestTrace[];
 }
 
 /**
@@ -122,9 +122,9 @@ export interface DiscoveredStoryboard {
 export interface CanvasDiscoveryResult {
   /** All discovered canvas files, sorted by package then name */
   canvases: DiscoveredCanvas[];
-  /** All discovered execution files, sorted by package then name */
-  executions: DiscoveredExecution[];
-  /** All discovered storyboards (hierarchical organization of canvas + workflows + executions) */
+  /** All discovered test trace files, sorted by package then name */
+  testTraces: DiscoveredTestTrace[];
+  /** All discovered storyboards (hierarchical organization of canvas + workflows + test traces) */
   storyboards: DiscoveredStoryboard[];
   /** Any errors encountered during discovery */
   errors: Array<{ path: string; error: string }>;
@@ -166,10 +166,10 @@ export interface DiscoveredCanvasWithContent extends DiscoveredCanvas {
 }
 
 /**
- * Discovered execution with parsed content
+ * Discovered test trace with parsed content
  */
-export interface DiscoveredExecutionWithContent extends DiscoveredExecution {
-  /** Parsed execution artifact (only when includeContent: true) */
+export interface DiscoveredTestTraceWithContent extends DiscoveredTestTrace {
+  /** Parsed test trace artifact (only when includeContent: true) */
   content: ExecutionData;
 }
 
@@ -179,8 +179,8 @@ export interface DiscoveredExecutionWithContent extends DiscoveredExecution {
 export interface DiscoveredWorkflowWithContent extends DiscoveredWorkflow {
   /** Parsed workflow template (only when includeContent: true) */
   content: WorkflowTemplate;
-  /** Executions with parsed content */
-  executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[];
+  /** Test traces with parsed content */
+  testTraces: (DiscoveredTestTrace | DiscoveredTestTraceWithContent)[];
 }
 
 /**
@@ -198,7 +198,7 @@ export interface DiscoveredStoryboardWithContent extends DiscoveredStoryboard {
  */
 export interface CanvasDiscoveryResultWithContent {
   canvases: (DiscoveredCanvas | DiscoveredCanvasWithContent)[];
-  executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[];
+  testTraces: (DiscoveredTestTrace | DiscoveredTestTraceWithContent)[];
   storyboards: (DiscoveredStoryboard | DiscoveredStoryboardWithContent)[];
   errors: Array<{ path: string; error: string }>;
   warnings: Array<{ path: string; message: string; type: 'deprecation' }>;

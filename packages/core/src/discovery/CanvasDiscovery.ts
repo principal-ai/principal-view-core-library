@@ -7,8 +7,8 @@ import { PackageLayerModule, type PackageLayer } from '@principal-ai/codebase-co
 import type {
   DiscoveredCanvas,
   DiscoveredCanvasWithContent,
-  DiscoveredExecution,
-  DiscoveredExecutionWithContent,
+  DiscoveredTestTrace,
+  DiscoveredTestTraceWithContent,
   DiscoveredWorkflow,
   DiscoveredWorkflowWithContent,
   DiscoveredStoryboard,
@@ -16,7 +16,7 @@ import type {
   CanvasDiscoveryResult,
   DiscoveryOptions,
   CanvasType,
-  ExecutionType,
+  TestTraceType,
 } from './types';
 
 /**
@@ -53,11 +53,11 @@ export class CanvasDiscovery {
   }
 
   /**
-   * Discover all canvas and execution files in the file tree
+   * Discover all canvas, workflow, and test trace files in the file tree
    *
    * @param fileTree - FileTree from repository-abstraction
    * @param options - Discovery options (fileReader, includeContent)
-   * @returns Discovery result with canvases, executions, storyboards, and errors
+   * @returns Discovery result with canvases, testTraces, storyboards, and errors
    */
   async discover(
     fileTree: FileTree,
@@ -76,14 +76,14 @@ export class CanvasDiscovery {
     const canvases = await this.discoverCanvasFiles(fileTree, packageMap, options, errors);
 
     // 4. Discover storyboards (hierarchical organization)
-    // Note: Executions are discovered as part of workflows, not separately
+    // Note: Test traces are discovered as part of workflows, not separately
     const storyboards = await this.discoverStoryboards(fileTree, packageMap, canvases, options, errors);
 
-    // 5. Collect all executions from workflows for backward compatibility
-    const executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[] = [];
+    // 5. Collect all test traces from workflows for backward compatibility
+    const testTraces: (DiscoveredTestTrace | DiscoveredTestTraceWithContent)[] = [];
     for (const storyboard of storyboards) {
       for (const workflow of storyboard.workflows) {
-        executions.push(...workflow.executions);
+        testTraces.push(...workflow.testTraces);
       }
     }
 
@@ -92,10 +92,10 @@ export class CanvasDiscovery {
 
     // 7. Sort results
     canvases.sort(this.compareByPackageThenName);
-    executions.sort(this.compareByPackageThenName);
+    testTraces.sort(this.compareByPackageThenName);
     storyboards.sort(this.compareByPackageThenName);
 
-    return { canvases, executions, storyboards, errors, warnings };
+    return { canvases, testTraces, storyboards, errors, warnings };
   }
 
   /**
@@ -229,8 +229,8 @@ export class CanvasDiscovery {
         ? `${packageInfo.packageData.name}/${storyboardName}/${basename}`
         : `${storyboardName}/${basename}`;
 
-      // Discover executions co-located in the same directory as workflow.json
-      const workflowExecutions = await this.discoverExecutionsInWorkflowDir(
+      // Discover test traces co-located in the same directory as workflow.json
+      const workflowTestTraces = await this.discoverTestTracesInWorkflowDir(
         fileTree,
         workflowDir,
         packageMap,
@@ -250,7 +250,7 @@ export class CanvasDiscovery {
         packageName: packageInfo?.packageData.name,
         packagePath: packageInfo?.packageData.path,
         scope: packageInfo ? 'package' : 'root',
-        executions: workflowExecutions,
+        testTraces: workflowTestTraces,
       };
 
       // Optionally load content
@@ -276,14 +276,14 @@ export class CanvasDiscovery {
   /**
    * Discover execution files co-located in a workflow directory
    */
-  private async discoverExecutionsInWorkflowDir(
+  private async discoverTestTracesInWorkflowDir(
     fileTree: FileTree,
     workflowDir: string,
     packageMap: Map<string, PackageLayer>,
     options: DiscoveryOptions,
     errors: Array<{ path: string; error: string }>
-  ): Promise<(DiscoveredExecution | DiscoveredExecutionWithContent)[]> {
-    const executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[] = [];
+  ): Promise<(DiscoveredTestTrace | DiscoveredTestTraceWithContent)[]> {
+    const testTraces: (DiscoveredTestTrace | DiscoveredTestTraceWithContent)[] = [];
 
     // Find all .otel.json files in the workflow directory
     for (const file of fileTree.allFiles) {
@@ -293,12 +293,12 @@ export class CanvasDiscovery {
       const fileDir = path.split('/').slice(0, -1).join('/');
       if (fileDir !== workflowDir) continue;
 
-      // Check if it's an execution file (.otel.json)
+      // Check if it's a test trace file (.otel.json)
       if (!path.endsWith('.otel.json')) {
         continue;
       }
 
-      // Extract execution metadata
+      // Extract test trace metadata
       const filename = path.split('/').pop();
       if (!filename) continue;
 
@@ -313,8 +313,8 @@ export class CanvasDiscovery {
         ? `${packageInfo.packageData.name}/${workflowBasename}/${basename}`
         : `${workflowBasename}/${basename}`;
 
-      // Create discovered execution
-      let execution: DiscoveredExecution | DiscoveredExecutionWithContent = {
+      // Create discovered test trace
+      let testTrace: DiscoveredTestTrace | DiscoveredTestTraceWithContent = {
         id,
         name: this.toDisplayName(basename),
         path,
@@ -330,19 +330,19 @@ export class CanvasDiscovery {
       if (options.includeContent && options.fileReader) {
         try {
           const content = await options.fileReader(path);
-          execution = { ...execution, content: JSON.parse(content) } as DiscoveredExecutionWithContent;
+          testTrace = { ...testTrace, content: JSON.parse(content) } as DiscoveredTestTraceWithContent;
         } catch (error) {
           errors.push({
             path,
-            error: `Failed to parse execution content: ${(error as Error).message}`,
+            error: `Failed to parse test trace content: ${(error as Error).message}`,
           });
         }
       }
 
-      executions.push(execution);
+      testTraces.push(testTrace);
     }
 
-    return executions;
+    return testTraces;
   }
 
   /**
@@ -542,8 +542,8 @@ export class CanvasDiscovery {
    * Sort by package then name
    */
   private compareByPackageThenName(
-    a: DiscoveredCanvas | DiscoveredExecution | DiscoveredStoryboard,
-    b: DiscoveredCanvas | DiscoveredExecution | DiscoveredStoryboard
+    a: DiscoveredCanvas | DiscoveredTestTrace | DiscoveredStoryboard,
+    b: DiscoveredCanvas | DiscoveredTestTrace | DiscoveredStoryboard
   ): number {
     // Package files first, then root
     if (a.packageName && !b.packageName) return -1;

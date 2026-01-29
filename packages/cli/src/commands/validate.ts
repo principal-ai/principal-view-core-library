@@ -27,7 +27,7 @@ interface ValidationIssue {
 
 interface ValidationResult {
   file: string;
-  fileType: 'canvas' | 'workflow' | 'execution' | 'library';
+  fileType: 'canvas' | 'workflow' | 'testTrace' | 'library';
   isValid: boolean;
   issues: ValidationIssue[];
   canvas?: ExtendedCanvas;
@@ -512,7 +512,7 @@ function loadExecutionFile(filePath: string): ExecutionData | null {
 /**
  * Determine file type based on naming convention
  */
-function determineFileType(filePath: string): 'canvas' | 'workflow' | 'execution' | 'library' {
+function determineFileType(filePath: string): 'canvas' | 'workflow' | 'testTrace' | 'library' {
   const name = basename(filePath).toLowerCase();
 
   if (name.startsWith('library.')) {
@@ -522,7 +522,7 @@ function determineFileType(filePath: string): 'canvas' | 'workflow' | 'execution
     return 'workflow';
   }
   if (name.endsWith('.otel.json')) {
-    return 'execution';
+    return 'testTrace';
   }
   return 'canvas';
 }
@@ -1437,7 +1437,7 @@ async function validateWorkflow(
 }
 
 /**
- * Validate an execution artifact
+ * Validate a test trace artifact (.otel.json file)
  */
 function validateExecution(
   filePath: string,
@@ -1448,7 +1448,7 @@ function validateExecution(
   if (!existsSync(filePath)) {
     return {
       file: relativePath,
-      fileType: 'execution',
+      fileType: 'testTrace',
       isValid: false,
       issues: [{ type: 'error', message: `File not found: ${filePath}` }],
     };
@@ -1459,9 +1459,9 @@ function validateExecution(
     if (!data) {
       return {
         file: relativePath,
-        fileType: 'execution',
+        fileType: 'testTrace',
         isValid: false,
-        issues: [{ type: 'error', message: 'Could not parse execution file' }],
+        issues: [{ type: 'error', message: 'Could not parse test trace file' }],
       };
     }
 
@@ -1501,14 +1501,14 @@ function validateExecution(
 
     return {
       file: relativePath,
-      fileType: 'execution',
+      fileType: 'testTrace',
       isValid: result.valid,
       issues,
     };
   } catch (error) {
     return {
       file: relativePath,
-      fileType: 'execution',
+      fileType: 'testTrace',
       isValid: false,
       issues: [{ type: 'error', message: `Failed to validate: ${(error as Error).message}` }],
     };
@@ -1574,7 +1574,7 @@ function outputResults(
   const byType = {
     canvas: allResults.filter(r => r.fileType === 'canvas'),
     workflow: allResults.filter(r => r.fileType === 'workflow'),
-    execution: allResults.filter(r => r.fileType === 'execution'),
+    testTrace: allResults.filter(r => r.fileType === 'testTrace'),
     library: allResults.filter(r => r.fileType === 'library'),
   };
 
@@ -1590,7 +1590,7 @@ function outputResults(
             byType: {
               canvas: byType.canvas.length,
               workflow: byType.workflow.length,
-              execution: byType.execution.length,
+              testTrace: byType.testTrace.length,
               library: byType.library.length,
             },
           },
@@ -1604,7 +1604,7 @@ function outputResults(
       const counts = [];
       if (byType.canvas.length > 0) counts.push(`${byType.canvas.length} canvas`);
       if (byType.workflow.length > 0) counts.push(`${byType.workflow.length} workflow`);
-      if (byType.execution.length > 0) counts.push(`${byType.execution.length} execution`);
+      if (byType.testTrace.length > 0) counts.push(`${byType.testTrace.length} test trace`);
       if (byType.library.length > 0) counts.push(`${byType.library.length} library`);
 
       console.log(chalk.bold(`\nValidating ${counts.join(', ')} file(s)...\n`));
@@ -1648,7 +1648,7 @@ function outputResults(
     outputByType('Library', byType.library);
     outputByType('Canvas', byType.canvas);
     outputByType('Workflow', byType.workflow);
-    outputByType('Execution', byType.execution);
+    outputByType('Test Trace', byType.testTrace);
 
     // Summary
     if (invalidCount === 0) {
@@ -1670,7 +1670,7 @@ export function createValidateCommand(): Command {
   const command = new Command('validate');
 
   command
-    .description('Validate all Principal View artifacts (canvas, workflow, execution files)')
+    .description('Validate all Principal View artifacts (canvas, workflow, test trace files)')
     .argument(
       '[files...]',
       'Files or glob patterns to validate (defaults to all Principal View files)'
@@ -1683,7 +1683,7 @@ export function createValidateCommand(): Command {
     )
     .option('--canvas-only', 'Only validate canvas files')
     .option('--workflow-only', 'Only validate workflow files')
-    .option('--execution-only', 'Only validate execution files')
+    .option('--execution-only', 'Only validate test trace files')
     .action(async (files: string[], options) => {
       try {
         // Determine repository path for source file validation
@@ -1728,36 +1728,25 @@ export function createValidateCommand(): Command {
           includeContent: true,
         });
 
-        // Find workflows and executions using glob
-        const workflowFiles = validateWorkflows
-          ? await globby([
-              '.principal-views/**/*.workflow.json',
-              '**/*.workflow.json',
-            ], {
-              cwd: repositoryPath,
-              ignore: ['**/node_modules/**'],
-            })
+        // Workflows and test traces are discovered by CanvasDiscovery
+        // Extract them from the discovery result
+        const workflows = validateWorkflows
+          ? discoveryResult.storyboards.flatMap(sb => sb.workflows)
           : [];
 
-        const executionFiles = validateExecutions
-          ? await globby([
-              '**/__executions__/*.otel.json',
-              '.principal-views/__executions__/*.otel.json',
-            ], {
-              cwd: repositoryPath,
-              ignore: ['**/node_modules/**'],
-            })
+        const testTraces = validateExecutions
+          ? discoveryResult.testTraces
           : [];
 
         // Check if any files were found (only count OTEL canvas files)
         const otelCanvasCount = discoveryResult.canvases.filter(c => c.type === 'otel').length;
-        const totalFiles = otelCanvasCount + workflowFiles.length + executionFiles.length;
+        const totalFiles = otelCanvasCount + workflows.length + testTraces.length;
         if (totalFiles === 0) {
           if (options.json) {
             console.log(JSON.stringify({
               files: [],
               discoveryErrors: discoveryResult.errors,
-              summary: { total: 0, valid: 0, invalid: 0, byType: { canvas: 0, workflow: 0, execution: 0, library: 0 } }
+              summary: { total: 0, valid: 0, invalid: 0, byType: { canvas: 0, workflow: 0, testTrace: 0, library: 0 } }
             }));
           } else {
             console.log(chalk.yellow('No Principal View files found.'));
@@ -1851,8 +1840,8 @@ export function createValidateCommand(): Command {
         // PHASE 1: Group workflows by canvas and collect all events used
         const workflowsByCanvas = new Map<string, Set<string>>();
 
-        for (const workflowFile of workflowFiles) {
-          const absolutePath = resolve(repositoryPath, workflowFile);
+        for (const discoveredWorkflow of workflows) {
+          const absolutePath = resolve(repositoryPath, discoveredWorkflow.path);
           const workflow = loadWorkflowTemplate(absolutePath);
           if (!workflow || !workflow.canvas) continue;
 
@@ -1905,8 +1894,8 @@ export function createValidateCommand(): Command {
 
         // PHASE 3: Validate workflows with canvas-wide event knowledge
         if (validateWorkflows) {
-          for (const workflowFile of workflowFiles) {
-            const absolutePath = resolve(repositoryPath, workflowFile);
+          for (const discoveredWorkflow of workflows) {
+            const absolutePath = resolve(repositoryPath, discoveredWorkflow.path);
             const workflow = loadWorkflowTemplate(absolutePath);
             if (!workflow) continue;
 
@@ -1926,10 +1915,10 @@ export function createValidateCommand(): Command {
           }
         }
 
-        // PHASE 4: Validate execution artifacts
+        // PHASE 4: Validate test trace artifacts
         if (validateExecutions) {
-          for (const executionFile of executionFiles) {
-            const absolutePath = resolve(repositoryPath, executionFile);
+          for (const testTrace of testTraces) {
+            const absolutePath = resolve(repositoryPath, testTrace.path);
             const validationResult = validateExecution(absolutePath, repositoryPath);
             results.push(validationResult);
           }

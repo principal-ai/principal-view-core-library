@@ -99,19 +99,19 @@ export type {
   OtelSpanStatus,
 } from './types/otel';
 
-// Export canvas and execution discovery (browser-safe)
+// Export canvas, workflow, and test trace discovery (browser-safe)
 export { CanvasDiscovery } from './discovery/CanvasDiscovery';
 export type {
   DiscoveredCanvas,
-  DiscoveredExecution,
+  DiscoveredTestTrace,
   DiscoveredWorkflow,
   DiscoveredStoryboard,
   CanvasDiscoveryResult,
   DiscoveryOptions,
   CanvasType,
-  ExecutionType,
+  TestTraceType,
   DiscoveredCanvasWithContent,
-  DiscoveredExecutionWithContent,
+  DiscoveredTestTraceWithContent,
   DiscoveredWorkflowWithContent,
   DiscoveredStoryboardWithContent,
   CanvasDiscoveryResultWithContent,

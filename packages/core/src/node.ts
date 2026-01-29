@@ -153,17 +153,17 @@ export type {
   WorkflowValidationResult,
 } from './workflow';
 
-// Export canvas and execution discovery
+// Export canvas, workflow, and test trace discovery
 export { CanvasDiscovery } from './discovery/CanvasDiscovery';
 export type {
   DiscoveredCanvas,
-  DiscoveredExecution,
+  DiscoveredTestTrace,
   CanvasDiscoveryResult,
   DiscoveryOptions,
   CanvasType,
-  ExecutionType,
+  TestTraceType,
   DiscoveredCanvasWithContent,
-  DiscoveredExecutionWithContent,
+  DiscoveredTestTraceWithContent,
   CanvasDiscoveryResultWithContent,
 } from './discovery/types';
 
