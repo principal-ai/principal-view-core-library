@@ -36,7 +36,15 @@ Complete documentation for the Visual Validation React component library.
    - Discovery system and validation
    - Technical specification
 
-5. **[Migration Guide](./MIGRATION_GUIDE.md)**
+5. **[Hierarchical Workflow Composition](./HIERARCHICAL_WORKFLOW_COMPOSITION.md)** ⭐ New
+
+   - Telemetry across library boundaries
+   - Span-to-workflow mapping convention
+   - Composable, reusable workflows
+   - Production trace mapping to canvas
+   - Implementation guide and examples
+
+6. **[Migration Guide](./MIGRATION_GUIDE.md)**
    - Migrating from legacy flat structure to storyboards
    - Step-by-step migration instructions
    - Common issues and solutions

@@ -472,6 +472,7 @@ bun run format
 
 ### 📚 Getting Started
 - **[Storyboard Discovery Design](./docs/STORYBOARD_DISCOVERY_DESIGN.md)** - ⭐ Recommended project organization
+- **[Hierarchical Workflow Composition](./docs/HIERARCHICAL_WORKFLOW_COMPOSITION.md)** - ⭐ Cross-library telemetry & composable workflows
 - **[Migration Guide](./docs/MIGRATION_GUIDE.md)** - Upgrade from legacy flat structure
 - **[Configuration Docs](./docs/CONFIGURATION.md)** - Canvas format details
 - **[Full Documentation](./docs/README.md)** - Complete guide index
