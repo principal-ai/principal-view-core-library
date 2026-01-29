@@ -43,7 +43,6 @@ import type {
  */
 export class CanvasDiscovery {
   private static readonly CANVAS_DIR = '.principal-views';
-  private static readonly EXECUTIONS_DIR = '__executions__';
   private static readonly WORKFLOW_EXTENSION = '.workflow.json';
 
   private packageModule: PackageLayerModule;
@@ -76,14 +75,20 @@ export class CanvasDiscovery {
     // 3. Discover canvas files
     const canvases = await this.discoverCanvasFiles(fileTree, packageMap, options, errors);
 
-    // 4. Discover execution files
-    const executions = await this.discoverExecutionFiles(fileTree, packageMap, options, errors);
+    // 4. Discover storyboards (hierarchical organization)
+    // Note: Executions are discovered as part of workflows, not separately
+    const storyboards = await this.discoverStoryboards(fileTree, packageMap, canvases, options, errors);
 
-    // 5. Discover storyboards (hierarchical organization)
-    const storyboards = await this.discoverStoryboards(fileTree, packageMap, canvases, executions, options, errors);
+    // 5. Collect all executions from workflows for backward compatibility
+    const executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[] = [];
+    for (const storyboard of storyboards) {
+      for (const workflow of storyboard.workflows) {
+        executions.push(...workflow.executions);
+      }
+    }
 
-    // 6. Detect legacy structures and add deprecation errors
-    this.detectLegacyStructures(canvases, executions, storyboards, errors);
+    // 6. Detect legacy flat canvas structures and add deprecation errors
+    this.detectLegacyStructures(canvases, storyboards, errors);
 
     // 7. Sort results
     canvases.sort(this.compareByPackageThenName);
@@ -91,44 +96,6 @@ export class CanvasDiscovery {
     storyboards.sort(this.compareByPackageThenName);
 
     return { canvases, executions, storyboards, errors, warnings };
-  }
-
-  /**
-   * Find canvas file for a given execution
-   *
-   * @param execution - Discovered execution
-   * @param canvases - Array of discovered canvases (from discover())
-   * @returns Matching canvas or null
-   */
-  findCanvasForExecution(
-    execution: DiscoveredExecution,
-    canvases: DiscoveredCanvas[]
-  ): DiscoveredCanvas | null {
-    // Find canvas with matching basename and scope
-    return canvases.find(canvas =>
-      canvas.basename === execution.canvasBasename &&
-      canvas.scope === execution.scope &&
-      canvas.packageName === execution.packageName
-    ) || null;
-  }
-
-  /**
-   * Find execution files for a given canvas
-   *
-   * @param canvas - Discovered canvas
-   * @param executions - Array of discovered executions (from discover())
-   * @returns Array of matching executions
-   */
-  findExecutionsForCanvas(
-    canvas: DiscoveredCanvas,
-    executions: DiscoveredExecution[]
-  ): DiscoveredExecution[] {
-    // Find all executions with matching basename and scope
-    return executions.filter(execution =>
-      execution.canvasBasename === canvas.basename &&
-      execution.scope === canvas.scope &&
-      execution.packageName === canvas.packageName
-    );
   }
 
   /**
@@ -145,7 +112,6 @@ export class CanvasDiscovery {
     fileTree: FileTree,
     packageMap: Map<string, PackageLayer>,
     canvases: DiscoveredCanvas[],
-    executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[],
     options: DiscoveryOptions,
     errors: Array<{ path: string; error: string }>
   ): Promise<(DiscoveredStoryboard | DiscoveredStoryboardWithContent)[]> {
@@ -176,8 +142,8 @@ export class CanvasDiscovery {
     // For each potential storyboard directory, check if it has a canvas
     for (const [storyboardPath, storyboardNames] of storyboardDirs) {
       for (const storyboardName of storyboardNames) {
-        // Skip __executions__ directory
-        if (storyboardName === CanvasDiscovery.EXECUTIONS_DIR) continue;
+        // Skip __executions__ directory (legacy pattern, should not exist)
+        if (storyboardName === '__executions__') continue;
 
         // Find canvas for this storyboard
         const storyboardCanvas = canvases.find(c => {
@@ -193,7 +159,6 @@ export class CanvasDiscovery {
           storyboardPath,
           storyboardName,
           packageMap,
-          executions,
           options,
           errors
         );
@@ -234,7 +199,6 @@ export class CanvasDiscovery {
     storyboardPath: string,
     storyboardName: string,
     packageMap: Map<string, PackageLayer>,
-    executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[],
     options: DiscoveryOptions,
     errors: Array<{ path: string; error: string }>
   ): Promise<(DiscoveredWorkflow | DiscoveredWorkflowWithContent)[]> {
@@ -265,11 +229,14 @@ export class CanvasDiscovery {
         ? `${packageInfo.packageData.name}/${storyboardName}/${basename}`
         : `${storyboardName}/${basename}`;
 
-      // Find executions for this workflow (in the same directory as workflow.json)
-      const workflowExecutions = executions.filter(e => {
-        const execDir = e.path.split('/').slice(0, -1).join('/');
-        return execDir === workflowDir;
-      });
+      // Discover executions co-located in the same directory as workflow.json
+      const workflowExecutions = await this.discoverExecutionsInWorkflowDir(
+        fileTree,
+        workflowDir,
+        packageMap,
+        options,
+        errors
+      );
 
       // Create discovered workflow
       let workflow: DiscoveredWorkflow | DiscoveredWorkflowWithContent = {
@@ -304,6 +271,76 @@ export class CanvasDiscovery {
     }
 
     return workflows;
+  }
+
+  /**
+   * Discover execution files co-located in a workflow directory
+   */
+  private async discoverExecutionsInWorkflowDir(
+    fileTree: FileTree,
+    workflowDir: string,
+    packageMap: Map<string, PackageLayer>,
+    options: DiscoveryOptions,
+    errors: Array<{ path: string; error: string }>
+  ): Promise<(DiscoveredExecution | DiscoveredExecutionWithContent)[]> {
+    const executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[] = [];
+
+    // Find all .otel.json files in the workflow directory
+    for (const file of fileTree.allFiles) {
+      const path = file.relativePath || file.path || '';
+
+      // Check if file is in this workflow directory
+      const fileDir = path.split('/').slice(0, -1).join('/');
+      if (fileDir !== workflowDir) continue;
+
+      // Check if it's an execution file (.otel.json)
+      if (!path.endsWith('.otel.json')) continue;
+
+      // Extract execution metadata
+      const filename = path.split('/').pop();
+      if (!filename) continue;
+
+      const basename = filename.replace('.otel.json', '');
+
+      // Determine package context
+      const packageInfo = this.findPackageForPath(path, packageMap);
+
+      // Generate unique ID (workflow-scoped)
+      const workflowBasename = workflowDir.split('/').pop() || '';
+      const id = packageInfo
+        ? `${packageInfo.packageData.name}/${workflowBasename}/${basename}`
+        : `${workflowBasename}/${basename}`;
+
+      // Create discovered execution
+      let execution: DiscoveredExecution | DiscoveredExecutionWithContent = {
+        id,
+        name: this.toDisplayName(basename),
+        path,
+        basename,
+        type: 'otel',
+        canvasBasename: basename, // For backward compatibility
+        packageName: packageInfo?.packageData.name,
+        packagePath: packageInfo?.packageData.path,
+        scope: packageInfo ? 'package' : 'root',
+      };
+
+      // Optionally load content
+      if (options.includeContent && options.fileReader) {
+        try {
+          const content = await options.fileReader(path);
+          execution = { ...execution, content: JSON.parse(content) } as DiscoveredExecutionWithContent;
+        } catch (error) {
+          errors.push({
+            path,
+            error: `Failed to parse execution content: ${(error as Error).message}`,
+          });
+        }
+      }
+
+      executions.push(execution);
+    }
+
+    return executions;
   }
 
   /**
@@ -412,66 +449,8 @@ export class CanvasDiscovery {
   /**
    * Discover execution files in the file tree
    */
-  private async discoverExecutionFiles(
-    fileTree: FileTree,
-    packageMap: Map<string, PackageLayer>,
-    options: DiscoveryOptions,
-    errors: Array<{ path: string; error: string }>
-  ): Promise<(DiscoveredExecution | DiscoveredExecutionWithContent)[]> {
-    const executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[] = [];
-
-    for (const file of fileTree.allFiles) {
-      const path = file.relativePath || file.path || '';
-
-      // Check if in __executions__ directory
-      if (!this.isInExecutionsDir(path)) continue;
-
-      // Extract execution metadata
-      const metadata = this.parseExecutionPath(path);
-      if (!metadata) continue;
-
-      // Determine package context
-      const packageInfo = this.findPackageForPath(path, packageMap);
-
-      // Generate unique ID
-      const id = packageInfo
-        ? `${packageInfo.packageData.name}/${metadata.basename}`
-        : metadata.basename;
-
-      // Create discovered execution
-      let execution: DiscoveredExecution | DiscoveredExecutionWithContent = {
-        id,
-        name: this.toDisplayName(metadata.basename),
-        path,
-        basename: metadata.basename,
-        type: metadata.type,
-        canvasBasename: metadata.canvasBasename,
-        packageName: packageInfo?.packageData.name,
-        packagePath: packageInfo?.packageData.path,
-        scope: packageInfo ? 'package' : 'root',
-      };
-
-      // Optionally load content
-      if (options.includeContent && options.fileReader) {
-        try {
-          const content = await options.fileReader(path);
-          execution = { ...execution, content: JSON.parse(content) } as DiscoveredExecutionWithContent;
-        } catch (error) {
-          errors.push({
-            path,
-            error: `Failed to parse execution content: ${(error as Error).message}`,
-          });
-        }
-      }
-
-      executions.push(execution);
-    }
-
-    return executions;
-  }
-
   /**
-   * Check if path is in .principal-views directory
+   * Check if path is in .principal-views directory (directly, not in subdirectories)
    */
   private isInCanvasDir(path: string): boolean {
     const parts = path.split('/');
@@ -484,8 +463,8 @@ export class CanvasDiscovery {
     // Package: packages/core/.principal-views/file.canvas
     if (parts.includes(CanvasDiscovery.CANVAS_DIR)) {
       const idx = parts.indexOf(CanvasDiscovery.CANVAS_DIR);
-      // Ensure it's not in __executions__ subdirectory
-      return !parts.includes(CanvasDiscovery.EXECUTIONS_DIR, idx);
+      // Must be directly in .principal-views/, not in a subdirectory
+      return parts.length === idx + 2;
     }
 
     return false;
@@ -511,49 +490,6 @@ export class CanvasDiscovery {
       return {
         basename: filename.replace(/\.canvas$/, ''),
         type: 'regular',
-      };
-    }
-
-    return null;
-  }
-
-  /**
-   * Check if path is in __executions__ directory
-   */
-  private isInExecutionsDir(path: string): boolean {
-    const parts = path.split('/');
-
-    // Must contain __executions__ directory
-    if (!parts.includes(CanvasDiscovery.EXECUTIONS_DIR)) return false;
-
-    // Valid patterns:
-    // 1. .principal-views/__executions__/file.otel.json
-    // 2. packages/core/.principal-views/__executions__/file.otel.json
-    // 3. __executions__/file.otel.json (root level)
-
-    return true;
-  }
-
-  /**
-   * Parse execution file path to extract metadata
-   * Only .otel.json files are supported
-   */
-  private parseExecutionPath(path: string): {
-    basename: string;
-    type: ExecutionType;
-    canvasBasename: string;
-  } | null {
-    const filename = path.split('/').pop();
-    if (!filename) return null;
-
-    // Pattern: name.otel.json
-    const match = filename.match(/^(.+)\.otel\.json$/);
-    if (match) {
-      const basename = match[1];
-      return {
-        basename,
-        type: 'otel',
-        canvasBasename: basename, // Same as basename for linking
       };
     }
 
@@ -615,26 +551,15 @@ export class CanvasDiscovery {
   }
 
   /**
-   * Detect legacy flat structures and add deprecation errors
+   * Detect legacy flat canvas structures and add deprecation errors
    */
   private detectLegacyStructures(
     canvases: DiscoveredCanvas[],
-    executions: (DiscoveredExecution | DiscoveredExecutionWithContent)[],
     storyboards: (DiscoveredStoryboard | DiscoveredStoryboardWithContent)[],
     errors: Array<{ path: string; error: string }>
   ): void {
     // Build a set of storyboard canvas IDs for quick lookup
     const storyboardCanvasIds = new Set(storyboards.map(s => s.canvas.id));
-
-    // Build a set of execution IDs that are part of storyboards
-    const storyboardExecutionIds = new Set<string>();
-    for (const storyboard of storyboards) {
-      for (const workflow of storyboard.workflows) {
-        for (const execution of workflow.executions) {
-          storyboardExecutionIds.add(execution.id);
-        }
-      }
-    }
 
     // Check for legacy flat canvases (not part of any storyboard)
     for (const canvas of canvases) {
@@ -649,19 +574,6 @@ export class CanvasDiscovery {
           errors.push({
             path: canvas.path,
             error: 'DEPRECATED: Legacy flat canvas structure is no longer supported. Migrate to the storyboard structure immediately. See migration guide at docs/MIGRATION_GUIDE.md for details.',
-          });
-        }
-      }
-    }
-
-    // Check for legacy executions in __executions__/ directory
-    for (const execution of executions) {
-      if (!storyboardExecutionIds.has(execution.id)) {
-        // Check if this execution is in __executions__/ directory
-        if (execution.path.includes(`/${CanvasDiscovery.EXECUTIONS_DIR}/`)) {
-          errors.push({
-            path: execution.path,
-            error: 'DEPRECATED: Legacy __executions__/ directory is no longer supported. Migrate executions to workflow folders within storyboards immediately. See migration guide at docs/MIGRATION_GUIDE.md for details.',
           });
         }
       }
