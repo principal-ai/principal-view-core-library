@@ -1365,7 +1365,8 @@ Example structure:
 async function validateWorkflow(
   filePath: string,
   allWorkflowEvents: Set<string> | undefined,
-  repositoryPath: string
+  repositoryPath: string,
+  executionFiles?: string[]
 ): Promise<ValidationResult> {
   const relativePath = relative(repositoryPath, filePath);
 
@@ -1410,6 +1411,7 @@ async function validateWorkflow(
       basePath: repositoryPath,
       rawContent,
       allWorkflowEvents,
+      executionFiles,
     });
 
     // Convert workflow violations to validation issues
@@ -1906,10 +1908,16 @@ export function createValidateCommand(): Command {
             const canvasKey = canvasPath ? relative(repositoryPath, canvasPath) : undefined;
             const allWorkflowEvents = canvasKey ? workflowsByCanvas.get(canvasKey) : undefined;
 
+            // Get co-located test traces for this workflow
+            const executionFiles = discoveredWorkflow.testTraces.map(tt =>
+              resolve(repositoryPath, tt.path)
+            );
+
             const validationResult = await validateWorkflow(
               absolutePath,
               allWorkflowEvents,
-              repositoryPath
+              repositoryPath,
+              executionFiles
             );
             results.push(validationResult);
           }
