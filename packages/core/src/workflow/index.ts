@@ -29,7 +29,8 @@ export type {
 export { selectScenario, matchesCondition, hasEventMatching, computeAggregates, evaluateAssertion, getNestedValue, setNestedValue } from './scenario-matcher';
 
 // Template Parsing
-export { parseTemplate } from './template-parser';
+export { parseTemplate, ParsedTemplate } from './template-parser';
+export type { TemplateSegment } from './template-parser';
 
 // Template Rendering
 export { renderWorkflow } from './template-renderer';

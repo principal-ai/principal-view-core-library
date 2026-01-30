@@ -1302,7 +1302,6 @@ const SourcesInTooltipTemplate = () => {
       <div style={{ width: '100%', height: '550px' }}>
         <GraphRenderer
           canvas={sourcesTooltipCanvas}
-          onSourceClick={handleSourceClick}
         />
       </div>
     </div>
@@ -1315,25 +1314,9 @@ export const SourcesInTooltip: Story = {
     docs: {
       description: {
         story: `
-**Sources in Tooltips and Info Panel** - Demonstrates source file associations:
+**[DEPRECATED]** This story previously demonstrated source file associations in tooltips and info panels.
 
-**How to view sources:**
-1. Hold the **Shift** key and hover over any node to see sources in the tooltip
-2. Click on a node to open the info panel at the bottom
-3. Click on any source file path to trigger the \`onSourceClick\` callback
-
-**Features:**
-- **Green "S" Badge**: Nodes with sources show a green badge in the top-left corner
-- **Tooltip Sources**: Source files appear below the description in shift-hover tooltips
-- **Clickable Sources**: In the info panel, sources are clickable buttons with dotted underlines
-- **Callback Integration**: \`onSourceClick(nodeId, source)\` fires when a source is clicked
-- **Visual Feedback**: Sources show hover effects and are clearly interactive
-
-**Try it:**
-1. Click on "Auth Service" to open the info panel
-2. Click on any of its 2 source files in the panel
-3. An alert will show the clicked source information
-4. Also try: Database (3 sources), Cache Layer (2 sources), Logger (1 source)
+**Note:** The sources display feature has been removed from the node rendering. Nodes can still have source data in their canvas definition, but it will not be displayed in the UI.
         `,
       },
     },

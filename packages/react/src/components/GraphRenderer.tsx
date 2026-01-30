@@ -197,12 +197,6 @@ interface GraphRendererBaseProps {
   onPendingChangesChange?: (hasChanges: boolean) => void;
 
   /**
-   * Callback when a source is clicked in the node info panel.
-   * Receives the node ID and the source path that was clicked.
-   */
-  onSourceClick?: (nodeId: string, source: string) => void;
-
-  /**
    * Callback when a node is clicked.
    * Receives the node ID and the click event. If provided, overrides default node selection behavior.
    */
@@ -374,7 +368,6 @@ interface GraphRendererInnerProps {
   onPendingChangesChange?: (hasChanges: boolean) => void;
   onEditStateChange?: (editState: EditState) => void;
   editStateRef: React.MutableRefObject<EditState>;
-  onSourceClick?: (nodeId: string, source: string) => void;
   onNodeClick?: (nodeId: string, event: React.MouseEvent) => void;
   showNodeDetailPanel?: boolean;
   resolveEventRef?: (eventRef: string) => PVEventSchema | undefined;
@@ -405,7 +398,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   onPendingChangesChange,
   onEditStateChange,
   editStateRef,
-  onSourceClick,
   onNodeClick: onNodeClickProp,
   showNodeDetailPanel,
   resolveEventRef,
@@ -1577,7 +1569,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           onClose={onCloseNodeInfoPanel}
           onDelete={editable ? handleNodeDelete : undefined}
           onUpdate={editable ? handleNodeUpdate : undefined}
-          onSourceClick={onSourceClick}
           resolveEventRef={resolveEventRef}
         />
       )}
@@ -1956,7 +1947,6 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     onEventProcessed,
     editable,
     onPendingChangesChange,
-    onSourceClick,
     onNodeClick,
     showNodeDetailPanel,
     resolveEventRef,
@@ -1986,7 +1976,6 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           editable={editable}
           onPendingChangesChange={onPendingChangesChange}
           editStateRef={editStateRef}
-          onSourceClick={onSourceClick}
           onNodeClick={onNodeClick}
           showNodeDetailPanel={showNodeDetailPanel}
           resolveEventRef={resolveEventRef}

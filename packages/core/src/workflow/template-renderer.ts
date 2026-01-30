@@ -101,7 +101,7 @@ function renderScenario(context: WorkflowContext): string {
 
   // Introduction
   if (scenario.template.introduction) {
-    parts.push(parseTemplate(scenario.template.introduction, evalContext));
+    parts.push(parseTemplate(scenario.template.introduction, evalContext).toString());
     parts.push(''); // Blank line
   }
 
@@ -128,7 +128,7 @@ function renderScenario(context: WorkflowContext): string {
     if (parts.length > 0) {
       parts.push(''); // Blank line before summary
     }
-    parts.push(parseTemplate(scenario.template.summary, evalContext));
+    parts.push(parseTemplate(scenario.template.summary, evalContext).toString());
   }
 
   return parts.join('\n');
@@ -182,11 +182,11 @@ function renderSpanTree(
 
     // Render span
     if (scenario.template.span) {
-      const spanText = parseTemplate(scenario.template.span, eventContext);
+      const spanText = parseTemplate(scenario.template.span, eventContext).toString();
       parts.push(indent + spanText);
     } else if (scenario.template.events?.[node.span.name]) {
       const eventTemplate = scenario.template.events[node.span.name];
-      const eventText = parseTemplate(eventTemplate, eventContext);
+      const eventText = parseTemplate(eventTemplate, eventContext).toString();
       parts.push(indent + eventText);
     } else {
       // Default span rendering
@@ -267,7 +267,7 @@ function renderTimeline(
     if (event.type === 'log') {
       eventText = renderLog(event, scenario, { ...eventContext, log: event }, formatting);
     } else if (scenario.template.events?.[event.name]) {
-      eventText = parseTemplate(scenario.template.events[event.name], eventContext);
+      eventText = parseTemplate(scenario.template.events[event.name], eventContext).toString();
     }
 
     if (eventText) {
@@ -303,13 +303,13 @@ function renderLog(
     const severity = getSeverityLevel(log.severityNumber);
     const logTemplate = scenario.template.logs[severity] || scenario.template.logs.default;
     if (logTemplate) {
-      return parseTemplate(logTemplate, context);
+      return parseTemplate(logTemplate, context).toString();
     }
   }
 
   // Check for event-specific template
   if (scenario.template.events?.[`log.${log.severityText?.toLowerCase()}`]) {
-    return parseTemplate(scenario.template.events[`log.${log.severityText?.toLowerCase()}`], context);
+    return parseTemplate(scenario.template.events[`log.${log.severityText?.toLowerCase()}`], context).toString();
   }
 
   // Default log rendering
@@ -345,7 +345,7 @@ function renderFlow(flow: Array<string | FlowDirective>, context: Record<string,
   for (const item of flow) {
     if (typeof item === 'string') {
       // Simple string template
-      parts.push(parseTemplate(item, context));
+      parts.push(parseTemplate(item, context).toString());
     } else {
       // Flow directive
       if (item.forEach && item.template) {
@@ -359,19 +359,19 @@ function renderFlow(flow: Array<string | FlowDirective>, context: Record<string,
               ...(typeof collectionItem === 'object' && collectionItem !== null ? (collectionItem as Record<string, unknown>) : {}),
               index: i,
             };
-            parts.push(parseTemplate(item.template, itemContext));
+            parts.push(parseTemplate(item.template, itemContext).toString());
           }
         }
       } else if (item.if) {
         // Conditional
-        const condition = parseTemplate(item.if, context);
+        const condition = parseTemplate(item.if, context).toString();
         if (condition === 'true' || condition === '1') {
           if (item.then) {
-            parts.push(parseTemplate(item.then, context));
+            parts.push(parseTemplate(item.then, context).toString());
           }
         } else {
           if (item.else) {
-            parts.push(parseTemplate(item.else, context));
+            parts.push(parseTemplate(item.else, context).toString());
           }
         }
       }

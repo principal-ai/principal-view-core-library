@@ -122,6 +122,7 @@ export * from './rules';
 export {
   renderWorkflow,
   parseTemplate,
+  ParsedTemplate,
   selectScenario,
   matchesCondition,
   hasEventMatching,
@@ -133,6 +134,7 @@ export {
   WorkflowValidator,
 } from './workflow';
 export type {
+  TemplateSegment,
   WorkflowTemplate,
   WorkflowScenario,
   WorkflowMode,

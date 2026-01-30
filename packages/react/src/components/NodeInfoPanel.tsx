@@ -64,8 +64,6 @@ export interface NodeInfoPanelProps {
   onDelete?: (nodeId: string) => void;
   /** Optional callback to update the node. If not provided, edit fields are disabled. */
   onUpdate?: (nodeId: string, updates: { type?: string; data?: Record<string, JsonValue> }) => void;
-  /** Optional callback when a source is clicked. Receives the node ID and source path. */
-  onSourceClick?: (nodeId: string, source: string) => void;
   /** Optional callback to resolve event references to full event schemas */
   resolveEventRef?: (eventRef: string) => PVEventSchema | undefined;
 }
@@ -80,7 +78,6 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
   onClose,
   onDelete,
   onUpdate,
-  onSourceClick,
   resolveEventRef,
 }) => {
   const { theme } = useTheme();
@@ -139,11 +136,6 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
     'eventRef',   // Handle separately in Event section
   ];
 
-  // Extract OTEL metadata
-  const otelInfo = node.data?.otel as
-    | { kind?: string; category?: string; isNew?: boolean }
-    | undefined;
-
   // Extract Event metadata
   const eventInfo = node.data?.event as unknown as PVEventSchema | undefined;
   const eventRef = node.data?.eventRef as unknown as string | undefined;
@@ -154,9 +146,6 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
   const nodeDataEntries = node.data
     ? Object.entries(node.data).filter(([key]) => !internalFields.includes(key))
     : [];
-
-  // Get sources from node data
-  const sources = (node.data?.sources as string[]) || [];
 
   const handleTypeChange = (newType: string) => {
     if (onUpdate && newType !== node.type) {
@@ -268,12 +257,9 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
         </div>
       </div>
 
-      {/* Content - use horizontal layout for better space usage */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-
-        {/* Left column - Description and basic info */}
-        <div>
-          {/* Description - first field under header */}
+      {/* Content */}
+      <div>
+        {/* Description - first field under header */}
           {node.data?.description && (
             <div style={{ marginBottom: '12px' }}>
               <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
@@ -283,68 +269,6 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
             </div>
           )}
 
-          {/* OTEL Info */}
-          {otelInfo && (
-            <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
-                OpenTelemetry
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                {/* Kind badge */}
-                {otelInfo.kind && (
-                  <span
-                    style={{
-                      fontSize: theme.fontSizes[0],
-                      fontWeight: theme.fontWeights.semibold,
-                      fontFamily: theme.fonts.body,
-                      padding: '3px 8px',
-                      borderRadius: '4px',
-                      textTransform: 'uppercase',
-                      color: 'white',
-                      backgroundColor:
-                        otelInfo.kind === 'type'
-                          ? '#4A90E2'
-                          : otelInfo.kind === 'service'
-                          ? '#7ED321'
-                          : otelInfo.kind === 'instance'
-                          ? '#9B59B6'
-                          : '#888',
-                    }}
-                  >
-                    {otelInfo.kind}
-                  </span>
-            )}
-                {/* Category */}
-                {otelInfo.category && (
-                  <span
-                    style={{
-                      fontSize: theme.fontSizes[0],
-                      fontFamily: theme.fonts.body,
-                      color: theme.colors.textSecondary,
-                    }}
-                  >
-                    {otelInfo.category}
-                  </span>
-                )}
-                {/* NEW badge */}
-                {otelInfo.isNew && (
-                  <span
-                    style={{
-                      fontSize: theme.fontSizes[0],
-                      fontWeight: theme.fontWeights.semibold,
-                      fontFamily: theme.fonts.body,
-                      padding: '2px 6px',
-                      borderRadius: '3px',
-                      backgroundColor: '#F5A623',
-                      color: 'white',
-                    }}
-                  >
-                    NEW
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
 
           {/* Event Info */}
           {(eventInfo || eventRef || resolvedEvent) && (
@@ -469,82 +393,6 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
               })()}
             </div>
           )}
-        </div>
-
-        {/* Right column - Sources and other metadata */}
-        <div>
-          {/* Sources */}
-          {sources.length > 0 && (
-            <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body, color: theme.colors.textSecondary, marginBottom: '4px' }}>
-                Sources
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {sources.map((source, index) =>
-                  onSourceClick ? (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        console.log('Source clicked:', source, 'from node:', node.id);
-                        onSourceClick(node.id, source);
-                      }}
-                      style={{
-                        fontSize: theme.fontSizes[0],
-                        fontFamily: 'monospace',
-                        padding: '6px 10px',
-                        backgroundColor: theme.colors.muted,
-                        borderRadius: '4px',
-                        color: theme.colors.primary,
-                        border: `1px solid ${theme.colors.border}`,
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                        textAlign: 'left',
-                        width: '100%',
-                        textDecoration: 'underline',
-                        textDecorationStyle: 'dotted',
-                        textDecorationColor: theme.colors.primary,
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = theme.colors.primary;
-                        e.currentTarget.style.color = theme.colors.background;
-                        e.currentTarget.style.borderColor = theme.colors.primary;
-                        e.currentTarget.style.textDecoration = 'underline';
-                        e.currentTarget.style.textDecorationColor = theme.colors.background;
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = theme.colors.muted;
-                        e.currentTarget.style.color = theme.colors.primary;
-                        e.currentTarget.style.borderColor = theme.colors.border;
-                        e.currentTarget.style.textDecoration = 'underline';
-                        e.currentTarget.style.textDecorationStyle = 'dotted';
-                        e.currentTarget.style.textDecorationColor = theme.colors.primary;
-                      }}
-                    >
-                      {source}
-                    </button>
-                  ) : (
-                    <span
-                      key={index}
-                      style={{
-                        fontSize: theme.fontSizes[0],
-                        fontFamily: 'monospace',
-                        padding: '6px 10px',
-                        backgroundColor: theme.colors.muted,
-                        borderRadius: '4px',
-                        color: theme.colors.textSecondary,
-                        display: 'block',
-                        border: `1px solid ${theme.colors.border}`,
-                      }}
-                    >
-                      {source}
-                    </span>
-                  )
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
       </div>
 
       {/* Expand/Collapse button for additional details - only show in editable mode */}
