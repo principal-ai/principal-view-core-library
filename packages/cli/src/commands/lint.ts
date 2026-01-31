@@ -476,8 +476,9 @@ export function createLintCommand(): Command {
             const loaded = loadWorkflowTemplate(absolutePath);
             if (!loaded) continue;
 
+            // Canvas paths are always relative to repository root (cwd)
             const canvasPath = loaded.workflow.canvas
-              ? resolve(dirname(absolutePath), loaded.workflow.canvas)
+              ? resolve(cwd, loaded.workflow.canvas)
               : undefined;
 
             if (canvasPath) {
@@ -544,8 +545,9 @@ export function createLintCommand(): Command {
             }
 
             // Load the referenced canvas if it exists
+            // Canvas paths are always relative to repository root (cwd)
             const canvasPath = loaded.workflow.canvas
-              ? resolve(dirname(absolutePath), loaded.workflow.canvas)
+              ? resolve(cwd, loaded.workflow.canvas)
               : undefined;
             const canvas = canvasPath ? loadCanvas(canvasPath) : undefined;
 
