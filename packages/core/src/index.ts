@@ -174,6 +174,26 @@ export { LibraryLoader } from './LibraryLoader';
 export { LibraryConverter } from './utils/LibraryConverter';
 export type { CreateNodeOptions, CreateEdgeOptions } from './utils/LibraryConverter';
 
+// Export storyboard context types and builder (browser-safe)
+export type {
+  StoryboardReference,
+  WorkflowReference,
+  ScenarioReference,
+  StoryboardContextSliceData,
+  EventNodeMap,
+  BuildStoryboardContextOptions,
+} from './storyboard';
+export {
+  buildStoryboardContext,
+  buildNodeSourcesMap,
+  buildEventNodeMap,
+  getNodeEventName,
+  resolveScenarioNodeIds,
+  resolveWorkflowNodeIds,
+  findNodesMatchingEventPattern,
+  getAllNodeIds,
+} from './storyboard';
+
 // Re-export FileSystemAdapter type from repository-abstraction (for custom adapter implementations)
 export type { FileSystemAdapter } from '@principal-ai/repository-abstraction';
 export { InMemoryFileSystemAdapter } from '@principal-ai/repository-abstraction';

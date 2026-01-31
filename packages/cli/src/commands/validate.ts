@@ -9,7 +9,7 @@
  */
 
 import { Command } from 'commander';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, relative, dirname, basename } from 'node:path';
 import chalk from 'chalk';
 import { globby } from 'globby';
@@ -529,11 +529,41 @@ function determineFileType(filePath: string): 'canvas' | 'workflow' | 'testTrace
 
 /**
  * Find matching canvas file for an execution artifact
+ *
+ * Strategy:
+ * 1. Look for a co-located workflow file and use its canvas reference
+ * 2. Fall back to name-based matching for legacy patterns
  */
-function findMatchingCanvas(executionPath: string, repositoryPath: string): string | null {
+function findMatchingCanvas(executionPath: string, repositoryPath: string): { canvasPath: string | null; workflowPath: string | null } {
   const fileName = basename(executionPath);
   const dir = dirname(executionPath);
 
+  // Strategy 1: Look for co-located workflow file
+  // In the hierarchical structure, test traces are co-located with their workflow:
+  //   .principal-views/storyboard/workflow-name/
+  //     ├── workflow-name.workflow.json
+  //     └── test-trace.otel.json
+  const workflowFiles = readdirSync(dir).filter(f => f.endsWith('.workflow.json'));
+  if (workflowFiles.length > 0) {
+    // Use the first workflow found (typically there's only one per directory)
+    const workflowPath = resolve(dir, workflowFiles[0]);
+    try {
+      const workflowContent = readFileSync(workflowPath, 'utf8');
+      const workflow = JSON.parse(workflowContent);
+
+      if (workflow.canvas) {
+        // Canvas paths in workflows are relative to repository root
+        const canvasPath = resolve(repositoryPath, workflow.canvas);
+        if (existsSync(canvasPath)) {
+          return { canvasPath, workflowPath };
+        }
+      }
+    } catch {
+      // Failed to parse workflow, fall through to name-based matching
+    }
+  }
+
+  // Strategy 2: Name-based matching for legacy patterns
   // Extract basename by removing .otel.json extension
   const canvasBasename = fileName.replace(/\.otel\.json$/, '');
 
@@ -551,16 +581,16 @@ function findMatchingCanvas(executionPath: string, repositoryPath: string): stri
   // Check for .otel.canvas first (preferred)
   const otelCanvasPath = resolve(canvasDir, `${canvasBasename}.otel.canvas`);
   if (existsSync(otelCanvasPath)) {
-    return otelCanvasPath;
+    return { canvasPath: otelCanvasPath, workflowPath: null };
   }
 
   // Check for regular .canvas as fallback
   const regularCanvasPath = resolve(canvasDir, `${canvasBasename}.canvas`);
   if (existsSync(regularCanvasPath)) {
-    return regularCanvasPath;
+    return { canvasPath: regularCanvasPath, workflowPath: null };
   }
 
-  return null;
+  return { canvasPath: null, workflowPath: workflowFiles.length > 0 ? resolve(dir, workflowFiles[0]) : null };
 }
 
 /**
@@ -1472,16 +1502,47 @@ function validateExecution(
     const result = validator.validate(data, relativePath);
 
     // Check if matching canvas exists
-    const matchingCanvas = findMatchingCanvas(filePath, repositoryPath);
-    if (!matchingCanvas) {
+    const { canvasPath, workflowPath } = findMatchingCanvas(filePath, repositoryPath);
+    if (!canvasPath) {
       const fileName = basename(filePath);
-      const canvasBasename = fileName.replace(/\.otel\.json$/, '');
-      result.errors.push({
-        path: relativePath,
-        message: 'No matching canvas file found for execution artifact',
-        severity: 'error',
-        suggestion: `Create a canvas file named '${canvasBasename}.otel.canvas' in .principal-views/ directory`,
-      });
+      const traceDir = dirname(filePath);
+
+      if (workflowPath) {
+        // Workflow found but its canvas reference is invalid
+        const workflowName = basename(workflowPath);
+        try {
+          const workflowContent = readFileSync(workflowPath, 'utf8');
+          const workflow = JSON.parse(workflowContent);
+          const canvasRef = workflow.canvas || '(no canvas field)';
+          result.errors.push({
+            path: relativePath,
+            message: `Workflow '${workflowName}' references canvas that doesn't exist: ${canvasRef}`,
+            severity: 'error',
+            suggestion: `Check the 'canvas' field in ${relative(repositoryPath, workflowPath)} and ensure the referenced canvas file exists`,
+          });
+        } catch {
+          result.errors.push({
+            path: relativePath,
+            message: `Found workflow '${workflowName}' but it could not be parsed`,
+            severity: 'error',
+            suggestion: `Check that ${relative(repositoryPath, workflowPath)} is valid JSON`,
+          });
+        }
+      } else {
+        // No workflow found - provide guidance on expected structure
+        const canvasBasename = fileName.replace(/\.otel\.json$/, '');
+        result.errors.push({
+          path: relativePath,
+          message: 'No co-located workflow file found for test trace',
+          severity: 'error',
+          suggestion: `Test traces should be co-located with a workflow file. Expected structure:
+  ${relative(repositoryPath, traceDir)}/
+    ├── <workflow-name>.workflow.json  (with 'canvas' field referencing the canvas)
+    └── ${fileName}
+
+The workflow's 'canvas' field should point to the canvas this trace validates against.`,
+        });
+      }
       result.valid = false;
     }
 
