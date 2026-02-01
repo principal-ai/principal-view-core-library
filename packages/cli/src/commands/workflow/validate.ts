@@ -1,12 +1,19 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { resolve, dirname } from 'node:path';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 // Node.js-specific imports (validator)
-import { WorkflowValidator } from '@principal-ai/principal-view-core/node';
+import {
+  WorkflowValidator,
+  CanvasDiscovery,
+  buildFileTreeFromDirectory,
+  createNodeFileReader,
+  EventRegistry,
+} from '@principal-ai/principal-view-core/node';
+import yaml from 'js-yaml';
 // Browser-safe imports
 import { computeAggregates } from '@principal-ai/principal-view-core';
-import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
+import type { ExtendedCanvas, ComponentLibrary } from '@principal-ai/principal-view-core';
 import { loadWorkflow, resolvePath, loadExecution, executionToEvents } from './utils.js';
 
 interface ValidateOptions {
@@ -107,6 +114,57 @@ export function createValidateCommand(): Command {
           // Directory not readable, skip co-located file discovery
         }
 
+        // Build EventRegistry for cross-canvas event lookup
+        let eventRegistry: EventRegistry | undefined;
+        try {
+          // Load library
+          let library: ComponentLibrary | undefined;
+          const libraryPath = resolve(baseDir, '.principal-views/library.yaml');
+          if (existsSync(libraryPath)) {
+            try {
+              const libraryContent = readFileSync(libraryPath, 'utf-8');
+              library = yaml.load(libraryContent) as ComponentLibrary;
+            } catch {
+              // Library failed to parse, continue without it
+            }
+          }
+
+          // Discover all canvases in the project
+          const fileTree = await buildFileTreeFromDirectory(baseDir);
+          const discovery = new CanvasDiscovery();
+          const discoveryResult = await discovery.discover(fileTree, {
+            fileReader: createNodeFileReader(baseDir),
+            includeContent: true,
+          });
+
+          // Parse all canvases
+          const parsedCanvases = new Map<string, ExtendedCanvas>();
+          for (const discoveredCanvas of discoveryResult.canvases) {
+            if (discoveredCanvas.type === 'otel') {
+              try {
+                const canvasFullPath = resolve(baseDir, discoveredCanvas.path);
+                if (existsSync(canvasFullPath)) {
+                  const content = readFileSync(canvasFullPath, 'utf-8');
+                  const parsed = JSON.parse(content) as ExtendedCanvas;
+                  parsedCanvases.set(discoveredCanvas.path, parsed);
+                }
+              } catch {
+                // Skip canvases that fail to parse
+              }
+            }
+          }
+
+          // Build the registry
+          eventRegistry = EventRegistry.build(
+            library,
+            parsedCanvases,
+            library ? libraryPath : undefined
+          );
+        } catch (error) {
+          // EventRegistry building failed - continue without it
+          // Validation will still work, just without cross-canvas suggestions
+        }
+
         // Create validator
         const validator = new WorkflowValidator();
 
@@ -119,6 +177,7 @@ export function createValidateCommand(): Command {
           basePath: baseDir,
           executionData,
           executionFiles,
+          eventRegistry,
         };
 
         const result = await validator.validate(context);

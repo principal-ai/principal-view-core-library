@@ -5,6 +5,8 @@
 import { WorkflowValidator } from '../validator';
 import type { WorkflowTemplate, WorkflowValidationContext } from '../validator';
 import type { ExtendedCanvas } from '../../types/canvas';
+import type { ComponentLibrary } from '../../types/library';
+import { EventRegistry } from '../../registry/EventRegistry';
 import { mkdtempSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -962,6 +964,265 @@ describe('WorkflowValidator', () => {
 
       const ruleIds = new Set(result.violations.map((v) => v.ruleId));
       expect(ruleIds.size).toBeGreaterThan(3); // Multiple different rules triggered
+    });
+  });
+
+  // ============================================================================
+  // EventRegistry Enhanced Error Messages Tests
+  // ============================================================================
+
+  describe('checkEventReferences with EventRegistry', () => {
+    function createLibrary(eventSchemas: Record<string, { description: string; attributes: Record<string, unknown> }>): ComponentLibrary {
+      return {
+        version: '1.0.0',
+        name: 'Test Library',
+        nodeComponents: {},
+        edgeComponents: {},
+        eventSchemas,
+      };
+    }
+
+    function createCanvasWithEvents(events: string[]): ExtendedCanvas {
+      return {
+        nodes: events.map((eventName, i) => ({
+          id: `node-${i}`,
+          type: 'text' as const,
+          x: i * 100,
+          y: 0,
+          width: 100,
+          height: 50,
+          pv: {
+            eventRef: eventName,
+          },
+        })),
+        edges: [],
+        pv: {
+          version: '1.0.0',
+          name: 'Test Canvas',
+          markdown: 'test.md',
+        },
+      };
+    }
+
+    it('should show library suggestion when event exists in library but not canvas', async () => {
+      // Create library with the event
+      const library = createLibrary({
+        'cleanup.started': { description: 'Cleanup started', attributes: {} },
+      });
+
+      // Create a canvas WITHOUT the event
+      const canvas = createCanvasWithEvents(['other.event']);
+
+      // Create another canvas that HAS the event (for the registry)
+      const otherCanvas = createCanvasWithEvents(['cleanup.started']);
+
+      // Build registry with library
+      const canvases = new Map<string, ExtendedCanvas>();
+      canvases.set('other.otel.canvas', otherCanvas);
+      const eventRegistry = EventRegistry.build(library, canvases, 'library.yaml');
+
+      // Workflow references an event not in its canvas
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        canvas: 'test.otel.canvas',
+        name: 'Test Workflow',
+        description: 'Test',
+        mode: 'span-tree',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'default',
+            priority: 1,
+            description: 'Default',
+            condition: { default: true },
+            template: {
+              events: {
+                'cleanup.started': 'Cleanup started', // Not in canvas
+              },
+            },
+          },
+        ],
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        canvasPath: join(tempDir, 'test.otel.canvas'),
+        basePath: tempDir,
+        eventRegistry,
+      };
+
+      const result = await validator.validate(context);
+
+      // Should have an error about the missing event
+      const eventViolation = result.violations.find(
+        v => v.ruleId === 'workflow-event-sync' && v.message.includes('cleanup.started')
+      );
+
+      expect(eventViolation).toBeDefined();
+      // Should suggest using eventRef since it's in the library
+      expect(eventViolation!.message).toContain('available in library');
+      expect(eventViolation!.suggestion).toContain('eventRef');
+    });
+
+    it('should show canvas location when event exists in another canvas but not library', async () => {
+      // No library events
+      const canvases = new Map<string, ExtendedCanvas>();
+
+      // Create another canvas that has the event we're looking for
+      const cleanupCanvas = createCanvasWithEvents(['cleanup.started']);
+      canvases.set('cleanup-operations.otel.canvas', cleanupCanvas);
+
+      // Build registry without library
+      const eventRegistry = EventRegistry.build(undefined, canvases);
+
+      // Create a canvas WITHOUT the event
+      const canvas = createCanvasWithEvents(['other.event']);
+
+      // Workflow references an event not in its canvas
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        canvas: 'test.otel.canvas',
+        name: 'Test Workflow',
+        description: 'Test',
+        mode: 'span-tree',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'default',
+            priority: 1,
+            description: 'Default',
+            condition: { default: true },
+            template: {
+              events: {
+                'cleanup.started': 'Cleanup started', // Not in canvas but in another canvas
+              },
+            },
+          },
+        ],
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        canvasPath: join(tempDir, 'test.otel.canvas'),
+        basePath: tempDir,
+        eventRegistry,
+      };
+
+      const result = await validator.validate(context);
+
+      // Should have an error about the missing event
+      const eventViolation = result.violations.find(
+        v => v.ruleId === 'workflow-event-sync' && v.message.includes('cleanup.started')
+      );
+
+      expect(eventViolation).toBeDefined();
+      // Should mention where the event was found
+      expect(eventViolation!.message).toContain('cleanup-operations.otel.canvas');
+      // Should suggest adding to library
+      expect(eventViolation!.suggestion).toContain('library.yaml');
+    });
+
+    it('should show generic error when event not found anywhere', async () => {
+      // Empty registry
+      const eventRegistry = EventRegistry.build(undefined, new Map());
+
+      // Create a canvas without the event
+      const canvas = createCanvasWithEvents(['other.event']);
+
+      // Workflow references an event that doesn't exist anywhere
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        canvas: 'test.otel.canvas',
+        name: 'Test Workflow',
+        description: 'Test',
+        mode: 'span-tree',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'default',
+            priority: 1,
+            description: 'Default',
+            condition: { default: true },
+            template: {
+              events: {
+                'nonexistent.event': 'Does not exist anywhere',
+              },
+            },
+          },
+        ],
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        canvasPath: join(tempDir, 'test.otel.canvas'),
+        basePath: tempDir,
+        eventRegistry,
+      };
+
+      const result = await validator.validate(context);
+
+      // Should have an error about the missing event
+      const eventViolation = result.violations.find(
+        v => v.ruleId === 'workflow-event-sync' && v.message.includes('nonexistent.event')
+      );
+
+      expect(eventViolation).toBeDefined();
+      // Should show the standard error message
+      expect(eventViolation!.message).toContain('not defined in canvas');
+    });
+
+    it('should work without eventRegistry (backward compatible)', async () => {
+      // Create a canvas without the event
+      const canvas = createCanvasWithEvents(['other.event']);
+
+      // Workflow references an event not in canvas
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        canvas: 'test.otel.canvas',
+        name: 'Test Workflow',
+        description: 'Test',
+        mode: 'span-tree',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'default',
+            priority: 1,
+            description: 'Default',
+            condition: { default: true },
+            template: {
+              events: {
+                'missing.event': 'Not in canvas',
+              },
+            },
+          },
+        ],
+      };
+
+      // No eventRegistry provided
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        canvasPath: join(tempDir, 'test.otel.canvas'),
+        basePath: tempDir,
+        // eventRegistry: undefined
+      };
+
+      const result = await validator.validate(context);
+
+      // Should still report the error, just without enhanced suggestions
+      const eventViolation = result.violations.find(
+        v => v.ruleId === 'workflow-event-sync' && v.message.includes('missing.event')
+      );
+
+      expect(eventViolation).toBeDefined();
+      expect(eventViolation!.message).toContain('not defined in canvas');
     });
   });
 });

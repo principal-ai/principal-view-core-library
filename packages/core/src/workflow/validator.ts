@@ -7,6 +7,7 @@ import type { WorkflowTemplate } from './types';
 import type { ExtendedCanvas } from '../types/canvas';
 import { existsSync, readFileSync } from 'fs';
 import { resolve, dirname, basename } from 'path';
+import type { EventRegistry } from '../registry/EventRegistry';
 import type { IExportTraceServiceRequest } from '@opentelemetry/otlp-transformer/build/src/trace/internal-types';
 
 // ============================================================================
@@ -54,6 +55,13 @@ export interface WorkflowValidationContext {
    * cover different subsets of canvas events.
    */
   allWorkflowEvents?: Set<string>;
+
+  /**
+   * Optional: Registry of all events across the project.
+   * When provided, enables enhanced error messages that show where
+   * missing events are defined (in library or other canvases).
+   */
+  eventRegistry?: EventRegistry;
 }
 
 export interface WorkflowViolation {
@@ -380,14 +388,37 @@ export class WorkflowValidator {
     // Check for workflow events not in canvas
     for (const eventName of Array.from(workflowEvents)) {
       if (!canvasEvents.has(eventName)) {
+        // Try to find this event elsewhere using the registry
+        const eventSources = context.eventRegistry?.findEvent(eventName) ?? [];
+
+        let message = `Workflow references event "${eventName}" which is not defined in canvas`;
+        let suggestion = `Add event "${eventName}" to a node in ${workflow.canvas} or remove it from the workflow`;
+
+        if (eventSources.length > 0) {
+          // Event found elsewhere - provide helpful guidance
+          const librarySources = eventSources.filter(s => s.type === 'library');
+          const canvasSources = eventSources.filter(s => s.type === 'canvas');
+
+          if (librarySources.length > 0) {
+            // Event is in library - suggest using eventRef
+            message = `Event "${eventName}" not found in canvas but is available in library`;
+            suggestion = `Add a node with eventRef: "${eventName}" to ${workflow.canvas}`;
+          } else if (canvasSources.length > 0) {
+            // Event is in another canvas - suggest adding to library
+            const canvasNames = canvasSources.map(s => basename(s.path)).join(', ');
+            message = `Event "${eventName}" not found in canvas. Found in: ${canvasNames}`;
+            suggestion = `Add "${eventName}" to library.yaml eventSchemas and use eventRef in ${workflow.canvas}`;
+          }
+        }
+
         violations.push({
           ruleId: 'workflow-event-sync',
           severity: 'error',
           file: workflowPath,
           path: 'events',
-          message: `Workflow references event "${eventName}" which is not defined in canvas`,
+          message,
           impact: 'This event will never highlight a canvas node and may never match',
-          suggestion: `Add event "${eventName}" to a node in ${workflow.canvas} or remove it from the workflow`,
+          suggestion,
           fixable: false,
         });
       }

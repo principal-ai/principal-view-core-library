@@ -16,7 +16,8 @@ import { globby } from 'globby';
 import yaml from 'js-yaml';
 import type { ExtendedCanvas, WorkflowTemplate, ExecutionData } from '@principal-ai/principal-view-core';
 import { createExecutionValidator } from '@principal-ai/principal-view-core';
-import { CanvasDiscovery, buildFileTreeFromDirectory, createNodeFileReader, createWorkflowValidator } from '@principal-ai/principal-view-core/node';
+import { CanvasDiscovery, buildFileTreeFromDirectory, createNodeFileReader, createWorkflowValidator, EventRegistry } from '@principal-ai/principal-view-core/node';
+import type { ComponentLibrary } from '@principal-ai/principal-view-core';
 
 interface ValidationIssue {
   type: 'error' | 'warning';
@@ -1396,7 +1397,8 @@ async function validateWorkflow(
   filePath: string,
   allWorkflowEvents: Set<string> | undefined,
   repositoryPath: string,
-  executionFiles?: string[]
+  executionFiles?: string[],
+  eventRegistry?: EventRegistry
 ): Promise<ValidationResult> {
   const relativePath = relative(repositoryPath, filePath);
 
@@ -1442,6 +1444,7 @@ async function validateWorkflow(
       rawContent,
       allWorkflowEvents,
       executionFiles,
+      eventRegistry,
     });
 
     // Convert workflow violations to validation issues
@@ -1935,7 +1938,9 @@ export function createValidateCommand(): Command {
           }
         }
 
-        // PHASE 2: Validate canvases (only OTEL canvas files)
+        // PHASE 2: Validate canvases (only OTEL canvas files) and collect parsed canvases
+        const parsedCanvases = new Map<string, ExtendedCanvas>();
+
         if (validateCanvases) {
           for (const canvas of discoveryResult.canvases) {
             // Skip regular canvas files - we only validate OTEL canvas files
@@ -1952,8 +1957,21 @@ export function createValidateCommand(): Command {
 
             const validationResult = validateFile(canvas.path, library, repositoryPath);
             results.push(validationResult);
+
+            // Collect parsed canvas for EventRegistry
+            if (validationResult.canvas) {
+              parsedCanvases.set(canvas.path, validationResult.canvas);
+            }
           }
         }
+
+        // Build EventRegistry from library and all parsed canvases
+        const componentLibrary = library?.raw as ComponentLibrary | undefined;
+        const eventRegistry = EventRegistry.build(
+          componentLibrary,
+          parsedCanvases,
+          library?.path
+        );
 
         // PHASE 3: Validate workflows with canvas-wide event knowledge
         if (validateWorkflows) {
@@ -1978,7 +1996,8 @@ export function createValidateCommand(): Command {
               absolutePath,
               allWorkflowEvents,
               repositoryPath,
-              executionFiles
+              executionFiles,
+              eventRegistry
             );
             results.push(validationResult);
           }
