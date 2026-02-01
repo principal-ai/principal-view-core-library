@@ -200,6 +200,32 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
   // Get display name - use name from props (falls back to node.id in converter)
   const displayName = nodeProps.name;
 
+  // Extract event name if present
+  const eventData = nodeData?.event as { name?: string; description?: string; attributes?: Record<string, unknown> } | undefined;
+  const eventName = eventData?.name;
+
+  // Show event name if it differs from display name
+  const showEventName = eventName && eventName !== displayName;
+
+  // Helper component for rendering name with optional event name
+  const renderNameWithEvent = (centered: boolean = true) => (
+    <div style={{ textAlign: centered ? 'center' : 'left', wordBreak: 'break-word' }}>
+      <div>{displayName}</div>
+      {showEventName && (
+        <div
+          style={{
+            fontSize: theme.fontSizes[0] * 0.75, // 75% of the main font size
+            color: 'rgba(0, 0, 0, 0.5)', // 50% opacity for subtle appearance
+            marginTop: '2px',
+            fontFamily: theme.fonts.monospace,
+          }}
+        >
+          {eventName}
+        </div>
+      )}
+    </div>
+  );
+
   // Icon priority: node data override > state icon (node data states first) > type definition icon
   const icon =
     (nodeData.icon as string) ||
@@ -493,7 +519,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
                   {resolveIcon(icon, 20)}
                 </div>
               )}
-              <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>{displayName}</div>
+              {renderNameWithEvent()}
               {state && (
                 <div
                   style={{
@@ -559,7 +585,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
                   {resolveIcon(icon, 20)}
                 </div>
               )}
-              <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>{displayName}</div>
+              {renderNameWithEvent()}
               {state && (
                 <div
                   style={{
@@ -627,7 +653,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
                   }}
                 >
                   {icon && resolveIcon(icon, 18)}
-                  <div style={{ wordBreak: 'break-word' }}>{displayName}</div>
+                  {renderNameWithEvent(false)}
                 </div>
               ) : (
                 <>
@@ -638,7 +664,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
                       {resolveIcon(icon, 20)}
                     </div>
                   )}
-                  <div style={{ textAlign: 'center', wordBreak: 'break-word' }}>{displayName}</div>
+                  {renderNameWithEvent()}
                 </>
               )}
               {state && (
