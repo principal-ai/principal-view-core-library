@@ -313,7 +313,7 @@ describe('CanvasDiscovery', () => {
       const result = await discovery.discover(fileTree);
 
       expect(result.canvases).toHaveLength(0);
-      expect(result.executions).toHaveLength(0);
+      expect(result.testTraces).toHaveLength(0);
       expect(result.errors).toHaveLength(0);
     });
 
@@ -326,7 +326,7 @@ describe('CanvasDiscovery', () => {
       const result = await discovery.discover(fileTree);
 
       expect(result.canvases).toHaveLength(0);
-      expect(result.executions).toHaveLength(0);
+      expect(result.testTraces).toHaveLength(0);
     });
   });
 });

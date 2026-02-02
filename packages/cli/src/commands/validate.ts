@@ -11,13 +11,15 @@
 import { Command } from 'commander';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, relative, dirname, basename } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import chalk from 'chalk';
 import { globby } from 'globby';
 import yaml from 'js-yaml';
 import type { ExtendedCanvas, WorkflowTemplate, ExecutionData } from '@principal-ai/principal-view-core';
 import { createExecutionValidator } from '@principal-ai/principal-view-core';
-import { CanvasDiscovery, buildFileTreeFromDirectory, createNodeFileReader, createWorkflowValidator, EventRegistry } from '@principal-ai/principal-view-core/node';
+import { CanvasDiscovery, createWorkflowValidator, EventRegistry } from '@principal-ai/principal-view-core/node';
 import type { ComponentLibrary } from '@principal-ai/principal-view-core';
+import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
 
 interface ValidationIssue {
   type: 'error' | 'warning';
@@ -1787,10 +1789,12 @@ export function createValidateCommand(): Command {
         const validateExecutions = !options.canvasOnly && !options.workflowOnly;
 
         // Use CanvasDiscovery to find all canvases (including storyboards)
-        const fileTree = await buildFileTreeFromDirectory(repositoryPath);
+        const service = new FilesystemService(new NodeFileSystemAdapter());
+        const fileTree = await service.buildFileSystemTreeFromPath(repositoryPath);
+        const fileReader = async (path: string) => readFile(resolve(repositoryPath, path), 'utf-8');
         const discovery = new CanvasDiscovery();
         const discoveryResult = await discovery.discover(fileTree, {
-          fileReader: createNodeFileReader(repositoryPath),
+          fileReader,
           includeContent: true,
         });
 

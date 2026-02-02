@@ -11,8 +11,10 @@
  */
 
 import { analyzeCoverage } from '../src/telemetry/coverage';
-import { buildFileTreeFromDirectory, createNodeFileReader } from '../src/utils/FileTreeBuilder';
 import type { CoverageMetrics } from '../src/telemetry/coverage';
+import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
+import { readFile } from 'fs/promises';
+import { resolve } from 'path';
 
 /**
  * Print detailed coverage report
@@ -112,8 +114,9 @@ function printReport(metrics: CoverageMetrics): void {
 // Main execution
 const rootDir = process.cwd();
 console.log('🔍 Building FileTree...');
-const fileTree = await buildFileTreeFromDirectory(rootDir);
-const fileReader = createNodeFileReader(rootDir);
+const service = new FilesystemService(new NodeFileSystemAdapter());
+const fileTree = await service.buildFileSystemTreeFromPath(rootDir);
+const fileReader = async (path: string) => readFile(resolve(rootDir, path), 'utf-8');
 
 console.log('📊 Analyzing coverage...');
 const metrics = await analyzeCoverage(fileTree, fileReader);

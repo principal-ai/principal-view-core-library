@@ -7,13 +7,13 @@
 
 import { Command } from 'commander';
 import { resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import chalk from 'chalk';
 import {
   analyzeCoverage,
-  buildFileTreeFromDirectory,
-  createNodeFileReader,
   type CoverageMetrics
 } from '@principal-ai/principal-view-core/node';
+import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
 
 interface CoverageOptions {
   dir?: string;
@@ -152,8 +152,9 @@ export function createCoverageCommand(): Command {
         const rootDir = resolve(options.dir || process.cwd());
 
         // Build FileTree and create fileReader
-        const fileTree = await buildFileTreeFromDirectory(rootDir);
-        const fileReader = createNodeFileReader(rootDir);
+        const service = new FilesystemService(new NodeFileSystemAdapter());
+        const fileTree = await service.buildFileSystemTreeFromPath(rootDir);
+        const fileReader = async (path: string) => readFile(resolve(rootDir, path), 'utf-8');
 
         // Analyze coverage
         const metrics = await analyzeCoverage(fileTree, fileReader);

@@ -1,0 +1,215 @@
+{
+  "pv": {
+    "name": "Graph Converter Execution"
+  },
+  "nodes": [
+    {
+      "id": "graph-converter-1",
+      "type": "text",
+      "text": "Conversion Started",
+      "x": 100,
+      "y": 50,
+      "width": 200,
+      "height": 100,
+      "color": "#4CAF50",
+      "pv": {
+        "name": "Conversion Started",
+        "description": "Graph conversion begins",
+        "shape": "roundedRect",
+        "event": {
+          "name": "conversion.started",
+          "description": "Triggered when graph conversion begins",
+          "attributes": {
+            "config.nodeTypes": {
+              "type": "number",
+              "required": true,
+              "description": "Number of node types in config"
+            },
+            "config.edgeTypes": {
+              "type": "number",
+              "required": true,
+              "description": "Number of edge types in config"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "graph-converter-2",
+      "type": "text",
+      "text": "Processing Nodes",
+      "x": 350,
+      "y": 50,
+      "width": 200,
+      "height": 100,
+      "color": "#2196F3",
+      "pv": {
+        "name": "Processing Nodes",
+        "description": "Processing node definitions",
+        "shape": "roundedRect",
+        "event": {
+          "name": "conversion.processingNodes",
+          "description": "Triggered during node processing",
+          "attributes": {
+            "nodes.count": {
+              "type": "number",
+              "required": true,
+              "description": "Number of nodes being processed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "graph-converter-3",
+      "type": "text",
+      "text": "Processing Edges",
+      "x": 600,
+      "y": 50,
+      "width": 200,
+      "height": 100,
+      "color": "#FF9800",
+      "pv": {
+        "name": "Processing Edges",
+        "description": "Processing edge definitions",
+        "shape": "roundedRect",
+        "event": {
+          "name": "conversion.processingEdges",
+          "description": "Triggered during edge processing",
+          "attributes": {
+            "edges.count": {
+              "type": "number",
+              "required": true,
+              "description": "Number of edges being processed"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "graph-converter-4",
+      "type": "text",
+      "text": "Conversion Complete",
+      "x": 850,
+      "y": 50,
+      "width": 200,
+      "height": 100,
+      "color": "#4CAF50",
+      "pv": {
+        "name": "Conversion Complete",
+        "description": "Graph conversion finished successfully",
+        "shape": "roundedRect",
+        "event": {
+          "name": "conversion.complete",
+          "description": "Triggered when conversion completes successfully",
+          "attributes": {
+            "result.nodes.count": {
+              "type": "number",
+              "required": true,
+              "description": "Number of nodes in result"
+            },
+            "result.edges.count": {
+              "type": "number",
+              "required": true,
+              "description": "Number of edges in result"
+            },
+            "duration.ms": {
+              "type": "number",
+              "required": false,
+              "description": "Conversion duration in milliseconds"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "graph-converter-5",
+      "type": "text",
+      "text": "Conversion Error",
+      "x": 1100,
+      "y": 50,
+      "width": 200,
+      "height": 100,
+      "color": "#F44336",
+      "pv": {
+        "name": "Conversion Error",
+        "description": "Graph conversion failed with error",
+        "shape": "roundedRect",
+        "event": {
+          "name": "conversion.error",
+          "description": "Triggered when conversion fails",
+          "attributes": {
+            "error.message": {
+              "type": "string",
+              "required": true,
+              "description": "Error message"
+            },
+            "error.phase": {
+              "type": "string",
+              "required": false,
+              "description": "Phase where error occurred"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "validation-1",
+      "type": "text",
+      "text": "Validation Started",
+      "x": 100,
+      "y": 200,
+      "width": 200,
+      "height": 100,
+      "color": "#9C27B0",
+      "pv": {
+        "name": "Validation Started",
+        "description": "Configuration validation begins",
+        "shape": "roundedRect",
+        "event": {
+          "name": "validation.started",
+          "description": "Triggered when validation begins",
+          "attributes": {
+            "config.size": {
+              "type": "number",
+              "required": true,
+              "description": "Size of configuration being validated"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "validation-2",
+      "type": "text",
+      "text": "Validation Complete",
+      "x": 350,
+      "y": 200,
+      "width": 200,
+      "height": 100,
+      "color": "#9C27B0",
+      "pv": {
+        "name": "Validation Complete",
+        "description": "Configuration validation finished",
+        "shape": "roundedRect",
+        "event": {
+          "name": "validation.complete",
+          "description": "Triggered when validation completes",
+          "attributes": {
+            "validation.passed": {
+              "type": "boolean",
+              "required": true,
+              "description": "Whether validation passed"
+            },
+            "errors.count": {
+              "type": "number",
+              "required": true,
+              "description": "Number of validation errors"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "edges": []
+}

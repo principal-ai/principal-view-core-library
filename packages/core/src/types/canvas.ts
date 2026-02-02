@@ -213,10 +213,103 @@ export type PVOtelCategory =
   | 'router'
   | 'collector';
 
+import type { OtelSpanKind } from './otel';
+
+/**
+ * OTEL span matching criteria
+ *
+ * Defines rules for matching incoming OTEL spans to this canvas node.
+ * Multiple criteria are combined with AND logic (all must match).
+ */
+export interface PVOtelSpanMatch {
+  /**
+   * Match span name
+   *
+   * Supports:
+   * - Exact string: "validateUser"
+   * - Array of options: ["GET /api/users", "POST /api/users"]
+   * - Glob patterns: "GET /api/*", "*.checkout"
+   *
+   * @example "validateUser"
+   * @example ["GET /api/users", "POST /api/users"]
+   * @example "*.checkout"
+   */
+  name?: string | string[];
+
+  /**
+   * Match span kind
+   *
+   * @example "SPAN_KIND_SERVER"
+   * @example "SPAN_KIND_CLIENT"
+   */
+  kind?: OtelSpanKind | OtelSpanKind[];
+
+  /**
+   * Match span attributes
+   *
+   * All specified attributes must match (AND logic).
+   * Supports exact values and wildcards.
+   *
+   * @example
+   * {
+   *   "http.route": "/api/checkout",
+   *   "http.method": "POST"
+   * }
+   *
+   * @example
+   * {
+   *   "db.system": "postgresql",
+   *   "db.operation": "*"  // Any operation
+   * }
+   */
+  attributes?: Record<string, string | string[]>;
+
+  /**
+   * Match span events
+   *
+   * If specified, span must contain at least one event matching these criteria.
+   *
+   * @example
+   * {
+   *   name: "exception",
+   *   attributes: { "exception.type": "ValidationError" }
+   * }
+   */
+  event?: {
+    name?: string | string[];
+    attributes?: Record<string, string | string[]>;
+  };
+}
+
+/**
+ * OTEL resource matching criteria
+ *
+ * Matches against OTEL resource attributes (service.name, deployment.environment, etc.).
+ * Multiple attributes are combined with AND logic.
+ */
+export interface PVOtelResourceMatch {
+  /**
+   * Resource attribute patterns to match
+   *
+   * Supports:
+   * - Exact match: { "service.name": "checkout-api" }
+   * - Wildcard: { "service.name": "*-api" }
+   * - Array of options: { "service.name": ["api-1", "api-2"] }
+   *
+   * @example
+   * {
+   *   "service.name": "checkout-service",
+   *   "deployment.environment": "production"
+   * }
+   */
+  [attributeKey: string]: string | string[];
+}
+
 /**
  * OTEL-specific node extension
  *
- * Used to mark nodes as representing OTEL concepts in architectural diagrams.
+ * Used to mark nodes as representing OTEL concepts in architectural diagrams
+ * and to define runtime span matching criteria.
  */
 export interface PVOtelExtension {
   /**
@@ -225,7 +318,7 @@ export interface PVOtelExtension {
    * - `service`: Represents a runtime service (e.g., LogRouter, AuditCollector)
    * - `instance`: Represents an actual runtime instance (e.g., a specific pod)
    */
-  kind: PVOtelKind;
+  kind?: PVOtelKind;
 
   /**
    * Category within OTEL domain
@@ -237,8 +330,24 @@ export interface PVOtelExtension {
    */
   isNew?: boolean;
 
+  /**
+   * Resource matching criteria
+   *
+   * When specified, this node will highlight when spans are received
+   * from resources with matching attributes.
+   */
+  resourceMatch?: PVOtelResourceMatch;
+
+  /**
+   * Span matching criteria
+   *
+   * When specified, this node will highlight when spans matching
+   * these criteria are received.
+   */
+  spanMatch?: PVOtelSpanMatch;
+
   /** Allow additional properties */
-  [key: string]: JsonValue | undefined;
+  [key: string]: JsonValue | PVOtelResourceMatch | PVOtelSpanMatch | undefined;
 }
 
 /**

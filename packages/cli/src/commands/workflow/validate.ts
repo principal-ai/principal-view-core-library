@@ -2,14 +2,14 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { resolve, dirname } from 'node:path';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 // Node.js-specific imports (validator)
 import {
   WorkflowValidator,
   CanvasDiscovery,
-  buildFileTreeFromDirectory,
-  createNodeFileReader,
   EventRegistry,
 } from '@principal-ai/principal-view-core/node';
+import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
 import yaml from 'js-yaml';
 // Browser-safe imports
 import { computeAggregates } from '@principal-ai/principal-view-core';
@@ -130,10 +130,12 @@ export function createValidateCommand(): Command {
           }
 
           // Discover all canvases in the project
-          const fileTree = await buildFileTreeFromDirectory(baseDir);
+          const service = new FilesystemService(new NodeFileSystemAdapter());
+          const fileTree = await service.buildFileSystemTreeFromPath(baseDir);
+          const fileReader = async (path: string) => readFile(resolve(baseDir, path), 'utf-8');
           const discovery = new CanvasDiscovery();
           const discoveryResult = await discovery.discover(fileTree, {
-            fileReader: createNodeFileReader(baseDir),
+            fileReader,
             includeContent: true,
           });
 

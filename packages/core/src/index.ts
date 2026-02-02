@@ -86,8 +86,24 @@ export type {
   SpanTreeNode,
 } from './workflow/types';
 
-// Export OTEL types
+// Export OTEL types (OTLP data structures and helpers)
 export type {
+  // OTLP data structures (JSON format)
+  OtelExportTraceServiceRequest,
+  OtelResourceSpansData,
+  OtelScopeSpans,
+  OtelSpanData,
+  OtelResourceData,
+  OtelKeyValue,
+  OtelAnyValue,
+  OtelSpanEvent,
+  OtelLink,
+  OtelSpanStatus,
+  OtelInstrumentationScope,
+  // Application-level types
+  TraceInfo,
+  WorkflowMatchInfo,
+  // Simplified types (backward compatible)
   OtelAttributes,
   OtelAttributeValue,
   OtelLog,
@@ -96,9 +112,26 @@ export type {
   OtelSeverity,
   OtelSeverityText,
   OtelSeverityNumber,
-  OtelSpanKind,
-  OtelSpanStatus,
 } from './types/otel';
+
+// Export OTEL helper functions
+export {
+  getAttributeStringValue,
+  findAttribute,
+  getAttributeValue,
+  flattenResourceAttributes,
+  parseNanoTime,
+  getSpanDuration,
+  isErrorSeverity,
+  isWarnSeverity,
+} from './types/otel';
+
+// Export trace aggregation utilities
+export { groupSpansByTrace } from './utils/traceAggregation';
+
+// Export span matcher
+export { SpanMatcher } from './matchers/SpanMatcher';
+export type { SpanMatchResult } from './matchers/SpanMatcher';
 
 // Export canvas, workflow, and test trace discovery (browser-safe)
 export { CanvasDiscovery } from './discovery/CanvasDiscovery';
@@ -205,12 +238,13 @@ export { InMemoryFileSystemAdapter } from '@principal-ai/repository-abstraction'
 // - GraphInstrumentationHelper (Node.js utilities)
 // - PathMatcher, GraphConverter (Node.js utilities)
 // - EventValidator, createValidatedEmitter (Node.js telemetry)
-// - buildFileTreeFromDirectory, createNodeFileReader (Node.js file system utilities for building FileTree)
 // - generateTypes, TypeScriptGenerator, generatorRegistry (code generation - file system)
 // - traceToCanvas, traceToCanvasJson (trace utilities)
 // - Rules engine (OpenTelemetry dependencies)
 // - NarrativeValidator, createNarrativeValidator (Node.js validator)
 // - ExecutionLoader, createExecutionLoader (file system loader)
 //
-// Example:
-// import { buildFileTreeFromDirectory, createNodeFileReader, NarrativeValidator } from '@principal-ai/principal-view-core/node';
+// For building FileTree from filesystem, use FilesystemService from @principal-ai/codebase-composition:
+// import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
+// const service = new FilesystemService(new NodeFileSystemAdapter());
+// const fileTree = await service.buildFileSystemTreeFromPath(rootDir);

@@ -1,11 +1,349 @@
 /**
- * OpenTelemetry Types for Log Association
+ * OpenTelemetry Types for Log Association and Trace Matching
  *
- * These types represent the OTEL data model for logs and resources,
- * enabling canvas nodes to be matched against incoming telemetry.
+ * This module provides:
+ * 1. Re-exports of official OTLP types from @opentelemetry/otlp-transformer
+ * 2. Helper functions for working with OTLP data structures
+ * 3. Application-level types (TraceInfo, WorkflowMatchInfo)
+ * 4. Simplified types for logs and basic telemetry (backward compatible)
  *
+ * @see https://opentelemetry.io/docs/specs/otel/protocol/otlp/
  * @see https://opentelemetry.io/docs/specs/otel/logs/data-model/
  * @see https://opentelemetry.io/docs/specs/otel/resource/semantic_conventions/
+ */
+
+// =============================================================================
+// OTLP Data Structures (JSON Format)
+// =============================================================================
+
+/**
+ * OTLP attribute value
+ *
+ * Based on OTLP/JSON specification. Represents a single value which can be
+ * a primitive type or a complex structure (array, key-value list).
+ */
+export interface OtelAnyValue {
+  stringValue?: string;
+  intValue?: number;
+  doubleValue?: number;
+  boolValue?: boolean;
+  arrayValue?: { values: OtelAnyValue[] };
+  kvlistValue?: { values: OtelKeyValue[] };
+  bytesValue?: Uint8Array;
+}
+
+/**
+ * OTLP key-value pair (attribute)
+ */
+export interface OtelKeyValue {
+  key: string;
+  value: OtelAnyValue;
+}
+
+/**
+ * OTLP resource
+ *
+ * Describes the entity producing telemetry (service, pod, host, etc.)
+ */
+export interface OtelResourceData {
+  attributes: OtelKeyValue[];
+  droppedAttributesCount?: number;
+}
+
+/**
+ * OTLP span event
+ */
+export interface OtelSpanEvent {
+  timeUnixNano: string;
+  name: string;
+  attributes: OtelKeyValue[];
+  droppedAttributesCount?: number;
+}
+
+/**
+ * OTLP span link
+ */
+export interface OtelLink {
+  traceId: string | Uint8Array;
+  spanId: string | Uint8Array;
+  traceState?: string;
+  attributes: OtelKeyValue[];
+  droppedAttributesCount?: number;
+}
+
+/**
+ * OTLP span status
+ */
+export interface OtelSpanStatus {
+  code: number; // 0 = UNSET, 1 = OK, 2 = ERROR
+  message?: string;
+}
+
+/**
+ * OTLP span
+ *
+ * Represents a unit of work in a distributed trace.
+ */
+export interface OtelSpanData {
+  traceId: string;
+  spanId: string;
+  parentSpanId?: string;
+  name: string;
+  kind: number; // ESpanKind enum (0-5)
+  startTimeUnixNano: string;
+  endTimeUnixNano: string;
+  attributes: OtelKeyValue[];
+  droppedAttributesCount?: number;
+  events: OtelSpanEvent[];
+  droppedEventsCount?: number;
+  links?: OtelLink[];
+  droppedLinksCount?: number;
+  status: OtelSpanStatus;
+}
+
+/**
+ * OTLP instrumentation scope
+ */
+export interface OtelInstrumentationScope {
+  name: string;
+  version?: string;
+  attributes?: OtelKeyValue[];
+  droppedAttributesCount?: number;
+}
+
+/**
+ * OTLP scope spans
+ */
+export interface OtelScopeSpans {
+  scope?: OtelInstrumentationScope;
+  spans: OtelSpanData[];
+  schemaUrl?: string;
+}
+
+/**
+ * OTLP resource spans
+ */
+export interface OtelResourceSpansData {
+  resource: OtelResourceData;
+  scopeSpans: OtelScopeSpans[];
+  schemaUrl?: string;
+}
+
+/**
+ * OTLP export trace service request
+ */
+export interface OtelExportTraceServiceRequest {
+  resourceSpans: OtelResourceSpansData[];
+}
+
+// =============================================================================
+// Helper Functions for OTLP Data
+// =============================================================================
+
+/**
+ * Extract string value from OTEL attribute value
+ *
+ * @param value - OTEL attribute value
+ * @returns String value if present, undefined otherwise
+ */
+export function getAttributeStringValue(value: OtelAnyValue): string | undefined {
+  return value.stringValue ?? undefined;
+}
+
+/**
+ * Find attribute by key in attribute array
+ *
+ * @param attributes - Array of OTEL attributes
+ * @param key - Attribute key to find
+ * @returns Attribute if found, undefined otherwise
+ */
+export function findAttribute(
+  attributes: OtelKeyValue[] | undefined,
+  key: string
+): OtelKeyValue | undefined {
+  return attributes?.find((attr) => attr.key === key);
+}
+
+/**
+ * Get attribute value by key
+ *
+ * Supports string, number, and boolean values. For complex types
+ * (arrays, maps), returns undefined.
+ *
+ * @param attributes - Array of OTEL attributes
+ * @param key - Attribute key to get
+ * @returns Attribute value if found and is a primitive type
+ *
+ * @example
+ * ```typescript
+ * const attrs: OtelKeyValue[] = [
+ *   { key: 'http.method', value: { stringValue: 'GET' } },
+ *   { key: 'http.status_code', value: { intValue: 200 } }
+ * ];
+ *
+ * getAttributeValue(attrs, 'http.method'); // 'GET'
+ * getAttributeValue(attrs, 'http.status_code'); // 200
+ * ```
+ */
+export function getAttributeValue(
+  attributes: OtelKeyValue[] | undefined,
+  key: string
+): string | number | boolean | undefined {
+  const attr = findAttribute(attributes, key);
+  if (!attr) return undefined;
+
+  return (
+    attr.value.stringValue ??
+    attr.value.intValue ??
+    attr.value.doubleValue ??
+    attr.value.boolValue ??
+    undefined
+  );
+}
+
+/**
+ * Convert resource attributes to flat string map
+ *
+ * Only includes string-valued attributes. Useful for matching
+ * and filtering operations.
+ *
+ * @param resource - OTEL resource
+ * @returns Flat object with string key-value pairs
+ *
+ * @example
+ * ```typescript
+ * const resource: OtelResourceData = {
+ *   attributes: [
+ *     { key: 'service.name', value: { stringValue: 'checkout-api' } },
+ *     { key: 'deployment.environment', value: { stringValue: 'production' } }
+ *   ]
+ * };
+ *
+ * flattenResourceAttributes(resource);
+ * // { 'service.name': 'checkout-api', 'deployment.environment': 'production' }
+ * ```
+ */
+export function flattenResourceAttributes(resource: OtelResourceData): Record<string, string> {
+  const result: Record<string, string> = {};
+
+  if (!resource.attributes) return result;
+
+  for (const attr of resource.attributes) {
+    const value = getAttributeStringValue(attr.value);
+    if (value !== undefined) {
+      result[attr.key] = value;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Parse OTEL nanosecond timestamp to milliseconds
+ *
+ * OTLP uses string representation for nanosecond timestamps in JSON format.
+ * This converts them to JavaScript milliseconds (standard Date format).
+ *
+ * @param nanos - Nanosecond timestamp as string
+ * @returns Milliseconds since Unix epoch
+ *
+ * @example
+ * ```typescript
+ * parseNanoTime('1737835200000000000'); // 1737835200000
+ * ```
+ */
+export function parseNanoTime(nanos: string | number): number {
+  const nanosNum = typeof nanos === 'string' ? parseInt(nanos, 10) : nanos;
+  return nanosNum / 1_000_000;
+}
+
+/**
+ * Calculate span duration in milliseconds
+ *
+ * @param span - OTEL span
+ * @returns Duration in milliseconds
+ */
+export function getSpanDuration(span: OtelSpanData): number {
+  const start = parseInt(span.startTimeUnixNano, 10);
+  const end = parseInt(span.endTimeUnixNano, 10);
+  return (end - start) / 1_000_000;
+}
+
+// =============================================================================
+// Application-Level Types
+// =============================================================================
+
+/**
+ * Workflow matching metadata extracted from trace resource attributes
+ *
+ * Traces can be correlated to storyboards, workflows, and scenarios
+ * via resource attributes like pv.storyboard.id, pv.workflow.id, etc.
+ */
+export interface WorkflowMatchInfo {
+  /** Storyboard ID */
+  storyboardId: string;
+  /** Storyboard name */
+  storyboardName: string;
+  /** Workflow ID (optional) */
+  workflowId?: string;
+  /** Workflow name (optional) */
+  workflowName?: string;
+  /** Scenario ID (optional) */
+  scenarioId?: string;
+  /** Scenario name (optional) */
+  scenarioName?: string;
+  /** Canvas node IDs that matched this trace */
+  matchedNodeIds?: string[];
+}
+
+/**
+ * Aggregated trace information
+ *
+ * Represents a complete trace with metadata extracted from all its spans.
+ * This is a higher-level view than individual spans, useful for trace lists,
+ * filtering, and visualization.
+ *
+ * @example
+ * ```typescript
+ * const trace: TraceInfo = {
+ *   traceId: 'abc123',
+ *   name: 'POST /api/checkout',
+ *   startTime: 1737835200000,
+ *   duration: 150,
+ *   spanCount: 5,
+ *   serviceNames: ['checkout-api', 'payment-service'],
+ *   hasErrors: false,
+ *   rootSpanId: 'span1'
+ * };
+ * ```
+ */
+export interface TraceInfo {
+  /** Trace ID */
+  traceId: string;
+  /** Trace name (usually root span name) */
+  name: string;
+  /** Start timestamp in milliseconds */
+  startTime: number;
+  /** Duration in milliseconds */
+  duration: number;
+  /** Number of spans in trace */
+  spanCount: number;
+  /** Unique service names across all spans */
+  serviceNames: string[];
+  /** True if any span has error status */
+  hasErrors: boolean;
+  /** Root span ID (if identifiable) */
+  rootSpanId?: string;
+  /** Workflow matching metadata (if matched) */
+  matchedWorkflow?: WorkflowMatchInfo;
+}
+
+// =============================================================================
+// Simplified Types (Backward Compatible)
+// =============================================================================
+
+/**
+ * @deprecated Use IAnyValue and helper functions instead
  */
 
 /**
@@ -190,9 +528,11 @@ export interface OtelLog {
 export type OtelSpanKind = 'INTERNAL' | 'SERVER' | 'CLIENT' | 'PRODUCER' | 'CONSUMER';
 
 /**
- * OTEL Span Status
+ * OTEL Span Status (simplified, for backward compatibility)
+ *
+ * @deprecated Use OtelSpanStatus from OTLP data structures instead
  */
-export interface OtelSpanStatus {
+export interface OtelSimplifiedSpanStatus {
   code: 'UNSET' | 'OK' | 'ERROR';
   message?: string;
 }
@@ -247,7 +587,7 @@ export interface OtelSpan {
   attributes?: OtelAttributes;
 
   /** Span status */
-  status?: OtelSpanStatus;
+  status?: OtelSimplifiedSpanStatus;
 
   /** Events (logs within the span) */
   events?: Array<{

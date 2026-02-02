@@ -12,7 +12,8 @@ import { resolve, relative } from 'node:path';
 import chalk from 'chalk';
 import { globby } from 'globby';
 import yaml from 'js-yaml';
-import { CanvasDiscovery, buildFileTreeFromDirectory } from '@principal-ai/principal-view-core/node';
+import { CanvasDiscovery } from '@principal-ai/principal-view-core/node';
+import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
 
 interface StalenessIssue {
   type: 'error' | 'warning' | 'info';
@@ -321,7 +322,8 @@ export function createDoctorCommand(): Command {
           let deprecationWarningCount = 0;
           if (!options.errorsOnly) {
             try {
-              const fileTree = await buildFileTreeFromDirectory(projectRoot);
+              const service = new FilesystemService(new NodeFileSystemAdapter());
+              const fileTree = await service.buildFileSystemTreeFromPath(projectRoot);
               const discovery = new CanvasDiscovery();
               const discoveryResult = await discovery.discover(fileTree);
 

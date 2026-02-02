@@ -111,10 +111,13 @@ async function analyzeNodeCoverage(
  *
  * @example
  * ```typescript
- * import { buildFileTreeFromDirectory, createNodeFileReader } from '@principal-ai/principal-view-core/node';
+ * import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
+ * import { readFile } from 'fs/promises';
+ * import { resolve } from 'path';
  *
- * const fileTree = await buildFileTreeFromDirectory('/path/to/project');
- * const fileReader = createNodeFileReader('/path/to/project');
+ * const service = new FilesystemService(new NodeFileSystemAdapter());
+ * const fileTree = await service.buildFileSystemTreeFromPath('/path/to/project');
+ * const fileReader = async (path: string) => readFile(resolve('/path/to/project', path), 'utf-8');
  * const metrics = await analyzeCoverage(fileTree, fileReader);
  * ```
  */

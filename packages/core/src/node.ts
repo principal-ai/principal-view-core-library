@@ -49,9 +49,6 @@ export type { ValidationResult } from './telemetry/event-validator';
 export { analyzeCoverage } from './telemetry/coverage';
 export type { CoverageMetrics, NodeCoverage } from './telemetry/coverage';
 
-// Export FileTree builder utilities (Node.js only - file system operations)
-export { buildFileTreeFromDirectory, createNodeFileReader } from './utils/FileTreeBuilder';
-
 // Export code generation (Node.js only - file system operations)
 export { generateTypes, TypeScriptGenerator, generatorRegistry } from './codegen/type-generator';
 export type { CodegenOptions, CodegenResult, CodeGenerator } from './codegen/type-generator';

@@ -194,6 +194,32 @@ export interface ComponentLibrary {
   /** Library description */
   description?: string;
 
+  /**
+   * Project-level OTEL resource attributes
+   *
+   * Defines resource attributes that should be attached to all telemetry
+   * from this project. These attributes are used for:
+   * - Trace routing in dev tools
+   * - Service identification
+   * - Environment/deployment context
+   *
+   * Common attributes:
+   * - service.name: Service identifier
+   * - service.version: Service version
+   * - dev.server.url: Development server path (for routing to correct dev workspace)
+   * - deployment.environment: Environment (dev/staging/prod)
+   *
+   * @example
+   * ```yaml
+   * resources:
+   *   service.name: "web-ade"
+   *   service.version: "1.0.0"
+   *   dev.server.url: "/Users/griever/Developer/web-ade/web-ade"
+   *   deployment.environment: "development"
+   * ```
+   */
+  resources?: Record<string, string>;
+
   /** Reusable node component definitions */
   nodeComponents: Record<string, LibraryNodeComponent>;
 
