@@ -33,11 +33,14 @@ export class LibraryLoader {
    * @param baseDir - Base directory containing .principal-views/ folder
    * @returns Library load result
    */
-  load(baseDir: string): LibraryLoadResult {
+  async load(baseDir: string): Promise<LibraryLoadResult> {
     const configPath = this.fsAdapter.join(baseDir, CONFIG_DIR);
 
     // Check if .principal-views directory exists
-    if (!this.fsAdapter.exists(configPath) || !this.fsAdapter.isDirectory(configPath)) {
+    const configExists = await this.fsAdapter.exists(configPath);
+    const isDir = configExists ? await this.fsAdapter.isDirectory(configPath) : false;
+
+    if (!configExists || !isDir) {
       return {
         success: false,
         error: 'Configuration directory .principal-views/ not found',
@@ -49,7 +52,7 @@ export class LibraryLoader {
     for (const fileName of DEFAULT_LIBRARY_FILES) {
       const fullPath = this.fsAdapter.join(configPath, fileName);
 
-      if (this.fsAdapter.exists(fullPath)) {
+      if (await this.fsAdapter.exists(fullPath)) {
         return this.loadFromPath(fullPath);
       }
     }
@@ -67,9 +70,9 @@ export class LibraryLoader {
    * @param filePath - Full path to the library file
    * @returns Library load result
    */
-  loadFromPath(filePath: string): LibraryLoadResult {
+  async loadFromPath(filePath: string): Promise<LibraryLoadResult> {
     try {
-      const content = this.fsAdapter.readFile(filePath);
+      const content = await this.fsAdapter.readFile(filePath);
       const isJson = filePath.endsWith('.json');
 
       const library = isJson
@@ -106,16 +109,27 @@ export class LibraryLoader {
    * @param baseDir - Base directory containing .principal-views/ folder
    * @returns True if a library file exists
    */
-  hasLibrary(baseDir: string): boolean {
+  async hasLibrary(baseDir: string): Promise<boolean> {
     const configPath = this.fsAdapter.join(baseDir, CONFIG_DIR);
 
-    if (!this.fsAdapter.exists(configPath) || !this.fsAdapter.isDirectory(configPath)) {
+    const configExists = await this.fsAdapter.exists(configPath);
+    if (!configExists) {
       return false;
     }
 
-    return DEFAULT_LIBRARY_FILES.some((fileName) =>
-      this.fsAdapter.exists(this.fsAdapter.join(configPath, fileName))
-    );
+    const isDir = await this.fsAdapter.isDirectory(configPath);
+    if (!isDir) {
+      return false;
+    }
+
+    for (const fileName of DEFAULT_LIBRARY_FILES) {
+      const fullPath = this.fsAdapter.join(configPath, fileName);
+      if (await this.fsAdapter.exists(fullPath)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
