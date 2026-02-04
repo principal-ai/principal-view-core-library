@@ -128,9 +128,11 @@ describe('CanvasDiscovery', () => {
       });
 
       expect(result.canvases).toHaveLength(1);
-      expect(result.errors).toHaveLength(2); // Parse error + deprecation error for flat structure
+      expect(result.errors).toHaveLength(1); // Only parse error (flat .canvas is now supported)
       expect(result.errors.some(e => e.path === '.principal-views/bad.canvas' && e.error.includes('JSON'))).toBe(true);
-      expect(result.errors.some(e => e.path === '.principal-views/bad.canvas' && e.error.includes('DEPRECATED'))).toBe(true);
+      // Flat .canvas files are now supported, so no deprecation error
+      expect(result.storyboards).toHaveLength(1); // Should create a standalone storyboard
+      expect(result.storyboards[0].workflows).toHaveLength(0); // No workflows for flat canvas
     });
 
     test('discovers hierarchical canvas files in storyboard subdirectories', async () => {

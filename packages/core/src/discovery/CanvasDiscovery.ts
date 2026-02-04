@@ -188,6 +188,40 @@ export class CanvasDiscovery {
       }
     }
 
+    // Add standalone canvas files (flat structure without workflows)
+    // These are typically .canvas files used for documentation/architecture diagrams
+    const storyboardCanvasIds = new Set(storyboards.map(s => s.canvas.id));
+
+    for (const canvas of canvases) {
+      // Skip if already part of a hierarchical storyboard
+      if (storyboardCanvasIds.has(canvas.id)) continue;
+
+      // Check if canvas is in flat structure (.principal-views/file.canvas)
+      const canvasDir = canvas.path.split('/').slice(0, -1).join('/');
+      const parts = canvasDir.split('/');
+      const pvIndex = parts.indexOf(CanvasDiscovery.CANVAS_DIR);
+
+      // Only include flat canvases (directly in .principal-views/)
+      if (pvIndex !== -1 && parts.length === pvIndex + 1) {
+        const packageInfo = this.findPackageForPath(canvas.path, packageMap);
+
+        // Create a standalone storyboard with no workflows
+        const storyboard: DiscoveredStoryboard | DiscoveredStoryboardWithContent = {
+          id: canvas.id,
+          name: canvas.name,
+          path: canvasDir,
+          basename: canvas.basename,
+          canvas: canvas,
+          workflows: [], // No workflows for standalone canvases
+          packageName: packageInfo?.packageData.name,
+          packagePath: packageInfo?.packageData.path,
+          scope: packageInfo ? 'package' : 'root',
+        };
+
+        storyboards.push(storyboard);
+      }
+    }
+
     return storyboards;
   }
 
@@ -561,6 +595,8 @@ export class CanvasDiscovery {
 
   /**
    * Detect legacy flat canvas structures and add deprecation errors
+   * Note: Flat .canvas files are supported for static documentation
+   * Only .otel.canvas files in flat structure are deprecated
    */
   private detectLegacyStructures(
     canvases: DiscoveredCanvas[],
@@ -570,19 +606,21 @@ export class CanvasDiscovery {
     // Build a set of storyboard canvas IDs for quick lookup
     const storyboardCanvasIds = new Set(storyboards.map(s => s.canvas.id));
 
-    // Check for legacy flat canvases (not part of any storyboard)
+    // Check for legacy flat .otel.canvas files (not part of any storyboard)
+    // Note: Flat .canvas files are now supported as standalone canvases
     for (const canvas of canvases) {
       if (!storyboardCanvasIds.has(canvas.id)) {
-        // This is a legacy flat canvas
+        // This canvas is not part of any storyboard
         const canvasDir = canvas.path.split('/').slice(0, -1).join('/');
         const parts = canvasDir.split('/');
         const pvIndex = parts.indexOf(CanvasDiscovery.CANVAS_DIR);
 
-        // Only error if it's directly in .principal-views/ (flat structure)
-        if (pvIndex !== -1 && parts.length === pvIndex + 1) {
+        // Only error if it's a .otel.canvas file in flat structure
+        // Regular .canvas files in flat structure are supported for documentation
+        if (pvIndex !== -1 && parts.length === pvIndex + 1 && canvas.type === 'otel') {
           errors.push({
             path: canvas.path,
-            error: 'DEPRECATED: Legacy flat canvas structure is no longer supported. Migrate to the storyboard structure immediately. See migration guide at docs/MIGRATION_GUIDE.md for details.',
+            error: 'DEPRECATED: Flat .otel.canvas files are no longer supported. .otel.canvas files must use the storyboard structure (.principal-views/storyboard-name/storyboard-name.otel.canvas). For static documentation, use .canvas files instead.',
           });
         }
       }
