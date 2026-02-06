@@ -548,8 +548,20 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     (updater: (prev: EditState) => EditState) => {
       const newState = updater(editStateRef.current);
       editStateRef.current = newState;
+      const hasChanges = checkHasChanges(newState);
+
+      // Debug logging
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[GraphRenderer] Edit state updated:', {
+          positionChanges: newState.positionChanges.size,
+          dimensionChanges: newState.dimensionChanges.size,
+          nodeUpdates: newState.nodeUpdates.size,
+          hasChanges,
+        });
+      }
+
       onEditStateChange?.(newState);
-      onPendingChangesChange?.(checkHasChanges(newState));
+      onPendingChangesChange?.(hasChanges);
     },
     [editStateRef, onEditStateChange, onPendingChangesChange, checkHasChanges]
   );
@@ -1343,6 +1355,23 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           'resizing' in change &&
           change.resizing === false
       );
+
+      // Debug logging for dimension changes
+      if (process.env.NODE_ENV === 'development') {
+        const allDimensionChanges = changes.filter(c => c.type === 'dimensions');
+        if (allDimensionChanges.length > 0) {
+          console.log('[GraphRenderer] Dimension changes detected:', allDimensionChanges.map(c => ({
+            // @ts-expect-error - accessing properties for debug
+            id: c.id,
+            // @ts-expect-error - accessing properties for debug
+            dimensions: c.dimensions,
+            // @ts-expect-error - accessing properties for debug
+            resizing: c.resizing,
+            // @ts-expect-error - accessing properties for debug
+            isGroup: nodes.find(n => n.id === c.id)?.data?.canvasType === 'group'
+          })));
+        }
+      }
 
       if (dimensionChanges.length > 0) {
         updateEditState((prev) => {

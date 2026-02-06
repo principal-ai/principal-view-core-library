@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import React, { useState } from 'react';
-import { ThemeProvider } from '@principal-ade/industry-theme';
+import React from 'react';
+import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 import { GraphRenderer } from '../components/GraphRenderer';
 import { NodeInfoPanel } from '../components/NodeInfoPanel';
 import { NodeTooltip } from '../components/NodeTooltip';
@@ -20,8 +20,22 @@ const otelCanvas = {
       pv: {
         nodeType: 'otel-type',
         name: 'OtelLog',
-        description:
-          'OpenTelemetry log record with timestamp, severity, body, resource, and trace context',
+        description: `## OpenTelemetry Log Record
+
+A structured log entry containing:
+- **Timestamp**: When the log was created
+- **Severity**: Log level (INFO, WARN, ERROR)
+- **Body**: The actual log message
+- **Resource**: Source context
+- **Trace Context**: Correlation with traces
+
+\`\`\`typescript
+interface OtelLog {
+  timestamp: number;
+  severity: string;
+  body: string;
+}
+\`\`\``,
         otel: {
           kind: 'type',
           category: 'log',
@@ -43,8 +57,17 @@ const otelCanvas = {
       pv: {
         nodeType: 'otel-service',
         name: 'LogRouter',
-        description:
-          'Routes incoming OTEL logs to canvas nodes based on scope and resourceMatch criteria',
+        description: `### Log Router Service
+
+Routes incoming OTEL logs to canvas nodes based on matching criteria.
+
+**Routing Logic:**
+1. Check canvas scope match
+2. Apply \`resourceMatch\` patterns
+3. Route to matching nodes
+4. Collect orphaned logs
+
+> **Note**: Supports multiple match operators including \`exact\`, \`glob\`, and \`regex\`.`,
         otel: {
           kind: 'service',
           category: 'router',
@@ -161,7 +184,7 @@ export default meta;
  */
 export const OtelBadgesAndTooltips: StoryObj = {
   render: () => (
-    <ThemeProvider theme="technology">
+    <ThemeProvider theme={defaultEditorTheme}>
       <div style={{ width: '100%', height: '600px' }}>
         <GraphRenderer canvas={otelCanvas} initialViewport={{ x: 200, y: 50, zoom: 1 }} />
       </div>
@@ -174,7 +197,7 @@ export const OtelBadgesAndTooltips: StoryObj = {
  */
 export const TooltipVariants: StoryObj = {
   render: () => (
-    <ThemeProvider theme="technology">
+    <ThemeProvider theme={defaultEditorTheme}>
       <div style={{ padding: '40px', display: 'flex', gap: '80px', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', width: '200px', height: '150px' }}>
           <div
@@ -235,11 +258,107 @@ export const TooltipVariants: StoryObj = {
 };
 
 /**
+ * Demonstrates markdown rendering in tooltips with rich formatting.
+ * Hold Shift and hover over nodes to see tooltips with markdown content.
+ */
+export const MarkdownTooltips: StoryObj = {
+  render: () => (
+    <ThemeProvider theme={defaultEditorTheme}>
+      <div style={{ padding: '40px', display: 'flex', gap: '80px', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', width: '200px', height: '200px' }}>
+          <div
+            style={{
+              padding: '20px',
+              border: '2px solid #4A90E2',
+              borderRadius: '8px',
+              textAlign: 'center',
+            }}
+          >
+            Lists & Code (hover below)
+          </div>
+          <NodeTooltip
+            description={`# Features
+
+- **Bold text** and *italic text*
+- Inline \`code\` formatting
+- Multiple levels of formatting
+
+## Code Example
+\`\`\`typescript
+function example() {
+  return "Hello!";
+}
+\`\`\`
+`}
+            otel={{ kind: 'type', category: 'example' }}
+            visible={true}
+          />
+        </div>
+
+        <div style={{ position: 'relative', width: '200px', height: '200px' }}>
+          <div
+            style={{
+              padding: '20px',
+              border: '2px solid #7ED321',
+              borderRadius: '8px',
+              textAlign: 'center',
+            }}
+          >
+            Links & Emphasis (hover below)
+          </div>
+          <NodeTooltip
+            description={`## Service Router
+
+This component handles:
+
+1. Log routing
+2. Pattern matching
+3. Event distribution
+
+**Important**: Uses [regex](https://regex.org) for matching.
+
+> Note: All logs are buffered before routing.`}
+            otel={{ kind: 'service', category: 'router' }}
+            visible={true}
+          />
+        </div>
+
+        <div style={{ position: 'relative', width: '200px', height: '200px' }}>
+          <div
+            style={{
+              padding: '20px',
+              border: '2px solid #9B59B6',
+              borderRadius: '8px',
+              textAlign: 'center',
+            }}
+          >
+            Tables (hover below)
+          </div>
+          <NodeTooltip
+            description={`### Configuration
+
+| Property | Type | Default |
+|----------|------|---------|
+| timeout  | number | 5000 |
+| retries  | number | 3 |
+| enabled  | boolean | true |
+
+Use \`config.json\` to customize.`}
+            otel={{ kind: 'instance', category: 'config' }}
+            visible={true}
+          />
+        </div>
+      </div>
+    </ThemeProvider>
+  ),
+};
+
+/**
  * NodeInfoPanel with OTEL information section.
  */
 export const InfoPanelWithOtel: StoryObj = {
   render: () => {
-    const [selectedNode] = useState<NodeState>({
+    const selectedNode: NodeState = {
       id: 'log-router',
       type: 'otel-service',
       name: 'LogRouter',
@@ -258,7 +377,7 @@ export const InfoPanelWithOtel: StoryObj = {
       position: { x: 0, y: 0 },
       createdAt: Date.now(),
       updatedAt: Date.now(),
-    });
+    };
 
     const typeDefinition: NodeTypeDefinition = {
       shape: 'hexagon',
@@ -267,7 +386,7 @@ export const InfoPanelWithOtel: StoryObj = {
     };
 
     return (
-      <ThemeProvider theme="technology">
+      <ThemeProvider theme={defaultEditorTheme}>
         <div style={{ padding: '20px', position: 'relative', minHeight: '400px' }}>
           <h3 style={{ marginBottom: '20px' }}>NodeInfoPanel with OTEL Section</h3>
           <p style={{ marginBottom: '20px', color: '#666' }}>

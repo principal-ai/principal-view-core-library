@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTheme } from '@principal-ade/industry-theme';
+import { IndustryMarkdownSlide } from 'themed-markdown';
 
 export interface OtelInfo {
   kind: 'type' | 'service' | 'instance';
@@ -89,12 +90,14 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
         borderRadius: '6px',
         fontSize: theme.fontSizes[0],
         fontFamily: theme.fonts.body,
-        maxWidth: '250px',
+        maxWidth: '400px',
+        maxHeight: '500px',
         zIndex: 99999,
         pointerEvents: 'none',
         boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
         whiteSpace: 'normal',
         opacity: usePortal ? (position ? 1 : 0) : 1,
+        overflow: 'auto',
       }}
     >
       {/* Arrow */}
@@ -159,10 +162,34 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
         </div>
       )}
 
-      {/* Description */}
-      <div style={{ lineHeight: '1.4', color: description ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)' }}>
-        {description || 'No description'}
-      </div>
+      {/* Description - rendered as markdown */}
+      {description ? (
+        <div style={{ lineHeight: '1.4', color: 'rgba(255,255,255,0.9)' }}>
+          <IndustryMarkdownSlide
+            content={description}
+            slideIdPrefix="tooltip"
+            slideIndex={0}
+            isVisible={true}
+            theme={{
+              ...theme,
+              colors: {
+                ...theme.colors,
+                background: 'transparent',
+                text: 'rgba(255,255,255,0.9)',
+              },
+            }}
+            transparentBackground={true}
+            disableScroll={true}
+            fontSizeScale={0.85}
+            enableKeyboardScrolling={false}
+            autoFocusOnVisible={false}
+          />
+        </div>
+      ) : (
+        <div style={{ lineHeight: '1.4', color: 'rgba(255,255,255,0.5)' }}>
+          No description
+        </div>
+      )}
 
       {/* Sources */}
       {sources && sources.length > 0 && (

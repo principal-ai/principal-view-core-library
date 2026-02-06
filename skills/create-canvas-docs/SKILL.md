@@ -30,7 +30,7 @@ Use this skill when you want to:
 |---------|-----------|----------------|
 | **Purpose** | Static documentation | Runtime validation |
 | **Structure** | Flat (`.principal-views/file.canvas`) | Hierarchical (storyboard structure) |
-| **Validation** | Not validated (flexible) | Strictly validated |
+| **Validation** | Structure & syntax validated | Strictly validated (structure + events) |
 | **Event schemas** | Not supported | Required for validation |
 | **Workflows** | Not applicable | Required for testing |
 | **Use case** | Architecture diagrams, docs | Telemetry testing, monitoring |
@@ -59,6 +59,28 @@ packages/
 
 **Note:** `.canvas` files should be in flat structure, NOT nested in storyboard folders.
 
+## Node Sizing Guidelines
+
+**IMPORTANT:** Use consistent, standardized sizes for all nodes:
+
+- **Standard Node (most common):** `200 × 120`
+  - Use for: Components, services, processes, most documentation nodes
+  - Fits concise titles, brief descriptions, key details
+
+- **Large Node (detailed content):** `250 × 150`
+  - Use for: Complex concepts, detailed explanations, code snippets
+  - Fits: Extended bullet lists, multi-paragraph descriptions
+
+- **Small Node (labels/markers):** `150 × 80`
+  - Use for: Simple labels, flow markers, decision points
+  - Fits: Short text, single-line descriptions
+
+**Benefits:**
+- Consistent visual hierarchy across all canvases
+- Easier to scan and understand
+- Professional appearance
+- Predictable spacing and layout
+
 ## JSON Canvas Specification
 
 Canvas files follow the [JSON Canvas 1.0 spec](https://jsoncanvas.org/spec/1.0/):
@@ -74,8 +96,8 @@ Canvas files follow the [JSON Canvas 1.0 spec](https://jsoncanvas.org/spec/1.0/)
       "text": "# Node Content\n\nMarkdown-formatted text",
       "x": 0,
       "y": 0,
-      "width": 250,
-      "height": 100,
+      "width": 200,
+      "height": 120,
       "color": "#22c55e"
     }
   ],
@@ -481,7 +503,7 @@ Animation types:
       "x": 300,
       "y": 0,
       "width": 200,
-      "height": 100,
+      "height": 120,
       "color": "#22c55e"
     },
     {
@@ -490,28 +512,28 @@ Animation types:
       "text": "# Header\n\nNavigation",
       "x": 100,
       "y": 150,
-      "width": 150,
-      "height": 80,
+      "width": 200,
+      "height": 120,
       "color": "#06b6d4"
     },
     {
       "id": "content",
       "type": "text",
       "text": "# Content\n\nMain area",
-      "x": 300,
+      "x": 350,
       "y": 150,
-      "width": 150,
-      "height": 80,
+      "width": 200,
+      "height": 120,
       "color": "#06b6d4"
     },
     {
       "id": "footer",
       "type": "text",
       "text": "# Footer\n\nLinks",
-      "x": 500,
+      "x": 600,
       "y": 150,
-      "width": 150,
-      "height": 80,
+      "width": 200,
+      "height": 120,
       "color": "#06b6d4"
     }
   ],
@@ -602,14 +624,20 @@ Reference the markdown file in the canvas:
 3. **Design the layout** - Add nodes and edges following JSON Canvas spec
 4. **Add PV extensions (optional)** - Enhance with icons, shapes, animations
 5. **Create markdown docs (optional)** - Add detailed documentation
-6. **Validate syntax** - Ensure valid JSON structure
+6. **Validate the canvas** - Run `pv validate` to check structure and syntax
 7. **Test rendering** - View in React component or Obsidian
 
 ## CLI Commands
 
-While `.canvas` files are not validated, you can still list them:
+Canvas files are validated to ensure proper structure and syntax:
 
 ```bash
+# Validate canvas file structure and syntax
+npx @principal-ai/principal-view-cli validate
+
+# Validate specific canvas files
+npx @principal-ai/principal-view-cli validate ".principal-views/*.canvas"
+
 # List all discovered canvas files
 npx @principal-ai/principal-view-cli list
 
@@ -640,29 +668,35 @@ The Principal View extensions (`pv` field) are ignored by Obsidian, allowing rou
 ❌ .principal-views/temp.canvas
 ```
 
-### 2. Keep It Simple
+### 2. Use Consistent Node Sizes
+- **Standard nodes:** 200 × 120 for most documentation nodes
+- **Large nodes:** 250 × 150 for detailed content
+- **Small nodes:** 150 × 80 for labels and markers
+- Consistency improves visual clarity and professionalism
+
+### 3. Keep It Simple
 - Focus on one concept per canvas
 - Don't overcrowd with too many nodes
 - Use groups to organize related nodes
 
-### 3. Use Consistent Colors
+### 4. Use Consistent Colors
 - Green (#22c55e) - Success, active, primary
 - Red (#ef4444) - Error, critical
 - Blue (#06b6d4) - Info, secondary
 - Purple (#8b5cf6) - Special, tertiary
 
-### 4. Add Documentation
+### 5. Add Documentation
 - Always create an associated `.md` file
 - Reference it in `pv.markdown`
 - Explain what the diagram shows
 
-### 5. Maintain Flat Structure
+### 6. Maintain Flat Structure
 ```
 ✅ .principal-views/file.canvas
 ❌ .principal-views/folder/file.canvas  (use this only for .otel.canvas)
 ```
 
-### 6. Use Manual Layout
+### 7. Use Manual Layout
 For documentation, manual layout gives you precise control:
 
 ```json
