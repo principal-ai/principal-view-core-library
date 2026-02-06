@@ -22,6 +22,77 @@ import type {
 } from './canvas';
 
 // ============================================================================
+// Resource Types
+// ============================================================================
+
+/**
+ * OTEL resource attributes for a service/component
+ *
+ * Represents the actual resource attribute values (not match patterns).
+ * These are the attributes that would be set when instrumenting the service.
+ *
+ * @see https://opentelemetry.io/docs/specs/semconv/resource/
+ */
+export interface ResourceAttributes {
+  /** Service identification (required) */
+  'service.name': string;
+
+  /** Service version (recommended) */
+  'service.version'?: string;
+
+  /** Service namespace (optional) */
+  'service.namespace'?: string;
+
+  /** Service instance ID (optional) */
+  'service.instance.id'?: string;
+
+  /** Deployment environment (recommended) */
+  'deployment.environment'?: string;
+
+  /** Kubernetes namespace */
+  'k8s.namespace.name'?: string;
+
+  /** Kubernetes deployment name */
+  'k8s.deployment.name'?: string;
+
+  /** Kubernetes pod name */
+  'k8s.pod.name'?: string;
+
+  /** Kubernetes container name */
+  'k8s.container.name'?: string;
+
+  /** Kubernetes node name */
+  'k8s.node.name'?: string;
+
+  /** Database system */
+  'db.system'?: string;
+
+  /** Database name */
+  'db.name'?: string;
+
+  /** Host name */
+  'host.name'?: string;
+
+  /** Host ID */
+  'host.id'?: string;
+
+  /** Cloud provider */
+  'cloud.provider'?: string;
+
+  /** Cloud region */
+  'cloud.region'?: string;
+
+  /** Messaging system */
+  'messaging.system'?: string;
+
+  /** Messaging destination name */
+  'messaging.destination.name'?: string;
+
+  /** Allow arbitrary OTEL resource attributes */
+  [key: string]: string | undefined;
+}
+
+// ============================================================================
 // Library Component Types
 // ============================================================================
 
@@ -195,30 +266,34 @@ export interface ComponentLibrary {
   description?: string;
 
   /**
-   * Project-level OTEL resource attributes
+   * Service resource registry
    *
-   * Defines resource attributes that should be attached to all telemetry
-   * from this project. These attributes are used for:
-   * - Trace routing in dev tools
-   * - Service identification
-   * - Environment/deployment context
+   * Defines the services in this package and their expected OTEL resource attributes.
+   * Each service configures its own resources at runtime (via env vars or SDK),
+   * but declaring them here provides:
+   * - Service documentation/registry
+   * - Expected resource schema for validation
+   * - Dev instrumentation defaults
+   * - Canvas node generation
    *
-   * Common attributes:
-   * - service.name: Service identifier
-   * - service.version: Service version
-   * - dev.server.url: Development server path (for routing to correct dev workspace)
-   * - deployment.environment: Environment (dev/staging/prod)
+   * The key is a service identifier (used for reference), and the value contains
+   * the OTEL resource attributes for that service.
    *
    * @example
    * ```yaml
    * resources:
-   *   service.name: "web-ade"
-   *   service.version: "1.0.0"
-   *   dev.server.url: "/Users/griever/Developer/web-ade/web-ade"
-   *   deployment.environment: "development"
+   *   payment-api:
+   *     service.name: "payment-api"
+   *     service.version: "1.0.0"
+   *     deployment.environment: "development"
+   *
+   *   payment-worker:
+   *     service.name: "payment-worker"
+   *     service.version: "1.0.0"
+   *     deployment.environment: "development"
    * ```
    */
-  resources?: Record<string, string>;
+  resources?: Record<string, ResourceAttributes>;
 
   /** Reusable node component definitions */
   nodeComponents: Record<string, LibraryNodeComponent>;

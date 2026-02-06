@@ -41,13 +41,13 @@ export interface ExecutionLoadResult {
  * const loader = new ExecutionLoader(fsAdapter);
  *
  * // Check if __executions__/ exists
- * if (loader.hasExecutionDirectory('/path/to/project')) {
+ * if (await loader.hasExecutionDirectory('/path/to/project')) {
  *   // Load all execution files
- *   const result = loader.loadAll('/path/to/project');
+ *   const result = await loader.loadAll('/path/to/project');
  *   console.log(`Loaded ${result.executions.length} executions`);
  *
  *   // Load specific execution
- *   const execution = loader.loadByName('test-run', '/path/to/project');
+ *   const execution = await loader.loadByName('test-run', '/path/to/project');
  * }
  * ```
  */
@@ -66,15 +66,14 @@ export class ExecutionLoader {
    * @param baseDir - Base directory to search from
    * @returns True if __executions__/ directory exists
    */
-  hasExecutionDirectory(baseDir: string): boolean {
+  async hasExecutionDirectory(baseDir: string): Promise<boolean> {
     const executionPath = this.fsAdapter.join(
       baseDir,
       ExecutionLoader.EXECUTION_DIR
     );
-    return (
-      this.fsAdapter.exists(executionPath) &&
-      this.fsAdapter.isDirectory(executionPath)
-    );
+    const exists = await this.fsAdapter.exists(executionPath);
+    if (!exists) return false;
+    return await this.fsAdapter.isDirectory(executionPath);
   }
 
   /**
@@ -83,8 +82,8 @@ export class ExecutionLoader {
    * @param baseDir - Base directory containing __executions__/ folder
    * @returns Array of execution names (without .otel.json extensions)
    */
-  listExecutions(baseDir: string): string[] {
-    if (!this.hasExecutionDirectory(baseDir)) {
+  async listExecutions(baseDir: string): Promise<string[]> {
+    if (!(await this.hasExecutionDirectory(baseDir))) {
       return [];
     }
 
@@ -92,7 +91,7 @@ export class ExecutionLoader {
       baseDir,
       ExecutionLoader.EXECUTION_DIR
     );
-    const files = this.fsAdapter.readDir(executionPath);
+    const files = await this.fsAdapter.readDir(executionPath);
 
     return files
       .filter((f) => this.isExecutionFile(f))
@@ -109,8 +108,8 @@ export class ExecutionLoader {
    * @param baseDir - Base directory containing __executions__/ folder
    * @returns Execution file or null if not found/invalid
    */
-  loadByName(name: string, baseDir: string): ExecutionFile | null {
-    if (!this.hasExecutionDirectory(baseDir)) {
+  async loadByName(name: string, baseDir: string): Promise<ExecutionFile | null> {
+    if (!(await this.hasExecutionDirectory(baseDir))) {
       return null;
     }
 
@@ -121,12 +120,12 @@ export class ExecutionLoader {
     const filename = `${name}${ExecutionLoader.EXECUTION_EXTENSION}`;
     const fullPath = this.fsAdapter.join(executionPath, filename);
 
-    if (!this.fsAdapter.exists(fullPath)) {
+    if (!(await this.fsAdapter.exists(fullPath))) {
       return null;
     }
 
     try {
-      const content = this.fsAdapter.readFile(fullPath);
+      const content = await this.fsAdapter.readFile(fullPath);
       const parsed = JSON.parse(content);
 
       // Use validateOrThrow to both validate and get converted ExecutionData
@@ -151,13 +150,13 @@ export class ExecutionLoader {
    * @param baseDir - Base directory containing __executions__/ folder
    * @returns Result containing all loaded executions and any errors
    */
-  loadAll(baseDir: string): ExecutionLoadResult {
+  async loadAll(baseDir: string): Promise<ExecutionLoadResult> {
     const result: ExecutionLoadResult = {
       executions: [],
       errors: [],
     };
 
-    if (!this.hasExecutionDirectory(baseDir)) {
+    if (!(await this.hasExecutionDirectory(baseDir))) {
       result.errors.push({
         file: '__executions__',
         error: 'Execution directory __executions__/ not found',
@@ -169,7 +168,7 @@ export class ExecutionLoader {
       baseDir,
       ExecutionLoader.EXECUTION_DIR
     );
-    const files = this.fsAdapter.readDir(executionPath);
+    const files = await this.fsAdapter.readDir(executionPath);
 
     for (const filename of files) {
       if (!this.isExecutionFile(filename)) {
@@ -180,7 +179,7 @@ export class ExecutionLoader {
       const name = this.getExecutionNameFromFilename(filename);
 
       try {
-        const content = this.fsAdapter.readFile(fullPath);
+        const content = await this.fsAdapter.readFile(fullPath);
         const parsed = JSON.parse(content);
 
         // Validate and convert OTLP format if needed
@@ -240,19 +239,19 @@ export class ExecutionLoader {
    * @param maxDepth - Maximum directory depth to search (default: 3)
    * @returns Array of paths to __executions__/ directories
    */
-  findExecutionDirectories(baseDir: string, maxDepth: number = 3): string[] {
+  async findExecutionDirectories(baseDir: string, maxDepth: number = 3): Promise<string[]> {
     const found: string[] = [];
 
-    const search = (dir: string, depth: number) => {
+    const search = async (dir: string, depth: number): Promise<void> => {
       if (depth > maxDepth) return;
 
       try {
-        const items = this.fsAdapter.readDir(dir);
+        const items = await this.fsAdapter.readDir(dir);
 
         for (const item of items) {
           const fullPath = this.fsAdapter.join(dir, item);
 
-          if (!this.fsAdapter.isDirectory(fullPath)) continue;
+          if (!(await this.fsAdapter.isDirectory(fullPath))) continue;
 
           // Skip node_modules and hidden directories
           if (item === 'node_modules' || item.startsWith('.')) continue;
@@ -260,7 +259,7 @@ export class ExecutionLoader {
           if (item === ExecutionLoader.EXECUTION_DIR) {
             found.push(fullPath);
           } else {
-            search(fullPath, depth + 1);
+            await search(fullPath, depth + 1);
           }
         }
       } catch (error) {
@@ -268,7 +267,7 @@ export class ExecutionLoader {
       }
     };
 
-    search(baseDir, 0);
+    await search(baseDir, 0);
     return found;
   }
 
@@ -281,18 +280,18 @@ export class ExecutionLoader {
    * @param maxDepth - Maximum directory depth to search (default: 3)
    * @returns Result containing all loaded executions and any errors
    */
-  loadAllRecursive(baseDir: string, maxDepth: number = 3): ExecutionLoadResult {
+  async loadAllRecursive(baseDir: string, maxDepth: number = 3): Promise<ExecutionLoadResult> {
     const result: ExecutionLoadResult = {
       executions: [],
       errors: [],
     };
 
-    const directories = this.findExecutionDirectories(baseDir, maxDepth);
+    const directories = await this.findExecutionDirectories(baseDir, maxDepth);
 
     for (const execDir of directories) {
       // Get parent directory for loadAll
       const parentDir = this.fsAdapter.dirname(execDir);
-      const dirResult = this.loadAll(parentDir);
+      const dirResult = await this.loadAll(parentDir);
 
       result.executions.push(...dirResult.executions);
       result.errors.push(...dirResult.errors);

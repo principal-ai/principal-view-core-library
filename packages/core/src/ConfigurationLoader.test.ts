@@ -44,73 +44,73 @@ describe('ConfigurationLoader', () => {
   });
 
   describe('hasConfigDirectory', () => {
-    test('returns true when .principal-views directory exists', () => {
-      fsAdapter.createDir('/project/.principal-views');
+    test('returns true when .principal-views directory exists', async () => {
+      await fsAdapter.createDir('/project/.principal-views');
 
-      expect(loader.hasConfigDirectory('/project')).toBe(true);
+      expect(await loader.hasConfigDirectory('/project')).toBe(true);
     });
 
-    test('returns false when .principal-views directory does not exist', () => {
-      expect(loader.hasConfigDirectory('/project')).toBe(false);
+    test('returns false when .principal-views directory does not exist', async () => {
+      expect(await loader.hasConfigDirectory('/project')).toBe(false);
     });
 
-    test('returns false when .principal-views exists but is not a directory', () => {
-      fsAdapter.writeFile('/project/.principal-views', 'not a directory');
+    test('returns false when .principal-views exists but is not a directory', async () => {
+      await fsAdapter.writeFile('/project/.principal-views', 'not a directory');
 
-      expect(loader.hasConfigDirectory('/project')).toBe(false);
+      expect(await loader.hasConfigDirectory('/project')).toBe(false);
     });
   });
 
   describe('listConfigurations', () => {
-    test('returns empty array when .principal-views does not exist', () => {
-      const configs = loader.listConfigurations('/project');
+    test('returns empty array when .principal-views does not exist', async () => {
+      const configs = await loader.listConfigurations('/project');
 
       expect(configs).toEqual([]);
     });
 
-    test('returns list of configuration names', () => {
-      fsAdapter.createDir('/project/.principal-views');
-      fsAdapter.writeFile(
+    test('returns list of configuration names', async () => {
+      await fsAdapter.createDir('/project/.principal-views');
+      await fsAdapter.writeFile(
         '/project/.principal-views/architecture.yaml',
         JSON.stringify(validConfig)
       );
-      fsAdapter.writeFile('/project/.principal-views/data-flow.yaml', JSON.stringify(validConfig));
-      fsAdapter.writeFile('/project/.principal-views/deployment.yml', JSON.stringify(validConfig));
+      await fsAdapter.writeFile('/project/.principal-views/data-flow.yaml', JSON.stringify(validConfig));
+      await fsAdapter.writeFile('/project/.principal-views/deployment.yml', JSON.stringify(validConfig));
 
-      const configs = loader.listConfigurations('/project');
+      const configs = await loader.listConfigurations('/project');
 
       expect(configs).toEqual(['architecture', 'data-flow', 'deployment']);
     });
 
-    test('filters out non-YAML files', () => {
-      fsAdapter.createDir('/project/.principal-views');
-      fsAdapter.writeFile('/project/.principal-views/config1.yaml', JSON.stringify(validConfig));
-      fsAdapter.writeFile('/project/.principal-views/README.md', '# README');
-      fsAdapter.writeFile('/project/.principal-views/config.json', '{}');
+    test('filters out non-YAML files', async () => {
+      await fsAdapter.createDir('/project/.principal-views');
+      await fsAdapter.writeFile('/project/.principal-views/config1.yaml', JSON.stringify(validConfig));
+      await fsAdapter.writeFile('/project/.principal-views/README.md', '# README');
+      await fsAdapter.writeFile('/project/.principal-views/config.json', '{}');
 
-      const configs = loader.listConfigurations('/project');
+      const configs = await loader.listConfigurations('/project');
 
       expect(configs).toEqual(['config1']);
     });
 
-    test('returns sorted configuration names', () => {
-      fsAdapter.createDir('/project/.principal-views');
-      fsAdapter.writeFile('/project/.principal-views/zebra.yaml', JSON.stringify(validConfig));
-      fsAdapter.writeFile('/project/.principal-views/alpha.yaml', JSON.stringify(validConfig));
-      fsAdapter.writeFile('/project/.principal-views/middle.yaml', JSON.stringify(validConfig));
+    test('returns sorted configuration names', async () => {
+      await fsAdapter.createDir('/project/.principal-views');
+      await fsAdapter.writeFile('/project/.principal-views/zebra.yaml', JSON.stringify(validConfig));
+      await fsAdapter.writeFile('/project/.principal-views/alpha.yaml', JSON.stringify(validConfig));
+      await fsAdapter.writeFile('/project/.principal-views/middle.yaml', JSON.stringify(validConfig));
 
-      const configs = loader.listConfigurations('/project');
+      const configs = await loader.listConfigurations('/project');
 
       expect(configs).toEqual(['alpha', 'middle', 'zebra']);
     });
   });
 
   describe('loadByName', () => {
-    beforeEach(() => {
-      fsAdapter.createDir('/project/.principal-views');
+    beforeEach(async () => {
+      await fsAdapter.createDir('/project/.principal-views');
     });
 
-    test('loads configuration by name with .yaml extension', () => {
+    test('loads configuration by name with .yaml extension', async () => {
       const yamlContent = `
 metadata:
   name: Test Config
@@ -132,16 +132,16 @@ allowedConnections:
     to: service
     via: call
 `;
-      fsAdapter.writeFile('/project/.principal-views/simple.yaml', yamlContent);
+      await fsAdapter.writeFile('/project/.principal-views/simple.yaml', yamlContent);
 
-      const result = loader.loadByName('simple', '/project');
+      const result = await loader.loadByName('simple', '/project');
 
       expect(result).not.toBeNull();
       expect(result?.name).toBe('simple');
       expect(result?.config.metadata.name).toBe('Test Config');
     });
 
-    test('loads configuration by name with .yml extension', () => {
+    test('loads configuration by name with .yml extension', async () => {
       const yamlContent = `
 metadata:
   name: Alternative Config
@@ -163,50 +163,50 @@ allowedConnections:
     to: component
     via: link
 `;
-      fsAdapter.writeFile('/project/.principal-views/alt.yml', yamlContent);
+      await fsAdapter.writeFile('/project/.principal-views/alt.yml', yamlContent);
 
-      const result = loader.loadByName('alt', '/project');
+      const result = await loader.loadByName('alt', '/project');
 
       expect(result).not.toBeNull();
       expect(result?.name).toBe('alt');
       expect(result?.config.metadata.name).toBe('Alternative Config');
     });
 
-    test('returns null when configuration does not exist', () => {
-      const result = loader.loadByName('nonexistent', '/project');
+    test('returns null when configuration does not exist', async () => {
+      const result = await loader.loadByName('nonexistent', '/project');
 
       expect(result).toBeNull();
     });
 
-    test('returns null when .principal-views directory does not exist', () => {
-      const result = loader.loadByName('any', '/no-project');
+    test('returns null when .principal-views directory does not exist', async () => {
+      const result = await loader.loadByName('any', '/no-project');
 
       expect(result).toBeNull();
     });
 
-    test('returns null when YAML is invalid', () => {
-      fsAdapter.writeFile('/project/.principal-views/invalid.yaml', 'invalid: yaml: content:');
+    test('returns null when YAML is invalid', async () => {
+      await fsAdapter.writeFile('/project/.principal-views/invalid.yaml', 'invalid: yaml: content:');
 
-      const result = loader.loadByName('invalid', '/project');
+      const result = await loader.loadByName('invalid', '/project');
 
       expect(result).toBeNull();
     });
 
-    test('returns null when configuration structure is invalid', () => {
+    test('returns null when configuration structure is invalid', async () => {
       const yamlContent = `
 metadata:
   name: Incomplete
 nodeTypes: {}
 # Missing edgeTypes and allowedConnections
 `;
-      fsAdapter.writeFile('/project/.principal-views/incomplete.yaml', yamlContent);
+      await fsAdapter.writeFile('/project/.principal-views/incomplete.yaml', yamlContent);
 
-      const result = loader.loadByName('incomplete', '/project');
+      const result = await loader.loadByName('incomplete', '/project');
 
       expect(result).toBeNull();
     });
 
-    test('prefers .yaml over .yml when both exist', () => {
+    test('prefers .yaml over .yml when both exist', async () => {
       const yamlContent = `
 metadata:
   name: YAML Version
@@ -243,10 +243,10 @@ allowedConnections:
     to: service
     via: call
 `;
-      fsAdapter.writeFile('/project/.principal-views/both.yaml', yamlContent);
-      fsAdapter.writeFile('/project/.principal-views/both.yml', ymlContent);
+      await fsAdapter.writeFile('/project/.principal-views/both.yaml', yamlContent);
+      await fsAdapter.writeFile('/project/.principal-views/both.yml', ymlContent);
 
-      const result = loader.loadByName('both', '/project');
+      const result = await loader.loadByName('both', '/project');
 
       expect(result).not.toBeNull();
       expect(result?.config.metadata.name).toBe('YAML Version');
@@ -254,8 +254,8 @@ allowedConnections:
   });
 
   describe('loadAll', () => {
-    test('returns error when .principal-views directory does not exist', () => {
-      const result = loader.loadAll('/project');
+    test('returns error when .principal-views directory does not exist', async () => {
+      const result = await loader.loadAll('/project');
 
       expect(result.configs).toEqual([]);
       expect(result.errors).toHaveLength(1);
@@ -263,8 +263,8 @@ allowedConnections:
       expect(result.errors[0].error).toContain('not found');
     });
 
-    test('loads all valid configurations', () => {
-      fsAdapter.createDir('/project/.principal-views');
+    test('loads all valid configurations', async () => {
+      await fsAdapter.createDir('/project/.principal-views');
 
       const config1 = `
 metadata:
@@ -303,10 +303,10 @@ allowedConnections:
     via: link
 `;
 
-      fsAdapter.writeFile('/project/.principal-views/first.yaml', config1);
-      fsAdapter.writeFile('/project/.principal-views/second.yml', config2);
+      await fsAdapter.writeFile('/project/.principal-views/first.yaml', config1);
+      await fsAdapter.writeFile('/project/.principal-views/second.yml', config2);
 
-      const result = loader.loadAll('/project');
+      const result = await loader.loadAll('/project');
 
       expect(result.configs).toHaveLength(2);
       expect(result.errors).toEqual([]);
@@ -314,8 +314,8 @@ allowedConnections:
       expect(result.configs[1].name).toBe('second');
     });
 
-    test('skips non-YAML files', () => {
-      fsAdapter.createDir('/project/.principal-views');
+    test('skips non-YAML files', async () => {
+      await fsAdapter.createDir('/project/.principal-views');
 
       const validYaml = `
 metadata:
@@ -336,19 +336,19 @@ allowedConnections:
     via: call
 `;
 
-      fsAdapter.writeFile('/project/.principal-views/valid.yaml', validYaml);
-      fsAdapter.writeFile('/project/.principal-views/README.md', '# README');
-      fsAdapter.writeFile('/project/.principal-views/config.json', '{}');
+      await fsAdapter.writeFile('/project/.principal-views/valid.yaml', validYaml);
+      await fsAdapter.writeFile('/project/.principal-views/README.md', '# README');
+      await fsAdapter.writeFile('/project/.principal-views/config.json', '{}');
 
-      const result = loader.loadAll('/project');
+      const result = await loader.loadAll('/project');
 
       expect(result.configs).toHaveLength(1);
       expect(result.configs[0].name).toBe('valid');
       expect(result.errors).toEqual([]);
     });
 
-    test('collects errors for invalid files', () => {
-      fsAdapter.createDir('/project/.principal-views');
+    test('collects errors for invalid files', async () => {
+      await fsAdapter.createDir('/project/.principal-views');
 
       const validYaml = `
 metadata:
@@ -369,22 +369,22 @@ allowedConnections:
     via: call
 `;
 
-      fsAdapter.writeFile('/project/.principal-views/valid.yaml', validYaml);
-      fsAdapter.writeFile('/project/.principal-views/invalid-yaml.yaml', 'invalid: yaml: content:');
-      fsAdapter.writeFile(
+      await fsAdapter.writeFile('/project/.principal-views/valid.yaml', validYaml);
+      await fsAdapter.writeFile('/project/.principal-views/invalid-yaml.yaml', 'invalid: yaml: content:');
+      await fsAdapter.writeFile(
         '/project/.principal-views/incomplete.yaml',
         'metadata:\n  name: Incomplete\nnodeTypes: {}'
       );
 
-      const result = loader.loadAll('/project');
+      const result = await loader.loadAll('/project');
 
       expect(result.configs).toHaveLength(1);
       expect(result.configs[0].name).toBe('valid');
       expect(result.errors.length).toBeGreaterThan(0);
     });
 
-    test('returns configs sorted by name', () => {
-      fsAdapter.createDir('/project/.principal-views');
+    test('returns configs sorted by name', async () => {
+      await fsAdapter.createDir('/project/.principal-views');
 
       const configTemplate = (name: string) => `
 metadata:
@@ -405,11 +405,11 @@ allowedConnections:
     via: call
 `;
 
-      fsAdapter.writeFile('/project/.principal-views/zebra.yaml', configTemplate('Zebra'));
-      fsAdapter.writeFile('/project/.principal-views/alpha.yaml', configTemplate('Alpha'));
-      fsAdapter.writeFile('/project/.principal-views/middle.yaml', configTemplate('Middle'));
+      await fsAdapter.writeFile('/project/.principal-views/zebra.yaml', configTemplate('Zebra'));
+      await fsAdapter.writeFile('/project/.principal-views/alpha.yaml', configTemplate('Alpha'));
+      await fsAdapter.writeFile('/project/.principal-views/middle.yaml', configTemplate('Middle'));
 
-      const result = loader.loadAll('/project');
+      const result = await loader.loadAll('/project');
 
       expect(result.configs).toHaveLength(3);
       expect(result.configs[0].name).toBe('alpha');
@@ -417,8 +417,8 @@ allowedConnections:
       expect(result.configs[2].name).toBe('zebra');
     });
 
-    test('handles mixed .yaml and .yml extensions', () => {
-      fsAdapter.createDir('/project/.principal-views');
+    test('handles mixed .yaml and .yml extensions', async () => {
+      await fsAdapter.createDir('/project/.principal-views');
 
       const configTemplate = (name: string) => `
 metadata:
@@ -439,10 +439,10 @@ allowedConnections:
     via: call
 `;
 
-      fsAdapter.writeFile('/project/.principal-views/config1.yaml', configTemplate('Config 1'));
-      fsAdapter.writeFile('/project/.principal-views/config2.yml', configTemplate('Config 2'));
+      await fsAdapter.writeFile('/project/.principal-views/config1.yaml', configTemplate('Config 1'));
+      await fsAdapter.writeFile('/project/.principal-views/config2.yml', configTemplate('Config 2'));
 
-      const result = loader.loadAll('/project');
+      const result = await loader.loadAll('/project');
 
       expect(result.configs).toHaveLength(2);
       expect(result.errors).toEqual([]);
@@ -450,13 +450,13 @@ allowedConnections:
   });
 
   describe('getConfigDirectoryPath', () => {
-    test('returns correct .principal-views path', () => {
+    test('returns correct .principal-views path', async () => {
       const path = loader.getConfigDirectoryPath('/my/project');
 
       expect(path).toBe('/my/project/.principal-views');
     });
 
-    test('handles trailing slashes', () => {
+    test('handles trailing slashes', async () => {
       const path = loader.getConfigDirectoryPath('/my/project/');
 
       // The path should be consistent regardless of trailing slash

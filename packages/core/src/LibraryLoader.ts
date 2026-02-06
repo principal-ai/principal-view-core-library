@@ -257,6 +257,32 @@ export class LibraryLoader {
       }
     }
 
+    // Validate resources if present
+    if (library.resources) {
+      if (typeof library.resources !== 'object' || Array.isArray(library.resources)) {
+        return `Field 'resources' must be an object in ${filePath}`;
+      }
+
+      for (const [serviceId, resourceAttrs] of Object.entries(library.resources)) {
+        // Check that each service has a resource attributes object
+        if (typeof resourceAttrs !== 'object' || Array.isArray(resourceAttrs) || resourceAttrs === null) {
+          return `Resource entry '${serviceId}' must be an object in ${filePath}`;
+        }
+
+        // Check that service.name is present (required)
+        if (!resourceAttrs['service.name']) {
+          return `Resource entry '${serviceId}' is missing required attribute 'service.name' in ${filePath}`;
+        }
+
+        // Validate all attribute values are strings
+        for (const [attrName, attrValue] of Object.entries(resourceAttrs)) {
+          if (typeof attrValue !== 'string') {
+            return `Resource '${serviceId}' attribute '${attrName}' must have a string value in ${filePath}`;
+          }
+        }
+      }
+    }
+
     return undefined;
   }
 }

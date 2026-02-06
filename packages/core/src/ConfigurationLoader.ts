@@ -45,9 +45,11 @@ export class ConfigurationLoader {
    * @param baseDir - Base directory to search from
    * @returns True if .principal-views/ directory exists
    */
-  hasConfigDirectory(baseDir: string): boolean {
+  async hasConfigDirectory(baseDir: string): Promise<boolean> {
     const configPath = this.fsAdapter.join(baseDir, ConfigurationLoader.CONFIG_DIR);
-    return this.fsAdapter.exists(configPath) && this.fsAdapter.isDirectory(configPath);
+    const exists = await this.fsAdapter.exists(configPath);
+    if (!exists) return false;
+    return await this.fsAdapter.isDirectory(configPath);
   }
 
   /**
@@ -56,13 +58,13 @@ export class ConfigurationLoader {
    * @param baseDir - Base directory containing .principal-views/ folder
    * @returns Array of configuration names (without extensions)
    */
-  listConfigurations(baseDir: string): string[] {
-    if (!this.hasConfigDirectory(baseDir)) {
+  async listConfigurations(baseDir: string): Promise<string[]> {
+    if (!(await this.hasConfigDirectory(baseDir))) {
       return [];
     }
 
     const configPath = this.fsAdapter.join(baseDir, ConfigurationLoader.CONFIG_DIR);
-    const files = this.fsAdapter.readDir(configPath);
+    const files = await this.fsAdapter.readDir(configPath);
 
     return files.filter(isYamlFile).map(getConfigNameFromFilename).sort();
   }
@@ -74,8 +76,8 @@ export class ConfigurationLoader {
    * @param baseDir - Base directory containing .principal-views/ folder
    * @returns Configuration file or null if not found/invalid
    */
-  loadByName(name: string, baseDir: string): ConfigurationFile | null {
-    if (!this.hasConfigDirectory(baseDir)) {
+  async loadByName(name: string, baseDir: string): Promise<ConfigurationFile | null> {
+    if (!(await this.hasConfigDirectory(baseDir))) {
       return null;
     }
 
@@ -86,9 +88,9 @@ export class ConfigurationLoader {
       const filename = `${name}.${ext}`;
       const fullPath = this.fsAdapter.join(configPath, filename);
 
-      if (this.fsAdapter.exists(fullPath)) {
+      if (await this.fsAdapter.exists(fullPath)) {
         try {
-          const content = this.fsAdapter.readFile(fullPath);
+          const content = await this.fsAdapter.readFile(fullPath);
           const parseResult = parseYaml(content, filename);
 
           if (parseResult.success && parseResult.data) {
@@ -114,13 +116,13 @@ export class ConfigurationLoader {
    * @param baseDir - Base directory containing .principal-views/ folder
    * @returns Result containing all loaded configs and any errors
    */
-  loadAll(baseDir: string): ConfigurationLoadResult {
+  async loadAll(baseDir: string): Promise<ConfigurationLoadResult> {
     const result: ConfigurationLoadResult = {
       configs: [],
       errors: [],
     };
 
-    if (!this.hasConfigDirectory(baseDir)) {
+    if (!(await this.hasConfigDirectory(baseDir))) {
       result.errors.push({
         file: '.principal-views',
         error: 'Configuration directory .principal-views/ not found',
@@ -129,7 +131,7 @@ export class ConfigurationLoader {
     }
 
     const configPath = this.fsAdapter.join(baseDir, ConfigurationLoader.CONFIG_DIR);
-    const files = this.fsAdapter.readDir(configPath);
+    const files = await this.fsAdapter.readDir(configPath);
 
     for (const filename of files) {
       if (!isYamlFile(filename)) {
@@ -140,7 +142,7 @@ export class ConfigurationLoader {
       const name = getConfigNameFromFilename(filename);
 
       try {
-        const content = this.fsAdapter.readFile(fullPath);
+        const content = await this.fsAdapter.readFile(fullPath);
         const parseResult = parseYaml(content, filename);
 
         if (parseResult.success && parseResult.data) {

@@ -206,6 +206,14 @@ export type {
 export { LibraryLoader } from './LibraryLoader';
 export { LibraryConverter } from './utils/LibraryConverter';
 export type { CreateNodeOptions, CreateEdgeOptions } from './utils/LibraryConverter';
+export type { ResourceAttributes } from './types/library';
+
+// Export library discovery (browser-safe - uses FileSystemAdapter abstraction)
+export { LibraryDiscovery } from './discovery/LibraryDiscovery';
+export type {
+  DiscoveredLibrary,
+  LibraryDiscoveryResult,
+} from './discovery/LibraryDiscovery';
 
 // Export storyboard context types and builder (browser-safe)
 export type {

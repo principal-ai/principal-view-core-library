@@ -104,21 +104,21 @@ class MockFileSystemAdapter implements FileSystemAdapter {
 }
 
 describe('ExecutionLoader', () => {
-  test('hasExecutionDirectory returns true when __executions__/ exists', () => {
+  test('hasExecutionDirectory returns true when __executions__/ exists', async () => {
     const fsAdapter = new MockFileSystemAdapter();
     const loader = new ExecutionLoader(fsAdapter);
 
-    expect(loader.hasExecutionDirectory('/project')).toBe(true);
+    expect(await loader.hasExecutionDirectory('/project')).toBe(true);
   });
 
-  test('hasExecutionDirectory returns false when __executions__/ does not exist', () => {
+  test('hasExecutionDirectory returns false when __executions__/ does not exist', async () => {
     const fsAdapter = new MockFileSystemAdapter();
     const loader = new ExecutionLoader(fsAdapter);
 
-    expect(loader.hasExecutionDirectory('/other')).toBe(false);
+    expect(await loader.hasExecutionDirectory('/other')).toBe(false);
   });
 
-  test('listExecutions returns execution names', () => {
+  test('listExecutions returns execution names', async () => {
     const fsAdapter = new MockFileSystemAdapter();
     fsAdapter.addFile(
       '/project/__executions__/test-run.otel.json',
@@ -130,12 +130,12 @@ describe('ExecutionLoader', () => {
     );
 
     const loader = new ExecutionLoader(fsAdapter);
-    const executions = loader.listExecutions('/project');
+    const executions = await loader.listExecutions('/project');
 
     expect(executions).toEqual(['feature-test', 'test-run']);
   });
 
-  test('listExecutions ignores non-.otel.json files', () => {
+  test('listExecutions ignores non-.otel.json files', async () => {
     const fsAdapter = new MockFileSystemAdapter();
     fsAdapter.addFile(
       '/project/__executions__/test-run.otel.json',
@@ -144,12 +144,12 @@ describe('ExecutionLoader', () => {
     fsAdapter.addFile('/project/__executions__/README.md', '# README');
 
     const loader = new ExecutionLoader(fsAdapter);
-    const executions = loader.listExecutions('/project');
+    const executions = await loader.listExecutions('/project');
 
     expect(executions).toEqual(['test-run']);
   });
 
-  test('loadByName loads valid execution with flattened format', () => {
+  test('loadByName loads valid execution with flattened format', async () => {
     const fsAdapter = new MockFileSystemAdapter();
     const executionData = {
       metadata: {
@@ -176,7 +176,7 @@ describe('ExecutionLoader', () => {
     );
 
     const loader = new ExecutionLoader(fsAdapter);
-    const result = loader.loadByName('test-run', '/project');
+    const result = await loader.loadByName('test-run', '/project');
 
     expect(result).not.toBeNull();
     expect(result?.name).toBe('test-run');
@@ -184,7 +184,7 @@ describe('ExecutionLoader', () => {
     expect(result?.data.spans[0].name).toBe('test-span');
   });
 
-  test('loadByName loads and converts OTLP format', () => {
+  test('loadByName loads and converts OTLP format', async () => {
     const fsAdapter = new MockFileSystemAdapter();
     const otlpData: OtlpData = {
       resourceSpans: [
@@ -233,7 +233,7 @@ describe('ExecutionLoader', () => {
     );
 
     const loader = new ExecutionLoader(fsAdapter);
-    const result = loader.loadByName('otlp-test', '/project');
+    const result = await loader.loadByName('otlp-test', '/project');
 
     expect(result).not.toBeNull();
     expect(result?.name).toBe('otlp-test');
@@ -243,16 +243,16 @@ describe('ExecutionLoader', () => {
     expect(result?.data.metadata?.serviceName).toBe('test-service');
   });
 
-  test('loadByName returns null for non-existent execution', () => {
+  test('loadByName returns null for non-existent execution', async () => {
     const fsAdapter = new MockFileSystemAdapter();
     const loader = new ExecutionLoader(fsAdapter);
 
-    const result = loader.loadByName('non-existent', '/project');
+    const result = await loader.loadByName('non-existent', '/project');
 
     expect(result).toBeNull();
   });
 
-  test('loadByName returns null for invalid JSON', () => {
+  test('loadByName returns null for invalid JSON', async () => {
     const fsAdapter = new MockFileSystemAdapter();
     fsAdapter.addFile(
       '/project/__executions__/invalid.otel.json',
@@ -260,12 +260,12 @@ describe('ExecutionLoader', () => {
     );
 
     const loader = new ExecutionLoader(fsAdapter);
-    const result = loader.loadByName('invalid', '/project');
+    const result = await loader.loadByName('invalid', '/project');
 
     expect(result).toBeNull();
   });
 
-  test('loadAll loads all valid executions', () => {
+  test('loadAll loads all valid executions', async () => {
     const fsAdapter = new MockFileSystemAdapter();
     fsAdapter.addFile(
       '/project/__executions__/test-1.otel.json',
@@ -277,7 +277,7 @@ describe('ExecutionLoader', () => {
     );
 
     const loader = new ExecutionLoader(fsAdapter);
-    const result = loader.loadAll('/project');
+    const result = await loader.loadAll('/project');
 
     expect(result.executions).toHaveLength(2);
     expect(result.errors).toHaveLength(0);
@@ -285,7 +285,7 @@ describe('ExecutionLoader', () => {
     expect(result.executions[1].name).toBe('test-2');
   });
 
-  test('loadAll reports errors for invalid files', () => {
+  test('loadAll reports errors for invalid files', async () => {
     const fsAdapter = new MockFileSystemAdapter();
     fsAdapter.addFile(
       '/project/__executions__/valid.otel.json',
@@ -297,25 +297,25 @@ describe('ExecutionLoader', () => {
     );
 
     const loader = new ExecutionLoader(fsAdapter);
-    const result = loader.loadAll('/project');
+    const result = await loader.loadAll('/project');
 
     expect(result.executions).toHaveLength(1);
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0].file).toBe('invalid.otel.json');
   });
 
-  test('loadAll returns error when __executions__/ does not exist', () => {
+  test('loadAll returns error when __executions__/ does not exist', async () => {
     const fsAdapter = new MockFileSystemAdapter();
     const loader = new ExecutionLoader(fsAdapter);
 
-    const result = loader.loadAll('/non-existent');
+    const result = await loader.loadAll('/non-existent');
 
     expect(result.executions).toHaveLength(0);
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0].file).toBe('__executions__');
   });
 
-  test('getExecutionDirectoryPath returns correct path', () => {
+  test('getExecutionDirectoryPath returns correct path', async () => {
     const fsAdapter = new MockFileSystemAdapter();
     const loader = new ExecutionLoader(fsAdapter);
 
@@ -324,7 +324,7 @@ describe('ExecutionLoader', () => {
     expect(path).toBe('/project/__executions__');
   });
 
-  test('findExecutionDirectories finds nested __executions__/ folders', () => {
+  test('findExecutionDirectories finds nested __executions__/ folders', async () => {
     const fsAdapter = new MockFileSystemAdapter();
     fsAdapter.addDirectory('/project/packages');
     fsAdapter.addDirectory('/project/packages/core');
@@ -333,7 +333,7 @@ describe('ExecutionLoader', () => {
     fsAdapter.addDirectory('/project/packages/cli/__executions__');
 
     const loader = new ExecutionLoader(fsAdapter);
-    const dirs = loader.findExecutionDirectories('/project');
+    const dirs = await loader.findExecutionDirectories('/project');
 
     expect(dirs).toHaveLength(3); // root + core + cli
     expect(dirs).toContain('/project/__executions__');
@@ -341,7 +341,7 @@ describe('ExecutionLoader', () => {
     expect(dirs).toContain('/project/packages/cli/__executions__');
   });
 
-  test('loadAllRecursive loads executions from multiple directories', () => {
+  test('loadAllRecursive loads executions from multiple directories', async () => {
     const fsAdapter = new MockFileSystemAdapter();
 
     // Root executions
@@ -360,7 +360,7 @@ describe('ExecutionLoader', () => {
     );
 
     const loader = new ExecutionLoader(fsAdapter);
-    const result = loader.loadAllRecursive('/project');
+    const result = await loader.loadAllRecursive('/project');
 
     expect(result.executions).toHaveLength(2);
     expect(result.executions.map((e) => e.name)).toContain('root-test');
@@ -369,7 +369,7 @@ describe('ExecutionLoader', () => {
 });
 
 describe('createExecutionLoader', () => {
-  test('creates ExecutionLoader instance', () => {
+  test('creates ExecutionLoader instance', async () => {
     const fsAdapter = new MockFileSystemAdapter();
     const loader = createExecutionLoader(fsAdapter);
 
