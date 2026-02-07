@@ -1796,7 +1796,7 @@ export function createValidateCommand(): Command {
           ? resolve(options.repository)
           : process.cwd();
 
-        // If specific files are provided, fall back to legacy glob-based validation
+        // If specific files are provided, validate each based on its type
         if (files.length > 0) {
           const matchedFiles = await globby(files, {
             expandDirectories: false,
@@ -1806,16 +1806,46 @@ export function createValidateCommand(): Command {
             if (options.json) {
               console.log(JSON.stringify({ files: [], summary: { total: 0, valid: 0, invalid: 0 } }));
             } else {
-              console.log(chalk.yellow('No .canvas files found matching the specified patterns.'));
+              console.log(chalk.yellow('No files found matching the specified patterns.'));
               console.log(chalk.dim(`Patterns searched: ${files.join(', ')}`));
             }
             return;
           }
 
           const library = loadLibrary(resolve(repositoryPath, '.principal-views'));
-          const results: ValidationResult[] = matchedFiles.map((f) =>
-            validateFile(f, library, repositoryPath)
-          );
+
+          // Validate each file based on its type
+          const results: ValidationResult[] = [];
+          for (const file of matchedFiles) {
+            const fileType = determineFileType(file);
+            const absolutePath = resolve(file);
+
+            if (fileType === 'canvas') {
+              results.push(validateFile(file, library, repositoryPath));
+            } else if (fileType === 'workflow') {
+              const result = await validateWorkflow(
+                absolutePath,
+                undefined, // allWorkflowEvents not available in single-file mode
+                repositoryPath,
+                undefined, // executionFiles not available in single-file mode
+                undefined  // eventRegistry not available in single-file mode
+              );
+              results.push(result);
+            } else if (fileType === 'testTrace') {
+              results.push(validateExecution(absolutePath, repositoryPath));
+            } else if (fileType === 'library') {
+              if (library) {
+                const libraryIssues = validateLibrary(library);
+                const libraryHasErrors = libraryIssues.some((i) => i.type === 'error');
+                results.push({
+                  file: relative(repositoryPath, library.path),
+                  fileType: 'library',
+                  isValid: !libraryHasErrors,
+                  issues: libraryIssues,
+                });
+              }
+            }
+          }
 
           return outputResults(results, null, options);
         }
