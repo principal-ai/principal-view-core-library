@@ -248,6 +248,34 @@ const STANDARD_CANVAS_TYPES = ['text', 'group', 'file', 'link'] as const;
 // ============================================================================
 
 /**
+ * Common Lucide icons that are known to work
+ * This is not exhaustive - see https://lucide.dev/icons/ for the full list
+ */
+const KNOWN_LUCIDE_ICONS = new Set([
+  // Common UI
+  'Server', 'Database', 'Cloud', 'Shield', 'Lock', 'Key',
+  'Zap', 'Cpu', 'HardDrive', 'Network', 'Wifi', 'WifiOff',
+  'User', 'Users', 'UserCheck', 'UserPlus', 'UserMinus',
+  'File', 'Folder', 'Package', 'Box', 'Archive',
+  'GitBranch', 'GitCommit', 'GitMerge', 'GitPullRequest', 'Github',
+  'Circle', 'Square', 'Triangle', 'Pentagon', 'Hexagon', 'Octagon',
+  'Settings', 'Wrench', 'Tool', 'Hammer', 'Cog',
+  'Monitor', 'Smartphone', 'Tablet', 'Laptop',
+  'Mail', 'Phone', 'MessageSquare', 'MessageCircle',
+  'Calendar', 'Clock', 'Timer', 'Watch',
+  'Check', 'X', 'AlertCircle', 'AlertTriangle', 'Info',
+  'Plus', 'Minus', 'Edit', 'Trash', 'Copy',
+  'Search', 'Filter', 'Download', 'Upload',
+  'Home', 'Star', 'Heart', 'Bookmark',
+  'ChevronRight', 'ChevronLeft', 'ChevronUp', 'ChevronDown',
+  'ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown',
+  'Activity', 'BarChart', 'PieChart', 'TrendingUp', 'TrendingDown',
+  'FileText', 'FileCode', 'FileJson', 'Image', 'Video',
+  'Link', 'ExternalLink', 'Unlink',
+  'Eye', 'EyeOff', 'Play', 'Pause', 'Stop', 'RefreshCw',
+]);
+
+/**
  * Convert kebab-case to PascalCase
  * e.g., "file-text" -> "FileText", "alert-circle" -> "AlertCircle"
  */
@@ -281,7 +309,7 @@ function validateIconName(iconValue: unknown, path: string, issues: ValidationIs
       type: 'error',
       message: `Invalid icon name "${iconValue}" - icons must be in PascalCase`,
       path,
-      suggestion: `Use "${suggested}" instead of "${iconValue}"`,
+      suggestion: `Use "${suggested}" instead of "${iconValue}". See https://lucide.dev/icons/ for valid icon names.`,
     });
     return;
   }
@@ -293,7 +321,18 @@ function validateIconName(iconValue: unknown, path: string, issues: ValidationIs
       type: 'error',
       message: `Invalid icon name "${iconValue}" - icons must start with uppercase`,
       path,
-      suggestion: `Use "${suggested}" instead of "${iconValue}"`,
+      suggestion: `Use "${suggested}" instead of "${iconValue}". See https://lucide.dev/icons/ for valid icon names.`,
+    });
+    return;
+  }
+
+  // Warn if icon is not in our known list (but might still be valid)
+  if (!KNOWN_LUCIDE_ICONS.has(iconValue)) {
+    issues.push({
+      type: 'warning',
+      message: `Icon "${iconValue}" is not in the list of commonly used Lucide icons`,
+      path,
+      suggestion: `Verify that "${iconValue}" exists at https://lucide.dev/icons/. If it does, you can ignore this warning. Common icons: Server, Database, User, File, Settings, etc.`,
     });
   }
 }
@@ -1334,15 +1373,14 @@ function validateCanvas(
     });
   }
 
-  // Validate markdown field for .otel.canvas files
-  if (isOtelCanvas) {
-    const pv = c.pv as Record<string, unknown> | undefined;
-    if (!pv || typeof pv.markdown !== 'string' || !pv.markdown) {
-      issues.push({
-        type: 'error',
-        message: 'OTEL canvas files must have a "pv.markdown" field pointing to documentation',
-        path: 'pv.markdown',
-        suggestion: `Add: "markdown": ".principal-views/graph-name.md"
+  // Validate markdown field for all canvas files
+  const pv = c.pv as Record<string, unknown> | undefined;
+  if (!pv || typeof pv.markdown !== 'string' || !pv.markdown) {
+    issues.push({
+      type: 'error',
+      message: 'Canvas files must have a "pv.markdown" field pointing to documentation',
+      path: 'pv.markdown',
+      suggestion: `Add: "markdown": ".principal-views/graph-name.md"
 
 The markdown file should explain the FEATURE, not the canvas itself.
 
@@ -1352,7 +1390,7 @@ Good: "Task management lets users create, edit, and archive tasks.
 Bad:  "This canvas shows telemetry events. The task.create.started
        event is emitted when..."
 
-The canvas shows HOW we instrument it. The markdown explains WHAT the feature does and WHY.
+The canvas shows HOW ${isOtelCanvas ? 'we instrument it' : 'it works'}. The markdown explains WHAT the feature does and WHY.
 
 Include:
 - What problem does this feature solve?
@@ -1362,20 +1400,20 @@ Include:
 - Error scenarios and recovery
 
 The canvas is visual documentation. The markdown supplements it with context.`,
-      });
-    } else {
-      // Validate that the markdown file exists (if repository path is provided)
-      if (repositoryPath) {
-        const markdownPath = resolve(repositoryPath, pv.markdown as string);
-        if (!existsSync(markdownPath)) {
-          issues.push({
-            type: 'error',
-            message: `Referenced markdown file does not exist: ${pv.markdown}`,
-            path: 'pv.markdown',
-            suggestion: `Create the markdown file at: ${markdownPath}
+    });
+  } else {
+    // Validate that the markdown file exists (if repository path is provided)
+    if (repositoryPath) {
+      const markdownPath = resolve(repositoryPath, pv.markdown as string);
+      if (!existsSync(markdownPath)) {
+        issues.push({
+          type: 'error',
+          message: `Referenced markdown file does not exist: ${pv.markdown}`,
+          path: 'pv.markdown',
+          suggestion: `Create the markdown file at: ${markdownPath}
 
 The markdown should explain the FEATURE (what it does, why it exists), not describe the canvas itself.
-The canvas shows HOW we instrument it. The markdown explains WHAT the feature does and WHY.
+The canvas shows HOW ${isOtelCanvas ? 'we instrument it' : 'it works'}. The markdown explains WHAT the feature does and WHY.
 
 Example structure:
 - What problem does this feature solve?
@@ -1383,8 +1421,7 @@ Example structure:
 - What design choices were made and why?
 - Common workflow patterns
 - Error scenarios and recovery`,
-          });
-        }
+        });
       }
     }
   }

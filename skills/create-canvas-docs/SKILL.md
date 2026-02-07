@@ -213,7 +213,7 @@ Key fields:
 - `version` - Schema version (use "1.0")
 - `name` - Display name for the canvas
 - `description` - Brief description
-- `markdown` - Path to associated markdown documentation (relative to repo root)
+- `markdown` - **REQUIRED**: Path to associated markdown documentation (relative to repo root)
 - `display.layout` - Layout algorithm: `"manual"` (use canvas positions), `"hierarchical"`, `"force-directed"`, `"circular"`
 
 ### Node Extensions
@@ -231,7 +231,7 @@ Key fields:
     "nodeType": "service",
     "name": "API Gateway",
     "description": "Handles incoming HTTP requests",
-    "icon": "server",
+    "icon": "Server",
     "shape": "rectangle",
     "fill": "#22c55e",
     "stroke": "#16a34a"
@@ -239,12 +239,16 @@ Key fields:
 }
 ```
 
-Available icons (from Lucide):
-- `server`, `database`, `cloud`, `shield`, `lock`, `key`
-- `zap`, `cpu`, `hard-drive`, `network`
-- `user`, `users`, `user-check`
-- `file`, `folder`, `package`
-- `git-branch`, `git-commit`, `git-merge`
+Available icons (from Lucide, PascalCase):
+- `Server`, `Database`, `Cloud`, `Shield`, `Lock`, `Key`
+- `Zap`, `Cpu`, `HardDrive`, `Network`
+- `User`, `Users`, `UserCheck`
+- `File`, `Folder`, `Package`
+- `GitBranch`, `GitCommit`, `GitMerge`
+- `Circle`, `Square`, `Triangle`, `Pentagon`, `Hexagon`
+- `Settings`, `Wrench`, `Tool`, `Hammer`
+
+See [Lucide Icons](https://lucide.dev/icons/) for the full list. Use PascalCase names (e.g., `HardDrive` not `hard-drive`).
 
 Available shapes:
 - `rectangle` - Standard box
@@ -304,7 +308,7 @@ Animation types:
       "color": "#06b6d4",
       "pv": {
         "nodeType": "client",
-        "icon": "monitor",
+        "icon": "Monitor",
         "shape": "rectangle"
       }
     },
@@ -319,7 +323,7 @@ Animation types:
       "color": "#22c55e",
       "pv": {
         "nodeType": "service",
-        "icon": "server",
+        "icon": "Server",
         "shape": "rectangle"
       }
     },
@@ -334,7 +338,7 @@ Animation types:
       "color": "#8b5cf6",
       "pv": {
         "nodeType": "database",
-        "icon": "database",
+        "icon": "Database",
         "shape": "rectangle"
       }
     }
@@ -482,6 +486,7 @@ Animation types:
     "version": "1.0",
     "name": "Checkout Flow",
     "description": "User checkout process flow",
+    "markdown": ".principal-views/checkout-flow.md",
     "display": {
       "layout": "manual"
     }
@@ -567,6 +572,7 @@ Animation types:
     "version": "1.0",
     "name": "Component Structure",
     "description": "React component hierarchy",
+    "markdown": "packages/react/.principal-views/component-structure.md",
     "display": {
       "layout": "hierarchical"
     }
@@ -576,35 +582,53 @@ Animation types:
 
 ## Associated Markdown Documentation
 
-It's recommended to create a markdown file alongside your canvas for detailed documentation:
+**REQUIRED:** Every canvas file must have an associated markdown file that explains the FEATURE, not the canvas itself.
 
 **File:** `.principal-views/system-architecture.md`
 
 ```markdown
 # System Architecture
 
-This diagram shows the high-level architecture of our system.
+## What Problem Does This Solve?
 
-## Components
+Our system needs to handle thousands of concurrent users while maintaining
+sub-second response times. This architecture separates concerns between
+presentation, business logic, and data storage to enable independent scaling.
 
-### Web Client
-- Built with React 18
-- Hosted on Vercel
-- Communicates via REST API
+## What Operations Are Available?
 
-### API Gateway
-- Node.js + Express
-- Handles authentication
-- Routes to microservices
+Users can:
+- Browse and search product catalog
+- Manage shopping cart
+- Complete purchases with payment processing
+- Track order status
 
-### Database
-- PostgreSQL 15
-- Primary data store
-- Replication enabled
+## Design Choices and Why
 
-## Security
+### Why React SPA?
+We chose a single-page application to provide instant navigation and
+rich interactions without page reloads. This improves user experience
+for our catalog browsing workflow.
 
-All communication uses TLS 1.3...
+### Why API Gateway Pattern?
+The gateway centralizes authentication, rate limiting, and routing.
+This lets us add new microservices without changing client code.
+
+### Why PostgreSQL?
+We need ACID transactions for payment processing and complex queries
+for product search. PostgreSQL provides both with excellent performance.
+
+## Common Workflow Patterns
+
+1. **Product Discovery**: User searches → API queries database → Results cached
+2. **Checkout Flow**: Cart validation → Payment processing → Order creation
+3. **Order Tracking**: Status updates via webhooks → Real-time notifications
+
+## Error Scenarios and Recovery
+
+- **Payment Failure**: Transaction rolled back, user notified, cart preserved
+- **Database Unavailable**: API returns cached data, queues writes
+- **Service Timeout**: Circuit breaker trips, fallback to degraded mode
 ```
 
 Reference the markdown file in the canvas:
@@ -617,15 +641,31 @@ Reference the markdown file in the canvas:
 }
 ```
 
+**Key Principle:** The canvas shows HOW we build it. The markdown explains WHAT it does and WHY.
+
+**Good markdown:**
+- "Task management lets users create, edit, and archive tasks. Tasks move through a lifecycle from draft → active → archive..."
+
+**Bad markdown:**
+- "This canvas shows components. The API Gateway node connects to the Database node..."
+
+The markdown should answer:
+- What problem does this feature solve?
+- What operations are available?
+- What design choices were made and why?
+- Common workflow patterns
+- Error scenarios and recovery
+
 ## Workflow Summary
 
 1. **Identify the documentation need** - What are you trying to visualize?
-2. **Create the canvas file** - Place in `.principal-views/filename.canvas`
-3. **Design the layout** - Add nodes and edges following JSON Canvas spec
-4. **Add PV extensions (optional)** - Enhance with icons, shapes, animations
-5. **Create markdown docs (optional)** - Add detailed documentation
-6. **Validate the canvas** - Run `pv validate` to check structure and syntax
-7. **Test rendering** - View in React component or Obsidian
+2. **Create the markdown file first** - Write WHAT the feature does and WHY (see markdown guidance above)
+3. **Create the canvas file** - Place in `.principal-views/filename.canvas`
+4. **Design the layout** - Add nodes and edges following JSON Canvas spec
+5. **Add PV extensions (optional)** - Enhance with icons, shapes, animations
+6. **Reference the markdown** - Add `pv.markdown` field pointing to your markdown file
+7. **Validate the canvas** - Run `pv validate` to check structure, syntax, and markdown
+8. **Test rendering** - View in React component or Obsidian
 
 ## CLI Commands
 
@@ -685,10 +725,11 @@ The Principal View extensions (`pv` field) are ignored by Obsidian, allowing rou
 - Blue (#06b6d4) - Info, secondary
 - Purple (#8b5cf6) - Special, tertiary
 
-### 5. Add Documentation
-- Always create an associated `.md` file
+### 5. Add Documentation (REQUIRED)
+- **Always create an associated `.md` file** - This is mandatory, not optional
 - Reference it in `pv.markdown`
-- Explain what the diagram shows
+- Explain WHAT the feature does and WHY, not HOW the canvas is structured
+- Focus on: problem solved, operations available, design choices, workflows, error handling
 
 ### 6. Maintain Flat Structure
 ```
