@@ -1915,7 +1915,8 @@ export function createValidateCommand(): Command {
           const workflow = loadWorkflowTemplate(absolutePath);
           if (!workflow || !workflow.canvas) continue;
 
-          const canvasPath = resolve(dirname(absolutePath), workflow.canvas);
+          // Canvas paths are always relative to repository root
+          const canvasPath = resolve(repositoryPath, workflow.canvas);
           const canvasKey = relative(repositoryPath, canvasPath);
 
           // Collect events from this workflow
