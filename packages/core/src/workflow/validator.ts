@@ -133,6 +133,7 @@ export class WorkflowValidator {
     if (context.canvas) {
       violations.push(...this.checkEventReferences(context));
       violations.push(...this.checkAttributeReferences(context));
+      violations.push(...this.checkEventConnectivity(context));
     }
 
     violations.push(...this.checkTemplateSyntax(context));
@@ -1135,6 +1136,109 @@ export class WorkflowValidator {
     }
 
     return violations;
+  }
+
+  /**
+   * Check if all events in scenario templates are connected through canvas edges
+   */
+  private checkEventConnectivity(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+
+    if (!context.canvas || !context.canvas.edges || context.canvas.edges.length === 0) {
+      return violations; // Can't validate without canvas or edges
+    }
+
+    const { workflow, canvas } = context;
+
+    // Build event name → node ID mapping
+    const eventToNodeId = new Map<string, string>();
+    for (const node of canvas.nodes || []) {
+      if (node.pv?.event?.name) {
+        eventToNodeId.set(node.pv.event.name, node.id);
+      }
+    }
+
+    // Build adjacency graph from edges
+    const adjacency = new Map<string, Set<string>>();
+    for (const edge of canvas.edges!) {
+      if (!adjacency.has(edge.fromNode)) {
+        adjacency.set(edge.fromNode, new Set());
+      }
+      if (!adjacency.has(edge.toNode)) {
+        adjacency.set(edge.toNode, new Set());
+      }
+      adjacency.get(edge.fromNode)!.add(edge.toNode);
+      adjacency.get(edge.toNode)!.add(edge.fromNode); // Treat as undirected for connectivity
+    }
+
+    // Check each scenario
+    for (let i = 0; i < workflow.scenarios.length; i++) {
+      const scenario = workflow.scenarios[i];
+
+      if (!scenario.template?.events) {
+        continue;
+      }
+
+      const eventNames = Object.keys(scenario.template.events);
+      const nodeIds = eventNames
+        .map(name => eventToNodeId.get(name))
+        .filter((id): id is string => id !== undefined);
+
+      if (nodeIds.length < 2) {
+        continue; // Need at least 2 nodes to check connectivity
+      }
+
+      // Check if all nodes are in the same connected component
+      const disconnected = this.findDisconnectedNodes(nodeIds, adjacency);
+
+      if (disconnected.length > 0) {
+        violations.push({
+          ruleId: 'workflow-event-connectivity',
+          severity: 'error',
+          file: context.workflowPath,
+          path: `scenarios[${i}].template.events`,
+          message: `Scenario "${scenario.id}" has ${disconnected.length} disconnected event(s)`,
+          impact: 'Events will appear as isolated nodes in workflow visualizations, making it unclear how execution flows between them',
+          suggestion: `Add intermediate events to connect the flow. Disconnected events: ${disconnected.map(id => {
+            const node = canvas.nodes?.find(n => n.id === id);
+            return node?.pv?.event?.name || id;
+          }).join(', ')}`,
+          fixable: false,
+        });
+      }
+    }
+
+    return violations;
+  }
+
+  /**
+   * Find nodes that are not connected to the main component
+   */
+  private findDisconnectedNodes(
+    nodeIds: string[],
+    adjacency: Map<string, Set<string>>
+  ): string[] {
+    if (nodeIds.length === 0) return [];
+
+    // BFS from first node - traverse ALL nodes to find connectivity
+    const visited = new Set<string>();
+    const queue = [nodeIds[0]];
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (visited.has(current)) continue;
+      visited.add(current);
+
+      const neighbors = adjacency.get(current) || new Set();
+      for (const neighbor of neighbors) {
+        if (!visited.has(neighbor)) {
+          queue.push(neighbor);
+        }
+      }
+    }
+
+    // Return nodes from nodeIds that were not visited (disconnected)
+    return nodeIds.filter(id => !visited.has(id));
   }
 
   /**

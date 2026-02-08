@@ -1225,4 +1225,258 @@ describe('WorkflowValidator', () => {
       expect(eventViolation!.message).toContain('not defined in canvas');
     });
   });
+
+  // ============================================================================
+  // Event Connectivity Validation Tests
+  // ============================================================================
+
+  describe('checkEventConnectivity', () => {
+    it('should pass when all events are connected', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          condition: { default: true },
+          template: {
+            events: {
+              'event.started': 'Started',
+              'event.processing': 'Processing',
+              'event.complete': 'Complete'
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          { id: 'n1', type: 'text', x: 0, y: 0, width: 100, height: 50, pv: { event: { name: 'event.started', attributes: {} } } },
+          { id: 'n2', type: 'text', x: 150, y: 0, width: 100, height: 50, pv: { event: { name: 'event.processing', attributes: {} } } },
+          { id: 'n3', type: 'text', x: 300, y: 0, width: 100, height: 50, pv: { event: { name: 'event.complete', attributes: {} } } }
+        ],
+        edges: [
+          { id: 'e1', fromNode: 'n1', toNode: 'n2' },
+          { id: 'e2', fromNode: 'n2', toNode: 'n3' }
+        ],
+        pv: {
+          version: '1.0.0',
+          name: 'Test Canvas',
+          markdown: 'test.md'
+        }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const connectivityViolations = result.violations.filter(v => v.ruleId === 'workflow-event-connectivity');
+      expect(connectivityViolations).toHaveLength(0);
+    });
+
+    it('should error when events are disconnected', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          condition: { default: true },
+          template: {
+            events: {
+              'event.started': 'Started',
+              'event.complete': 'Complete',
+              'event.error': 'Error' // Disconnected - no path from started/complete to error
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          { id: 'n1', type: 'text', x: 0, y: 0, width: 100, height: 50, pv: { event: { name: 'event.started', attributes: {} } } },
+          { id: 'n2', type: 'text', x: 150, y: 0, width: 100, height: 50, pv: { event: { name: 'event.complete', attributes: {} } } },
+          { id: 'n3', type: 'text', x: 0, y: 100, width: 100, height: 50, pv: { event: { name: 'event.error', attributes: {} } } }
+        ],
+        edges: [
+          { id: 'e1', fromNode: 'n1', toNode: 'n2' }
+          // n3 is isolated - no edges connecting it to n1 or n2
+        ],
+        pv: {
+          version: '1.0.0',
+          name: 'Test Canvas',
+          markdown: 'test.md'
+        }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const connectivityViolations = result.violations.filter(v => v.ruleId === 'workflow-event-connectivity');
+      expect(connectivityViolations).toHaveLength(1);
+      expect(connectivityViolations[0].severity).toBe('error');
+      expect(connectivityViolations[0].message).toContain('disconnected');
+    });
+
+    it('should skip check when canvas has no edges', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          condition: { default: true },
+          template: {
+            events: {
+              'event.started': 'Started',
+              'event.complete': 'Complete'
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          { id: 'n1', type: 'text', x: 0, y: 0, width: 100, height: 50, pv: { event: { name: 'event.started', attributes: {} } } },
+          { id: 'n2', type: 'text', x: 150, y: 0, width: 100, height: 50, pv: { event: { name: 'event.complete', attributes: {} } } }
+        ],
+        edges: [], // No edges defined
+        pv: {
+          version: '1.0.0',
+          name: 'Test Canvas',
+          markdown: 'test.md'
+        }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      // Should not produce connectivity violations if canvas has no edges
+      const connectivityViolations = result.violations.filter(v => v.ruleId === 'workflow-event-connectivity');
+      expect(connectivityViolations).toHaveLength(0);
+    });
+
+    it('should skip check when scenario has less than 2 events', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          condition: { default: true },
+          template: {
+            events: {
+              'event.started': 'Started'
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          { id: 'n1', type: 'text', x: 0, y: 0, width: 100, height: 50, pv: { event: { name: 'event.started', attributes: {} } } }
+        ],
+        edges: [],
+        pv: {
+          version: '1.0.0',
+          name: 'Test Canvas',
+          markdown: 'test.md'
+        }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const connectivityViolations = result.violations.filter(v => v.ruleId === 'workflow-event-connectivity');
+      expect(connectivityViolations).toHaveLength(0);
+    });
+
+    it('should handle events connected through intermediate nodes', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          condition: { default: true },
+          template: {
+            events: {
+              'event.start': 'Start',
+              'event.end': 'End'
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          { id: 'n1', type: 'text', x: 0, y: 0, width: 100, height: 50, pv: { event: { name: 'event.start', attributes: {} } } },
+          { id: 'n2', type: 'text', x: 150, y: 0, width: 100, height: 50, pv: { event: { name: 'event.middle1', attributes: {} } } },
+          { id: 'n3', type: 'text', x: 300, y: 0, width: 100, height: 50, pv: { event: { name: 'event.middle2', attributes: {} } } },
+          { id: 'n4', type: 'text', x: 450, y: 0, width: 100, height: 50, pv: { event: { name: 'event.end', attributes: {} } } }
+        ],
+        edges: [
+          { id: 'e1', fromNode: 'n1', toNode: 'n2' },
+          { id: 'e2', fromNode: 'n2', toNode: 'n3' },
+          { id: 'e3', fromNode: 'n3', toNode: 'n4' }
+        ],
+        pv: {
+          version: '1.0.0',
+          name: 'Test Canvas',
+          markdown: 'test.md'
+        }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const connectivityViolations = result.violations.filter(v => v.ruleId === 'workflow-event-connectivity');
+      // Should pass because events are connected through intermediate nodes
+      expect(connectivityViolations).toHaveLength(0);
+    });
+  });
 });
