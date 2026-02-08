@@ -114,8 +114,10 @@ export function createValidateCommand(): Command {
           // Directory not readable, skip co-located file discovery
         }
 
-        // Build EventRegistry for cross-canvas event lookup
+        // Build EventRegistry and discover workflows for cross-canvas event lookup
         let eventRegistry: EventRegistry | undefined;
+        let allWorkflowEvents: Set<string> | undefined;
+
         try {
           // Load library
           let library: ComponentLibrary | undefined;
@@ -129,7 +131,7 @@ export function createValidateCommand(): Command {
             }
           }
 
-          // Discover all canvases in the project
+          // Discover all canvases and workflows in the project
           const service = new FilesystemService(new NodeFileSystemAdapter());
           const fileTree = await service.buildFileSystemTreeFromPath(baseDir);
           const fileReader = async (path: string) => readFile(resolve(baseDir, path), 'utf-8');
@@ -139,7 +141,7 @@ export function createValidateCommand(): Command {
             includeContent: true,
           });
 
-          // Parse all canvases
+          // Parse all canvases for EventRegistry
           const parsedCanvases = new Map<string, ExtendedCanvas>();
           for (const discoveredCanvas of discoveryResult.canvases) {
             if (discoveredCanvas.type === 'otel') {
@@ -162,8 +164,55 @@ export function createValidateCommand(): Command {
             parsedCanvases,
             library ? libraryPath : undefined
           );
+
+          // Find all workflows for the same canvas (multi-workflow pattern support)
+          if (workflow.canvas) {
+            // Find the storyboard(s) that use this canvas
+            const storyboardsForCanvas = discoveryResult.storyboards.filter(
+              sb => sb.canvas.path === workflow.canvas
+            );
+
+            // If multiple workflows reference this canvas, collect all their events
+            const allWorkflows = storyboardsForCanvas.flatMap(sb => sb.workflows);
+
+            if (allWorkflows.length > 1) {
+              allWorkflowEvents = new Set<string>();
+
+              for (const discoveredWorkflow of allWorkflows) {
+                // Read workflow content
+                try {
+                  const workflowFullPath = resolve(baseDir, discoveredWorkflow.path);
+                  const workflowContent = readFileSync(workflowFullPath, 'utf-8');
+                  const wf = JSON.parse(workflowContent);
+
+                  if (wf.scenarios) {
+                    for (const scenario of wf.scenarios) {
+                      // From condition.requires
+                      if (scenario.condition?.requires) {
+                        for (const eventPattern of scenario.condition.requires) {
+                          if (!eventPattern.includes('*')) {
+                            allWorkflowEvents.add(eventPattern);
+                          }
+                        }
+                      }
+                      // From template.events
+                      if (scenario.template?.events) {
+                        for (const eventName of Object.keys(scenario.template.events)) {
+                          if (!eventName.includes('*')) {
+                            allWorkflowEvents.add(eventName);
+                          }
+                        }
+                      }
+                    }
+                  }
+                } catch {
+                  // Skip workflows that fail to parse
+                }
+              }
+            }
+          }
         } catch (error) {
-          // EventRegistry building failed - continue without it
+          // Discovery failed - continue without it
           // Validation will still work, just without cross-canvas suggestions
         }
 
@@ -180,6 +229,7 @@ export function createValidateCommand(): Command {
           executionData,
           executionFiles,
           eventRegistry,
+          allWorkflowEvents,
         };
 
         const result = await validator.validate(context);
