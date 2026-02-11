@@ -161,7 +161,11 @@ export type {
 
 // Export telemetry coverage analysis (browser-safe - uses FileTree abstraction)
 export { analyzeCoverage } from './telemetry/coverage';
-export type { CoverageMetrics, NodeCoverage } from './telemetry/coverage';
+export type {
+  CoverageMetrics,
+  FileInstrumentation,
+  PackageCoverageMetrics,
+} from './telemetry/coverage';
 
 // Export path-based processing (browser-safe - Milestone 1 & 2)
 export { PathBasedEventProcessor } from './PathBasedEventProcessor';

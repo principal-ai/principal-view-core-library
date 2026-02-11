@@ -47,7 +47,11 @@ export type { ValidationResult } from './telemetry/event-validator';
 
 // Export telemetry coverage analysis (re-exported from main for convenience)
 export { analyzeCoverage } from './telemetry/coverage';
-export type { CoverageMetrics, NodeCoverage } from './telemetry/coverage';
+export type {
+  CoverageMetrics,
+  FileInstrumentation,
+  PackageCoverageMetrics,
+} from './telemetry/coverage';
 
 // Export code generation (Node.js only - file system operations)
 export { generateTypes, TypeScriptGenerator, generatorRegistry } from './codegen/type-generator';

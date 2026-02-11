@@ -346,8 +346,18 @@ export interface PVOtelExtension {
    */
   spanMatch?: PVOtelSpanMatch;
 
+  /**
+   * Files where this event is instrumented
+   *
+   * Specifies the exact file paths where this OTEL event should be emitted.
+   * Used by coverage tools to validate that events are properly instrumented.
+   *
+   * @example ["src/app/api/auth/callback/route.ts"]
+   */
+  files?: string[];
+
   /** Allow additional properties */
-  [key: string]: JsonValue | PVOtelResourceMatch | PVOtelSpanMatch | undefined;
+  [key: string]: JsonValue | PVOtelResourceMatch | PVOtelSpanMatch | string[] | undefined;
 }
 
 /**
