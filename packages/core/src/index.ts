@@ -126,6 +126,16 @@ export {
   isWarnSeverity,
 } from './types/otel';
 
+// Export version registry types and implementation
+export type {
+  VersionIdentifier,
+  VersionSnapshot,
+  RegisterVersionRequest,
+  GetVersionResponse,
+  VersionRegistry,
+} from './types/version-registry';
+export { InMemoryVersionRegistry, createInMemoryVersionRegistry } from './registry/VersionRegistry';
+
 // Export trace aggregation utilities
 export { groupSpansByTrace } from './utils/traceAggregation';
 
