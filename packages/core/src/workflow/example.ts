@@ -15,6 +15,7 @@ function exampleSuccess() {
     canvas: 'example.otel.canvas',
     name: 'Example Execution',
     description: 'Simple execution workflow',
+    spanPattern: 'example.execution',
     mode: 'span-tree',
     scenarioSelection: 'first-match',
     showLogsPerSpan: true,
@@ -87,6 +88,7 @@ function exampleWithViolations() {
     canvas: 'validation.otel.canvas',
     name: 'Validation Execution',
     description: 'Validation with multiple scenarios',
+    spanPattern: 'validation.run',
     mode: 'span-tree',
     scenarioSelection: 'first-match',
     scenarios: [
@@ -232,6 +234,7 @@ function exampleSpanTree() {
     canvas: 'hierarchy.otel.canvas',
     name: 'Hierarchical Execution',
     description: 'Demonstrates span tree rendering',
+    spanPattern: 'root.operation',
     mode: 'span-tree',
     scenarioSelection: 'first-match',
     showLogsPerSpan: true,

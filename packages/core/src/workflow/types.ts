@@ -66,6 +66,10 @@ export interface WorkflowTemplate {
   /** Purpose of this workflow view */
   description: string;
 
+  // Span matching
+  /** Exact span name this workflow applies to */
+  spanPattern: string;
+
   // Rendering configuration
   /** How to structure the workflow */
   mode: WorkflowMode;

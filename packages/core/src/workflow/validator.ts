@@ -150,6 +150,56 @@ export class WorkflowValidator {
   }
 
   /**
+   * Validate multiple workflows for duplicate spanPatterns
+   *
+   * This is a CLI-level validation that checks for conflicts across workflows.
+   * Call this method after validating individual workflows.
+   *
+   * @param workflows Array of workflow templates with their file paths
+   * @returns Array of violations for duplicate spanPatterns
+   */
+  static validateSpanPatterns(
+    workflows: Array<{ workflow: WorkflowTemplate; workflowPath: string }>
+  ): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const spanPatternMap = new Map<string, string[]>(); // spanPattern -> workflow paths
+
+    // Collect all spanPatterns
+    for (const { workflow, workflowPath } of workflows) {
+      if (!workflow.spanPattern) {
+        continue; // Will be caught by individual validation
+      }
+
+      if (!spanPatternMap.has(workflow.spanPattern)) {
+        spanPatternMap.set(workflow.spanPattern, []);
+      }
+      spanPatternMap.get(workflow.spanPattern)!.push(workflowPath);
+    }
+
+    // Check for duplicates
+    for (const [spanPattern, paths] of spanPatternMap.entries()) {
+      if (paths.length > 1) {
+        // Duplicate spanPattern found
+        for (const path of paths) {
+          const otherPaths = paths.filter(p => p !== path);
+          violations.push({
+            ruleId: 'workflow-span-pattern-duplicate',
+            severity: 'error',
+            file: path,
+            path: 'spanPattern',
+            message: `Duplicate spanPattern "${spanPattern}" found in multiple workflows`,
+            impact: 'Multiple workflows cannot match the same span - this creates ambiguous workflow selection',
+            suggestion: `This spanPattern is also used in:\n${otherPaths.map(p => `  - ${p}`).join('\n')}\n\nEach workflow must have a unique spanPattern. Consider:\n  - Using different span names (e.g., "payment.authorize" vs "payment.refund")\n  - Merging these workflows into one with multiple scenarios`,
+            fixable: false,
+          });
+        }
+      }
+    }
+
+    return violations;
+  }
+
+  /**
    * Check schema validity (required fields, valid values)
    */
   private checkSchema(context: WorkflowValidationContext): WorkflowViolation[] {
@@ -219,6 +269,31 @@ export class WorkflowValidator {
         message: 'Missing required field "description"',
         impact: 'Cannot understand the purpose of this workflow',
         suggestion: 'Add a description explaining what this workflow shows',
+        fixable: false,
+      });
+    }
+
+    // Check spanPattern
+    if (!workflow.spanPattern) {
+      violations.push({
+        ruleId: 'workflow-schema-valid',
+        severity: 'error',
+        file: workflowPath,
+        path: 'spanPattern',
+        message: 'Missing required field "spanPattern"',
+        impact: 'Cannot determine which spans this workflow applies to',
+        suggestion: 'Add a spanPattern field specifying the exact span name (e.g., "payment.authorize")',
+        fixable: false,
+      });
+    } else if (typeof workflow.spanPattern !== 'string' || workflow.spanPattern.trim() === '') {
+      violations.push({
+        ruleId: 'workflow-schema-valid',
+        severity: 'error',
+        file: workflowPath,
+        path: 'spanPattern',
+        message: 'spanPattern must be a non-empty string',
+        impact: 'Cannot match spans with invalid pattern',
+        suggestion: 'Provide a valid span name (e.g., "payment.authorize", "checkout.process")',
         fixable: false,
       });
     }

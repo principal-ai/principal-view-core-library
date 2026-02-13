@@ -38,6 +38,7 @@ describe('WorkflowValidator', () => {
       canvas: 'test.otel.canvas',
       name: 'Test Workflow',
       description: 'A test workflow template',
+      spanPattern: 'test.execution',
       mode: 'span-tree',
       scenarioSelection: 'first-match',
       scenarios: [
@@ -782,6 +783,7 @@ describe('WorkflowValidator', () => {
         canvas: 'test.otel.canvas',
         name: 'Complete Test Workflow',
         description: 'A complete workflow template for testing',
+        spanPattern: 'test.integration',
         mode: 'span-tree',
         scenarioSelection: 'first-match',
         scenarios: [
@@ -1819,6 +1821,246 @@ describe('WorkflowValidator', () => {
       expect(violation.suggestion).toContain('template conditionals');
       expect(violation.suggestion).toContain('mutually exclusive');
       expect(violation.suggestion).toContain('distinguishing events');
+    });
+  });
+
+  // ============================================================================
+  // Span Pattern Validation Tests
+  // ============================================================================
+
+  describe('validateSpanPatterns (CLI-level validation)', () => {
+    it('should pass when all workflows have unique spanPatterns', () => {
+      const workflows = [
+        {
+          workflow: {
+            version: '1.0.0',
+            canvas: 'test.otel.canvas',
+            name: 'Payment Workflow',
+            description: 'Payment processing',
+            spanPattern: 'payment.authorize',
+            mode: 'span-tree' as const,
+            scenarioSelection: 'first-match' as const,
+            scenarios: [],
+          },
+          workflowPath: 'workflows/payment.workflow.json',
+        },
+        {
+          workflow: {
+            version: '1.0.0',
+            canvas: 'test.otel.canvas',
+            name: 'Inventory Workflow',
+            description: 'Inventory management',
+            spanPattern: 'inventory.reserve',
+            mode: 'span-tree' as const,
+            scenarioSelection: 'first-match' as const,
+            scenarios: [],
+          },
+          workflowPath: 'workflows/inventory.workflow.json',
+        },
+      ];
+
+      const violations = WorkflowValidator.validateSpanPatterns(workflows);
+      expect(violations).toHaveLength(0);
+    });
+
+    it('should error when workflows have duplicate spanPatterns', () => {
+      const workflows = [
+        {
+          workflow: {
+            version: '1.0.0',
+            canvas: 'test1.otel.canvas',
+            name: 'Payment Workflow 1',
+            description: 'Payment processing',
+            spanPattern: 'payment.authorize',
+            mode: 'span-tree' as const,
+            scenarioSelection: 'first-match' as const,
+            scenarios: [],
+          },
+          workflowPath: 'workflows/payment1.workflow.json',
+        },
+        {
+          workflow: {
+            version: '1.0.0',
+            canvas: 'test2.otel.canvas',
+            name: 'Payment Workflow 2',
+            description: 'Payment processing alternative',
+            spanPattern: 'payment.authorize',
+            mode: 'span-tree' as const,
+            scenarioSelection: 'first-match' as const,
+            scenarios: [],
+          },
+          workflowPath: 'workflows/payment2.workflow.json',
+        },
+      ];
+
+      const violations = WorkflowValidator.validateSpanPatterns(workflows);
+
+      expect(violations).toHaveLength(2); // One for each workflow
+      expect(violations[0].ruleId).toBe('workflow-span-pattern-duplicate');
+      expect(violations[0].severity).toBe('error');
+      expect(violations[0].message).toContain('payment.authorize');
+      expect(violations[0].message).toContain('Duplicate spanPattern');
+      expect(violations[0].suggestion).toContain('payment2.workflow.json');
+    });
+
+    it('should detect multiple duplicates across many workflows', () => {
+      const workflows = [
+        {
+          workflow: {
+            version: '1.0.0',
+            canvas: 'test.otel.canvas',
+            name: 'Workflow A1',
+            description: 'Test',
+            spanPattern: 'span.a',
+            mode: 'span-tree' as const,
+            scenarioSelection: 'first-match' as const,
+            scenarios: [],
+          },
+          workflowPath: 'a1.workflow.json',
+        },
+        {
+          workflow: {
+            version: '1.0.0',
+            canvas: 'test.otel.canvas',
+            name: 'Workflow A2',
+            description: 'Test',
+            spanPattern: 'span.a',
+            mode: 'span-tree' as const,
+            scenarioSelection: 'first-match' as const,
+            scenarios: [],
+          },
+          workflowPath: 'a2.workflow.json',
+        },
+        {
+          workflow: {
+            version: '1.0.0',
+            canvas: 'test.otel.canvas',
+            name: 'Workflow B',
+            description: 'Test',
+            spanPattern: 'span.b',
+            mode: 'span-tree' as const,
+            scenarioSelection: 'first-match' as const,
+            scenarios: [],
+          },
+          workflowPath: 'b.workflow.json',
+        },
+        {
+          workflow: {
+            version: '1.0.0',
+            canvas: 'test.otel.canvas',
+            name: 'Workflow C1',
+            description: 'Test',
+            spanPattern: 'span.c',
+            mode: 'span-tree' as const,
+            scenarioSelection: 'first-match' as const,
+            scenarios: [],
+          },
+          workflowPath: 'c1.workflow.json',
+        },
+        {
+          workflow: {
+            version: '1.0.0',
+            canvas: 'test.otel.canvas',
+            name: 'Workflow C2',
+            description: 'Test',
+            spanPattern: 'span.c',
+            mode: 'span-tree' as const,
+            scenarioSelection: 'first-match' as const,
+            scenarios: [],
+          },
+          workflowPath: 'c2.workflow.json',
+        },
+      ];
+
+      const violations = WorkflowValidator.validateSpanPatterns(workflows);
+
+      // Should have violations for: a1, a2, c1, c2 (4 workflows with duplicates)
+      expect(violations.length).toBe(4);
+
+      // Check that span.b has no violations
+      const spanBViolations = violations.filter(v => v.file === 'b.workflow.json');
+      expect(spanBViolations).toHaveLength(0);
+    });
+
+    it('should handle workflows without spanPattern gracefully', () => {
+      const workflows = [
+        {
+          workflow: {
+            version: '1.0.0',
+            canvas: 'test.otel.canvas',
+            name: 'Valid Workflow',
+            description: 'Test',
+            spanPattern: 'payment.authorize',
+            mode: 'span-tree' as const,
+            scenarioSelection: 'first-match' as const,
+            scenarios: [],
+          },
+          workflowPath: 'valid.workflow.json',
+        },
+        {
+          workflow: {
+            version: '1.0.0',
+            canvas: 'test.otel.canvas',
+            name: 'Invalid Workflow',
+            description: 'Test',
+            // spanPattern missing - will be caught by individual validation
+            mode: 'span-tree' as const,
+            scenarioSelection: 'first-match' as const,
+            scenarios: [],
+          } as any,
+          workflowPath: 'invalid.workflow.json',
+        },
+      ];
+
+      const violations = WorkflowValidator.validateSpanPatterns(workflows);
+
+      // Should not error - just skip the workflow without spanPattern
+      expect(violations).toHaveLength(0);
+    });
+  });
+
+  // ============================================================================
+  // Span Pattern Schema Validation Tests
+  // ============================================================================
+
+  describe('checkSchema - spanPattern', () => {
+    it('should error when spanPattern is missing', async () => {
+      const context = createContext({ spanPattern: undefined as any });
+      const result = await validator.validate(context);
+
+      const spanPatternViolations = result.violations.filter(
+        v => v.ruleId === 'workflow-schema-valid' && v.path === 'spanPattern'
+      );
+
+      expect(spanPatternViolations).toHaveLength(1);
+      expect(spanPatternViolations[0].message).toContain('Missing required field "spanPattern"');
+      expect(spanPatternViolations[0].suggestion).toContain('exact span name');
+    });
+
+    it('should error when spanPattern is empty string', async () => {
+      const context = createContext({ spanPattern: '' });
+      const result = await validator.validate(context);
+
+      const spanPatternViolations = result.violations.filter(
+        v => v.ruleId === 'workflow-schema-valid' && v.path === 'spanPattern'
+      );
+
+      expect(spanPatternViolations).toHaveLength(1);
+      expect(spanPatternViolations[0].message).toContain('Missing required field');
+    });
+
+    it('should pass when spanPattern is a valid string', async () => {
+      const canvasPath = join(tempDir, 'test.otel.canvas');
+      writeFileSync(canvasPath, JSON.stringify(createValidCanvas()));
+
+      const context = createContext({ spanPattern: 'payment.authorize' }, { canvasPath });
+      const result = await validator.validate(context);
+
+      const spanPatternViolations = result.violations.filter(
+        v => v.ruleId === 'workflow-schema-valid' && v.path === 'spanPattern'
+      );
+
+      expect(spanPatternViolations).toHaveLength(0);
     });
   });
 });
