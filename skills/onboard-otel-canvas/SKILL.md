@@ -261,6 +261,12 @@ Use the `create-workflow-scenarios` skill to create scenarios:
 
    **Format reference**: See existing workflow files in `.principal-views/` for examples. Run `npx @principal-ai/principal-view-cli workflow validate <file>` to validate your workflow file
 
+   **REQUIRED: spanPattern field**
+   - Each workflow.json must include a `spanPattern` field with the exact span name (e.g., "data.validation", "csv.import")
+   - This must match the span name used in your instrumentation code
+   - Must be unique across all workflow files (CLI validation will detect duplicates)
+   - Example: `"spanPattern": "data.validation"`
+
    **IMPORTANT: Naming and Description Guidelines**
    - ❌ **Don't** append "Workflows" to the name: `"Package Processor Workflows"`
    - ✅ **Do** use the feature name directly: `"Package Processor"`
@@ -273,20 +279,18 @@ Use the `create-workflow-scenarios` skill to create scenarios:
 
    **Remember:** Scenarios are execution outcomes WITHIN the same workflow (same span)
 
+   **NEW (v0.23.0+):** Scenarios are matched based on which events are present in the trace. Required events are automatically derived from `template.events` keys.
+
    - **Success scenario** (priority 1): Workflow completed successfully
-     - Condition: Check for completion event + success attributes
      - Template: "✅ Validated {{record.count}} records successfully"
-     - Example: `{ "requires": ["validation.complete"], "assertions": { "errors.count": { "$eq": 0 } } }`
+     - Example events: `{ "validation.started": "...", "validation.complete": "..." }`
 
    - **Failure scenario** (priority 2): Workflow failed
-     - Condition: Check for error event or error attributes
      - Template: "❌ Validation failed: {{error.message}}"
-     - Example: `{ "requires": ["validation.error"] }`
+     - Example events: `{ "validation.started": "...", "validation.error": "..." }`
+     - Note: Mutually exclusive with success due to different distinguishing events (validation.complete vs validation.error)
 
-   - **Fallback scenario** (priority 999): Generic execution catch-all
-     - Condition: `{ "default": true }`
-     - Template: "📋 Execution captured with {{events.count}} events"
-     - Always include this as a safety net
+   **Important:** Scenarios must be mutually exclusive. Each scenario should have at least one unique event that distinguishes it from others. No scenario's events can be a strict subset of another's.
 
 5. **Keep templates simple**:
    - Clear summary line
@@ -542,6 +546,13 @@ A: Start with 2-4:
 - 1 error event (feature.error)
 - Optional: 1 progress event if feature has clear steps
 
+**Q: "How do I match workflows to spans?"**
+A: Use the `spanPattern` field in your workflow.json:
+- Set `spanPattern` to the exact span name used in your instrumentation
+- Example: If your code does `tracer.startSpan('data.validation')`, use `"spanPattern": "data.validation"`
+- Each workflow file must have a unique spanPattern
+- CLI validation will detect duplicate spanPatterns across workflows
+
 **Q: "How should I structure the canvas nodes?"**
 A: **One node per event type**. Each event gets its own node in the canvas:
 - If you have 3 events (`started`, `complete`, `error`), create 3 nodes
@@ -600,9 +611,10 @@ After completing onboarding, user should have:
 - Documents real feature
 
 ✅ **Scenarios for workflows** (.workflow.json)
+- Required `spanPattern` field matching instrumentation
 - Success scenario
 - Failure scenario
-- Fallback scenario
+- Mutually exclusive scenarios (no subsets)
 - Validates with CLI
 
 ✅ **Test infrastructure** (otel-setup.ts)
@@ -701,10 +713,12 @@ Claude: [Creates .otel.canvas, validates, shows file]
 
 "✅ Canvas created and validated!
 
-Next, let's add workflow scenarios. I'll create:
-- Success: '✅ Parsed {{rows.count}} rows successfully'
-- Error: '❌ CSV parsing failed: {{error.message}}'
-- Fallback: '📋 Parsing execution captured'
+Next, let's add workflow scenarios. I'll create a workflow.json with:
+- spanPattern: "data.import"
+- Success scenario: Events [import.started, import.complete] → '✅ Parsed {{rows.count}} rows'
+- Error scenario: Events [import.started, import.error] → '❌ CSV parsing failed: {{error.message}}'
+
+These scenarios are mutually exclusive because they have different distinguishing events.
 
 [Creates .workflow.json, validates]
 

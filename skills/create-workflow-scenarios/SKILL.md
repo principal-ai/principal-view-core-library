@@ -58,6 +58,7 @@ A .workflow.json file contains metadata, rendering configuration, and multiple s
   "canvas": "order-processing.otel.canvas",
   "name": "Order Processing",
   "description": "Order processing execution scenarios",
+  "spanPattern": "order.processing",
   "mode": "span-tree",
   "scenarioSelection": "first-match",
   "showLogsPerSpan": true,
@@ -66,12 +67,6 @@ A .workflow.json file contains metadata, rendering configuration, and multiple s
       "id": "success",
       "priority": 1,
       "description": "Successful order completion",
-      "condition": {
-        "requires": ["order.completed"],
-        "assertions": {
-          "order.status": { "$eq": "completed" }
-        }
-      },
       "template": {
         "introduction": "✅ Order Processing Complete",
         "events": {
@@ -94,6 +89,11 @@ A .workflow.json file contains metadata, rendering configuration, and multiple s
 - `name` (string, required) - Human-readable name
 - `description` (string, required) - What this workflow describes
 
+### Span Matching
+- `spanPattern` (string, required) - Exact span name this workflow applies to (e.g., "order.processing", "payment.authorize")
+  - Must be unique across all workflow files
+  - Used to match workflows to spans in OTEL traces
+
 ### Rendering Configuration
 - `mode` (string, required) - Either `"span-tree"` or `"timeline"`
   - `"span-tree"` - Follow OTEL span hierarchy (parent-child relationships)
@@ -110,7 +110,7 @@ A .workflow.json file contains metadata, rendering configuration, and multiple s
 
 ## Scenario Structure
 
-Each scenario consists of four parts:
+Each scenario consists of three parts:
 
 ### 1. Identification
 ```json
@@ -124,102 +124,81 @@ Each scenario consists of four parts:
 **Priority Rules:**
 - Lower numbers = higher priority (checked first)
 - First matching scenario wins
-- Use 1-10 for specific scenarios, 999 for fallback
+- Use 1-10 for specific scenarios
 - Each priority must be unique
 
-### 2. Condition - What triggers this scenario
+### 2. How Scenarios Are Matched
 
-Conditions use three types of checks:
+**NEW (v0.23.0+):** Scenarios are matched based on which events are present in the trace.
 
-#### Event Requirements (`requires`)
-Array of event name patterns (supports wildcards):
+**Required events are automatically derived from `template.events` keys:**
 ```json
 {
-  "condition": {
-    "requires": ["order.completed"]  // Must have this event
-  }
-}
-```
-
-Wildcard patterns:
-```json
-{
-  "requires": ["order.*"]      // Matches order.started, order.completed, etc.
-  "requires": ["*.error"]      // Matches any error event
-  "requires": ["conversion.*"] // Matches conversion.started, conversion.complete
-}
-```
-
-#### Event Exclusions (`excludes`)
-Array of event patterns that must NOT be present:
-```json
-{
-  "condition": {
-    "requires": ["order.completed"],
-    "excludes": ["*.error"]  // No error events allowed
-  }
-}
-```
-
-#### Attribute Assertions (`assertions`)
-MongoDB-style operators on aggregated attributes:
-```json
-{
-  "condition": {
-    "requires": ["order.completed"],
-    "assertions": {
-      "order.status": { "$eq": "completed" },
-      "order.total": { "$gt": 0 },
-      "error.count": { "$eq": 0 }
+  "template": {
+    "events": {
+      "order.started": "📦 Order started",
+      "order.completed": "✅ Order completed"
     }
   }
 }
 ```
+This scenario matches when BOTH `order.started` AND `order.completed` events are present.
 
-**Assertion Operators:**
-- `$eq` - Equal to (string, number, boolean)
-- `$ne` - Not equal to
-- `$gt` - Greater than (number)
-- `$gte` - Greater than or equal (number)
-- `$lt` - Less than (number)
-- `$lte` - Less than or equal (number)
-- `$in` - Value in array
-- `$nin` - Value not in array
-- `$exists` - Attribute exists (boolean)
+**Scenarios must be mutually exclusive:**
+Validation enforces that no scenario's events can be a strict subset of another scenario's events.
 
-Examples:
+❌ **Invalid** (subset violation):
 ```json
 {
-  "assertions": {
-    "result.errors": { "$eq": 0 },           // No errors
-    "result.warnings": { "$gt": 0 },         // Has warnings
-    "order.status": { "$in": ["pending", "processing"] },
-    "payment.verified": { "$exists": true }
-  }
+  "scenarios": [
+    {
+      "id": "partial",
+      "template": {
+        "events": {
+          "order.started": "Started"
+        }
+      }
+    },
+    {
+      "id": "complete",
+      "template": {
+        "events": {
+          "order.started": "Started",
+          "order.completed": "Completed"
+        }
+      }
+    }
+  ]
 }
 ```
+The `partial` scenario is a strict subset of `complete` - both would match when `order.started` and `order.completed` are present.
 
-#### Logical Operators
-Use `any: true` for OR logic on `requires`:
+✅ **Valid** (mutually exclusive):
 ```json
 {
-  "condition": {
-    "requires": ["timeout.error", "network.error"],
-    "any": true  // Matches if ANY event is present
-  }
+  "scenarios": [
+    {
+      "id": "success",
+      "template": {
+        "events": {
+          "order.started": "Started",
+          "order.completed": "Completed"
+        }
+      }
+    },
+    {
+      "id": "failure",
+      "template": {
+        "events": {
+          "order.started": "Started",
+          "order.failed": "Failed"
+        }
+      }
+    }
+  ]
 }
 ```
-
-Default (without `any`) is AND - all `requires` must be present.
-
-#### Default/Fallback Condition
-```json
-{
-  "condition": {
-    "default": true  // Always matches (use for fallback scenario)
-  }
-}
-```
+Different distinguishing events (`order.completed` vs `order.failed`) make these mutually exclusive.
 
 ### 3. Template - How to render the workflow
 
@@ -344,13 +323,6 @@ How to render span nodes:
   "id": "success",
   "priority": 1,
   "description": "Successful order completion",
-  "condition": {
-    "requires": ["order.completed"],
-    "assertions": {
-      "order.status": { "$eq": "completed" },
-      "error.count": { "$eq": 0 }
-    }
-  },
   "template": {
     "introduction": "✅ Order Processing Complete\n━━━━━━━━━━━━━━━━━━━━━━",
     "events": {
@@ -364,6 +336,7 @@ How to render span nodes:
   }
 }
 ```
+**Matches when:** All 5 events are present (order.started, inventory.checked, payment.completed, shipping.scheduled, order.completed)
 
 ### Failure Scenario
 ```json
@@ -371,12 +344,6 @@ How to render span nodes:
   "id": "failure",
   "priority": 2,
   "description": "Order failed due to payment error",
-  "condition": {
-    "requires": ["order.failed"],
-    "assertions": {
-      "error.type": { "$eq": "payment_error" }
-    }
-  },
   "template": {
     "introduction": "❌ Order Processing Failed\n━━━━━━━━━━━━━━━━━━━━━━",
     "events": {
@@ -388,6 +355,8 @@ How to render span nodes:
   }
 }
 ```
+**Matches when:** All 3 events are present (order.started, payment.failed, order.failed)
+**Note:** Mutually exclusive with success scenario because they have different distinguishing events (payment.completed vs payment.failed)
 
 ### Timeout Scenario
 ```json
@@ -395,13 +364,6 @@ How to render span nodes:
   "id": "timeout",
   "priority": 3,
   "description": "Processing exceeded timeout limit",
-  "condition": {
-    "requires": ["order.*"],
-    "excludes": ["order.completed"],
-    "assertions": {
-      "duration.ms": { "$gt": 30000 }
-    }
-  },
   "template": {
     "introduction": "⚠️ Order Processing Timeout\n━━━━━━━━━━━━━━━━━━━━━━",
     "events": {
@@ -412,6 +374,8 @@ How to render span nodes:
   }
 }
 ```
+**Matches when:** Both events are present (order.started, timeout.exceeded)
+**Note:** Mutually exclusive with other scenarios due to unique timeout.exceeded event
 
 ### Partial Success Scenario
 ```json
@@ -419,12 +383,6 @@ How to render span nodes:
   "id": "partial",
   "priority": 4,
   "description": "Order partially completed",
-  "condition": {
-    "requires": ["order.completed"],
-    "assertions": {
-      "items.failed": { "$gt": 0 }
-    }
-  },
   "template": {
     "introduction": "⚠️ Order Partially Completed\n━━━━━━━━━━━━━━━━━━━━━━",
     "events": {
@@ -437,22 +395,8 @@ How to render span nodes:
   }
 }
 ```
-
-### Default Fallback Scenario
-```json
-{
-  "id": "default",
-  "priority": 999,
-  "description": "Generic execution summary",
-  "condition": {
-    "default": true
-  },
-  "template": {
-    "introduction": "📋 Execution Summary\n━━━━━━━━━━━━━━━━━━━━━━",
-    "summary": "━━━━━━━━━━━━━━━━━━━━━━\n\nCaptured {{events.count}} events\nSpans: {{spans.count}}\nLogs: {{logs.count}}"
-  }
-}
-```
+**Matches when:** All 4 events are present (order.started, items.processed, items.failed, order.completed)
+**Note:** Different from success scenario because it requires items.failed event
 
 ## Workflow
 
@@ -570,79 +514,135 @@ privu workflow validate path/to/workflow.json
 
 The validator checks:
 - ✅ JSON syntax is valid
-- ✅ Required fields present (`version`, `canvas`, `name`, `description`, `mode`, `scenarios`)
+- ✅ Required fields present (`version`, `canvas`, `name`, `description`, `spanPattern`, `mode`, `scenarios`)
 - ✅ Canvas file exists
-- ✅ Scenario structure valid (`id`, `priority`, `condition`, `template`)
-- ✅ **No invalid fields** (rejects `steps`, `details`, `event`, `attributes`)
-- ✅ Condition uses valid fields (`requires`, `excludes`, `assertions`, `default`, `any`)
+- ✅ `spanPattern` is unique (no duplicate spanPatterns across workflows)
+- ✅ Scenario structure valid (`id`, `priority`, `template`)
+- ✅ **No deprecated fields** (`condition` is no longer supported)
 - ✅ Template uses valid fields (`introduction`, `events`, `logs`, `summary`, `span`, `children`)
 - ✅ Priorities are unique
-- ✅ At least one default scenario exists
+- ✅ Scenarios are mutually exclusive (no scenario's events are a strict subset of another's)
 - ✅ Template syntax valid (balanced braces)
 
 **Common Validation Errors:**
 
-### ❌ Invalid condition field "event"
+### ❌ Missing spanPattern field
 ```json
-// Wrong - Legacy format
-"condition": {
-  "event": "order.completed"
+// Wrong - Missing required field
+{
+  "version": "1.0.0",
+  "canvas": "order.otel.canvas",
+  "name": "Order Processing"
 }
 
-// Correct
-"condition": {
-  "requires": ["order.completed"]
+// Correct - Include spanPattern
+{
+  "version": "1.0.0",
+  "canvas": "order.otel.canvas",
+  "name": "Order Processing",
+  "spanPattern": "order.processing"
 }
 ```
 
-### ❌ Invalid condition field "attributes"
+### ❌ Deprecated condition field
 ```json
-// Wrong - Legacy format
-"condition": {
-  "attributes": {
-    "order.status": "completed"
+// Wrong - condition field is no longer supported
+{
+  "id": "success",
+  "priority": 1,
+  "condition": {
+    "requires": ["order.completed"]
+  },
+  "template": {
+    "events": {
+      "order.completed": "Completed"
+    }
   }
 }
 
-// Correct
-"condition": {
-  "assertions": {
-    "order.status": { "$eq": "completed" }
+// Correct - Events are derived from template.events
+{
+  "id": "success",
+  "priority": 1,
+  "template": {
+    "events": {
+      "order.completed": "Completed"
+    }
   }
 }
 ```
 
-### ❌ Invalid template field "steps"
+### ❌ Scenario subset violation
 ```json
-// Wrong - Legacy format
-"template": {
-  "steps": [
-    "Step 1",
-    "Step 2"
+// Wrong - "started" is a strict subset of "complete"
+{
+  "scenarios": [
+    {
+      "id": "started",
+      "template": {
+        "events": {
+          "order.started": "Started"
+        }
+      }
+    },
+    {
+      "id": "complete",
+      "template": {
+        "events": {
+          "order.started": "Started",
+          "order.completed": "Completed"
+        }
+      }
+    }
   ]
 }
 
-// Correct
-"template": {
-  "events": {
-    "event.name": "Step 1",
-    "other.event": "Step 2"
-  }
+// Correct - Mutually exclusive scenarios
+{
+  "scenarios": [
+    {
+      "id": "success",
+      "template": {
+        "events": {
+          "order.started": "Started",
+          "order.completed": "Completed"
+        }
+      }
+    },
+    {
+      "id": "failure",
+      "template": {
+        "events": {
+          "order.started": "Started",
+          "order.failed": "Failed"
+        }
+      }
+    }
+  ]
 }
 ```
 
-### ❌ Invalid template field "details"
+### ❌ Duplicate spanPattern
 ```json
-// Wrong - Legacy format
-"template": {
-  "details": {
-    "Order ID": "{{order.id}}"
-  }
+// Wrong - Multiple workflows with same spanPattern
+// File: payment-success.workflow.json
+{
+  "spanPattern": "payment.process"
 }
 
-// Correct - Use summary with variables
-"template": {
-  "summary": "Order ID: {{order.id}}\nCustomer: {{customer.name}}"
+// File: payment-failure.workflow.json
+{
+  "spanPattern": "payment.process"  // ERROR: Duplicate!
+}
+
+// Correct - Use one workflow with multiple scenarios
+// File: payment-processing.workflow.json
+{
+  "spanPattern": "payment.process",
+  "scenarios": [
+    { "id": "success", ... },
+    { "id": "failure", ... }
+  ]
 }
 ```
 
@@ -762,8 +762,8 @@ These are required fields.
 ### ❌ Don't: Use duplicate priorities
 Each scenario must have a unique priority value.
 
-### ❌ Don't: Forget default scenario
-Always include a fallback with `"condition": { "default": true }` at priority 999.
+### ❌ Don't: Create subset scenarios
+Ensure each scenario has at least one unique event that distinguishes it from others.
 
 ## Type Definitions Reference
 
