@@ -47,14 +47,11 @@ export function createListCommand(): Command {
               }
             }
 
-            const defaultCount = workflow.scenarios.filter((s) => s.condition.default).length;
-
             return {
               file: join(searchDir, file),
               canvas: workflow.canvas,
               canvasExists,
               scenarioCount: workflow.scenarios.length,
-              defaultCount,
               mode: workflow.mode,
               name: workflow.name,
             };
@@ -71,7 +68,6 @@ export function createListCommand(): Command {
               canvas: n.canvas,
               canvasExists: n.canvasExists,
               scenarios: n.scenarioCount,
-              defaultScenarios: n.defaultCount,
               mode: n.mode,
             })),
           };
@@ -101,7 +97,7 @@ export function createListCommand(): Command {
             }
             console.log(
               chalk.gray(
-                `  Scenarios: ${workflow.scenarioCount} (${workflow.defaultCount} default)`
+                `  Scenarios: ${workflow.scenarioCount}`
               )
             );
             console.log(chalk.gray(`  Mode: ${workflow.mode}`));

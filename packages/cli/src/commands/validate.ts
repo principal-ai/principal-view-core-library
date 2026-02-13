@@ -17,7 +17,7 @@ import { globby } from 'globby';
 import yaml from 'js-yaml';
 import type { ExtendedCanvas, WorkflowTemplate, ExecutionData } from '@principal-ai/principal-view-core';
 import { createExecutionValidator } from '@principal-ai/principal-view-core';
-import { CanvasDiscovery, createWorkflowValidator, EventRegistry } from '@principal-ai/principal-view-core/node';
+import { CanvasDiscovery, createWorkflowValidator, EventRegistry, WorkflowValidator } from '@principal-ai/principal-view-core/node';
 import type { ComponentLibrary } from '@principal-ai/principal-view-core';
 import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
 
@@ -1993,13 +1993,6 @@ export function createValidateCommand(): Command {
           const workflowEvents = workflowsByCanvas.get(canvasKey)!;
 
           for (const scenario of workflow.scenarios) {
-            if (scenario.condition?.requires) {
-              for (const eventPattern of scenario.condition.requires) {
-                if (!eventPattern.includes('*')) {
-                  workflowEvents.add(eventPattern);
-                }
-              }
-            }
             if (scenario.template?.events) {
               for (const eventName of Object.keys(scenario.template.events)) {
                 if (!eventName.includes('*')) {
@@ -2044,6 +2037,59 @@ export function createValidateCommand(): Command {
           parsedCanvases,
           library?.path
         );
+
+        // PHASE 2.5: Cross-workflow validation (duplicate spanPatterns)
+        if (validateWorkflows && workflows.length > 0) {
+          // Collect all workflows with their templates
+          const workflowsForSpanPatternValidation: Array<{
+            workflow: WorkflowTemplate;
+            workflowPath: string;
+          }> = [];
+
+          for (const discoveredWorkflow of workflows) {
+            const absolutePath = resolve(repositoryPath, discoveredWorkflow.path);
+            const workflow = loadWorkflowTemplate(absolutePath);
+            if (workflow) {
+              workflowsForSpanPatternValidation.push({
+                workflow,
+                workflowPath: discoveredWorkflow.path,
+              });
+            }
+          }
+
+          // Validate for duplicate spanPatterns
+          const spanPatternViolations = WorkflowValidator.validateSpanPatterns(
+            workflowsForSpanPatternValidation
+          );
+
+          // Add violations to results
+          for (const violation of spanPatternViolations) {
+            // Find or create result for this workflow file
+            let result = results.find(r => r.file === violation.file);
+            if (!result) {
+              result = {
+                file: violation.file,
+                fileType: 'workflow',
+                isValid: false,
+                issues: [],
+              };
+              results.push(result);
+            }
+
+            // Add the violation as an issue
+            result.issues.push({
+              type: violation.severity === 'error' ? 'error' : 'warning',
+              message: violation.message,
+              path: violation.path,
+              suggestion: violation.suggestion,
+            });
+
+            // Mark as invalid if it's an error
+            if (violation.severity === 'error') {
+              result.isValid = false;
+            }
+          }
+        }
 
         // PHASE 3: Validate workflows with canvas-wide event knowledge
         if (validateWorkflows) {

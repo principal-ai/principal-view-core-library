@@ -187,14 +187,6 @@ export function createValidateCommand(): Command {
 
                   if (wf.scenarios) {
                     for (const scenario of wf.scenarios) {
-                      // From condition.requires
-                      if (scenario.condition?.requires) {
-                        for (const eventPattern of scenario.condition.requires) {
-                          if (!eventPattern.includes('*')) {
-                            allWorkflowEvents.add(eventPattern);
-                          }
-                        }
-                      }
                       // From template.events
                       if (scenario.template?.events) {
                         for (const eventName of Object.keys(scenario.template.events)) {
@@ -261,7 +253,6 @@ export function createValidateCommand(): Command {
               errors: errors.length,
               warnings: warnings.length,
               scenarioCount: workflow.scenarios.length,
-              hasDefault: workflow.scenarios.some((s) => s.condition.default),
               attributeValidation: executionData ? 'enabled' : 'skipped',
             },
           };
@@ -275,11 +266,6 @@ export function createValidateCommand(): Command {
             console.log(
               chalk.green('✓'),
               `${workflow.scenarios.length} scenarios found`
-            );
-            const hasDefault = workflow.scenarios.some((s) => s.condition.default);
-            console.log(
-              chalk.green('✓'),
-              hasDefault ? 'Default scenario present' : 'No default scenario'
             );
             const priorities = workflow.scenarios.map((s) => s.priority);
             const allUnique = new Set(priorities).size === priorities.length;

@@ -2,9 +2,9 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import {
   selectScenario,
-  matchesCondition,
   computeAggregates,
   hasEventMatching,
+  getRequiredEvents,
 } from '@principal-ai/principal-view-core';
 import {
   loadWorkflow,
@@ -41,56 +41,39 @@ export function createTestCommand(): Command {
 
         // Test each scenario
         const scenarioResults = workflow.scenarios.map((scenario) => {
-          const condition = scenario.condition;
-          const matched = matchesCondition(condition, events, aggregates);
-
+          // Get required events from template.events
+          const requiredEvents = getRequiredEvents(scenario);
+          const eventResults: Array<{ eventName: string; matched: boolean; count: number }> = [];
+          let matched = true;
           let reason: string | undefined;
-          const requiresResults: Array<{ pattern: string; matched: boolean; count: number }> =
-            [];
-          const excludesResults: Array<{ pattern: string; matched: boolean; count: number }> =
-            [];
 
-          // Check requires
-          if (condition.requires) {
-            for (const pattern of condition.requires) {
-              const hasMatch = hasEventMatching(events, pattern);
-              const count = events.filter((e) =>
-                hasEventMatching([e], pattern)
-              ).length;
-              requiresResults.push({ pattern, matched: hasMatch, count });
+          // Check each required event
+          for (const eventName of requiredEvents) {
+            const hasMatch = hasEventMatching(events, eventName);
+            const count = events.filter((e) => hasEventMatching([e], eventName)).length;
+            eventResults.push({ eventName, matched: hasMatch, count });
 
-              if (!hasMatch && !reason) {
-                reason = `Missing required event '${pattern}'`;
+            if (!hasMatch) {
+              matched = false;
+              if (!reason) {
+                reason = `Missing required event '${eventName}'`;
               }
             }
           }
 
-          // Check excludes
-          if (condition.excludes) {
-            for (const pattern of condition.excludes) {
-              const hasMatch = hasEventMatching(events, pattern);
-              const count = events.filter((e) =>
-                hasEventMatching([e], pattern)
-              ).length;
-              excludesResults.push({ pattern, matched: hasMatch, count });
-
-              if (hasMatch && !reason) {
-                reason = `Found excluded event '${pattern}'`;
-              }
-            }
-          }
-
-          // Default scenario
-          if (condition.default) {
-            reason = 'Default scenario (always matches)';
+          // If all events matched
+          if (matched && requiredEvents.length > 0) {
+            reason = `All ${requiredEvents.length} required event(s) present`;
+          } else if (requiredEvents.length === 0) {
+            reason = 'No events required (empty template.events)';
+            matched = false;
           }
 
           return {
             scenario,
             matched,
             reason,
-            requiresResults,
-            excludesResults,
+            eventResults,
           };
         });
 
@@ -107,8 +90,7 @@ export function createTestCommand(): Command {
               priority: r.scenario.priority,
               matched: r.matched,
               reason: r.reason,
-              requires: r.requiresResults,
-              excludes: r.excludesResults,
+              requiredEvents: r.eventResults,
             })),
             selectedScenario: selectedScenario?.id,
             aggregates: options.showAggregates ? aggregates : undefined,
@@ -142,32 +124,18 @@ export function createTestCommand(): Command {
               `\n${icon} ${chalk.bold(result.scenario.id)} (priority: ${result.scenario.priority}) - ${status}`
             );
 
-            // Show requires
-            if (result.requiresResults.length > 0) {
-              console.log(chalk.gray('  Requires:'));
-              for (const req of result.requiresResults) {
-                const reqIcon = req.matched ? chalk.green('✓') : chalk.red('✗');
-                const countMsg = req.matched ? `Found ${req.count} event(s)` : 'No matching events';
-                console.log(`    ${reqIcon} ${req.pattern} - ${countMsg}`);
+            // Show required events
+            if (result.eventResults.length > 0) {
+              console.log(chalk.gray('  Required Events:'));
+              for (const evt of result.eventResults) {
+                const evtIcon = evt.matched ? chalk.green('✓') : chalk.red('✗');
+                const countMsg = evt.matched ? `Found ${evt.count} event(s)` : 'No matching events';
+                console.log(`    ${evtIcon} ${evt.eventName} - ${countMsg}`);
               }
             }
 
-            // Show excludes
-            if (result.excludesResults.length > 0) {
-              console.log(chalk.gray('  Excludes:'));
-              for (const exc of result.excludesResults) {
-                const excIcon = exc.matched ? chalk.red('✗') : chalk.green('✓');
-                const countMsg = exc.matched ? `Found ${exc.count} event(s)` : 'No matching events';
-                console.log(`    ${excIcon} ${exc.pattern} - ${countMsg}`);
-              }
-            }
-
-            if (result.reason && !result.matched) {
-              console.log(chalk.gray(`  Reason: ${result.reason}`));
-            }
-
-            if (result.scenario.condition.default) {
-              console.log(chalk.gray('  Default scenario (always matches)'));
+            if (result.reason) {
+              console.log(chalk.gray(`  ${result.reason}`));
             }
           }
 

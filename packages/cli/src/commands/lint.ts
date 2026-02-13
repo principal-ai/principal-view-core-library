@@ -494,13 +494,6 @@ export function createLintCommand(): Command {
               // Collect events from this workflow
               const workflowEvents = canvasEventMap.get(canvasKey)!;
               for (const scenario of loaded.workflow.scenarios) {
-                if (scenario.condition?.requires) {
-                  for (const eventPattern of scenario.condition.requires) {
-                    if (!eventPattern.includes('*')) {
-                      workflowEvents.add(eventPattern);
-                    }
-                  }
-                }
                 if (scenario.template?.events) {
                   for (const eventName of Object.keys(scenario.template.events)) {
                     if (!eventName.includes('*')) {
