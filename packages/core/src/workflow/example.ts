@@ -23,10 +23,6 @@ function exampleSuccess() {
         id: 'success',
         priority: 1,
         description: 'Successful execution',
-        condition: {
-          requires: ['execution.complete'],
-          assertions: { 'result.status': { $eq: 'success' } },
-        },
         template: {
           introduction: '✅ Execution Successful\n{"━".repeat(50)}',
           span: '→ {span.name}',
@@ -98,10 +94,6 @@ function exampleWithViolations() {
         id: 'errors',
         priority: 1,
         description: 'Has error-level violations',
-        condition: {
-          requires: ['validation.complete'],
-          assertions: { 'result.errors': { $gt: 0 } },
-        },
         template: {
           introduction: '❌ Validation Failed\n{"━".repeat(50)}',
           span: '→ {span.name}',
@@ -119,13 +111,6 @@ function exampleWithViolations() {
         id: 'warnings',
         priority: 2,
         description: 'Has warnings only',
-        condition: {
-          requires: ['validation.complete'],
-          assertions: {
-            'result.errors': { $eq: 0 },
-            'result.warnings': { $gt: 0 },
-          },
-        },
         template: {
           introduction: '⚠️  Validation Passed with Warnings\n{"━".repeat(50)}',
           span: '→ {span.name}',
@@ -141,13 +126,6 @@ function exampleWithViolations() {
         id: 'success',
         priority: 3,
         description: 'All checks passed',
-        condition: {
-          requires: ['validation.complete'],
-          assertions: {
-            'result.errors': { $eq: 0 },
-            'result.warnings': { $eq: 0 },
-          },
-        },
         template: {
           introduction: '✅ Validation Passed\n{"━".repeat(50)}',
           span: '→ {span.name}',
@@ -262,11 +240,13 @@ function exampleSpanTree() {
         id: 'default',
         priority: 1,
         description: 'Default',
-        condition: { default: true },
         template: {
           introduction: '📋 Execution Trace\n{"━".repeat(50)}',
           span: '→ {span.name}',
           children: 'recurse',
+          events: {
+            'root.operation': '  🔄 Operation started',
+          },
           logs: {
             info: '  ℹ️  {log.body}',
             error: '  ❌ {log.body}',

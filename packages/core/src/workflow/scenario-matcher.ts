@@ -8,23 +8,31 @@
 import type {
   WorkflowScenario,
   WorkflowTemplate,
-  ScenarioCondition,
-  Assertion,
   OtelEvent,
   ScenarioMatchResult,
 } from './types';
 
 /**
+ * Get required events for a scenario (derived from template.events)
+ *
+ * @param scenario - Scenario to extract events from
+ * @returns Array of event names required for this scenario to match
+ */
+export function getRequiredEvents(scenario: WorkflowScenario): string[] {
+  return Object.keys(scenario.template?.events || {});
+}
+
+/**
  * Select the first matching scenario from a workflow template
  *
  * Scenarios are evaluated in priority order (lowest priority number first).
- * Returns the first scenario whose conditions are met.
+ * Returns the first scenario whose events are all present.
  *
  * @param template - Workflow template with scenarios
  * @param events - Collected OTEL events
- * @param attributes - Aggregated attributes (computed from events)
+ * @param attributes - Aggregated attributes (computed from events) - DEPRECATED, no longer used
  * @returns Matched scenario and metadata
- * @throws Error if no scenario matches (template should have default fallback)
+ * @throws Error if no scenario matches
  */
 export function selectScenario(
   template: WorkflowTemplate,
@@ -39,97 +47,45 @@ export function selectScenario(
 
   // Find first matching scenario
   for (const scenario of sorted) {
-    const matchResult = matchesCondition(scenario.condition, events, attributes);
+    const requiredEvents = getRequiredEvents(scenario);
 
-    if (matchResult.matches) {
+    // Check if ALL required events are present
+    const hasAllEvents = requiredEvents.every((eventName) =>
+      hasEventMatching(events, eventName)
+    );
+
+    if (hasAllEvents) {
       // Check if there are other applicable scenarios (for UI)
       for (const other of sorted) {
-        if (other.id !== scenario.id && matchesCondition(other.condition, events, attributes).matches) {
-          applicableScenarios.push(other);
+        if (other.id !== scenario.id) {
+          const otherRequired = getRequiredEvents(other);
+          const otherMatches = otherRequired.every((eventName) =>
+            hasEventMatching(events, eventName)
+          );
+          if (otherMatches) {
+            applicableScenarios.push(other);
+          }
         }
       }
 
       return {
         scenario,
-        isDefault: Boolean(scenario.condition.default),
+        isDefault: false, // No longer have default scenarios
         applicableScenarios: [scenario, ...applicableScenarios],
         matchReasons,
       };
     }
 
-    matchReasons[scenario.id] = matchResult.reason || 'Unknown';
+    const missingEvents = requiredEvents.filter((eventName) => !hasEventMatching(events, eventName));
+    matchReasons[scenario.id] = `Missing required event(s): ${missingEvents.join(', ')}`;
   }
 
   throw new Error(
     `No scenario matched for template "${template.name}". ` +
-      `Ensure there is a default scenario with { default: true } condition. ` +
-      `Events: ${events.map((e) => e.name).join(', ')}`
+      `Events in trace: ${events.map((e) => e.name).join(', ')}`
   );
 }
 
-/**
- * Check if a scenario condition matches the given events and attributes
- *
- * @param condition - Scenario condition to evaluate
- * @param events - Collected OTEL events
- * @param attributes - Aggregated attributes
- * @returns Match result with reason if not matched
- */
-export function matchesCondition(
-  condition: ScenarioCondition,
-  events: OtelEvent[],
-  attributes: Record<string, unknown>
-): { matches: boolean; reason?: string } {
-  // 1. Check default condition (always matches)
-  if (condition.default) {
-    return { matches: true };
-  }
-
-  // 2. Check required events
-  if (condition.requires) {
-    const matchMode = condition.any ? 'some' : 'every';
-    const hasRequired = condition.requires[matchMode as 'some' | 'every']((pattern) =>
-      hasEventMatching(events, pattern)
-    );
-
-    if (!hasRequired) {
-      const missing = condition.requires.filter((pattern) => !hasEventMatching(events, pattern));
-      return {
-        matches: false,
-        reason: `Missing required event(s): ${missing.join(', ')}`,
-      };
-    }
-  }
-
-  // 3. Check excluded events
-  if (condition.excludes) {
-    const excluded = condition.excludes.find((pattern) => hasEventMatching(events, pattern));
-    if (excluded) {
-      return {
-        matches: false,
-        reason: `Found excluded event: ${excluded}`,
-      };
-    }
-  }
-
-  // 4. Check attribute assertions
-  if (condition.assertions) {
-    for (const [key, assertion] of Object.entries(condition.assertions)) {
-      const value = getNestedValue(attributes, key);
-      const assertionResult = evaluateAssertion(value, assertion);
-
-      if (!assertionResult.matches) {
-        return {
-          matches: false,
-          reason: `Assertion failed for "${key}": ${assertionResult.reason}`,
-        };
-      }
-    }
-  }
-
-  // All checks passed
-  return { matches: true };
-}
 
 /**
  * Check if any event matches the given pattern (supports glob-style wildcards)
@@ -155,75 +111,6 @@ export function hasEventMatching(events: OtelEvent[], pattern: string): boolean 
   return events.some((event) => regex.test(event.name));
 }
 
-/**
- * Evaluate an assertion against a value
- *
- * @param value - Value to test
- * @param assertion - Assertion operators
- * @returns Match result with reason if not matched
- */
-export function evaluateAssertion(
-  value: unknown,
-  assertion: Assertion
-): { matches: boolean; reason?: string } {
-  // $exists check
-  if (assertion.$exists !== undefined) {
-    const exists = value !== undefined && value !== null;
-    if (exists !== assertion.$exists) {
-      return {
-        matches: false,
-        reason: assertion.$exists ? 'Value does not exist' : 'Value exists but should not',
-      };
-    }
-    // If only checking existence, we're done
-    if (Object.keys(assertion).length === 1) {
-      return { matches: true };
-    }
-  }
-
-  // If value doesn't exist and we're checking other operators, fail
-  if (value === undefined || value === null) {
-    return { matches: false, reason: 'Value is undefined or null' };
-  }
-
-  // Numeric comparisons
-  if (typeof value === 'number') {
-    if (assertion.$gt !== undefined && !(value > assertion.$gt)) {
-      return { matches: false, reason: `${value} is not > ${assertion.$gt}` };
-    }
-    if (assertion.$gte !== undefined && !(value >= assertion.$gte)) {
-      return { matches: false, reason: `${value} is not >= ${assertion.$gte}` };
-    }
-    if (assertion.$lt !== undefined && !(value < assertion.$lt)) {
-      return { matches: false, reason: `${value} is not < ${assertion.$lt}` };
-    }
-    if (assertion.$lte !== undefined && !(value <= assertion.$lte)) {
-      return { matches: false, reason: `${value} is not <= ${assertion.$lte}` };
-    }
-  }
-
-  // Equality checks
-  if (assertion.$eq !== undefined && value !== assertion.$eq) {
-    return { matches: false, reason: `${value} !== ${assertion.$eq}` };
-  }
-  if (assertion.$ne !== undefined && value === assertion.$ne) {
-    return { matches: false, reason: `${value} === ${assertion.$ne} (should not equal)` };
-  }
-
-  // Array membership
-  if (assertion.$in !== undefined) {
-    if (!assertion.$in.includes(value as string | number | boolean)) {
-      return { matches: false, reason: `${value} not in [${assertion.$in.join(', ')}]` };
-    }
-  }
-  if (assertion.$nin !== undefined) {
-    if (assertion.$nin.includes(value as string | number | boolean)) {
-      return { matches: false, reason: `${value} found in excluded list [${assertion.$nin.join(', ')}]` };
-    }
-  }
-
-  return { matches: true };
-}
 
 /**
  * Get nested value from object using dot notation

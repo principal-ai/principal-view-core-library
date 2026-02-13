@@ -61,10 +61,9 @@ export { parseTemplate, ParsedTemplate } from './workflow/template-parser';
 export type { TemplateSegment } from './workflow/template-parser';
 export {
   selectScenario,
-  matchesCondition,
+  getRequiredEvents,
   hasEventMatching,
   computeAggregates,
-  evaluateAssertion,
   getNestedValue,
   setNestedValue,
 } from './workflow/scenario-matcher';
@@ -72,9 +71,7 @@ export type {
   WorkflowTemplate,
   WorkflowScenario,
   WorkflowMode,
-  ScenarioCondition,
   ScenarioTemplate,
-  Assertion,
   FlowDirective,
   LogTemplates,
   FormattingOptions,

@@ -11,9 +11,7 @@ export type {
   WorkflowTemplate,
   WorkflowScenario,
   WorkflowMode,
-  ScenarioCondition,
   ScenarioTemplate,
-  Assertion,
   FlowDirective,
   LogTemplates,
   FormattingOptions,
@@ -26,7 +24,7 @@ export type {
 } from './types';
 
 // Scenario Matching
-export { selectScenario, matchesCondition, hasEventMatching, computeAggregates, evaluateAssertion, getNestedValue, setNestedValue } from './scenario-matcher';
+export { selectScenario, getRequiredEvents, hasEventMatching, computeAggregates, getNestedValue, setNestedValue } from './scenario-matcher';
 
 // Template Parsing
 export { parseTemplate, ParsedTemplate } from './template-parser';

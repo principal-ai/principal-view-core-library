@@ -99,8 +99,8 @@ export type WorkflowMode =
 /**
  * Workflow scenario definition
  *
- * Scenarios are mutually exclusive workflow templates selected
- * based on which events occurred during execution.
+ * Scenarios are mutually exclusive workflow templates.
+ * Required events are automatically derived from template.events keys.
  */
 export interface WorkflowScenario {
   // Identification
@@ -113,68 +113,9 @@ export interface WorkflowScenario {
   /** What this scenario represents */
   description: string;
 
-  // Matching logic
-  /** Conditions that must be met for this scenario to match */
-  condition: ScenarioCondition;
-
   // Template content
   /** Workflow template content */
   template: ScenarioTemplate;
-}
-
-/**
- * Scenario matching conditions
- */
-export interface ScenarioCondition {
-  // Event requirements
-  /** Must have these events (supports glob patterns like "*.error") */
-  requires?: string[];
-
-  /** Must NOT have these events (supports glob patterns) */
-  excludes?: string[];
-
-  // Attribute assertions
-  /** Assertions on event attributes */
-  assertions?: Record<string, Assertion>;
-
-  // Special conditions
-  /** Always matches (use as fallback) */
-  default?: boolean;
-
-  /** Match if ANY requires condition met (instead of ALL) */
-  any?: boolean;
-}
-
-/**
- * Attribute assertion operators
- */
-export interface Assertion {
-  /** Greater than */
-  $gt?: number;
-
-  /** Greater than or equal */
-  $gte?: number;
-
-  /** Less than */
-  $lt?: number;
-
-  /** Less than or equal */
-  $lte?: number;
-
-  /** Equal to */
-  $eq?: string | number | boolean;
-
-  /** Not equal to */
-  $ne?: string | number | boolean;
-
-  /** Attribute exists/doesn't exist */
-  $exists?: boolean;
-
-  /** Value in array */
-  $in?: (string | number | boolean)[];
-
-  /** Value not in array */
-  $nin?: (string | number | boolean)[];
 }
 
 /**

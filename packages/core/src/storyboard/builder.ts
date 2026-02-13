@@ -144,8 +144,8 @@ export function resolveScenarioNodeIds(
   const eventMap = buildEventNodeMap(canvas);
   const nodeIds = new Set<string>();
 
-  // Get required events from scenario condition
-  const requiredEvents = scenario.condition.requires || [];
+  // Get required events from scenario template.events
+  const requiredEvents = Object.keys(scenario.template?.events || {});
 
   for (const eventPattern of requiredEvents) {
     // Handle glob patterns (e.g., "*.error", "auth.*")

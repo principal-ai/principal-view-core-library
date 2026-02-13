@@ -45,12 +45,6 @@ describe('WorkflowValidator', () => {
           id: 'test-passed',
           priority: 1,
           description: 'Test passed successfully',
-          condition: {
-            requires: ['test.complete'],
-            assertions: {
-              'test.status': { $eq: 'passed' },
-            },
-          },
           template: {
             introduction: 'Test passed',
             events: {
@@ -61,16 +55,14 @@ describe('WorkflowValidator', () => {
           },
         },
         {
-          id: 'default',
-          priority: 100,
-          description: 'Default fallback',
-          condition: {
-            default: true,
-          },
+          id: 'test-failed',
+          priority: 2,
+          description: 'Test failed',
           template: {
-            introduction: 'Default workflow',
+            introduction: 'Test failed',
             events: {
               'test.started': 'Test started',
+              'test.failed': 'Test failed',
             },
           },
         },
@@ -364,7 +356,6 @@ describe('WorkflowValidator', () => {
             id: undefined as unknown,
             priority: 1,
             description: 'Test',
-            condition: { default: true },
             template: { introduction: 'Test' },
           },
         ],
@@ -387,14 +378,12 @@ describe('WorkflowValidator', () => {
             id: 'duplicate',
             priority: 1,
             description: 'First',
-            condition: { default: true },
             template: { introduction: 'First' },
           },
           {
             id: 'duplicate',
             priority: 2,
             description: 'Second',
-            condition: { requires: ['test'] },
             template: { introduction: 'Second' },
           },
         ],
@@ -417,7 +406,6 @@ describe('WorkflowValidator', () => {
             id: 'test',
             priority: undefined as unknown,
             description: 'Test',
-            condition: { default: true },
             template: { introduction: 'Test' },
           },
         ],
@@ -440,7 +428,6 @@ describe('WorkflowValidator', () => {
             id: 'test',
             priority: -1,
             description: 'Test',
-            condition: { default: true },
             template: { introduction: 'Test' },
           },
         ],
@@ -463,14 +450,12 @@ describe('WorkflowValidator', () => {
             id: 'first',
             priority: 1,
             description: 'First',
-            condition: { default: true },
             template: { introduction: 'First' },
           },
           {
             id: 'second',
             priority: 1,
             description: 'Second',
-            condition: { requires: ['test'] },
             template: { introduction: 'Second' },
           },
         ],
@@ -486,52 +471,6 @@ describe('WorkflowValidator', () => {
       );
     });
 
-    it('should flag missing default scenario', async () => {
-      const context = createContext({
-        scenarios: [
-          {
-            id: 'test',
-            priority: 1,
-            description: 'Test',
-            condition: { requires: ['test.complete'] },
-            template: { introduction: 'Test' },
-          },
-        ],
-      });
-      const result = await validator.validate(context);
-
-      expect(result.errorCount).toBeGreaterThan(0);
-      expect(result.violations).toContainEqual(
-        expect.objectContaining({
-          ruleId: 'workflow-scenario-valid',
-          message: expect.stringContaining('No default scenario'),
-        })
-      );
-    });
-
-    it('should flag missing condition', async () => {
-      const context = createContext({
-        scenarios: [
-          {
-            id: 'test',
-            priority: 1,
-            description: 'Test',
-            condition: undefined as unknown,
-            template: { introduction: 'Test' },
-          },
-        ],
-      });
-      const result = await validator.validate(context);
-
-      expect(result.errorCount).toBeGreaterThan(0);
-      expect(result.violations).toContainEqual(
-        expect.objectContaining({
-          ruleId: 'workflow-scenario-valid',
-          message: expect.stringContaining('missing required "condition"'),
-        })
-      );
-    });
-
     it('should flag missing template', async () => {
       const context = createContext({
         scenarios: [
@@ -539,7 +478,6 @@ describe('WorkflowValidator', () => {
             id: 'test',
             priority: 1,
             description: 'Test',
-            condition: { default: true },
             template: undefined as unknown,
           },
         ],
@@ -568,7 +506,6 @@ describe('WorkflowValidator', () => {
             id: 'test',
             priority: 1,
             description: 'Test',
-            condition: { default: true },
             template: {
               introduction: 'Started {test.name}',
               events: {
@@ -595,7 +532,6 @@ describe('WorkflowValidator', () => {
             id: 'test',
             priority: 1,
             description: 'Test',
-            condition: { default: true },
             template: {
               introduction: 'Test {test.name',
             },
@@ -620,7 +556,6 @@ describe('WorkflowValidator', () => {
             id: 'test',
             priority: 1,
             description: 'Test',
-            condition: { default: true },
             template: {
               introduction: 'Test {test.name}}',
             },
@@ -645,7 +580,6 @@ describe('WorkflowValidator', () => {
             id: 'test',
             priority: 1,
             description: 'Test',
-            condition: { default: true },
             template: {
               introduction: '{result.passed ? "Success"}',
             },
@@ -670,7 +604,6 @@ describe('WorkflowValidator', () => {
             id: 'test',
             priority: 1,
             description: 'Test',
-            condition: { default: true },
             template: {
               introduction: '{test.status === "passed" ? "Success" : "Failed"}',
             },
@@ -692,7 +625,6 @@ describe('WorkflowValidator', () => {
             id: 'test',
             priority: 1,
             description: 'Test',
-            condition: { default: true },
             template: {
               events: {
                 'test.started': 'Started {test.name',
@@ -720,7 +652,6 @@ describe('WorkflowValidator', () => {
             id: 'test',
             priority: 1,
             description: 'Test',
-            condition: { default: true },
             template: {
               flow: [
                 'Valid string',
@@ -858,12 +789,10 @@ describe('WorkflowValidator', () => {
             id: 'error',
             priority: 1,
             description: 'Error scenario',
-            condition: {
-              requires: ['*.error'],
-            },
             template: {
               introduction: '❌ Error Occurred\n{"━".repeat(50)}',
               events: {
+                'test.started': 'Started: {test.name}',
                 'test.error': 'Error: {error.message}',
               },
               summary: '❌ Failed',
@@ -873,12 +802,6 @@ describe('WorkflowValidator', () => {
             id: 'success',
             priority: 2,
             description: 'Success scenario',
-            condition: {
-              requires: ['test.complete'],
-              assertions: {
-                'test.status': { $eq: 'passed' },
-              },
-            },
             template: {
               introduction: '✅ Test Passed',
               events: {
@@ -891,20 +814,6 @@ describe('WorkflowValidator', () => {
                 '  • Duration: {duration}ms',
               ],
               summary: '✅ Success',
-            },
-          },
-          {
-            id: 'default',
-            priority: 100,
-            description: 'Default fallback',
-            condition: {
-              default: true,
-            },
-            template: {
-              introduction: 'Test execution',
-              events: {
-                'test.started': 'Test started',
-              },
             },
           },
         ],
@@ -941,7 +850,6 @@ describe('WorkflowValidator', () => {
           {
             id: 'test',
             priority: -1,
-            condition: undefined,
             template: {
               introduction: '{unclosed',
             },
@@ -1034,7 +942,6 @@ describe('WorkflowValidator', () => {
             id: 'default',
             priority: 1,
             description: 'Default',
-            condition: { default: true },
             template: {
               events: {
                 'cleanup.started': 'Cleanup started', // Not in canvas
@@ -1093,7 +1000,6 @@ describe('WorkflowValidator', () => {
             id: 'default',
             priority: 1,
             description: 'Default',
-            condition: { default: true },
             template: {
               events: {
                 'cleanup.started': 'Cleanup started', // Not in canvas but in another canvas
@@ -1146,7 +1052,6 @@ describe('WorkflowValidator', () => {
             id: 'default',
             priority: 1,
             description: 'Default',
-            condition: { default: true },
             template: {
               events: {
                 'nonexistent.event': 'Does not exist anywhere',
@@ -1194,7 +1099,6 @@ describe('WorkflowValidator', () => {
             id: 'default',
             priority: 1,
             description: 'Default',
-            condition: { default: true },
             template: {
               events: {
                 'missing.event': 'Not in canvas',
@@ -1242,7 +1146,6 @@ describe('WorkflowValidator', () => {
           id: 'test',
           priority: 1,
           description: 'Test scenario',
-          condition: { default: true },
           template: {
             events: {
               'event.started': 'Started',
@@ -1293,7 +1196,6 @@ describe('WorkflowValidator', () => {
           id: 'test',
           priority: 1,
           description: 'Test scenario',
-          condition: { default: true },
           template: {
             events: {
               'event.started': 'Started',
@@ -1346,7 +1248,6 @@ describe('WorkflowValidator', () => {
           id: 'test',
           priority: 1,
           description: 'Test scenario',
-          condition: { default: true },
           template: {
             events: {
               'event.started': 'Started',
@@ -1393,7 +1294,6 @@ describe('WorkflowValidator', () => {
           id: 'test',
           priority: 1,
           description: 'Test scenario',
-          condition: { default: true },
           template: {
             events: {
               'event.started': 'Started'
@@ -1437,7 +1337,6 @@ describe('WorkflowValidator', () => {
           id: 'test',
           priority: 1,
           description: 'Test scenario',
-          condition: { default: true },
           template: {
             events: {
               'event.start': 'Start',
@@ -1477,6 +1376,449 @@ describe('WorkflowValidator', () => {
       const connectivityViolations = result.violations.filter(v => v.ruleId === 'workflow-event-connectivity');
       // Should pass because events are connected through intermediate nodes
       expect(connectivityViolations).toHaveLength(0);
+    });
+  });
+
+  // ============================================================================
+  // Subset Validation Tests
+  // ============================================================================
+
+  describe('checkScenarioSubsets', () => {
+    it('should pass when scenarios have mutually exclusive event sets', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'success',
+            priority: 1,
+            description: 'Success scenario',
+            template: {
+              events: {
+                'payment.authorized': 'Payment authorized',
+                'order.confirmed': 'Order confirmed'
+              }
+            }
+          },
+          {
+            id: 'failure',
+            priority: 2,
+            description: 'Failure scenario',
+            template: {
+              events: {
+                'payment.declined': 'Payment declined',
+                'error.logged': 'Error logged'
+              }
+            }
+          }
+        ]
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const subsetViolations = result.violations.filter(v => v.ruleId === 'workflow-scenario-subset');
+      expect(subsetViolations).toHaveLength(0);
+    });
+
+    it('should pass when scenarios have overlapping but not subset event sets', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'google-oauth',
+            priority: 1,
+            description: 'Google OAuth',
+            template: {
+              events: {
+                'oauth.google': 'Google auth',
+                'oauth.complete': 'OAuth complete',
+                'user.created': 'User created'
+              }
+            }
+          },
+          {
+            id: 'email-password',
+            priority: 2,
+            description: 'Email/password signup',
+            template: {
+              events: {
+                'email.verified': 'Email verified',
+                'password.set': 'Password set',
+                'user.created': 'User created'
+              }
+            }
+          }
+        ]
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const subsetViolations = result.violations.filter(v => v.ruleId === 'workflow-scenario-subset');
+      expect(subsetViolations).toHaveLength(0);
+    });
+
+    it('should error when one scenario is a strict subset of another', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'basic-checkout',
+            priority: 1,
+            description: 'Basic checkout',
+            template: {
+              events: {
+                'cart.viewed': 'Cart viewed',
+                'checkout.started': 'Checkout started'
+              }
+            }
+          },
+          {
+            id: 'complete-checkout',
+            priority: 2,
+            description: 'Complete checkout',
+            template: {
+              events: {
+                'cart.viewed': 'Cart viewed',
+                'checkout.started': 'Checkout started',
+                'payment.complete': 'Payment complete'
+              }
+            }
+          }
+        ]
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const subsetViolations = result.violations.filter(v => v.ruleId === 'workflow-scenario-subset');
+
+      expect(subsetViolations).toHaveLength(1);
+      expect(subsetViolations[0].severity).toBe('error');
+      expect(subsetViolations[0].message).toContain('basic-checkout');
+      expect(subsetViolations[0].message).toContain('strict subset');
+      expect(subsetViolations[0].message).toContain('complete-checkout');
+      expect(subsetViolations[0].impact).toContain('ambiguous');
+      expect(subsetViolations[0].suggestion).toContain('Merge into one scenario');
+      expect(subsetViolations[0].suggestion).toContain('mutually exclusive');
+    });
+
+    it('should detect reverse subset relationship', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'complete-flow',
+            priority: 1,
+            description: 'Complete flow',
+            template: {
+              events: {
+                'step.one': 'Step 1',
+                'step.two': 'Step 2',
+                'step.three': 'Step 3'
+              }
+            }
+          },
+          {
+            id: 'partial-flow',
+            priority: 2,
+            description: 'Partial flow',
+            template: {
+              events: {
+                'step.one': 'Step 1',
+                'step.two': 'Step 2'
+              }
+            }
+          }
+        ]
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const subsetViolations = result.violations.filter(v => v.ruleId === 'workflow-scenario-subset');
+
+      expect(subsetViolations).toHaveLength(1);
+      expect(subsetViolations[0].message).toContain('partial-flow');
+      expect(subsetViolations[0].message).toContain('strict subset');
+      expect(subsetViolations[0].message).toContain('complete-flow');
+    });
+
+    it('should pass when scenarios have same number of events but different events', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'scenario-a',
+            priority: 1,
+            description: 'Scenario A',
+            template: {
+              events: {
+                'event.a': 'Event A',
+                'event.b': 'Event B'
+              }
+            }
+          },
+          {
+            id: 'scenario-b',
+            priority: 2,
+            description: 'Scenario B',
+            template: {
+              events: {
+                'event.c': 'Event C',
+                'event.d': 'Event D'
+              }
+            }
+          }
+        ]
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const subsetViolations = result.violations.filter(v => v.ruleId === 'workflow-scenario-subset');
+      expect(subsetViolations).toHaveLength(0);
+    });
+
+    it('should pass when workflow has only one scenario', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'only-scenario',
+            priority: 1,
+            description: 'Only scenario',
+            template: {
+              events: {
+                'event.one': 'Event 1'
+              }
+            }
+          }
+        ]
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const subsetViolations = result.violations.filter(v => v.ruleId === 'workflow-scenario-subset');
+      expect(subsetViolations).toHaveLength(0);
+    });
+
+    it('should handle scenarios with empty event sets', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'empty-events',
+            priority: 1,
+            description: 'Empty events',
+            template: {
+              introduction: 'Test',
+              events: {}
+            }
+          },
+          {
+            id: 'with-events',
+            priority: 2,
+            description: 'With events',
+            template: {
+              events: {
+                'event.one': 'Event 1'
+              }
+            }
+          }
+        ]
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const subsetViolations = result.violations.filter(v => v.ruleId === 'workflow-scenario-subset');
+
+      // Empty set is a strict subset of any non-empty set
+      expect(subsetViolations).toHaveLength(1);
+      expect(subsetViolations[0].message).toContain('empty-events');
+      expect(subsetViolations[0].message).toContain('strict subset');
+    });
+
+    it('should detect multiple subset violations in a workflow', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'minimal',
+            priority: 1,
+            description: 'Minimal',
+            template: {
+              events: {
+                'event.a': 'A'
+              }
+            }
+          },
+          {
+            id: 'medium',
+            priority: 2,
+            description: 'Medium',
+            template: {
+              events: {
+                'event.a': 'A',
+                'event.b': 'B'
+              }
+            }
+          },
+          {
+            id: 'complete',
+            priority: 3,
+            description: 'Complete',
+            template: {
+              events: {
+                'event.a': 'A',
+                'event.b': 'B',
+                'event.c': 'C'
+              }
+            }
+          }
+        ]
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const subsetViolations = result.violations.filter(v => v.ruleId === 'workflow-scenario-subset');
+
+      // Should detect:
+      // 1. minimal ⊂ medium
+      // 2. minimal ⊂ complete
+      // 3. medium ⊂ complete
+      expect(subsetViolations.length).toBeGreaterThanOrEqual(3);
+    });
+
+    it('should provide helpful fix suggestions in error messages', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'abandoned',
+            priority: 1,
+            description: 'Abandoned cart',
+            template: {
+              events: {
+                'cart.created': 'Cart created',
+                'items.added': 'Items added'
+              }
+            }
+          },
+          {
+            id: 'completed',
+            priority: 2,
+            description: 'Completed purchase',
+            template: {
+              events: {
+                'cart.created': 'Cart created',
+                'items.added': 'Items added',
+                'checkout.complete': 'Checkout complete'
+              }
+            }
+          }
+        ]
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const subsetViolations = result.violations.filter(v => v.ruleId === 'workflow-scenario-subset');
+
+      expect(subsetViolations).toHaveLength(1);
+
+      const violation = subsetViolations[0];
+      expect(violation.suggestion).toContain('cart.created');
+      expect(violation.suggestion).toContain('items.added');
+      expect(violation.suggestion).toContain('checkout.complete');
+      expect(violation.suggestion).toContain('Merge into one scenario');
+      expect(violation.suggestion).toContain('template conditionals');
+      expect(violation.suggestion).toContain('mutually exclusive');
+      expect(violation.suggestion).toContain('distinguishing events');
     });
   });
 });

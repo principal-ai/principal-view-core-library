@@ -3,7 +3,7 @@
  * Validates .workflow.json files against their corresponding .otel.canvas files
  */
 
-import type { WorkflowTemplate } from './types';
+import type { WorkflowTemplate, WorkflowScenario } from './types';
 import type { ExtendedCanvas } from '../types/canvas';
 import { existsSync, readFileSync } from 'fs';
 import { resolve, dirname, basename } from 'path';
@@ -123,7 +123,9 @@ export class WorkflowValidator {
     // Run all validation rules
     violations.push(...this.checkSchema(context));
     violations.push(...this.checkCanvasExists(context));
+    violations.push(...this.checkDeprecatedFields(context));
     violations.push(...this.checkScenarios(context));
+    violations.push(...this.checkScenarioSubsets(context));
 
     // Check event name syntax BEFORE checking event references
     // This ensures we catch unsupported syntax before trying to match events
@@ -322,6 +324,62 @@ export class WorkflowValidator {
   }
 
   /**
+   * Check for deprecated fields (condition, condition.requires, etc.)
+   */
+  private checkDeprecatedFields(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { workflow, workflowPath } = context;
+
+    if (!workflow.scenarios || workflow.scenarios.length === 0) {
+      return violations;
+    }
+
+    workflow.scenarios.forEach((scenario, idx) => {
+      // Check if scenario has a 'condition' field
+      const scenarioAny = scenario as any;
+      if (scenarioAny.condition) {
+        const condition = scenarioAny.condition;
+
+        // Build list of what was in condition
+        const conditionFields: string[] = [];
+        if (condition.requires) conditionFields.push('requires');
+        if (condition.excludes) conditionFields.push('excludes');
+        if (condition.assertions) conditionFields.push('assertions');
+        if (condition.default) conditionFields.push('default');
+        if (condition.any) conditionFields.push('any');
+
+        const fieldsDescription = conditionFields.length > 0
+          ? ` (${conditionFields.join(', ')})`
+          : '';
+
+        violations.push({
+          ruleId: 'workflow-deprecated-condition',
+          severity: 'error',
+          file: workflowPath,
+          path: `scenarios[${idx}].condition`,
+          message: `The "condition" field is no longer supported${fieldsDescription}`,
+          impact: 'Required events are now automatically derived from template.events keys',
+          suggestion: `Remove the "condition" field. Required events are inferred from template.events.\n\n` +
+            `Migration:\n` +
+            `  Before:\n` +
+            `    {\n` +
+            `      "condition": { "requires": ["event.a", "event.b"] },\n` +
+            `      "template": { "events": { "event.a": "...", "event.b": "..." }}\n` +
+            `    }\n\n` +
+            `  After:\n` +
+            `    {\n` +
+            `      "template": { "events": { "event.a": "...", "event.b": "..." }}\n` +
+            `    }\n\n` +
+            `Simply remove the "condition" field - the same events should already be defined in "template.events".`,
+          fixable: true,
+        });
+      }
+    });
+
+    return violations;
+  }
+
+  /**
    * Check that events referenced in templates exist in the canvas
    *
    * Note: This is currently a placeholder as canvas files don't yet define event schemas.
@@ -363,18 +421,9 @@ export class WorkflowValidator {
       }
     }
 
-    // Extract all event names from workflow scenarios
+    // Extract all event names from workflow scenarios (from template.events)
     const workflowEvents = new Set<string>();
     for (const scenario of workflow.scenarios) {
-      // From condition.requires
-      if (scenario.condition?.requires) {
-        for (const eventPattern of scenario.condition.requires) {
-          // Skip wildcard patterns for now
-          if (!eventPattern.includes('*')) {
-            workflowEvents.add(eventPattern);
-          }
-        }
-      }
       // From template.events
       if (scenario.template?.events) {
         for (const eventName of Object.keys(scenario.template.events)) {
@@ -463,7 +512,6 @@ export class WorkflowValidator {
 
     const scenarioIds = new Set<string>();
     const priorities = new Set<number>();
-    let hasDefault = false;
 
     workflow.scenarios.forEach((scenario, idx) => {
       // Check for required fields
@@ -537,28 +585,6 @@ export class WorkflowValidator {
         priorities.add(scenario.priority);
       }
 
-      // Check for default scenario
-      if (scenario.condition?.default === true) {
-        hasDefault = true;
-      }
-
-      // Check condition
-      if (!scenario.condition) {
-        violations.push({
-          ruleId: 'workflow-scenario-valid',
-          severity: 'error',
-          file: workflowPath,
-          path: `scenarios[${idx}].condition`,
-          message: 'Scenario is missing required "condition" field',
-          impact: 'Cannot determine when to use this scenario',
-          suggestion: 'Add a condition or set default: true',
-          fixable: false,
-        });
-      } else {
-        // Validate condition structure
-        violations.push(...this.checkConditionStructure(scenario.condition, workflowPath, idx));
-      }
-
       // Check template
       if (!scenario.template) {
         violations.push({
@@ -577,76 +603,54 @@ export class WorkflowValidator {
       }
     });
 
-    // Ensure at least one default scenario exists
-    if (!hasDefault) {
-      violations.push({
-        ruleId: 'workflow-scenario-valid',
-        severity: 'error',
-        file: workflowPath,
-        path: 'scenarios',
-        message: 'No default scenario defined',
-        impact: 'Workflow rendering may fail if no scenario matches',
-        suggestion: 'Add a scenario with "condition.default: true" as a fallback',
-        fixable: false,
-      });
-    }
-
     return violations;
   }
 
   /**
-   * Check that condition uses valid fields (not legacy format)
+   * Check for subset relationships between scenarios
+   *
+   * Ensures no scenario's event set is a strict subset of another scenario's event set.
+   * This prevents ambiguous matching where a trace could match multiple scenarios.
    */
-  private checkConditionStructure(
-    condition: unknown,
-    file: string,
-    scenarioIdx: number
-  ): WorkflowViolation[] {
+  private checkScenarioSubsets(context: WorkflowValidationContext): WorkflowViolation[] {
     const violations: WorkflowViolation[] = [];
-    const validFields = ['requires', 'excludes', 'assertions', 'default', 'any'];
+    const { workflow, workflowPath } = context;
 
-    // Type guard: ensure condition is an object
-    if (typeof condition !== 'object' || condition === null) {
-      return violations;
+    if (!workflow.scenarios || workflow.scenarios.length < 2) {
+      return violations; // Need at least 2 scenarios to check subsets
     }
 
-    const conditionKeys = Object.keys(condition);
+    const scenarios = workflow.scenarios;
 
-    // Check for invalid/legacy fields
-    for (const key of conditionKeys) {
-      if (!validFields.includes(key)) {
-        // Check for common legacy format fields
-        if (key === 'event') {
+    for (let i = 0; i < scenarios.length; i++) {
+      for (let j = i + 1; j < scenarios.length; j++) {
+        const eventsA = new Set(Object.keys(scenarios[i].template?.events || {}));
+        const eventsB = new Set(Object.keys(scenarios[j].template?.events || {}));
+
+        // Check if A is a strict subset of B
+        if (this.isStrictSubset(eventsA, eventsB)) {
           violations.push({
-            ruleId: 'workflow-condition-structure',
+            ruleId: 'workflow-scenario-subset',
             severity: 'error',
-            file,
-            path: `scenarios[${scenarioIdx}].condition.${key}`,
-            message: `Invalid condition field "${key}" (legacy format detected)`,
-            impact: 'Condition will not work - "event" field is not supported',
-            suggestion: 'Use "requires: [...]" array instead of "event: ..." field',
+            file: workflowPath,
+            path: `scenarios[${i}]`,
+            message: `Scenario "${scenarios[i].id}" is a strict subset of "${scenarios[j].id}"`,
+            impact: 'A trace with all events from both scenarios will match both, causing ambiguous scenario selection',
+            suggestion: this.generateSubsetFixSuggestion(scenarios[i], scenarios[j]),
             fixable: false,
           });
-        } else if (key === 'attributes') {
+        }
+
+        // Check if B is a strict subset of A
+        if (this.isStrictSubset(eventsB, eventsA)) {
           violations.push({
-            ruleId: 'workflow-condition-structure',
+            ruleId: 'workflow-scenario-subset',
             severity: 'error',
-            file,
-            path: `scenarios[${scenarioIdx}].condition.${key}`,
-            message: `Invalid condition field "${key}" (legacy format detected)`,
-            impact: 'Condition will not work - "attributes" field is not supported',
-            suggestion: 'Use "assertions: { ... }" instead of "attributes: { ... }" field',
-            fixable: false,
-          });
-        } else {
-          violations.push({
-            ruleId: 'workflow-condition-structure',
-            severity: 'error',
-            file,
-            path: `scenarios[${scenarioIdx}].condition.${key}`,
-            message: `Unknown condition field "${key}"`,
-            impact: 'This field will be ignored and may cause unexpected behavior',
-            suggestion: `Valid fields are: ${validFields.join(', ')}`,
+            file: workflowPath,
+            path: `scenarios[${j}]`,
+            message: `Scenario "${scenarios[j].id}" is a strict subset of "${scenarios[i].id}"`,
+            impact: 'A trace with all events from both scenarios will match both, causing ambiguous scenario selection',
+            suggestion: this.generateSubsetFixSuggestion(scenarios[j], scenarios[i]),
             fixable: false,
           });
         }
@@ -654,6 +658,61 @@ export class WorkflowValidator {
     }
 
     return violations;
+  }
+
+  /**
+   * Check if set A is a strict subset of set B
+   *
+   * A is a strict subset of B if:
+   * 1. All elements of A are in B
+   * 2. A has fewer elements than B
+   */
+  private isStrictSubset(A: Set<string>, B: Set<string>): boolean {
+    // A must have fewer elements than B
+    if (A.size >= B.size) {
+      return false;
+    }
+
+    // All elements of A must be in B
+    for (const item of A) {
+      if (!B.has(item)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Generate helpful suggestion for fixing subset relationship
+   */
+  private generateSubsetFixSuggestion(
+    subsetScenario: WorkflowScenario,
+    supersetScenario: WorkflowScenario
+  ): string {
+    const subsetEvents = Object.keys(subsetScenario.template?.events || {});
+    const supersetEvents = Object.keys(supersetScenario.template?.events || {});
+    const extraEvents = supersetEvents.filter(e => !subsetEvents.includes(e));
+
+    return (
+      `Scenario "${subsetScenario.id}" events: [${subsetEvents.join(', ')}]\n` +
+      `Scenario "${supersetScenario.id}" events: [${supersetEvents.join(', ')}]\n\n` +
+      `Recommended fixes:\n\n` +
+      `1. Merge into one scenario with template conditionals:\n` +
+      `   {\n` +
+      `     "id": "${subsetScenario.id}",\n` +
+      `     "template": {\n` +
+      `       "events": { ${subsetEvents.map(e => `"${e}": "..."`).join(', ')} },\n` +
+      `       "flow": [\n` +
+      `         "Base flow steps...",\n` +
+      `         {{#if ${extraEvents[0]}}}Additional step...{{/if}}\n` +
+      `       ]\n` +
+      `     }\n` +
+      `   }\n\n` +
+      `2. Make them mutually exclusive by adding distinguishing events:\n` +
+      `   - Add an event to "${subsetScenario.id}" that distinguishes it (e.g., "*.timeout", "*.abandoned")\n` +
+      `   - Or ensure "${supersetScenario.id}" has events that never co-occur with "${subsetScenario.id}"`
+    );
   }
 
   /**
@@ -763,42 +822,6 @@ export class WorkflowValidator {
     const { workflow, workflowPath } = context;
 
     workflow.scenarios.forEach((scenario, scenarioIdx) => {
-      // Check condition.requires
-      if (scenario.condition?.requires) {
-        scenario.condition.requires.forEach((eventPattern, idx) => {
-          if (eventPattern.includes('[') && eventPattern.includes(']')) {
-            violations.push({
-              ruleId: 'workflow-event-name-syntax',
-              severity: 'error',
-              file: workflowPath,
-              path: `scenarios[${scenarioIdx}].condition.requires[${idx}]`,
-              message: `Event name uses unsupported [attribute=value] syntax: "${eventPattern}"`,
-              impact: 'Attribute filter syntax is not supported - event will not match',
-              suggestion: `Use a distinct event name instead (e.g., "${this.extractBaseEventName(eventPattern)}.${this.extractAttributeValue(eventPattern)}")`,
-              fixable: false,
-            });
-          }
-        });
-      }
-
-      // Check condition.excludes
-      if (scenario.condition?.excludes) {
-        scenario.condition.excludes.forEach((eventPattern, idx) => {
-          if (eventPattern.includes('[') && eventPattern.includes(']')) {
-            violations.push({
-              ruleId: 'workflow-event-name-syntax',
-              severity: 'error',
-              file: workflowPath,
-              path: `scenarios[${scenarioIdx}].condition.excludes[${idx}]`,
-              message: `Event name uses unsupported [attribute=value] syntax: "${eventPattern}"`,
-              impact: 'Attribute filter syntax is not supported - event will not match',
-              suggestion: `Use a distinct event name instead (e.g., "${this.extractBaseEventName(eventPattern)}.${this.extractAttributeValue(eventPattern)}")`,
-              fixable: false,
-            });
-          }
-        });
-      }
-
       // Check template.events
       if (scenario.template?.events) {
         Object.keys(scenario.template.events).forEach((eventName) => {
