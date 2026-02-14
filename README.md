@@ -6,6 +6,7 @@ Principal View helps you create and maintain visual system architecture diagrams
 
 ## Why Principal View?
 
+- **90%+ Cost Reduction**: Event-based telemetry replaces expensive traditional logging ([see cost analysis](./docs/TELEMETRY_COST_OPTIMIZATION.md))
 - **Visual-First**: Create architecture diagrams using any JSON Canvas compatible tool (Obsidian, etc.)
 - **Always Up-to-Date**: CLI validates that your diagrams match your actual code structure
 - **Configuration-Driven**: Define components, connections, and validation rules in `.canvas` files
@@ -471,6 +472,9 @@ bun run format
 ## Documentation
 
 ### 📚 Getting Started
+- **[Cost Savings Executive Summary](./docs/TELEMETRY_COST_OPTIMIZATION_EXECUTIVE_SUMMARY.md)** - ⭐ 5-min read: Save 90%+ on observability
+- **[Telemetry Cost Optimization](./docs/TELEMETRY_COST_OPTIMIZATION.md)** - ⭐ Full guide: Industry shift & detailed savings
+- **[Observability Compliance Guide](./docs/OBSERVABILITY_COMPLIANCE_GUIDE.md)** - ⭐ GDPR, HIPAA, SOC 2 compliance made possible
 - **[Storyboard Discovery Design](./docs/STORYBOARD_DISCOVERY_DESIGN.md)** - ⭐ Recommended project organization
 - **[Hierarchical Workflow Composition](./docs/HIERARCHICAL_WORKFLOW_COMPOSITION.md)** - ⭐ Cross-library telemetry & composable workflows
 - **[Migration Guide](./docs/MIGRATION_GUIDE.md)** - Upgrade from legacy flat structure

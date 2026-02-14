@@ -27,16 +27,44 @@ Complete documentation for the Visual Validation React component library.
    - Building complete panels
    - Advanced patterns and recipes
 
+### 💰 Cost Optimization
+
+4. **[Telemetry Cost Optimization - Executive Summary](./TELEMETRY_COST_OPTIMIZATION_EXECUTIVE_SUMMARY.md)** ⭐ Start Here (5 min read)
+
+   - Quick overview of observability costs and savings
+   - Real-world cost comparison ($159K-165K savings/year)
+   - Industry shift toward event-based observability
+   - Why Principal View's local aggregation approach wins
+   - Business impact for CTOs, Platform Engineers, and Developers
+
+5. **[Telemetry Cost Optimization - Full Guide](./TELEMETRY_COST_OPTIMIZATION.md)** ⭐ Deep Dive
+
+   - Understanding observability platform costs (Datadog, Splunk, etc.)
+   - Detailed breakdown of metrics, traces, and logs pricing
+   - Industry standard: Events-to-metrics conversion patterns
+   - How Principal View does it better (local vs server-side aggregation)
+   - Implementation best practices and configuration examples
+
+### 🔒 Compliance & Privacy
+
+6. **[Observability Compliance Guide](./OBSERVABILITY_COMPLIANCE_GUIDE.md)** ⭐ Must-Read
+
+   - GDPR, HIPAA, SOC 2, and data residency requirements
+   - Why traditional observability platforms fail compliance
+   - How Principal View enables compliant deletion, data sovereignty
+   - Implementation guide with code examples
+   - Real-world compliance scenarios and checklists
+
 ### 🗂️ Project Organization
 
-4. **[Storyboard Discovery Design](./STORYBOARD_DISCOVERY_DESIGN.md)** ⭐ Recommended
+7. **[Storyboard Discovery Design](./STORYBOARD_DISCOVERY_DESIGN.md)** ⭐ Recommended
 
    - Hierarchical storyboard structure (canvas → workflows → executions)
    - Organizing multiple workflows per feature
    - Discovery system and validation
    - Technical specification
 
-5. **[Hierarchical Workflow Composition](./HIERARCHICAL_WORKFLOW_COMPOSITION.md)** ⭐ New
+8. **[Hierarchical Workflow Composition](./HIERARCHICAL_WORKFLOW_COMPOSITION.md)** ⭐ New
 
    - Telemetry across library boundaries
    - Span-to-workflow mapping convention
@@ -44,7 +72,7 @@ Complete documentation for the Visual Validation React component library.
    - Production trace mapping to canvas
    - Implementation guide and examples
 
-6. **[Migration Guide](./MIGRATION_GUIDE.md)**
+9. **[Migration Guide](./MIGRATION_GUIDE.md)**
    - Migrating from legacy flat structure to storyboards
    - Step-by-step migration instructions
    - Common issues and solutions
@@ -89,6 +117,9 @@ For detailed TypeScript types and interfaces, see:
 
 | Use Case               | Guide Section                                                                         |
 | ---------------------- | ------------------------------------------------------------------------------------- |
+| **Understand cost savings** | [Executive Summary (5 min)](./TELEMETRY_COST_OPTIMIZATION_EXECUTIVE_SUMMARY.md) ⭐ |
+| **Reduce telemetry costs** | [Full Cost Optimization Guide](./TELEMETRY_COST_OPTIMIZATION.md) ⭐ |
+| **GDPR/HIPAA compliance** | [Observability Compliance Guide](./OBSERVABILITY_COMPLIANCE_GUIDE.md) ⭐ |
 | Define graph structure | [Configuration Guide - Node Types](./CONFIGURATION.md#node-types)                     |
 | Create connections     | [Configuration Guide - Connection Rules](./CONFIGURATION.md#connection-rules)         |
 | Stream events          | [Event System Guide - Event Stream Protocol](./EVENT_SYSTEM.md#event-stream-protocol) |
