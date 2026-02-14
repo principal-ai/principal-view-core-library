@@ -5,7 +5,7 @@
  * (e.g., in electron-app or web-ade).
  */
 
-import type { LoggerEvent, LogTransport } from '../types';
+import type { LoggerEvent, LogTransport, MetadataValue } from '../types';
 
 /**
  * WebSocket connection state
@@ -54,7 +54,20 @@ interface ProtocolMessage {
   type: string;
   timestamp: number;
   requestId?: string;
-  payload?: any;
+  payload?: Record<string, MetadataValue>;
+}
+
+/**
+ * Response payload types
+ */
+interface AckResponse {
+  sessionId?: string;
+  [key: string]: MetadataValue;
+}
+
+interface ErrorResponse {
+  message?: string;
+  [key: string]: MetadataValue;
 }
 
 /**
@@ -95,7 +108,7 @@ export class WebSocketTransport {
   private requestIdCounter = 0;
   private pendingRequests = new Map<
     string,
-    { resolve: (value: any) => void; reject: (error: Error) => void }
+    { resolve: (value: AckResponse) => void; reject: (error: Error) => void }
   >();
 
   constructor(options: WebSocketTransportOptions) {
@@ -192,7 +205,7 @@ export class WebSocketTransport {
   /**
    * Start a recording session
    */
-  public async startSession(name?: string, metadata?: Record<string, any>): Promise<string> {
+  public async startSession(name?: string, metadata?: Record<string, MetadataValue>): Promise<string> {
     const requestId = this.generateRequestId();
 
     const message: ProtocolMessage = {
@@ -300,7 +313,7 @@ export class WebSocketTransport {
     }
   }
 
-  private async sendWithAck(message: ProtocolMessage): Promise<any> {
+  private async sendWithAck(message: ProtocolMessage): Promise<AckResponse> {
     return new Promise((resolve, reject) => {
       if (!message.requestId) {
         message.requestId = this.generateRequestId();
@@ -343,7 +356,7 @@ export class WebSocketTransport {
         const pending = this.pendingRequests.get(message.requestId);
         if (pending) {
           this.pendingRequests.delete(message.requestId);
-          pending.resolve((message as any).payload || {});
+          pending.resolve((message.payload || {}) as AckResponse);
         }
       }
 
@@ -352,7 +365,9 @@ export class WebSocketTransport {
         const pending = this.pendingRequests.get(message.requestId);
         if (pending) {
           this.pendingRequests.delete(message.requestId);
-          pending.reject(new Error((message as any).payload?.message || 'Unknown error'));
+          const errorPayload = message.payload as ErrorResponse | undefined;
+          const errorMessage = typeof errorPayload?.message === 'string' ? errorPayload.message : 'Unknown error';
+          pending.reject(new Error(errorMessage));
         }
       }
 

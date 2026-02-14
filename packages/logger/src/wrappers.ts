@@ -1,5 +1,18 @@
 import { EnhancedLogger } from './EnhancedLogger';
-import { EnhancedLoggerOptions, LogEntry } from './types';
+import { EnhancedLoggerOptions, LogEntry, MetadataValue } from './types';
+
+/**
+ * Interface for any logger object with standard log methods
+ */
+interface LoggerLike {
+  debug?: (...args: MetadataValue[]) => void;
+  info?: (...args: MetadataValue[]) => void;
+  warn?: (...args: MetadataValue[]) => void;
+  error?: (...args: MetadataValue[]) => void;
+  log?: (level: string, ...args: MetadataValue[]) => void;
+  _vvfLogger?: EnhancedLogger;
+  [key: string]: unknown;
+}
 
 /**
  * Wrapper for any logger that follows console.log interface
@@ -39,7 +52,7 @@ export function wrapConsoleLogger(
  * Generic wrapper that intercepts existing logger methods
  * Works with winston, bunyan, pino, and most other loggers
  */
-export function enhanceLogger<T extends Record<string, any>>(
+export function enhanceLogger<T extends LoggerLike>(
   logger: T,
   options: EnhancedLoggerOptions = {}
 ): T {
@@ -73,15 +86,15 @@ export function enhanceLogger<T extends Record<string, any>>(
 
   methodsToWrap.forEach((method) => {
     if (logger[method]) {
-      (logger as any)[method] = function (...args: any[]) {
+      logger[method] = function (...args: MetadataValue[]) {
         // Call enhanced logger (captures source)
-        (enhancedLogger as any)[method](...args);
+        enhancedLogger[method](...args);
       };
     }
   });
 
   // Store enhanced logger instance on the wrapped logger
-  (logger as any)._vvfLogger = enhancedLogger;
+  logger._vvfLogger = enhancedLogger;
 
   return logger;
 }
@@ -89,10 +102,10 @@ export function enhanceLogger<T extends Record<string, any>>(
 /**
  * Get the EnhancedLogger instance from a wrapped logger
  */
-export function getEnhancedLogger<T extends Record<string, any>>(
+export function getEnhancedLogger<T extends LoggerLike>(
   logger: T
 ): EnhancedLogger | undefined {
-  return (logger as any)._vvfLogger;
+  return logger._vvfLogger;
 }
 
 /**

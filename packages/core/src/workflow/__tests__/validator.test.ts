@@ -2007,7 +2007,7 @@ describe('WorkflowValidator', () => {
             mode: 'span-tree' as const,
             scenarioSelection: 'first-match' as const,
             scenarios: [],
-          } as any,
+          } as Partial<WorkflowTemplate> as WorkflowTemplate,
           workflowPath: 'invalid.workflow.json',
         },
       ];
@@ -2025,7 +2025,7 @@ describe('WorkflowValidator', () => {
 
   describe('checkSchema - spanPattern', () => {
     it('should error when spanPattern is missing', async () => {
-      const context = createContext({ spanPattern: undefined as any });
+      const context = createContext({ spanPattern: undefined });
       const result = await validator.validate(context);
 
       const spanPatternViolations = result.violations.filter(

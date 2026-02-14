@@ -32,6 +32,28 @@ export interface FileInstrumentation {
 }
 
 /**
+ * Node status breakdown
+ */
+export interface NodeStatusBreakdown {
+  missingStatusCount: number;
+  draftCount: number;
+  approvedCount: number;
+  approvedWithFilesCount: number;
+  implementedCount: number;
+  implementedWithFilesCount: number;
+}
+
+/**
+ * Validation error for a canvas node
+ */
+export interface ValidationError {
+  nodeId: string;
+  canvasPath: string;
+  error: string;
+  status?: string;
+}
+
+/**
  * Overall coverage metrics (file-based)
  */
 export interface CoverageMetrics {
@@ -52,6 +74,12 @@ export interface CoverageMetrics {
 
   // Per-package breakdown
   packageCoverage: PackageCoverageMetrics[];
+
+  // Node status breakdown
+  nodeStatus: NodeStatusBreakdown;
+
+  // Validation errors
+  validationErrors: ValidationError[];
 }
 
 /**
@@ -98,7 +126,15 @@ async function fileContainsEvent(
 }
 
 /**
+ * Get the status of a node (returns undefined if not specified)
+ */
+function getNodeStatus(node: ExtendedCanvasNode): 'draft' | 'approved' | 'implemented' | undefined {
+  return node.pv?.status;
+}
+
+/**
  * Build a map of file -> expected events from canvas nodes
+ * Only includes nodes with status='implemented'
  */
 async function buildFileEventMap(
   otelCanvases: DiscoveredCanvasWithContent[]
@@ -114,6 +150,10 @@ async function buildFileEventMap(
       const eventName = getEventName(node);
       if (!eventName) continue;
 
+      // Only check implemented nodes for coverage
+      const status = getNodeStatus(node);
+      if (status !== 'implemented') continue;
+
       const files = getInstrumentationFiles(node);
       for (const file of files) {
         if (!fileEventMap.has(file)) {
@@ -125,6 +165,78 @@ async function buildFileEventMap(
   }
 
   return fileEventMap;
+}
+
+/**
+ * Validate nodes and collect validation errors
+ */
+function validateNodes(
+  otelCanvases: DiscoveredCanvasWithContent[]
+): { statusBreakdown: NodeStatusBreakdown; errors: ValidationError[] } {
+  const errors: ValidationError[] = [];
+  const statusBreakdown: NodeStatusBreakdown = {
+    missingStatusCount: 0,
+    draftCount: 0,
+    approvedCount: 0,
+    approvedWithFilesCount: 0,
+    implementedCount: 0,
+    implementedWithFilesCount: 0,
+  };
+
+  for (const canvas of otelCanvases) {
+    if (!canvas.content?.nodes || canvas.content.nodes.length === 0) {
+      continue;
+    }
+
+    for (const node of canvas.content.nodes) {
+      const status = getNodeStatus(node);
+      const eventName = getEventName(node);
+
+      // Only validate nodes with events
+      if (!eventName) continue;
+
+      const files = getInstrumentationFiles(node);
+      const hasFiles = files.length > 0;
+
+      // Validate: nodes with events MUST have a status
+      if (!status) {
+        statusBreakdown.missingStatusCount++;
+        errors.push({
+          nodeId: node.id,
+          canvasPath: canvas.path,
+          error: `Node with event "${eventName}" must have pv.status field. Set to "draft" (design phase), "approved" (ready to implement), or "implemented" (code exists)`,
+        });
+        continue; // Skip further validation for this node
+      }
+
+      // Count by status
+      if (status === 'draft') {
+        statusBreakdown.draftCount++;
+      } else if (status === 'approved') {
+        statusBreakdown.approvedCount++;
+        if (hasFiles) {
+          statusBreakdown.approvedWithFilesCount++;
+        }
+      } else if (status === 'implemented') {
+        statusBreakdown.implementedCount++;
+        if (hasFiles) {
+          statusBreakdown.implementedWithFilesCount++;
+        }
+      }
+
+      // Validate approved and implemented nodes have pv.otel.files
+      if ((status === 'approved' || status === 'implemented') && !hasFiles) {
+        errors.push({
+          nodeId: node.id,
+          canvasPath: canvas.path,
+          status,
+          error: `Node with status="${status}" must have pv.otel.files specified`,
+        });
+      }
+    }
+  }
+
+  return { statusBreakdown, errors };
 }
 
 /**
@@ -220,7 +332,10 @@ export async function analyzeCoverage(
   // Filter for .otel.canvas files only
   const otelCanvases = result.canvases.filter(c => c.type === 'otel') as DiscoveredCanvasWithContent[];
 
-  // Build map of file -> expected events from canvas
+  // Validate nodes and collect status breakdown
+  const { statusBreakdown, errors } = validateNodes(otelCanvases);
+
+  // Build map of file -> expected events from canvas (only implemented nodes)
   const fileEventMap = await buildFileEventMap(otelCanvases);
 
   // Get all implementation files from the codebase using implementation layer
@@ -287,5 +402,7 @@ export async function analyzeCoverage(
     totalExpectedEvents,
     totalFoundEvents,
     packageCoverage,
+    nodeStatus: statusBreakdown,
+    validationErrors: errors,
   };
 }

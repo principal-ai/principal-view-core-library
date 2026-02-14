@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'bun:test';
-import { createRecorderTransport, createBufferedRecorderTransport } from './RecorderTransport';
+import { createRecorderTransport, createBufferedRecorderTransport, type LogReceiver } from './RecorderTransport';
 import type { LoggerEvent } from '../types';
 
 describe('RecorderTransport', () => {
   describe('createRecorderTransport', () => {
     it('should forward log events to the callback', () => {
-      const receivedLogs: any[] = [];
+      const receivedLogs: Array<Parameters<LogReceiver>[0]> = [];
       const transport = createRecorderTransport({
         onLog: (log) => receivedLogs.push(log),
       });
@@ -32,7 +32,7 @@ describe('RecorderTransport', () => {
     });
 
     it('should include instanceId in metadata', () => {
-      const receivedLogs: any[] = [];
+      const receivedLogs: Array<Parameters<LogReceiver>[0]> = [];
       const transport = createRecorderTransport({
         onLog: (log) => receivedLogs.push(log),
       });
@@ -55,7 +55,7 @@ describe('RecorderTransport', () => {
     });
 
     it('should filter events when filter is provided', () => {
-      const receivedLogs: any[] = [];
+      const receivedLogs: Array<Parameters<LogReceiver>[0]> = [];
       const transport = createRecorderTransport({
         onLog: (log) => receivedLogs.push(log),
         filter: (event) => event.entry.metadata.level === 'error',
@@ -76,7 +76,7 @@ describe('RecorderTransport', () => {
     });
 
     it('should include args when includeArgs is true', () => {
-      const receivedLogs: any[] = [];
+      const receivedLogs: Array<Parameters<LogReceiver>[0]> = [];
       const transport = createRecorderTransport({
         onLog: (log) => receivedLogs.push(log),
         includeArgs: true,
@@ -97,7 +97,7 @@ describe('RecorderTransport', () => {
     });
 
     it('should not include args by default', () => {
-      const receivedLogs: any[] = [];
+      const receivedLogs: Array<Parameters<LogReceiver>[0]> = [];
       const transport = createRecorderTransport({
         onLog: (log) => receivedLogs.push(log),
       });

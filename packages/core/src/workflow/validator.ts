@@ -3,12 +3,17 @@
  * Validates .workflow.json files against their corresponding .otel.canvas files
  */
 
-import type { WorkflowTemplate, WorkflowScenario } from './types';
+import type { WorkflowTemplate, WorkflowScenario, ScenarioTemplate } from './types';
 import type { ExtendedCanvas } from '../types/canvas';
 import { existsSync, readFileSync } from 'fs';
 import { resolve, basename } from 'path';
 import type { EventRegistry } from '../registry/EventRegistry';
 import type { IExportTraceServiceRequest } from '@opentelemetry/otlp-transformer/build/src/trace/internal-types';
+
+// Type for deprecated scenario format (for migration detection)
+interface DeprecatedScenario extends WorkflowScenario {
+  condition?: unknown;
+}
 
 // ============================================================================
 // Validation Types
@@ -411,9 +416,9 @@ export class WorkflowValidator {
 
     workflow.scenarios.forEach((scenario, idx) => {
       // Check if scenario has a 'condition' field
-      const scenarioAny = scenario as any;
-      if (scenarioAny.condition) {
-        const condition = scenarioAny.condition;
+      const deprecatedScenario = scenario as DeprecatedScenario;
+      if (deprecatedScenario.condition) {
+        const condition = deprecatedScenario.condition as Record<string, unknown>;
 
         // Build list of what was in condition
         const conditionFields: string[] = [];
@@ -1557,7 +1562,7 @@ export class WorkflowValidator {
    */
   private executionHasTemplateData(
     execution: IExportTraceServiceRequest,
-    template: any,
+    template: ScenarioTemplate,
     templateVars: Set<string>,
     eventTemplates: Map<string, Set<string>>
   ): boolean {
@@ -1624,7 +1629,7 @@ export class WorkflowValidator {
    */
   private findMissingTemplateData(
     executions: Array<{path: string; data: IExportTraceServiceRequest}>,
-    template: any,
+    template: ScenarioTemplate,
     eventTemplates: Map<string, Set<string>>
   ): string[] {
     const missing: string[] = [];

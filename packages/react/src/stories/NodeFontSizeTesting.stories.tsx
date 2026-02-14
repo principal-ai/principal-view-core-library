@@ -25,15 +25,6 @@ const createThemeWithFontSize = (baseFontSize: number): Theme => ({
   fontSizes: [baseFontSize, baseFontSize + 2, baseFontSize + 4, baseFontSize + 6, baseFontSize + 8, baseFontSize + 12, baseFontSize + 20, baseFontSize + 36, baseFontSize + 52, baseFontSize + 84],
 });
 
-const FONT_SIZES = {
-  tiny: 10,
-  small: 12,
-  medium: 14,
-  large: 16,
-  xlarge: 18,
-  xxlarge: 20,
-};
-
 const TEXT_SAMPLES = {
   veryShort: 'Init',
   short: 'File Parsed',

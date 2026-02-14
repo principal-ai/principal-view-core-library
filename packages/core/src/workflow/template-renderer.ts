@@ -15,7 +15,7 @@ import type {
   FlowDirective,
   FormattingOptions,
 } from './types';
-import { parseTemplate } from './template-parser';
+import { parseTemplate, type TemplateContext } from './template-parser';
 import { selectScenario, computeAggregates } from './scenario-matcher';
 
 /**
@@ -101,7 +101,7 @@ function renderScenario(context: WorkflowContext): string {
 
   // Introduction
   if (scenario.template.introduction) {
-    parts.push(parseTemplate(scenario.template.introduction, evalContext).toString());
+    parts.push(parseTemplate(scenario.template.introduction, evalContext as TemplateContext).toString());
     parts.push(''); // Blank line
   }
 
@@ -128,7 +128,7 @@ function renderScenario(context: WorkflowContext): string {
     if (parts.length > 0) {
       parts.push(''); // Blank line before summary
     }
-    parts.push(parseTemplate(scenario.template.summary, evalContext).toString());
+    parts.push(parseTemplate(scenario.template.summary, evalContext as TemplateContext).toString());
   }
 
   return parts.join('\n');
@@ -182,11 +182,11 @@ function renderSpanTree(
 
     // Render span
     if (scenario.template.span) {
-      const spanText = parseTemplate(scenario.template.span, eventContext).toString();
+      const spanText = parseTemplate(scenario.template.span, eventContext as TemplateContext).toString();
       parts.push(indent + spanText);
     } else if (scenario.template.events?.[node.span.name]) {
       const eventTemplate = scenario.template.events[node.span.name];
-      const eventText = parseTemplate(eventTemplate, eventContext).toString();
+      const eventText = parseTemplate(eventTemplate, eventContext as TemplateContext).toString();
       parts.push(indent + eventText);
     } else {
       // Default span rendering
@@ -267,7 +267,7 @@ function renderTimeline(
     if (event.type === 'log') {
       eventText = renderLog(event, scenario, { ...eventContext, log: event }, formatting);
     } else if (scenario.template.events?.[event.name]) {
-      eventText = parseTemplate(scenario.template.events[event.name], eventContext).toString();
+      eventText = parseTemplate(scenario.template.events[event.name], eventContext as TemplateContext).toString();
     }
 
     if (eventText) {
@@ -303,13 +303,13 @@ function renderLog(
     const severity = getSeverityLevel(log.severityNumber);
     const logTemplate = scenario.template.logs[severity] || scenario.template.logs.default;
     if (logTemplate) {
-      return parseTemplate(logTemplate, context).toString();
+      return parseTemplate(logTemplate, context as TemplateContext).toString();
     }
   }
 
   // Check for event-specific template
   if (scenario.template.events?.[`log.${log.severityText?.toLowerCase()}`]) {
-    return parseTemplate(scenario.template.events[`log.${log.severityText?.toLowerCase()}`], context).toString();
+    return parseTemplate(scenario.template.events[`log.${log.severityText?.toLowerCase()}`], context as TemplateContext).toString();
   }
 
   // Default log rendering
@@ -345,7 +345,7 @@ function renderFlow(flow: Array<string | FlowDirective>, context: Record<string,
   for (const item of flow) {
     if (typeof item === 'string') {
       // Simple string template
-      parts.push(parseTemplate(item, context).toString());
+      parts.push(parseTemplate(item, context as TemplateContext).toString());
     } else {
       // Flow directive
       if (item.forEach && item.template) {
@@ -359,19 +359,19 @@ function renderFlow(flow: Array<string | FlowDirective>, context: Record<string,
               ...(typeof collectionItem === 'object' && collectionItem !== null ? (collectionItem as Record<string, unknown>) : {}),
               index: i,
             };
-            parts.push(parseTemplate(item.template, itemContext).toString());
+            parts.push(parseTemplate(item.template, itemContext as TemplateContext).toString());
           }
         }
       } else if (item.if) {
         // Conditional
-        const condition = parseTemplate(item.if, context).toString();
+        const condition = parseTemplate(item.if, context as TemplateContext).toString();
         if (condition === 'true' || condition === '1') {
           if (item.then) {
-            parts.push(parseTemplate(item.then, context).toString());
+            parts.push(parseTemplate(item.then, context as TemplateContext).toString());
           }
         } else {
           if (item.else) {
-            parts.push(parseTemplate(item.else, context).toString());
+            parts.push(parseTemplate(item.else, context as TemplateContext).toString());
           }
         }
       }

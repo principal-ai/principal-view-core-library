@@ -1270,40 +1270,11 @@ const sourcesTooltipCanvas: ExtendedCanvas = {
 };
 
 const SourcesInTooltipTemplate = () => {
-  const [lastClickedSource, setLastClickedSource] = React.useState<{ nodeId: string; source: string } | null>(null);
-
-  const handleSourceClick = (nodeId: string, source: string) => {
-    console.log('Source clicked:', source, 'from node:', nodeId);
-    setLastClickedSource({ nodeId, source });
-    alert(`Source clicked!\n\nNode: ${nodeId}\nFile: ${source}`);
-  };
-
   return (
-    <div>
-      {lastClickedSource && (
-        <div
-          style={{
-            marginBottom: 16,
-            padding: 12,
-            backgroundColor: '#f0f9ff',
-            borderRadius: 4,
-            border: '1px solid #3b82f6',
-          }}
-        >
-          <strong style={{ color: '#1e40af' }}>Last Clicked Source:</strong>
-          <div style={{ marginTop: 4, fontSize: 12, color: '#1e40af', fontFamily: 'monospace' }}>
-            Node: {lastClickedSource.nodeId}
-          </div>
-          <div style={{ fontSize: 12, color: '#1e40af', fontFamily: 'monospace' }}>
-            File: {lastClickedSource.source}
-          </div>
-        </div>
-      )}
-      <div style={{ width: '100%', height: '550px' }}>
-        <GraphRenderer
-          canvas={sourcesTooltipCanvas}
-        />
-      </div>
+    <div style={{ width: '100%', height: '550px' }}>
+      <GraphRenderer
+        canvas={sourcesTooltipCanvas}
+      />
     </div>
   );
 };

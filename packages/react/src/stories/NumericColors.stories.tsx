@@ -50,7 +50,7 @@ const obsidianNumericColorsCanvas: ExtendedCanvas = {
       width: 140,
       height: 80,
       text: 'color: "1"\nRed\n#ef4444',
-      color: '1' as any, // Obsidian format
+      color: '1', // Obsidian format
       pv: { nodeType: 'preset', shape: 'rectangle' },
     },
     {
@@ -61,7 +61,7 @@ const obsidianNumericColorsCanvas: ExtendedCanvas = {
       width: 140,
       height: 80,
       text: 'color: "2"\nOrange\n#f97316',
-      color: '2' as any,
+      color: '2',
       pv: { nodeType: 'preset', shape: 'rectangle' },
     },
     {
@@ -72,7 +72,7 @@ const obsidianNumericColorsCanvas: ExtendedCanvas = {
       width: 140,
       height: 80,
       text: 'color: "3"\nYellow\n#eab308',
-      color: '3' as any,
+      color: '3',
       pv: { nodeType: 'preset', shape: 'rectangle' },
     },
     {
@@ -83,7 +83,7 @@ const obsidianNumericColorsCanvas: ExtendedCanvas = {
       width: 140,
       height: 80,
       text: 'color: "4"\nGreen\n#22c55e',
-      color: '4' as any,
+      color: '4',
       pv: { nodeType: 'preset', shape: 'rectangle' },
     },
     {
@@ -94,7 +94,7 @@ const obsidianNumericColorsCanvas: ExtendedCanvas = {
       width: 140,
       height: 80,
       text: 'color: "5"\nCyan\n#06b6d4',
-      color: '5' as any,
+      color: '5',
       pv: { nodeType: 'preset', shape: 'rectangle' },
     },
     {
@@ -105,7 +105,7 @@ const obsidianNumericColorsCanvas: ExtendedCanvas = {
       width: 140,
       height: 80,
       text: 'color: "6"\nPurple\n#8b5cf6',
-      color: '6' as any,
+      color: '6',
       pv: { nodeType: 'preset', shape: 'rectangle' },
     },
     // Label for row 2
@@ -381,7 +381,7 @@ const edgeNumericColorsCanvas: ExtendedCanvas = {
       id: 'edge-string-1',
       fromNode: 'source',
       toNode: 'target-1',
-      color: '1' as any, // String format - red
+      color: '1', // String format - red
       label: 'color: "1"',
     },
     {
@@ -395,7 +395,7 @@ const edgeNumericColorsCanvas: ExtendedCanvas = {
       id: 'edge-string-6',
       fromNode: 'source',
       toNode: 'target-3',
-      color: '6' as any, // String format - purple
+      color: '6', // String format - purple
       label: 'color: "6"',
     },
     {

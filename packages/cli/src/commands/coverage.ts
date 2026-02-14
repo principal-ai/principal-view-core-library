@@ -38,6 +38,31 @@ function printCoverageReport(metrics: CoverageMetrics, rootDir: string, options:
     metrics.canvasFiles.forEach(f => console.log(chalk.dim(`   - ${f}`)));
   }
 
+  // Validation errors (show first)
+  if (metrics.validationErrors && metrics.validationErrors.length > 0) {
+    console.log(chalk.red(`\n⚠️  Validation Errors (${metrics.validationErrors.length}):`));
+    metrics.validationErrors.forEach(err => {
+      console.log(chalk.yellow(`\n   Canvas: ${err.canvasPath}`));
+      console.log(chalk.dim(`   Node ID: ${err.nodeId}`));
+      if (err.status) {
+        console.log(chalk.dim(`   Status: ${err.status}`));
+      }
+      console.log(chalk.red(`   Error: ${err.error}`));
+    });
+  }
+
+  // Node status breakdown
+  if (metrics.nodeStatus) {
+    const ns = metrics.nodeStatus;
+    console.log(chalk.bold('\n📊 Node Status:'));
+    if (ns.missingStatusCount > 0) {
+      console.log(chalk.red(`   ⚠️  Missing Status: ${ns.missingStatusCount} nodes (must add pv.status field)`));
+    }
+    console.log(chalk.dim(`   Draft: ${ns.draftCount} nodes (design phase)`));
+    console.log(chalk.yellow(`   Approved: ${ns.approvedCount} nodes, ${ns.approvedWithFilesCount} with files specified (awaiting implementation)`));
+    console.log(chalk.green(`   Implemented: ${ns.implementedCount} nodes, ${ns.implementedWithFilesCount} with files specified`));
+  }
+
   // File summary
   console.log(chalk.bold('\n🎯 File Coverage Summary:'));
   console.log(`   Implementation files checked: ${metrics.totalImplementationFiles}`);
@@ -130,8 +155,22 @@ function printCoverageReport(metrics: CoverageMetrics, rootDir: string, options:
 
   // Recommendations
   console.log(chalk.bold('\n💡 Recommendations:'));
-  if (metrics.totalImplementationFiles === 0) {
-    console.log(chalk.red('   🔴 No files specified in pv.otel.files - add instrumentation locations to canvas nodes'));
+  if (metrics.validationErrors && metrics.validationErrors.length > 0) {
+    const missingStatusErrors = metrics.validationErrors.filter(e => !e.status);
+    const otherErrors = metrics.validationErrors.filter(e => e.status);
+
+    if (missingStatusErrors.length > 0) {
+      console.log(chalk.red(`   🔴 ${missingStatusErrors.length} node(s) missing pv.status field - add status to track implementation lifecycle`));
+      console.log(chalk.dim('\n   📚 About the status field:'));
+      console.log(chalk.dim('      • "draft" - Design/proposal phase, not counted in coverage'));
+      console.log(chalk.dim('      • "approved" - Design finalized, ready to implement (requires pv.otel.files)'));
+      console.log(chalk.dim('      • "implemented" - Code exists with instrumentation (requires pv.otel.files)'));
+    }
+    if (otherErrors.length > 0) {
+      console.log(chalk.red(`   🔴 ${otherErrors.length} approved/implemented node(s) missing pv.otel.files`));
+    }
+  } else if (metrics.totalImplementationFiles === 0) {
+    console.log(chalk.red('   🔴 No implemented nodes with pv.otel.files - mark nodes as status="implemented" and add files'));
   } else if (metrics.coveragePercentage === 0) {
     console.log(chalk.red('   🔴 No instrumentation found - add OTEL events to files referenced in canvas'));
   } else if (metrics.coveragePercentage < 30) {
@@ -146,10 +185,29 @@ function printCoverageReport(metrics: CoverageMetrics, rootDir: string, options:
 
   // Next steps
   console.log(chalk.bold('\n📝 Next Steps:'));
-  if (metrics.totalImplementationFiles === 0) {
-    console.log(chalk.dim(`   1. Add pv.otel.files to canvas nodes`));
-    console.log(chalk.dim(`   2. Example: { "pv": { "otel": { "files": ["src/app/api/route.ts"] } } }`));
-    console.log(chalk.dim(`   3. Re-run: privu coverage`));
+  if (metrics.validationErrors && metrics.validationErrors.length > 0) {
+    const missingStatusErrors = metrics.validationErrors.filter(e => !e.status);
+
+    if (missingStatusErrors.length > 0) {
+      console.log(chalk.dim(`   1. Add pv.status to the ${missingStatusErrors.length} node(s) missing it`));
+      console.log(chalk.dim(`   2. Choose based on implementation state:`));
+      console.log(chalk.dim(`      - "draft" if designing/proposing the event`));
+      console.log(chalk.dim(`      - "approved" if ready to implement`));
+      console.log(chalk.dim(`      - "implemented" if code already exists`));
+      console.log(chalk.dim(`   3. For approved/implemented, add pv.otel.files`));
+      console.log(chalk.dim(`   4. Example: { "pv": { "status": "implemented", "event": {...}, "otel": { "files": ["src/file.ts"] } } }`));
+      console.log(chalk.dim(`   5. Re-run: privu coverage`));
+    } else {
+      console.log(chalk.dim(`   1. Fix the ${metrics.validationErrors.length} validation error(s) above`));
+      console.log(chalk.dim(`   2. Add pv.otel.files to approved/implemented nodes`));
+      console.log(chalk.dim(`   3. Example: { "pv": { "status": "implemented", "otel": { "files": ["src/file.ts"] } } }`));
+      console.log(chalk.dim(`   4. Re-run: privu coverage`));
+    }
+  } else if (metrics.totalImplementationFiles === 0) {
+    console.log(chalk.dim(`   1. Mark canvas nodes with status: "draft", "approved", or "implemented"`));
+    console.log(chalk.dim(`   2. Add pv.otel.files to approved/implemented nodes`));
+    console.log(chalk.dim(`   3. Example: { "pv": { "status": "implemented", "otel": { "files": ["src/app/api/route.ts"] } } }`));
+    console.log(chalk.dim(`   4. Re-run: privu coverage`));
   } else if (uninstrumented.length > 0) {
     console.log(chalk.dim(`   1. Review the ${uninstrumented.length} uninstrumented file(s) above`));
     console.log(chalk.dim(`   2. Add the missing OpenTelemetry events to each file`));
@@ -188,6 +246,18 @@ export function createCoverageCommand(): Command {
           console.log(JSON.stringify(metrics, null, 2));
         } else {
           printCoverageReport(metrics, rootDir, options);
+        }
+
+        // Check for validation errors
+        if (metrics.validationErrors && metrics.validationErrors.length > 0) {
+          if (!options.json) {
+            console.error(
+              chalk.red(
+                `\n✗ Found ${metrics.validationErrors.length} validation error(s). Fix these before checking coverage.`
+              )
+            );
+          }
+          process.exit(1);
         }
 
         // Check threshold

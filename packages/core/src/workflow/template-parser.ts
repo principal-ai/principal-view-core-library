@@ -248,7 +248,7 @@ function buildSegmentsWithResolvedVariables(
     }
 
     // Resolve the variable
-    const [value, resolved] = resolveVariable(varName, context);
+    const [value, resolved] = resolveVariable(varName, context as TemplateContext);
 
     if (resolved && value !== undefined) {
       const valueStr = String(value);

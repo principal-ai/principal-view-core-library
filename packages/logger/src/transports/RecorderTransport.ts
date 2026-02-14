@@ -5,7 +5,7 @@
  * For remote recording, use WebSocketTransport instead.
  */
 
-import type { LoggerEvent, LogTransport } from '../types';
+import type { LoggerEvent, LogTransport, MetadataValue } from '../types';
 
 /**
  * Callback type for receiving log entries
@@ -22,7 +22,7 @@ export type LogReceiver = (log: {
       column?: number;
     };
     instanceId?: string;
-    [key: string]: any;
+    [key: string]: MetadataValue;
   };
 }) => void;
 
@@ -133,46 +133,47 @@ export function createBufferedRecorderTransport(options: {
   // Start flush timer
   flushTimer = setInterval(flush, flushIntervalMs);
 
-  const transport = (event: LoggerEvent) => {
-    // Apply filter if provided
-    if (filter && !filter(event)) {
-      return;
-    }
+  const transportWithMethods: LogTransport & { dispose: () => void; flush: () => void } = Object.assign(
+    (event: LoggerEvent) => {
+      // Apply filter if provided
+      if (filter && !filter(event)) {
+        return;
+      }
 
-    const { entry } = event;
+      const { entry } = event;
 
-    const log: Parameters<LogReceiver>[0] = {
-      message: entry.message,
-      metadata: {
-        timestamp: entry.metadata.timestamp,
-        level: entry.metadata.level,
-        source: entry.metadata.source,
-        instanceId: entry.metadata.instanceId,
+      const log: Parameters<LogReceiver>[0] = {
+        message: entry.message,
+        metadata: {
+          timestamp: entry.metadata.timestamp,
+          level: entry.metadata.level,
+          source: entry.metadata.source,
+          instanceId: entry.metadata.instanceId,
+        },
+      };
+
+      if (includeArgs && entry.args && entry.args.length > 0) {
+        log.metadata.args = entry.args;
+      }
+
+      buffer.push(log);
+
+      // Flush if buffer is full
+      if (buffer.length >= maxBufferSize) {
+        flush();
+      }
+    },
+    {
+      dispose: () => {
+        if (flushTimer) {
+          clearInterval(flushTimer);
+          flushTimer = null;
+        }
+        flush(); // Final flush
       },
-    };
-
-    if (includeArgs && entry.args && entry.args.length > 0) {
-      log.metadata.args = entry.args;
+      flush,
     }
+  );
 
-    buffer.push(log);
-
-    // Flush if buffer is full
-    if (buffer.length >= maxBufferSize) {
-      flush();
-    }
-  };
-
-  // Add dispose and flush methods
-  (transport as any).dispose = () => {
-    if (flushTimer) {
-      clearInterval(flushTimer);
-      flushTimer = null;
-    }
-    flush(); // Final flush
-  };
-
-  (transport as any).flush = flush;
-
-  return transport as LogTransport & { dispose: () => void; flush: () => void };
+  return transportWithMethods;
 }

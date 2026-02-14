@@ -385,6 +385,13 @@ export interface PVEventSchema {
 }
 
 /**
+ * Node implementation status
+ *
+ * Tracks the lifecycle of a node from design to implementation.
+ */
+export type PVNodeStatus = 'draft' | 'approved' | 'implemented';
+
+/**
  * Principal View node extensions
  */
 export interface PVNodeExtension {
@@ -404,6 +411,17 @@ export interface PVNodeExtension {
    * Shown in tooltips or detail panels.
    */
   description?: string;
+
+  /**
+   * Implementation status of this node
+   *
+   * - `draft`: Design/proposal phase, no requirements (default if not specified)
+   * - `approved`: Design finalized, ready for implementation (requires pv.otel.files)
+   * - `implemented`: Code exists with instrumentation (requires pv.otel.files and events in code)
+   *
+   * Used by coverage tools to determine validation requirements and coverage tracking.
+   */
+  status?: PVNodeStatus;
 
   /**
    * OTEL-specific metadata

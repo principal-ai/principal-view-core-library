@@ -3,6 +3,7 @@ import {
   LogLevel,
   LogEntry,
   LogMetadata,
+  MetadataValue,
   EnhancedLoggerOptions,
   LoggerEvent,
   LogTransport,
@@ -45,35 +46,35 @@ export class EnhancedLogger {
   /**
    * Log a debug message
    */
-  public debug(message: string, ...args: any[]): void {
+  public debug(message: string, ...args: MetadataValue[]): void {
     this.log('debug', message, ...args);
   }
 
   /**
    * Log an info message
    */
-  public info(message: string, ...args: any[]): void {
+  public info(message: string, ...args: MetadataValue[]): void {
     this.log('info', message, ...args);
   }
 
   /**
    * Log a warning message
    */
-  public warn(message: string, ...args: any[]): void {
+  public warn(message: string, ...args: MetadataValue[]): void {
     this.log('warn', message, ...args);
   }
 
   /**
    * Log an error message
    */
-  public error(message: string, ...args: any[]): void {
+  public error(message: string, ...args: MetadataValue[]): void {
     this.log('error', message, ...args);
   }
 
   /**
    * Core logging method
    */
-  public log(level: LogLevel, message: string, ...args: any[]): void {
+  public log(level: LogLevel, message: string, ...args: MetadataValue[]): void {
     // Check if log level is enabled
     if (!this.isLevelEnabled(level)) {
       return;

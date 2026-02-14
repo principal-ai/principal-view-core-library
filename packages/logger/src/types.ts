@@ -4,6 +4,11 @@
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 /**
+ * Acceptable metadata value types
+ */
+export type MetadataValue = string | number | boolean | null | undefined | Error | Record<string, unknown>;
+
+/**
  * Source location information extracted from stack trace
  */
 export interface SourceLocation {
@@ -35,7 +40,7 @@ export interface LogMetadata {
    */
   instanceId?: string;
   /** Additional custom metadata */
-  [key: string]: any;
+  [key: string]: MetadataValue;
 }
 
 /**
@@ -47,7 +52,7 @@ export interface LogEntry {
   /** Log metadata including source and timestamp */
   metadata: LogMetadata;
   /** Additional arguments passed to logger */
-  args?: any[];
+  args?: MetadataValue[];
 }
 
 /**
