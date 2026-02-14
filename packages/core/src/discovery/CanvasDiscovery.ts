@@ -16,7 +16,6 @@ import type {
   CanvasDiscoveryResult,
   DiscoveryOptions,
   CanvasType,
-  TestTraceType,
 } from './types';
 
 /**

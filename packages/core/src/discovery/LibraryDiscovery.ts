@@ -8,7 +8,7 @@
 import type { FileTree, FileSystemAdapter } from '@principal-ai/repository-abstraction';
 import { PackageLayerModule, type PackageLayer } from '@principal-ai/codebase-composition';
 import { LibraryLoader } from '../LibraryLoader';
-import type { ComponentLibrary, ResourceAttributes } from '../types/library';
+import type { ComponentLibrary } from '../types/library';
 
 /**
  * Discovered library with metadata
@@ -74,17 +74,15 @@ export class LibraryDiscovery {
    * @param fileTree - FileTree from repository-abstraction
    * @param options - Discovery options
    * @param options.fileReader - Optional function to read file contents (for package.json parsing)
-   * @param options.repositoryPath - Absolute path to repository root (required for correct path resolution)
    * @returns Discovery result with libraries, service names, and errors
    */
   async discover(
     fileTree: FileTree,
     options?: {
       fileReader?: (path: string) => Promise<string>;
-      repositoryPath?: string;
     }
   ): Promise<LibraryDiscoveryResult> {
-    const { fileReader, repositoryPath } = options || {};
+    const { fileReader } = options || {};
     const errors: Array<{ path: string; error: string }> = [];
     const libraries: DiscoveredLibrary[] = [];
 
@@ -133,8 +131,7 @@ export class LibraryDiscovery {
 
     // 3. Also check root directory for a library.yaml (non-package libraries)
     try {
-      // Use provided repositoryPath, fallback to fileTree.path, or current directory
-      const rootPath = repositoryPath || (fileTree as any).path || '.';
+      const rootPath = fileTree.root.path;
       const hasRootLibrary = await this.loader.hasLibrary(rootPath);
 
       if (hasRootLibrary) {

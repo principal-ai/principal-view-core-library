@@ -32,7 +32,7 @@ export function renderWorkflow(template: WorkflowTemplate, events: OtelEvent[]):
   const aggregates = computeAggregates(events);
 
   // Select scenario
-  const matchResult = selectScenario(template, events, aggregates);
+  const matchResult = selectScenario(template, events);
 
   // Build context
   const context: WorkflowContext = {

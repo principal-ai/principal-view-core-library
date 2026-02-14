@@ -274,7 +274,7 @@ describe('selectScenario', () => {
       { name: 'conversion.started', timestamp: 0 },
       { name: 'conversion.error', timestamp: 50 },
     ];
-    const result = selectScenario(template, events, {});
+    const result = selectScenario(template, events);
     expect(result.scenario.id).toBe('error');
     expect(result.isDefault).toBe(false);
   });
@@ -284,8 +284,7 @@ describe('selectScenario', () => {
       { name: 'conversion.started', timestamp: 0 },
       { name: 'conversion.complete', timestamp: 100 },
     ];
-    const attributes = { 'result.violations.total': 5 };
-    const result = selectScenario(template, events, attributes);
+    const result = selectScenario(template, events);
     expect(result.scenario.id).toBe('violations');
   });
 
@@ -294,14 +293,13 @@ describe('selectScenario', () => {
       { name: 'conversion.started', timestamp: 0 },
       { name: 'conversion.complete', timestamp: 100 },
     ];
-    const attributes = { 'result.violations.total': 0 };
-    const result = selectScenario(template, events, attributes);
+    const result = selectScenario(template, events);
     expect(result.scenario.id).toBe('happy');
   });
 
   it('should select fallback when no other matches', () => {
     const events: OtelEvent[] = [{ name: 'unknown.event', timestamp: 0 }];
-    const result = selectScenario(template, events, {});
+    const result = selectScenario(template, events);
     expect(result.scenario.id).toBe('fallback');
     expect(result.isDefault).toBe(true);
   });
@@ -312,15 +310,14 @@ describe('selectScenario', () => {
       scenarios: [template.scenarios[0]], // Only error scenario, no fallback
     };
     const events: OtelEvent[] = [{ name: 'conversion.complete', timestamp: 0 }];
-    expect(() => selectScenario(badTemplate, events, {})).toThrow('No scenario matched');
+    expect(() => selectScenario(badTemplate, events)).toThrow('No scenario matched');
   });
 
   it('should return applicable scenarios for UI', () => {
     const events: OtelEvent[] = [
       { name: 'conversion.complete', timestamp: 100 },
     ];
-    const attributes = { 'result.violations.total': 5 };
-    const result = selectScenario(template, events, attributes);
+    const result = selectScenario(template, events);
     expect(result.applicableScenarios.length).toBeGreaterThan(1);
     expect(result.applicableScenarios[0].id).toBe('violations');
     expect(result.applicableScenarios).toContainEqual(expect.objectContaining({ id: 'fallback' }));

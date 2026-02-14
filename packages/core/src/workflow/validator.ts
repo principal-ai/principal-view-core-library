@@ -6,7 +6,7 @@
 import type { WorkflowTemplate, WorkflowScenario } from './types';
 import type { ExtendedCanvas } from '../types/canvas';
 import { existsSync, readFileSync } from 'fs';
-import { resolve, dirname, basename } from 'path';
+import { resolve, basename } from 'path';
 import type { EventRegistry } from '../registry/EventRegistry';
 import type { IExportTraceServiceRequest } from '@opentelemetry/otlp-transformer/build/src/trace/internal-types';
 

@@ -1572,7 +1572,6 @@ function validateExecution(
         }
       } else {
         // No workflow found - provide guidance on expected structure
-        const canvasBasename = fileName.replace(/\.otel\.json$/, '');
         result.errors.push({
           path: relativePath,
           message: 'No co-located workflow file found for test trace',

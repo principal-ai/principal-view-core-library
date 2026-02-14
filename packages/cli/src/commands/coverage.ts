@@ -12,8 +12,6 @@ import chalk from 'chalk';
 import {
   analyzeCoverage,
   type CoverageMetrics,
-  type FileInstrumentation,
-  type PackageCoverageMetrics,
 } from '@principal-ai/principal-view-core/node';
 import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
 

@@ -78,7 +78,7 @@ export function createTestCommand(): Command {
         });
 
         // Select the winning scenario
-        const matchResult = selectScenario(workflow, events, aggregates);
+        const matchResult = selectScenario(workflow, events);
         const selectedScenario = matchResult.scenario;
 
         if (options.json) {

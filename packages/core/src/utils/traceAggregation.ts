@@ -15,7 +15,6 @@ import type {
 import {
   getAttributeValue,
   parseNanoTime,
-  getSpanDuration,
 } from '../types/otel';
 
 /**

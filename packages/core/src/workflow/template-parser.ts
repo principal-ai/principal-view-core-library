@@ -11,6 +11,20 @@
 
 import Handlebars from 'handlebars';
 
+/**
+ * Template context for variable resolution
+ * Represents dynamic data passed to template rendering with support for nested object traversal
+ */
+export type TemplateContext = {
+  [key: string]: TemplateValue;
+};
+
+/**
+ * Valid values within a template context
+ * Can be primitives, nested objects, or arrays
+ */
+export type TemplateValue = string | number | boolean | null | undefined | TemplateContext | TemplateValue[];
+
 // Register common comparison helpers
 Handlebars.registerHelper('eq', (a, b) => a === b);
 Handlebars.registerHelper('ne', (a, b) => a !== b);
@@ -109,12 +123,12 @@ function extractVariables(node: hbs.AST.Node, variables: Set<string> = new Set()
  * Resolve a variable path in a context object
  * Returns [value, resolved] where resolved indicates if the path exists
  */
-function resolveVariable(path: string, context: Record<string, unknown>): [unknown, boolean] {
+function resolveVariable(path: string, context: TemplateContext): [TemplateValue, boolean] {
   const parts = path.split('.');
-  let current: any = context;
+  let current: TemplateValue = context;
 
   for (const part of parts) {
-    if (current == null || typeof current !== 'object') {
+    if (current == null || typeof current !== 'object' || Array.isArray(current)) {
       return [undefined, false];
     }
     if (!(part in current)) {
@@ -275,7 +289,7 @@ function buildSegmentsWithResolvedVariables(
  * @param context - Data context for variable lookup
  * @returns ParsedTemplate with structured segments and variable metadata
  */
-export function parseTemplate(template: string, context: Record<string, unknown>): ParsedTemplate {
+export function parseTemplate(template: string, context: TemplateContext): ParsedTemplate {
   try {
     const handlebarTemplate = Handlebars.compile(template, { noEscape: true });
     const rendered = handlebarTemplate(context);

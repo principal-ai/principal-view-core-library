@@ -86,7 +86,7 @@ export class InMemoryVersionRegistry implements VersionRegistry {
   async listVersions(repositoryUrl: string): Promise<VersionIdentifier[]> {
     const versions: VersionIdentifier[] = [];
 
-    for (const [key, snapshot] of this.versions.entries()) {
+    for (const [_key, snapshot] of this.versions.entries()) {
       if (snapshot.repositoryUrl === repositoryUrl) {
         versions.push({
           repositoryUrl: snapshot.repositoryUrl,

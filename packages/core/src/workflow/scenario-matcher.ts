@@ -30,14 +30,12 @@ export function getRequiredEvents(scenario: WorkflowScenario): string[] {
  *
  * @param template - Workflow template with scenarios
  * @param events - Collected OTEL events
- * @param attributes - Aggregated attributes (computed from events) - DEPRECATED, no longer used
  * @returns Matched scenario and metadata
  * @throws Error if no scenario matches
  */
 export function selectScenario(
   template: WorkflowTemplate,
-  events: OtelEvent[],
-  attributes: Record<string, unknown> = {}
+  events: OtelEvent[]
 ): ScenarioMatchResult {
   // Sort scenarios by priority (should already be sorted in template)
   const sorted = [...template.scenarios].sort((a, b) => a.priority - b.priority);

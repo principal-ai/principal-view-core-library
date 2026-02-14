@@ -464,7 +464,7 @@ export function createLintCommand(): Command {
         const results = new Map<string, GraphLintResult>();
 
         // PHASE 1: Group workflows by canvas and collect all events used
-        const workflowsByCanvas = new Map<string, Array<{ absolutePath: string; relativePath: string; loaded: any }>>();
+        const workflowsByCanvas = new Map<string, Array<{ absolutePath: string; relativePath: string; loaded: { workflow: WorkflowTemplate; raw: string } }>>();
         const canvasEventMap = new Map<string, Set<string>>();
 
         for (const filePath of configFiles) {
