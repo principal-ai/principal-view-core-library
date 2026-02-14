@@ -1,6 +1,6 @@
 {
   "name": "@principal-ai/principal-view-core",
-  "version": "0.23.0",
+  "version": "0.23.1",
   "description": "Core logic and types for graph-based principal view framework",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -42,7 +42,6 @@
     "@opentelemetry/sdk-trace-base": "2.2.0",
     "@opentelemetry/semantic-conventions": "1.38.0",
     "@principal-ai/codebase-composition": "^0.2.43",
-    "@principal-ai/principal-view-core": "^0.22.0",
     "@principal-ai/repository-abstraction": "^0.5.3",
     "date-fns": "3.0.0",
     "handlebars": "^4.7.8",
