@@ -563,7 +563,7 @@ export class WorkflowValidator {
       if (!eventsToCheckAgainst.has(eventName)) {
         violations.push({
           ruleId: 'workflow-event-coverage',
-          severity: 'warn',
+          severity: 'error',
           file: workflowPath,
           path: 'events',
           message: context.allWorkflowEvents
@@ -790,7 +790,7 @@ export class WorkflowValidator {
       `     }\n` +
       `   }\n\n` +
       `2. Make them mutually exclusive by adding distinguishing events:\n` +
-      `   - Add an event to "${subsetScenario.id}" that distinguishes it (e.g., "*.timeout", "*.abandoned")\n` +
+      `   - Add an event to "${subsetScenario.id}" that distinguishes it (e.g., "conversion.timeout", "conversion.abandoned")\n` +
       `   - Or ensure "${supersetScenario.id}" has events that never co-occur with "${subsetScenario.id}"`
     );
   }
@@ -1709,17 +1709,8 @@ export class WorkflowValidator {
    * Check if an event name matches any available event (supports globs)
    */
   private matchesEventPattern(eventName: string, availableEvents: string[]): boolean {
-    // Exact match
-    if (availableEvents.includes(eventName)) {
-      return true;
-    }
-
-    // Glob pattern matching (simple implementation)
-    // Supports: *.error, rule.*, *.*
-    const pattern = eventName.replace(/\*/g, '.*');
-    const regex = new RegExp(`^${pattern}$`);
-
-    return availableEvents.some((e) => regex.test(e));
+    // Exact match only
+    return availableEvents.includes(eventName);
   }
 
   /**

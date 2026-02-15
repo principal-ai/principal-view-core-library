@@ -295,7 +295,8 @@ export interface WorkflowResult {
 }
 
 /**
- * Scenario matching result
+ * Scenario matching result (DEPRECATED - use EnhancedScenarioMatchResult)
+ * @deprecated Use EnhancedScenarioMatchResult instead for better multi-match support
  */
 export interface ScenarioMatchResult {
   /** The matched scenario */
@@ -309,4 +310,110 @@ export interface ScenarioMatchResult {
 
   /** Reasons why other scenarios didn't match */
   matchReasons?: Record<string, string>;
+}
+
+/**
+ * Detailed information about how a scenario matched against a trace
+ */
+export interface ScenarioMatchDetail {
+  /** The scenario being evaluated */
+  scenario: WorkflowScenario;
+
+  /** Match percentage (0-100) */
+  matchPercentage: number;
+
+  /** Number of required events that matched */
+  matchedEventCount: number;
+
+  /** Total required events for this scenario */
+  totalRequiredEvents: number;
+
+  /** Event names that were found in the trace */
+  matchedEventNames: string[];
+
+  /** Event names that were not found in the trace */
+  missingEventNames: string[];
+
+  /** Whether this is a full match (100% coverage) */
+  isFullMatch: boolean;
+
+  /** Whether this scenario has zero required events (catch-all) */
+  isCatchAll: boolean;
+}
+
+/**
+ * Enhanced result from scenario selection with full/partial match separation
+ */
+export interface EnhancedScenarioMatchResult {
+  /**
+   * All scenarios that fully matched (100% coverage)
+   * Sorted by priority (lower number = higher priority)
+   * Empty array if no full matches
+   */
+  fullMatches: ScenarioMatchDetail[];
+
+  /**
+   * Partial matches (< 100% coverage)
+   * Sorted by match percentage DESC, then priority ASC
+   * Only populated if fullMatches is empty
+   */
+  partialMatches: ScenarioMatchDetail[];
+
+  /**
+   * The recommended scenario to use
+   * - First item from fullMatches if available
+   * - First item from partialMatches if no full matches
+   * - null if no scenarios at all
+   */
+  recommendedScenario: ScenarioMatchDetail | null;
+
+  /** Total number of events in the trace */
+  totalTraceEvents: number;
+
+  /** Total scenarios evaluated */
+  totalScenariosEvaluated: number;
+}
+
+/**
+ * Workflow match result - combines scenario match details with workflow metadata
+ *
+ * This type is used to represent a match between a trace and a specific workflow/scenario.
+ * It extends ScenarioMatchDetail with workflow identification information.
+ */
+export interface WorkflowMatch {
+  /** Storyboard/canvas identifier */
+  storyboardId: string;
+
+  /** Human-readable storyboard name */
+  storyboardName: string;
+
+  /** Workflow identifier */
+  workflowId: string;
+
+  /** Human-readable workflow name */
+  workflowName: string;
+
+  /** Scenario identifier */
+  scenarioId: string;
+
+  /** Human-readable scenario name */
+  scenarioName: string;
+
+  /** Number of required events that matched */
+  matchedEventCount: number;
+
+  /** Event names that were found in the trace */
+  matchedEventNames?: string[];
+
+  /** Match percentage (0-100) */
+  matchPercentage?: number;
+
+  /** Whether this is a full match (100% coverage) */
+  isFullMatch?: boolean;
+
+  /** Event names that were not found in the trace */
+  missingEventNames?: string[];
+
+  /** Legacy field for backward compatibility */
+  matchedNodeIds?: string[];
 }

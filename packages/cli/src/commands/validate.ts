@@ -433,7 +433,7 @@ const ALLOWED_CANVAS_FIELDS = {
  * Allowed fields for library validation
  */
 const ALLOWED_LIBRARY_FIELDS = {
-  root: ['version', 'name', 'description', 'nodeComponents', 'edgeComponents', 'connectionRules'],
+  root: ['version', 'name', 'description', 'nodeComponents', 'edgeComponents', 'connectionRules', 'resources'],
   nodeComponent: [
     'description',
     'tags',

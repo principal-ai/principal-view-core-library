@@ -10,6 +10,8 @@ import type {
   WorkflowTemplate,
   OtelEvent,
   ScenarioMatchResult,
+  ScenarioMatchDetail,
+  EnhancedScenarioMatchResult,
 } from './types';
 
 /**
@@ -23,90 +25,125 @@ export function getRequiredEvents(scenario: WorkflowScenario): string[] {
 }
 
 /**
- * Select the first matching scenario from a workflow template
+ * Calculate detailed match information for a scenario
  *
- * Scenarios are evaluated in priority order (lowest priority number first).
- * Returns the first scenario whose events are all present.
+ * @param scenario - Scenario to evaluate
+ * @param events - Events from the trace
+ * @returns Detailed match information
+ */
+function calculateMatchDetails(
+  scenario: WorkflowScenario,
+  events: OtelEvent[]
+): ScenarioMatchDetail {
+  const requiredEventNames = getRequiredEvents(scenario);
+  const totalRequiredEvents = requiredEventNames.length;
+
+  // Edge case: catch-all scenario (no required events)
+  if (totalRequiredEvents === 0) {
+    return {
+      scenario,
+      matchPercentage: 0,
+      matchedEventCount: 0,
+      totalRequiredEvents: 0,
+      matchedEventNames: [],
+      missingEventNames: [],
+      isFullMatch: false,
+      isCatchAll: true,
+    };
+  }
+
+  const matchedEventNames: string[] = [];
+  const missingEventNames: string[] = [];
+
+  for (const eventName of requiredEventNames) {
+    const hasEvent = events.some((e) => e.name === eventName);
+
+    if (hasEvent) {
+      matchedEventNames.push(eventName);
+    } else {
+      missingEventNames.push(eventName);
+    }
+  }
+
+  const matchedEventCount = matchedEventNames.length;
+  const matchPercentage = (matchedEventCount / totalRequiredEvents) * 100;
+
+  return {
+    scenario,
+    matchPercentage,
+    matchedEventCount,
+    totalRequiredEvents,
+    matchedEventNames,
+    missingEventNames,
+    isFullMatch: matchPercentage === 100,
+    isCatchAll: false,
+  };
+}
+
+/**
+ * Select matching scenarios from a workflow template
+ *
+ * Returns ALL scenarios with 100% match (sorted by priority),
+ * or partial matches (sorted by % then priority) if no full matches.
  *
  * @param template - Workflow template with scenarios
  * @param events - Collected OTEL events
- * @returns Matched scenario and metadata
- * @throws Error if no scenario matches
+ * @returns Enhanced match result (never throws)
  */
 export function selectScenario(
   template: WorkflowTemplate,
   events: OtelEvent[]
-): ScenarioMatchResult {
-  // Sort scenarios by priority (should already be sorted in template)
-  const sorted = [...template.scenarios].sort((a, b) => a.priority - b.priority);
+): EnhancedScenarioMatchResult {
+  const fullMatches: ScenarioMatchDetail[] = [];
+  const partialMatches: ScenarioMatchDetail[] = [];
 
-  const applicableScenarios: WorkflowScenario[] = [];
-  const matchReasons: Record<string, string> = {};
+  // Evaluate all scenarios
+  for (const scenario of template.scenarios) {
+    const matchDetail = calculateMatchDetails(scenario, events);
 
-  // Find first matching scenario
-  for (const scenario of sorted) {
-    const requiredEvents = getRequiredEvents(scenario);
-
-    // Check if ALL required events are present
-    const hasAllEvents = requiredEvents.every((eventName) =>
-      hasEventMatching(events, eventName)
-    );
-
-    if (hasAllEvents) {
-      // Check if there are other applicable scenarios (for UI)
-      for (const other of sorted) {
-        if (other.id !== scenario.id) {
-          const otherRequired = getRequiredEvents(other);
-          const otherMatches = otherRequired.every((eventName) =>
-            hasEventMatching(events, eventName)
-          );
-          if (otherMatches) {
-            applicableScenarios.push(other);
-          }
-        }
-      }
-
-      return {
-        scenario,
-        isDefault: false, // No longer have default scenarios
-        applicableScenarios: [scenario, ...applicableScenarios],
-        matchReasons,
-      };
+    if (matchDetail.isCatchAll) {
+      // Catch-all scenarios go to partial matches
+      partialMatches.push(matchDetail);
+    } else if (matchDetail.isFullMatch) {
+      fullMatches.push(matchDetail);
+    } else {
+      partialMatches.push(matchDetail);
     }
-
-    const missingEvents = requiredEvents.filter((eventName) => !hasEventMatching(events, eventName));
-    matchReasons[scenario.id] = `Missing required event(s): ${missingEvents.join(', ')}`;
   }
 
-  throw new Error(
-    `No scenario matched for template "${template.name}". ` +
-      `Events in trace: ${events.map((e) => e.name).join(', ')}`
-  );
+  // Sort full matches by priority (ascending)
+  fullMatches.sort((a, b) => a.scenario.priority - b.scenario.priority);
+
+  // Sort partial matches by percentage (descending), then priority (ascending)
+  partialMatches.sort((a, b) => {
+    const percentDiff = b.matchPercentage - a.matchPercentage;
+    if (percentDiff !== 0) return percentDiff;
+    return a.scenario.priority - b.scenario.priority;
+  });
+
+  // Determine recommended scenario
+  const recommendedScenario =
+    fullMatches.length > 0 ? fullMatches[0] : partialMatches.length > 0 ? partialMatches[0] : null;
+
+  return {
+    fullMatches,
+    partialMatches,
+    recommendedScenario,
+    totalTraceEvents: events.length,
+    totalScenariosEvaluated: template.scenarios.length,
+  };
 }
 
 
 /**
- * Check if any event matches the given pattern (supports glob-style wildcards)
- *
- * Patterns:
- * - Exact: "conversion.started" matches only that event
- * - Wildcard suffix: "conversion.*" matches "conversion.started", "conversion.complete", etc.
- * - Wildcard prefix: "*.error" matches "conversion.error", "rule.error", etc.
- * - Wildcard middle: "log.*" matches any event starting with "log."
+ * Check if any event matches the given event name (exact match)
  *
  * @param events - Events to search
- * @param pattern - Pattern to match (supports * wildcard)
- * @returns True if any event matches the pattern
+ * @param eventName - Event name to match (exact string match)
+ * @returns True if any event matches the name
  */
-export function hasEventMatching(events: OtelEvent[], pattern: string): boolean {
-  // Convert glob pattern to regex
-  const regexPattern = pattern
-    .replace(/\./g, '\\.') // Escape dots
-    .replace(/\*/g, '.*'); // Convert * to .*
-
-  const regex = new RegExp(`^${regexPattern}$`);
-
-  return events.some((event) => regex.test(event.name));
+export function hasEventMatching(events: OtelEvent[], eventName: string): boolean {
+  return events.some((event) => event.name === eventName);
 }
 
 

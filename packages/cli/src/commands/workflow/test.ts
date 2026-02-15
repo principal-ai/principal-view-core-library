@@ -77,22 +77,41 @@ export function createTestCommand(): Command {
           };
         });
 
-        // Select the winning scenario
+        // Select the winning scenario using enhanced matching
         const matchResult = selectScenario(workflow, events);
-        const selectedScenario = matchResult.scenario;
 
         if (options.json) {
           const output = {
             workflow: workflowPath,
             execution: executionPath,
-            scenarios: scenarioResults.map((r) => ({
-              id: r.scenario.id,
-              priority: r.scenario.priority,
-              matched: r.matched,
-              reason: r.reason,
-              requiredEvents: r.eventResults,
+            fullMatches: matchResult.fullMatches.map((m) => ({
+              id: m.scenario.id,
+              priority: m.scenario.priority,
+              matchPercentage: m.matchPercentage,
+              matchedEventCount: m.matchedEventCount,
+              totalRequiredEvents: m.totalRequiredEvents,
+              matchedEventNames: m.matchedEventNames,
+              missingEventNames: m.missingEventNames,
             })),
-            selectedScenario: selectedScenario?.id,
+            partialMatches: matchResult.partialMatches.map((m) => ({
+              id: m.scenario.id,
+              priority: m.scenario.priority,
+              matchPercentage: m.matchPercentage,
+              matchedEventCount: m.matchedEventCount,
+              totalRequiredEvents: m.totalRequiredEvents,
+              matchedEventNames: m.matchedEventNames,
+              missingEventNames: m.missingEventNames,
+            })),
+            recommendedScenario: matchResult.recommendedScenario
+              ? {
+                  id: matchResult.recommendedScenario.scenario.id,
+                  priority: matchResult.recommendedScenario.scenario.priority,
+                  matchPercentage: matchResult.recommendedScenario.matchPercentage,
+                  isFullMatch: matchResult.recommendedScenario.isFullMatch,
+                }
+              : null,
+            totalTraceEvents: matchResult.totalTraceEvents,
+            totalScenariosEvaluated: matchResult.totalScenariosEvaluated,
             aggregates: options.showAggregates ? aggregates : undefined,
           };
 
@@ -100,51 +119,95 @@ export function createTestCommand(): Command {
         } else {
           // Text output
           console.log(chalk.bold(`\nTesting: ${workflowPath}`));
-          console.log(chalk.gray(`Execution: ${executionPath}\n`));
+          console.log(chalk.gray(`Execution: ${executionPath}`));
+          console.log(
+            chalk.gray(
+              `Total Events: ${matchResult.totalTraceEvents}, Scenarios Evaluated: ${matchResult.totalScenariosEvaluated}\n`
+            )
+          );
 
           console.log(chalk.bold('Scenario Matching Results:'));
           console.log('━'.repeat(60));
 
-          // Sort by priority (lower = higher priority)
-          const sorted = [...scenarioResults].sort(
-            (a, b) => a.scenario.priority - b.scenario.priority
-          );
+          // Show full matches
+          if (matchResult.fullMatches.length > 0) {
+            console.log(chalk.green.bold('\n✓ FULL MATCHES (100% coverage):'));
+            for (const match of matchResult.fullMatches) {
+              console.log(
+                `\n  ${chalk.bold(match.scenario.id)} ${chalk.gray(`(priority: ${match.scenario.priority})`)}`
+              );
+              console.log(
+                `  • Matched: ${match.matchedEventCount}/${match.totalRequiredEvents} events`
+              );
 
-          for (const result of sorted) {
-            if (!options.showAll && !result.matched) {
-              continue;
+              for (const eventName of match.matchedEventNames) {
+                console.log(`    ${chalk.green('✓')} ${eventName}`);
+              }
             }
+          } else if (matchResult.partialMatches.length > 0) {
+            console.log(chalk.yellow.bold('\n⚠ PARTIAL MATCHES:'));
+            // Show top 5 partial matches
+            const displayCount = options.showAll
+              ? matchResult.partialMatches.length
+              : Math.min(5, matchResult.partialMatches.length);
 
-            const icon = result.matched ? chalk.green('✓') : chalk.red('✗');
-            const status = result.matched
-              ? chalk.green('MATCHED')
-              : chalk.gray('NOT MATCHED');
+            for (const match of matchResult.partialMatches.slice(0, displayCount)) {
+              const percentColor =
+                match.matchPercentage >= 75
+                  ? chalk.yellow
+                  : match.matchPercentage >= 50
+                    ? chalk.yellowBright
+                    : chalk.gray;
 
-            console.log(
-              `\n${icon} ${chalk.bold(result.scenario.id)} (priority: ${result.scenario.priority}) - ${status}`
-            );
+              console.log(
+                `\n  ${chalk.bold(match.scenario.id)} ${percentColor(`(${match.matchPercentage.toFixed(1)}%)`)} ${chalk.gray(`priority: ${match.scenario.priority}`)}`
+              );
+              console.log(
+                `  • Matched: ${match.matchedEventCount}/${match.totalRequiredEvents}`
+              );
 
-            // Show required events
-            if (result.eventResults.length > 0) {
-              console.log(chalk.gray('  Required Events:'));
-              for (const evt of result.eventResults) {
-                const evtIcon = evt.matched ? chalk.green('✓') : chalk.red('✗');
-                const countMsg = evt.matched ? `Found ${evt.count} event(s)` : 'No matching events';
-                console.log(`    ${evtIcon} ${evt.eventName} - ${countMsg}`);
+              if (match.matchedEventNames.length > 0) {
+                console.log(chalk.gray('    Matched:'));
+                for (const eventName of match.matchedEventNames) {
+                  console.log(`      ${chalk.green('✓')} ${eventName}`);
+                }
+              }
+
+              if (match.missingEventNames.length > 0) {
+                console.log(chalk.gray('    Missing:'));
+                for (const eventName of match.missingEventNames) {
+                  console.log(`      ${chalk.red('✗')} ${eventName}`);
+                }
               }
             }
 
-            if (result.reason) {
-              console.log(chalk.gray(`  ${result.reason}`));
+            if (
+              !options.showAll &&
+              matchResult.partialMatches.length > displayCount
+            ) {
+              console.log(
+                chalk.gray(
+                  `\n  ... and ${matchResult.partialMatches.length - displayCount} more partial matches (use --show-all to see all)`
+                )
+              );
             }
+          } else {
+            console.log(chalk.red('\n✗ No scenarios matched'));
           }
 
           console.log('\n' + '━'.repeat(60));
 
-          if (selectedScenario) {
+          if (matchResult.recommendedScenario) {
+            const isFullMatch = matchResult.recommendedScenario.isFullMatch;
+            const icon = isFullMatch ? chalk.green('✓') : chalk.yellow('⚠');
+            const matchType = isFullMatch ? 'Full Match' : 'Partial Match';
+            const percentage = matchResult.recommendedScenario.matchPercentage.toFixed(1);
+
             console.log(
-              chalk.bold('\nSelected Scenario:'),
-              chalk.cyan(`${selectedScenario.id} (priority: ${selectedScenario.priority})`)
+              chalk.bold('\nRecommended Scenario:'),
+              chalk.cyan(
+                `${matchResult.recommendedScenario.scenario.id} (${matchType}, ${percentage}%)`
+              )
             );
           } else {
             console.log(chalk.yellow('\nNo scenario selected'));
@@ -161,7 +224,7 @@ export function createTestCommand(): Command {
         }
 
         // Exit with error if no scenario matched
-        if (!selectedScenario) {
+        if (!matchResult.recommendedScenario) {
           process.exit(1);
         }
       } catch (error) {

@@ -2,8 +2,8 @@
  * Tests for scenario matching logic
  */
 
-import { selectScenario, matchesCondition, hasEventMatching, evaluateAssertion, computeAggregates, getNestedValue } from '../scenario-matcher';
-import type { WorkflowTemplate, OtelEvent, ScenarioCondition } from '../types';
+import { selectScenario, hasEventMatching, computeAggregates, getNestedValue } from '../scenario-matcher';
+import type { WorkflowTemplate, OtelEvent } from '../types';
 
 describe('hasEventMatching', () => {
   const events: OtelEvent[] = [
@@ -18,84 +18,6 @@ describe('hasEventMatching', () => {
     expect(hasEventMatching(events, 'conversion.started')).toBe(true);
     expect(hasEventMatching(events, 'conversion.complete')).toBe(true);
     expect(hasEventMatching(events, 'nonexistent')).toBe(false);
-  });
-
-  it('should match wildcard suffix patterns', () => {
-    expect(hasEventMatching(events, 'conversion.*')).toBe(true);
-    expect(hasEventMatching(events, 'rule.*')).toBe(true);
-    expect(hasEventMatching(events, 'test.*')).toBe(false);
-  });
-
-  it('should match wildcard prefix patterns', () => {
-    expect(hasEventMatching(events, '*.error')).toBe(true);
-    expect(hasEventMatching(events, '*.completed')).toBe(true);
-    expect(hasEventMatching(events, '*.failed')).toBe(false);
-  });
-
-  it('should match full wildcard', () => {
-    expect(hasEventMatching(events, '*')).toBe(true);
-    expect(hasEventMatching([], '*')).toBe(false);
-  });
-});
-
-describe('evaluateAssertion', () => {
-  it('should evaluate $gt (greater than)', () => {
-    expect(evaluateAssertion(10, { $gt: 5 }).matches).toBe(true);
-    expect(evaluateAssertion(5, { $gt: 5 }).matches).toBe(false);
-    expect(evaluateAssertion(3, { $gt: 5 }).matches).toBe(false);
-  });
-
-  it('should evaluate $gte (greater than or equal)', () => {
-    expect(evaluateAssertion(10, { $gte: 5 }).matches).toBe(true);
-    expect(evaluateAssertion(5, { $gte: 5 }).matches).toBe(true);
-    expect(evaluateAssertion(3, { $gte: 5 }).matches).toBe(false);
-  });
-
-  it('should evaluate $lt (less than)', () => {
-    expect(evaluateAssertion(3, { $lt: 5 }).matches).toBe(true);
-    expect(evaluateAssertion(5, { $lt: 5 }).matches).toBe(false);
-    expect(evaluateAssertion(10, { $lt: 5 }).matches).toBe(false);
-  });
-
-  it('should evaluate $lte (less than or equal)', () => {
-    expect(evaluateAssertion(3, { $lte: 5 }).matches).toBe(true);
-    expect(evaluateAssertion(5, { $lte: 5 }).matches).toBe(true);
-    expect(evaluateAssertion(10, { $lte: 5 }).matches).toBe(false);
-  });
-
-  it('should evaluate $eq (equality)', () => {
-    expect(evaluateAssertion(5, { $eq: 5 }).matches).toBe(true);
-    expect(evaluateAssertion('test', { $eq: 'test' }).matches).toBe(true);
-    expect(evaluateAssertion(true, { $eq: true }).matches).toBe(true);
-    expect(evaluateAssertion(5, { $eq: 10 }).matches).toBe(false);
-  });
-
-  it('should evaluate $ne (not equal)', () => {
-    expect(evaluateAssertion(5, { $ne: 10 }).matches).toBe(true);
-    expect(evaluateAssertion(5, { $ne: 5 }).matches).toBe(false);
-  });
-
-  it('should evaluate $exists', () => {
-    expect(evaluateAssertion('value', { $exists: true }).matches).toBe(true);
-    expect(evaluateAssertion(undefined, { $exists: true }).matches).toBe(false);
-    expect(evaluateAssertion(null, { $exists: true }).matches).toBe(false);
-    expect(evaluateAssertion(undefined, { $exists: false }).matches).toBe(true);
-  });
-
-  it('should evaluate $in (array membership)', () => {
-    expect(evaluateAssertion('a', { $in: ['a', 'b', 'c'] }).matches).toBe(true);
-    expect(evaluateAssertion(5, { $in: [1, 5, 10] }).matches).toBe(true);
-    expect(evaluateAssertion('d', { $in: ['a', 'b', 'c'] }).matches).toBe(false);
-  });
-
-  it('should evaluate $nin (not in array)', () => {
-    expect(evaluateAssertion('d', { $nin: ['a', 'b', 'c'] }).matches).toBe(true);
-    expect(evaluateAssertion('a', { $nin: ['a', 'b', 'c'] }).matches).toBe(false);
-  });
-
-  it('should handle undefined/null values for numeric comparisons', () => {
-    expect(evaluateAssertion(undefined, { $gt: 5 }).matches).toBe(false);
-    expect(evaluateAssertion(null, { $lt: 5 }).matches).toBe(false);
   });
 });
 
@@ -125,104 +47,6 @@ describe('getNestedValue', () => {
   });
 });
 
-describe('matchesCondition', () => {
-  const events: OtelEvent[] = [
-    { name: 'conversion.started', timestamp: 0 },
-    { name: 'conversion.complete', timestamp: 100 },
-    { name: 'rule.completed', timestamp: 50 },
-  ];
-
-  const attributes = {
-    'result.violations.total': 5,
-    'result.violations.errors': 2,
-  };
-
-  it('should match default condition', () => {
-    const condition: ScenarioCondition = { default: true };
-    expect(matchesCondition(condition, events, attributes).matches).toBe(true);
-  });
-
-  it('should match when all required events are present', () => {
-    const condition: ScenarioCondition = {
-      requires: ['conversion.started', 'conversion.complete'],
-    };
-    expect(matchesCondition(condition, events, attributes).matches).toBe(true);
-  });
-
-  it('should not match when required events are missing', () => {
-    const condition: ScenarioCondition = {
-      requires: ['conversion.started', 'missing.event'],
-    };
-    const result = matchesCondition(condition, events, attributes);
-    expect(result.matches).toBe(false);
-    expect(result.reason).toContain('missing.event');
-  });
-
-  it('should match with wildcard requires', () => {
-    const condition: ScenarioCondition = {
-      requires: ['conversion.*'],
-    };
-    expect(matchesCondition(condition, events, attributes).matches).toBe(true);
-  });
-
-  it('should not match when excluded events are present', () => {
-    const condition: ScenarioCondition = {
-      requires: ['conversion.*'],
-      excludes: ['rule.completed'],
-    };
-    const result = matchesCondition(condition, events, attributes);
-    expect(result.matches).toBe(false);
-    expect(result.reason).toContain('rule.completed');
-  });
-
-  it('should match when excluded events are not present', () => {
-    const condition: ScenarioCondition = {
-      requires: ['conversion.*'],
-      excludes: ['error.*'],
-    };
-    expect(matchesCondition(condition, events, attributes).matches).toBe(true);
-  });
-
-  it('should match with assertions', () => {
-    const condition: ScenarioCondition = {
-      requires: ['conversion.complete'],
-      assertions: {
-        'result.violations.total': { $gt: 0 },
-      },
-    };
-    expect(matchesCondition(condition, events, attributes).matches).toBe(true);
-  });
-
-  it('should not match when assertions fail', () => {
-    const condition: ScenarioCondition = {
-      requires: ['conversion.complete'],
-      assertions: {
-        'result.violations.total': { $eq: 0 },
-      },
-    };
-    const result = matchesCondition(condition, events, attributes);
-    expect(result.matches).toBe(false);
-    expect(result.reason).toContain('result.violations.total');
-  });
-
-  it('should match ANY when any=true', () => {
-    const condition: ScenarioCondition = {
-      requires: ['conversion.started', 'missing.event'],
-      any: true,
-    };
-    expect(matchesCondition(condition, events, attributes).matches).toBe(true);
-  });
-
-  it('should not match ANY when no requirements met', () => {
-    const condition: ScenarioCondition = {
-      requires: ['missing.one', 'missing.two'],
-      any: true,
-    };
-    const result = matchesCondition(condition, events, attributes);
-    expect(result.matches).toBe(false);
-  });
-});
-
 describe('selectScenario', () => {
   const template: WorkflowTemplate = {
     version: '1.0.0',
@@ -236,91 +60,128 @@ describe('selectScenario', () => {
         id: 'error',
         priority: 1,
         description: 'Error occurred',
-        condition: { requires: ['*.error'] },
-        template: { introduction: 'Error scenario' },
+        template: {
+          introduction: 'Error scenario',
+          events: {
+            'rule.error': 'Error: {{span.name}}',
+          },
+        },
       },
       {
-        id: 'violations',
+        id: 'complete',
         priority: 2,
-        description: 'Violations found',
-        condition: {
-          requires: ['conversion.complete'],
-          assertions: { 'result.violations.total': { $gt: 0 } },
+        description: 'Conversion complete',
+        template: {
+          introduction: 'Complete scenario',
+          events: {
+            'conversion.started': 'Started',
+            'conversion.complete': 'Complete',
+          },
         },
-        template: { introduction: 'Violations scenario' },
       },
       {
-        id: 'happy',
+        id: 'partial',
         priority: 3,
-        description: 'All good',
-        condition: {
-          requires: ['conversion.complete'],
-          assertions: { 'result.violations.total': { $eq: 0 } },
+        description: 'Partially complete',
+        template: {
+          introduction: 'Partial scenario',
+          events: {
+            'conversion.started': 'Started',
+          },
         },
-        template: { introduction: 'Happy path' },
       },
       {
-        id: 'fallback',
+        id: 'catch-all',
         priority: 99,
         description: 'Fallback',
-        condition: { default: true },
-        template: { introduction: 'Fallback scenario' },
+        template: {
+          introduction: 'Fallback scenario',
+          events: {}, // No required events (catch-all)
+        },
       },
     ],
   };
 
-  it('should select first matching scenario (error)', () => {
-    const events: OtelEvent[] = [
-      { name: 'conversion.started', timestamp: 0 },
-      { name: 'conversion.error', timestamp: 50 },
-    ];
-    const result = selectScenario(template, events);
-    expect(result.scenario.id).toBe('error');
-    expect(result.isDefault).toBe(false);
-  });
-
-  it('should select violations scenario', () => {
+  it('should return all full matches sorted by priority', () => {
     const events: OtelEvent[] = [
       { name: 'conversion.started', timestamp: 0 },
       { name: 'conversion.complete', timestamp: 100 },
     ];
     const result = selectScenario(template, events);
-    expect(result.scenario.id).toBe('violations');
+
+    // Both 'complete' and 'partial' should match fully
+    expect(result.fullMatches.length).toBe(2);
+    expect(result.fullMatches[0].scenario.id).toBe('complete'); // Priority 2
+    expect(result.fullMatches[1].scenario.id).toBe('partial'); // Priority 3
+    expect(result.fullMatches[0].isFullMatch).toBe(true);
+    expect(result.fullMatches[0].matchPercentage).toBe(100);
   });
 
-  it('should select happy path scenario', () => {
+  it('should recommend highest priority full match', () => {
     const events: OtelEvent[] = [
       { name: 'conversion.started', timestamp: 0 },
       { name: 'conversion.complete', timestamp: 100 },
     ];
     const result = selectScenario(template, events);
-    expect(result.scenario.id).toBe('happy');
+
+    expect(result.recommendedScenario).not.toBeNull();
+    expect(result.recommendedScenario?.scenario.id).toBe('complete');
+    expect(result.recommendedScenario?.isFullMatch).toBe(true);
   });
 
-  it('should select fallback when no other matches', () => {
+  it('should return partial matches when no full match exists', () => {
+    const events: OtelEvent[] = [{ name: 'conversion.started', timestamp: 0 }];
+    const result = selectScenario(template, events);
+
+    // Only 'partial' matches fully
+    expect(result.fullMatches.length).toBe(1);
+    expect(result.fullMatches[0].scenario.id).toBe('partial');
+
+    // Partial matches: 'complete' (50%), 'error' (0%), 'catch-all' (0%)
+    expect(result.partialMatches.length).toBe(3);
+    // Should be sorted by percentage descending, then priority ascending
+    expect(result.partialMatches[0].scenario.id).toBe('complete'); // 50%
+    expect(result.partialMatches[0].matchPercentage).toBe(50);
+  });
+
+  it('should include detailed match information', () => {
+    const events: OtelEvent[] = [{ name: 'conversion.started', timestamp: 0 }];
+    const result = selectScenario(template, events);
+
+    const partialMatch = result.partialMatches.find((m) => m.scenario.id === 'complete');
+    expect(partialMatch).toBeDefined();
+    expect(partialMatch?.matchedEventNames).toEqual(['conversion.started']);
+    expect(partialMatch?.missingEventNames).toEqual(['conversion.complete']);
+    expect(partialMatch?.matchedEventCount).toBe(1);
+    expect(partialMatch?.totalRequiredEvents).toBe(2);
+  });
+
+  it('should handle catch-all scenarios (zero required events)', () => {
     const events: OtelEvent[] = [{ name: 'unknown.event', timestamp: 0 }];
     const result = selectScenario(template, events);
-    expect(result.scenario.id).toBe('fallback');
-    expect(result.isDefault).toBe(true);
+
+    // No full matches - all scenarios should be partial
+    expect(result.fullMatches.length).toBe(0);
+
+    // Catch-all should be in partial matches
+    const catchAll = result.partialMatches.find((m) => m.scenario.id === 'catch-all');
+    expect(catchAll).toBeDefined();
+    expect(catchAll?.isCatchAll).toBe(true);
+    expect(catchAll?.matchPercentage).toBe(0);
+    expect(catchAll?.totalRequiredEvents).toBe(0);
   });
 
-  it('should throw error if no scenario matches (missing fallback)', () => {
-    const badTemplate: WorkflowTemplate = {
+  it('should return null when no scenarios exist', () => {
+    const emptyTemplate: WorkflowTemplate = {
       ...template,
-      scenarios: [template.scenarios[0]], // Only error scenario, no fallback
+      scenarios: [],
     };
-    const events: OtelEvent[] = [{ name: 'conversion.complete', timestamp: 0 }];
-    expect(() => selectScenario(badTemplate, events)).toThrow('No scenario matched');
-  });
+    const events: OtelEvent[] = [{ name: 'test', timestamp: 0 }];
+    const result = selectScenario(emptyTemplate, events);
 
-  it('should return applicable scenarios for UI', () => {
-    const events: OtelEvent[] = [
-      { name: 'conversion.complete', timestamp: 100 },
-    ];
-    const result = selectScenario(template, events);
-    expect(result.applicableScenarios.length).toBeGreaterThan(1);
-    expect(result.applicableScenarios[0].id).toBe('violations');
-    expect(result.applicableScenarios).toContainEqual(expect.objectContaining({ id: 'fallback' }));
+    expect(result.fullMatches.length).toBe(0);
+    expect(result.partialMatches.length).toBe(0);
+    expect(result.recommendedScenario).toBeNull();
   });
 });
 

@@ -34,10 +34,25 @@ export function renderWorkflow(template: WorkflowTemplate, events: OtelEvent[]):
   // Select scenario
   const matchResult = selectScenario(template, events);
 
+  // Handle no match case
+  if (!matchResult.recommendedScenario) {
+    return {
+      text: 'No workflow scenario could be matched to this trace.',
+      scenarioId: 'no-match',
+      metadata: {
+        eventCount: events.length,
+        spanCount: events.filter((e) => e.type === 'span').length,
+        logCount: events.filter((e) => e.type === 'log').length,
+      },
+    };
+  }
+
+  const scenario = matchResult.recommendedScenario.scenario;
+
   // Build context
   const context: WorkflowContext = {
     template,
-    scenario: matchResult.scenario,
+    scenario,
     events,
     aggregates,
     formatting: {
@@ -66,7 +81,7 @@ export function renderWorkflow(template: WorkflowTemplate, events: OtelEvent[]):
 
   return {
     text,
-    scenarioId: matchResult.scenario.id,
+    scenarioId: scenario.id,
     metadata: {
       eventCount: events.length,
       spanCount: spans.length,

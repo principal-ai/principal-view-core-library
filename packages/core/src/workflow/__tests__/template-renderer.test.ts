@@ -191,32 +191,40 @@ describe('renderWorkflow', () => {
           id: 'error',
           priority: 1,
           description: 'Error occurred',
-          condition: { requires: ['*.error'] },
-          template: { summary: '❌ Error' },
+          template: {
+            summary: '❌ Error',
+            events: { 'test.error': 'Error: {{span.name}}' },
+          },
         },
         {
           id: 'warnings',
           priority: 2,
           description: 'Has warnings',
-          condition: {
-            requires: ['test.complete'],
-            assertions: { 'result.warnings': { $gt: 0 } },
+          template: {
+            summary: '⚠️ Warnings',
+            events: {
+              'test.complete': 'Complete',
+              'test.warning': 'Warning',
+            },
           },
-          template: { summary: '⚠️ Warnings' },
         },
         {
           id: 'success',
           priority: 3,
           description: 'Success',
-          condition: { requires: ['test.complete'] },
-          template: { summary: '✅ Success' },
+          template: {
+            summary: '✅ Success',
+            events: { 'test.complete': 'Complete: {{span.name}}' },
+          },
         },
         {
           id: 'fallback',
           priority: 99,
           description: 'Fallback',
-          condition: { default: true },
-          template: { summary: 'Unknown' },
+          template: {
+            summary: 'Unknown',
+            events: {}, // Catch-all scenario
+          },
         },
       ],
     };
@@ -234,7 +242,8 @@ describe('renderWorkflow', () => {
 
     it('should select warnings scenario', () => {
       const events: OtelEvent[] = [
-        { name: 'test.complete', timestamp: 100, type: 'span', attributes: { 'result.warnings': 3 } },
+        { name: 'test.complete', timestamp: 100, type: 'span' },
+        { name: 'test.warning', timestamp: 50, type: 'span' },
       ];
 
       const result = renderWorkflow(template, events);
@@ -244,7 +253,7 @@ describe('renderWorkflow', () => {
 
     it('should select success scenario', () => {
       const events: OtelEvent[] = [
-        { name: 'test.complete', timestamp: 100, type: 'span', attributes: { 'result.warnings': 0 } },
+        { name: 'test.complete', timestamp: 100, type: 'span' },
       ];
 
       const result = renderWorkflow(template, events);
@@ -252,12 +261,13 @@ describe('renderWorkflow', () => {
       expect(result.text).toContain('✅ Success');
     });
 
-    it('should select fallback when no other matches', () => {
+    it('should select highest priority partial match when no full matches', () => {
       const events: OtelEvent[] = [{ name: 'unknown.event', timestamp: 0, type: 'span' }];
 
       const result = renderWorkflow(template, events);
-      expect(result.scenarioId).toBe('fallback');
-      expect(result.text).toContain('Unknown');
+      // When no scenarios match fully (all at 0%), highest priority wins
+      expect(result.scenarioId).toBe('error'); // Priority 1 is highest
+      expect(result.text).toContain('❌ Error');
     });
   });
 

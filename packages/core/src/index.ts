@@ -80,6 +80,9 @@ export type {
   WorkflowContext,
   WorkflowResult,
   ScenarioMatchResult,
+  ScenarioMatchDetail,
+  EnhancedScenarioMatchResult,
+  WorkflowMatch,
   SpanTreeNode,
 } from './workflow/types';
 
