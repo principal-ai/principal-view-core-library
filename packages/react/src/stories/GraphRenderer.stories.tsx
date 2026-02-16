@@ -9,7 +9,7 @@ const meta = {
   title: 'Components/GraphRenderer',
   component: GraphRenderer,
   parameters: {
-    layout: 'centered',
+    layout: 'fullscreen',
   },
   tags: ['autodocs'],
   decorators: [

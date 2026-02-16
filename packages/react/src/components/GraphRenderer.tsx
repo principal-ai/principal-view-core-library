@@ -157,15 +157,15 @@ interface GraphRendererBaseProps {
 
   /**
    * Background variant style.
-   * - 'dots': Small dots pattern (default)
-   * - 'lines': Grid lines
+   * - 'dots': Small dots pattern
+   * - 'lines': Grid lines (default)
    * - 'cross': Cross pattern
    */
   backgroundVariant?: 'dots' | 'lines' | 'cross';
 
   /**
    * Gap between background pattern elements in pixels.
-   * Defaults to 16 for dots, 50 for lines/cross.
+   * Defaults to 50 for lines/cross, 16 for dots.
    */
   backgroundGap?: number;
 
@@ -260,6 +260,16 @@ interface AnimationState {
   >;
 }
 
+// Alignment guide for visual feedback during node dragging
+interface AlignmentGuide {
+  /** Orientation of the guide line */
+  type: 'horizontal' | 'vertical';
+  /** Position in pixels (x for vertical, y for horizontal) */
+  position: number;
+  /** Optional label describing the alignment (e.g., "Left edge", "Center") */
+  label?: string;
+}
+
 // Internal edit state tracking
 interface EditState {
   positionChanges: Map<string, { x: number; y: number }>;
@@ -285,6 +295,70 @@ const createEmptyEditState = (): EditState => ({
   createdEdges: [],
   deletedEdges: [],
 });
+
+/**
+ * Alignment guides component that renders visual lines when nodes align during drag.
+ * Shows vertical lines for horizontal alignment (left/center/right) and
+ * horizontal lines for vertical alignment (top/middle/bottom).
+ */
+const AlignmentGuidesOverlay: React.FC<{
+  guides: AlignmentGuide[];
+  color: string;
+}> = ({ guides, color }) => {
+  const { x: viewportX, y: viewportY, zoom } = useViewport();
+
+  if (guides.length === 0) return null;
+
+  return (
+    <svg
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        zIndex: 10,
+      }}
+    >
+      {guides.map((guide, index) => {
+        if (guide.type === 'vertical') {
+          // Vertical line (for horizontal alignment)
+          const screenX = guide.position * zoom + viewportX;
+          return (
+            <line
+              key={`${guide.type}-${guide.position}-${index}`}
+              x1={screenX}
+              y1={0}
+              x2={screenX}
+              y2="100%"
+              stroke={color}
+              strokeWidth={1.5}
+              strokeDasharray="4,4"
+              opacity={0.8}
+            />
+          );
+        } else {
+          // Horizontal line (for vertical alignment)
+          const screenY = guide.position * zoom + viewportY;
+          return (
+            <line
+              key={`${guide.type}-${guide.position}-${index}`}
+              x1={0}
+              y1={screenY}
+              x2="100%"
+              y2={screenY}
+              stroke={color}
+              strokeWidth={1.5}
+              strokeDasharray="4,4"
+              opacity={0.8}
+            />
+          );
+        }
+      })}
+    </svg>
+  );
+};
 
 /**
  * Center indicator component that shows a crosshair at the canvas origin (0,0).
@@ -385,7 +459,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   showMinimap = false,
   showControls = true,
   showBackground = true,
-  backgroundVariant = 'dots',
+  backgroundVariant = 'lines',
   backgroundGap,
   showCenterIndicator = false,
   showTooltips = true,
@@ -437,6 +511,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     nodeAnimations: {},
     edgeAnimations: {},
   });
+
+  // Track alignment guides during drag operations
+  const [alignmentGuides, setAlignmentGuides] = useState<AlignmentGuide[]>([]);
 
   // Track selected edges for info panel (supports multi-select)
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<Set<string>>(new Set());
@@ -564,6 +641,73 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       onPendingChangesChange?.(hasChanges);
     },
     [editStateRef, onEditStateChange, onPendingChangesChange, checkHasChanges]
+  );
+
+  // ============================================
+  // ALIGNMENT GUIDES
+  // ============================================
+
+  /**
+   * Detect alignment guides between a dragging node and other nodes
+   * @param draggingNodeId - ID of the node being dragged
+   * @param nodes - All nodes in the graph
+   * @returns Array of alignment guides to display
+   */
+  const detectAlignmentGuides = useCallback(
+    (draggingNodeId: string, nodes: Node<CustomNodeData>[]): AlignmentGuide[] => {
+      const threshold = 5; // pixels - how close to snap/show guide
+      const guides: AlignmentGuide[] = [];
+
+      const draggingNode = nodes.find((n) => n.id === draggingNodeId);
+      if (!draggingNode) return guides;
+
+      const dragLeft = draggingNode.position.x;
+      const dragRight = draggingNode.position.x + (draggingNode.width ?? 0);
+      const dragCenterX = draggingNode.position.x + (draggingNode.width ?? 0) / 2;
+      const dragTop = draggingNode.position.y;
+      const dragBottom = draggingNode.position.y + (draggingNode.height ?? 0);
+      const dragCenterY = draggingNode.position.y + (draggingNode.height ?? 0) / 2;
+
+      // Check alignment with other nodes
+      for (const node of nodes) {
+        if (node.id === draggingNodeId) continue;
+
+        const nodeLeft = node.position.x;
+        const nodeRight = node.position.x + (node.width ?? 0);
+        const nodeCenterX = node.position.x + (node.width ?? 0) / 2;
+        const nodeTop = node.position.y;
+        const nodeBottom = node.position.y + (node.height ?? 0);
+        const nodeCenterY = node.position.y + (node.height ?? 0) / 2;
+
+        // Vertical guides (align horizontally - left/center/right)
+        if (Math.abs(dragLeft - nodeLeft) < threshold) {
+          guides.push({ type: 'vertical', position: nodeLeft, label: 'Left' });
+        } else if (Math.abs(dragCenterX - nodeCenterX) < threshold) {
+          guides.push({ type: 'vertical', position: nodeCenterX, label: 'Center' });
+        } else if (Math.abs(dragRight - nodeRight) < threshold) {
+          guides.push({ type: 'vertical', position: nodeRight, label: 'Right' });
+        }
+
+        // Horizontal guides (align vertically - top/middle/bottom)
+        if (Math.abs(dragTop - nodeTop) < threshold) {
+          guides.push({ type: 'horizontal', position: nodeTop, label: 'Top' });
+        } else if (Math.abs(dragCenterY - nodeCenterY) < threshold) {
+          guides.push({ type: 'horizontal', position: nodeCenterY, label: 'Middle' });
+        } else if (Math.abs(dragBottom - nodeBottom) < threshold) {
+          guides.push({ type: 'horizontal', position: nodeBottom, label: 'Bottom' });
+        }
+      }
+
+      // Remove duplicates (same position guides)
+      const uniqueGuides = guides.filter(
+        (guide, index, self) =>
+          index ===
+          self.findIndex((g) => g.type === guide.type && g.position === guide.position)
+      );
+
+      return uniqueGuides;
+    },
+    []
   );
 
   // ============================================
@@ -1304,6 +1448,22 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   const xyflowNodes = editable ? xyflowLocalNodes : xyflowNodesBase;
 
+  // Handle node drag to show alignment guides
+  const handleNodeDrag = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      if (!editable) return;
+
+      const guides = detectAlignmentGuides(node.id, xyflowNodes);
+      setAlignmentGuides(guides);
+    },
+    [editable, xyflowNodes, detectAlignmentGuides]
+  );
+
+  // Clear guides when drag ends
+  const handleNodeDragStop = useCallback(() => {
+    setAlignmentGuides([]);
+  }, []);
+
   // Handle node changes (drag and resize events)
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -1517,6 +1677,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         defaultEdgeOptions={{ type: 'custom' }}
         onEdgeClick={onEdgeClick}
         onNodeClick={onNodeClick}
+        onNodeDrag={handleNodeDrag}
+        onNodeDragStop={handleNodeDragStop}
         proOptions={{ hideAttribution: true }}
         nodesDraggable={editable}
         elementsSelectable={true}
@@ -1564,6 +1726,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           />
         )}
         {showCenterIndicator && <CenterIndicator color={theme.colors.textMuted} />}
+        {editable && alignmentGuides.length > 0 && (
+          <AlignmentGuidesOverlay guides={alignmentGuides} color={theme.colors.primary} />
+        )}
       </ReactFlow>
 
       {/* Multi-selection sidebar - shown when 2+ nodes are selected via explicit click/box select */}
