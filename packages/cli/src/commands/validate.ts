@@ -395,6 +395,8 @@ const ALLOWED_CANVAS_FIELDS = {
     'description',
     'otel',
     'event',
+    'eventRef',
+    'status',
     'shape',
     'icon',
     'fill',
@@ -443,6 +445,7 @@ const ALLOWED_LIBRARY_FIELDS = {
     'color',
     'size',
     'states',
+    'status',
     'sources',
     'resourceMatch',
     'actions',
@@ -1057,6 +1060,37 @@ function validateCanvas(
           }
         }
 
+        // Validate that display name doesn't match event name (poor UX)
+        if (nodeType === 'text' && typeof n.text === 'string' && nodePv.event && typeof nodePv.event === 'object') {
+          const eventObj = nodePv.event as { name?: string };
+          if (eventObj.name) {
+            // Extract display name the same way CanvasConverter does
+            const displayName = n.text.split('\n')[0].replace(/^#+ /, '').substring(0, 50);
+            if (displayName === eventObj.name) {
+              issues.push({
+                type: 'error',
+                message: `Node "${nodeLabel}" has display name identical to event name "${eventObj.name}"`,
+                path: `${nodePath}.text`,
+                suggestion: `The first line of the text field becomes the node's display name and should be human-readable, not a technical event name.
+
+Current:
+  text: "# ${eventObj.name}\\n..."
+  event.name: "${eventObj.name}"
+
+Suggested:
+  text: "# [Human-Readable Title]\\n..."
+  event.name: "${eventObj.name}"
+
+Example:
+  text: "# Registration Started\\nVersion registration request received"
+  event.name: "version.registration.started"
+
+The display name will be shown large on the node, and the event name will appear below it in smaller monospace font.`,
+              });
+            }
+          }
+        }
+
         // Validate source file references for OTEL event nodes
         const hasOtelFeatures = nodePv.otel !== undefined || nodePv.event !== undefined || nodePv.eventRef !== undefined;
         if (hasOtelFeatures) {
@@ -1078,6 +1112,29 @@ function validateCanvas(
               path: `${nodePath}.pv.otel`,
               suggestion: 'Add OTEL metadata for UI rendering, e.g.: "otel": { "kind": "event", "category": "lifecycle", "isNew": true }',
             });
+          }
+
+          // For .otel.canvas files: nodes with OTEL features must have pv.status
+          if (filePath.endsWith('.otel.canvas') && nodeType !== 'group') {
+            if (nodePv.status === undefined) {
+              issues.push({
+                type: 'error',
+                message: `Node "${nodeLabel}" in .otel.canvas file is missing required "pv.status" field`,
+                path: `${nodePath}.pv.status`,
+                suggestion: 'Add implementation status: "status": "draft" | "approved" | "implemented". Use "draft" for design, "approved" for finalized design, "implemented" for code with instrumentation.',
+              });
+            } else {
+              // Validate status value
+              const validStatuses = ['draft', 'approved', 'implemented'];
+              if (!validStatuses.includes(nodePv.status as string)) {
+                issues.push({
+                  type: 'error',
+                  message: `Node "${nodeLabel}" has invalid status value "${nodePv.status}"`,
+                  path: `${nodePath}.pv.status`,
+                  suggestion: `Valid values: ${validStatuses.join(', ')}`,
+                });
+              }
+            }
           }
         }
 

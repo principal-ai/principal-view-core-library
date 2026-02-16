@@ -31,7 +31,7 @@ export { selectScenario, getRequiredEvents, hasEventMatching, computeAggregates,
 
 // Template Parsing
 export { parseTemplate, ParsedTemplate } from './template-parser';
-export type { TemplateSegment } from './template-parser';
+export type { TemplateSegment, TemplateContext, TemplateValue } from './template-parser';
 
 // Template Rendering
 export { renderWorkflow } from './template-renderer';

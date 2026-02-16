@@ -86,57 +86,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
   const description = nodeData?.description as string | undefined;
   const sources = nodeData?.sources as string[] | undefined;
 
-  // OTEL kind badge colors
-  const getOtelBadgeColor = (kind: string) => {
-    switch (kind) {
-      case 'type':
-        return '#4A90E2'; // Blue
-      case 'service':
-        return '#7ED321'; // Green
-      case 'instance':
-        return '#9B59B6'; // Purple
-      case 'event':
-        return '#F59E0B'; // Amber
-      default:
-        return '#888';
-    }
-  };
-
-  // Render OTEL badge
-  const renderOtelBadge = () => {
-    if (!otelInfo?.kind) return null;
-    const badgeColor = getOtelBadgeColor(otelInfo.kind);
-    const label = otelInfo.kind.charAt(0).toUpperCase(); // T, S, or I
-
-    return (
-      <div
-        style={{
-          position: 'absolute',
-          top: -6,
-          right: -6,
-          width: 18,
-          height: 18,
-          borderRadius: '50%',
-          backgroundColor: badgeColor,
-          color: 'white',
-          fontSize: theme.fontSizes[0],
-          fontWeight: theme.fontWeights.bold,
-          fontFamily: theme.fonts.body,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-          zIndex: 10,
-          opacity: isActive ? 1 : 0.1,
-        }}
-        title={`${otelInfo.kind}${otelInfo.category ? ` (${otelInfo.category})` : ''}`}
-      >
-        {label}
-      </div>
-    );
-  };
-
-  // Render Sources badge
+  // Render Sources badge (top-right)
   const renderSourcesBadge = () => {
     const sources = nodeData?.sources as string[] | undefined;
     if (!sources || sources.length === 0) return null;
@@ -146,7 +96,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         style={{
           position: 'absolute',
           top: -6,
-          left: -6,
+          right: -6,
           width: 18,
           height: 18,
           borderRadius: '50%',
@@ -165,6 +115,58 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         title={`Sources: ${sources.join(', ')}`}
       >
         S
+      </div>
+    );
+  };
+
+  // Render Status badge (top-left)
+  const renderStatusBadge = () => {
+    const status = nodeData?.status as 'draft' | 'approved' | 'implemented' | undefined;
+    if (!status) return null;
+
+    // Color mapping for status
+    const statusColors = {
+      draft: '#6b7280', // Gray
+      approved: '#3b82f6', // Blue
+      implemented: '#10b981', // Green
+    };
+
+    const statusLabels = {
+      draft: 'D',
+      approved: 'A',
+      implemented: 'I',
+    };
+
+    const statusTitles = {
+      draft: 'Draft - Design phase',
+      approved: 'Approved - Ready for implementation',
+      implemented: 'Implemented - Code exists',
+    };
+
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          top: -6,
+          left: -6,
+          width: 18,
+          height: 18,
+          borderRadius: '50%',
+          backgroundColor: statusColors[status],
+          color: 'white',
+          fontSize: theme.fontSizes[0],
+          fontWeight: theme.fontWeights.bold,
+          fontFamily: theme.fonts.body,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+          zIndex: 10,
+          opacity: isActive ? 1 : 0.1,
+        }}
+        title={statusTitles[status]}
+      >
+        {statusLabels[status]}
       </div>
     );
   };
@@ -192,7 +194,11 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
 
   // Get stroke color - priority: node data stroke > type definition stroke > fill color
   const nodeDataStroke = nodeData.stroke as string | undefined;
-  const strokeColor = nodeDataStroke || typeDefinition.stroke || fillColor;
+  const baseStrokeColor = nodeDataStroke || typeDefinition.stroke || fillColor;
+
+  // Apply status-based border styling
+  const status = nodeData?.status as 'draft' | 'approved' | 'implemented' | undefined;
+  const strokeColor = baseStrokeColor;
 
   // Use fillColor as the primary "color" for backwards compatibility
   const color = fillColor;
@@ -255,11 +261,12 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
 
   // Shape-specific styles
   const getShapeStyles = () => {
+    const borderStyle = status === 'draft' ? 'dotted' : status === 'approved' ? 'dashed' : 'solid';
     const baseStyles = {
       padding: '12px 16px',
       backgroundColor: isGroup ? 'rgba(255, 255, 255, 0.7)' : hexToLightColor(fillColor),
       color: '#000',
-      border: `2px solid ${hasViolations ? '#D0021B' : strokeColor}`,
+      border: `2px ${borderStyle} ${hasViolations ? '#D0021B' : strokeColor}`,
       fontSize: theme.fontSizes[0],
       fontWeight: theme.fontWeights.medium,
       fontFamily: theme.fonts.body,
@@ -343,6 +350,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
   // Hexagon border wrapper styles (outer shape that acts as border)
   // Hexagon with gentle diagonals
   const hexagonClipPath = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
+  // Note: Dotted/dashed borders not supported for hexagon shape (CSS limitation with clip-path)
+  // All statuses use 2px solid border for hexagons
   const hexagonBorderWidth = 2;
   const hexagonBorderStyle: React.CSSProperties = isHexagon
     ? {
@@ -386,6 +395,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
 
   // Diamond clip-path
   const diamondClipPath = 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)';
+  // Note: Dotted/dashed borders not supported for diamond shape (CSS limitation with clip-path)
+  // All statuses use 2px solid border for diamonds
   const diamondBorderWidth = 2;
 
   // Diamond border wrapper styles (outer shape that acts as border)
@@ -510,8 +521,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
+          {renderStatusBadge()}
           {renderSourcesBadge()}
-          {renderOtelBadge()}
           <div style={hexagonBorderStyle} className={animationClass}>
             <div style={hexagonInnerStyle}>
               {icon && (
@@ -576,8 +587,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
+          {renderStatusBadge()}
           {renderSourcesBadge()}
-          {renderOtelBadge()}
           <div style={diamondBorderStyle} className={animationClass}>
             <div style={diamondInnerStyle}>
               {icon && (
@@ -632,8 +643,8 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
+          {renderStatusBadge()}
           {renderSourcesBadge()}
-          {renderOtelBadge()}
           <div style={getShapeStyles()} className={animationClass}>
             {/* Inner content */}
             <div

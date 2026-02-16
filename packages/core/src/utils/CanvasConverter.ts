@@ -40,6 +40,7 @@ export interface ReactFlowNode {
     height?: number;
     states?: Record<string, { color?: string; icon?: string; label?: string }>;
     sources?: string[];
+    status?: 'draft' | 'approved' | 'implemented';
     // actions removed - legacy path-based patterns
     canvasType?: 'text' | 'file' | 'link' | 'group';
     text?: string;
@@ -201,6 +202,7 @@ export class CanvasConverter {
     if (pv) {
       if (pv.states) data.states = pv.states;
       if (pv.sources) data.sources = pv.sources;
+      if (pv.status) data.status = pv.status;
       // actions removed - legacy path-based
       if (pv.dataSchema) data.dataSchema = pv.dataSchema;
       if (pv.event) (data as Record<string, unknown>).event = pv.event;
@@ -324,6 +326,7 @@ export class CanvasConverter {
         if (pv?.icon) nodeData.icon = pv.icon;
         if (pv?.stroke) nodeData.stroke = pv.stroke;
         if (pv?.states) nodeData.states = pv.states as JsonValue;
+        if (pv?.status) nodeData.status = pv.status;
         if (pv?.otel) nodeData.otel = pv.otel as JsonValue;
         if (pv?.resourceMatch) nodeData.resourceMatch = pv.resourceMatch as JsonValue;
         if (pv?.event) nodeData.event = pv.event as unknown as JsonValue;

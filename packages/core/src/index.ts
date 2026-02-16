@@ -58,7 +58,7 @@ export type { YamlParseResult } from './utils/YamlParser';
 // Import directly from files to avoid pulling in Node.js validator
 export { renderWorkflow } from './workflow/template-renderer';
 export { parseTemplate, ParsedTemplate } from './workflow/template-parser';
-export type { TemplateSegment } from './workflow/template-parser';
+export type { TemplateSegment, TemplateContext, TemplateValue } from './workflow/template-parser';
 export {
   selectScenario,
   getRequiredEvents,
