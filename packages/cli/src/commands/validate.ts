@@ -408,7 +408,7 @@ const ALLOWED_CANVAS_FIELDS = {
     'dataSchema',
     'layout',
   ],
-  nodePvOtel: ['kind', 'category', 'isNew'],
+  nodePvOtel: ['kind', 'category', 'isNew', 'files'],
   nodePvState: ['color', 'icon', 'label'],
   nodePvAction: ['pattern', 'event', 'state', 'metadata', 'triggerEdges'],
   nodePvDataSchemaField: ['type', 'required', 'displayInLabel'],
@@ -1133,6 +1133,62 @@ The display name will be shown large on the node, and the event name will appear
                   path: `${nodePath}.pv.status`,
                   suggestion: `Valid values: ${validStatuses.join(', ')}`,
                 });
+              }
+
+              // Validate approved and implemented nodes have pv.otel.files
+              const status = nodePv.status as string;
+              const otelFiles = (nodePv.otel as Record<string, unknown> | undefined)?.files;
+              const hasFiles = Array.isArray(otelFiles) && otelFiles.length > 0;
+
+              if ((status === 'approved' || status === 'implemented') && !hasFiles) {
+                issues.push({
+                  type: 'error',
+                  message: `Node "${nodeLabel}" with status="${status}" must have pv.otel.files specified`,
+                  path: `${nodePath}.pv.otel.files`,
+                  suggestion: 'Add file paths where this event is instrumented, e.g.: "otel": { "files": ["src/app/api/route.ts"] }',
+                });
+              }
+
+              // For implemented nodes: validate that events exist in the specified files
+              if (status === 'implemented' && hasFiles && repositoryPath) {
+                // Extract event name
+                let eventName: string | null = null;
+                if (nodePv.event && typeof nodePv.event === 'object') {
+                  const eventObj = nodePv.event as { name?: string };
+                  eventName = eventObj.name || null;
+                } else if (typeof nodePv.eventRef === 'string') {
+                  eventName = nodePv.eventRef;
+                }
+
+                if (eventName) {
+                  (otelFiles as string[]).forEach((file: string, fileIndex: number) => {
+                    // Check if file exists
+                    const fullPath = resolve(repositoryPath, file);
+                    if (!existsSync(fullPath)) {
+                      issues.push({
+                        type: 'error',
+                        message: `Node "${nodeLabel}" references non-existent file in pv.otel.files: ${file}`,
+                        path: `${nodePath}.pv.otel.files[${fileIndex}]`,
+                        suggestion: `Verify the file path is correct relative to repository root: ${repositoryPath}`,
+                      });
+                    } else {
+                      // Check if event is in the file
+                      try {
+                        const content = readFileSync(fullPath, 'utf-8');
+                        if (!content.includes(eventName)) {
+                          issues.push({
+                            type: 'error',
+                            message: `Node "${nodeLabel}" is marked as "implemented" but event "${eventName}" not found in file: ${file}`,
+                            path: `${nodePath}.pv.otel.files[${fileIndex}]`,
+                            suggestion: `Add the event to the file using span.addEvent('${eventName}', { ... }) or change status to "approved" if not yet implemented`,
+                          });
+                        }
+                      } catch (error) {
+                        // File read error - already reported above if file doesn't exist
+                      }
+                    }
+                  });
+                }
               }
             }
           }
