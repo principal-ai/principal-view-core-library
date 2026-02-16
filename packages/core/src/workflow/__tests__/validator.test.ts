@@ -472,6 +472,28 @@ describe('WorkflowValidator', () => {
       );
     });
 
+    it('should flag missing description', async () => {
+      const context = createContext({
+        scenarios: [
+          {
+            id: 'test',
+            priority: 1,
+            description: undefined as unknown,
+            template: { introduction: 'Test' },
+          },
+        ],
+      });
+      const result = await validator.validate(context);
+
+      expect(result.errorCount).toBeGreaterThan(0);
+      expect(result.violations).toContainEqual(
+        expect.objectContaining({
+          ruleId: 'workflow-scenario-valid',
+          message: expect.stringContaining('missing required "description"'),
+        })
+      );
+    });
+
     it('should flag missing template', async () => {
       const context = createContext({
         scenarios: [

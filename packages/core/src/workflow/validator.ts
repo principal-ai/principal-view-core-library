@@ -665,6 +665,20 @@ export class WorkflowValidator {
         priorities.add(scenario.priority);
       }
 
+      // Check description
+      if (!scenario.description) {
+        violations.push({
+          ruleId: 'workflow-scenario-valid',
+          severity: 'error',
+          file: workflowPath,
+          path: `scenarios[${idx}].description`,
+          message: 'Scenario is missing required "description" field',
+          impact: 'Cannot understand what this scenario represents',
+          suggestion: 'Add a description explaining what this scenario represents',
+          fixable: false,
+        });
+      }
+
       // Check template
       if (!scenario.template) {
         violations.push({
