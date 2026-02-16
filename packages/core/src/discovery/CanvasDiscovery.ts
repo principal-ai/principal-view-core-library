@@ -200,8 +200,9 @@ export class CanvasDiscovery {
       const parts = canvasDir.split('/');
       const pvIndex = parts.indexOf(CanvasDiscovery.CANVAS_DIR);
 
-      // Only include flat canvases (directly in .principal-views/)
-      if (pvIndex !== -1 && parts.length === pvIndex + 1) {
+      // Only include flat .canvas files (for documentation)
+      // Exclude .otel.canvas files which must use storyboard structure
+      if (pvIndex !== -1 && parts.length === pvIndex + 1 && canvas.type !== 'otel') {
         const packageInfo = this.findPackageForPath(canvas.path, packageMap);
 
         // Create a standalone storyboard with no workflows
