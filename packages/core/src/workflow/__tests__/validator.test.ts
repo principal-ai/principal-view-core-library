@@ -108,7 +108,22 @@ describe('WorkflowValidator', () => {
           },
         },
       ],
-      edges: [],
+      edges: [
+        {
+          id: 'edge1',
+          fromNode: 'test-started',
+          toNode: 'test-complete',
+          fromSide: 'right',
+          toSide: 'left',
+        },
+        {
+          id: 'edge2',
+          fromNode: 'test-started',
+          toNode: 'test-error',
+          fromSide: 'right',
+          toSide: 'left',
+        },
+      ],
       pv: {
         version: '1.0.0',
         name: 'Test Canvas',
@@ -1261,7 +1276,7 @@ describe('WorkflowValidator', () => {
       expect(connectivityViolations[0].message).toContain('disconnected');
     });
 
-    it('should skip check when canvas has no edges', async () => {
+    it('should error when canvas has no edges but workflow has multi-event scenarios', async () => {
       const workflow: WorkflowTemplate = {
         version: '1.0.0',
         name: 'Test',
@@ -1302,9 +1317,11 @@ describe('WorkflowValidator', () => {
       };
 
       const result = await validator.validate(context);
-      // Should not produce connectivity violations if canvas has no edges
+      // Should produce connectivity violation when canvas has no edges but scenario has multiple events
       const connectivityViolations = result.violations.filter(v => v.ruleId === 'workflow-event-connectivity');
-      expect(connectivityViolations).toHaveLength(0);
+      expect(connectivityViolations).toHaveLength(1);
+      expect(connectivityViolations[0].severity).toBe('error');
+      expect(connectivityViolations[0].message).toContain('has no edges');
     });
 
     it('should skip check when scenario has less than 2 events', async () => {

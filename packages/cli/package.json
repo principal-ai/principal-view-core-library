@@ -1,6 +1,6 @@
 {
   "name": "@principal-ai/principal-view-cli",
-  "version": "0.14.14",
+  "version": "0.14.15",
   "description": "Principal View CLI - Validate and manage .canvas configuration files",
   "main": "dist/index.cjs",
   "types": "dist/index.d.ts",
@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@principal-ai/codebase-composition": "^0.2.43",
-    "@principal-ai/principal-view-core": "^0.23.13",
+    "@principal-ai/principal-view-core": "^0.24.1",
     "chalk": "5.6.2",
     "commander": "14.0.2",
     "glob": "^13.0.0",

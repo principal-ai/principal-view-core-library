@@ -1261,8 +1261,38 @@ export class WorkflowValidator {
   private checkEventConnectivity(context: WorkflowValidationContext): WorkflowViolation[] {
     const violations: WorkflowViolation[] = [];
 
-    if (!context.canvas || !context.canvas.edges || context.canvas.edges.length === 0) {
-      return violations; // Can't validate without canvas or edges
+    if (!context.canvas) {
+      return violations; // Can't validate without canvas
+    }
+
+    // Check if canvas has edges - if not, error for workflows with multi-event scenarios
+    if (!context.canvas.edges || context.canvas.edges.length === 0) {
+      const { workflow } = context;
+
+      for (let i = 0; i < workflow.scenarios.length; i++) {
+        const scenario = workflow.scenarios[i];
+
+        if (!scenario.template?.events) {
+          continue;
+        }
+
+        const eventNames = Object.keys(scenario.template.events);
+
+        if (eventNames.length >= 2) {
+          violations.push({
+            ruleId: 'workflow-event-connectivity',
+            severity: 'error',
+            file: context.workflowPath,
+            path: `scenarios[${i}]`,
+            message: `Scenario "${scenario.id}" has ${eventNames.length} events but the canvas has no edges`,
+            impact: 'Events will appear as isolated nodes in workflow visualizations, making it unclear how execution flows between them',
+            suggestion: 'Add edges to the canvas to connect the events in this scenario',
+            fixable: false,
+          });
+        }
+      }
+
+      return violations;
     }
 
     const { workflow, canvas } = context;

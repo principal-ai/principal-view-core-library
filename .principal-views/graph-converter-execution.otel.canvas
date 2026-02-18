@@ -211,5 +211,41 @@
       }
     }
   ],
-  "edges": []
+  "edges": [
+    {
+      "id": "edge-1",
+      "fromNode": "graph-converter-1",
+      "toNode": "graph-converter-2",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-2",
+      "fromNode": "graph-converter-2",
+      "toNode": "graph-converter-3",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-3",
+      "fromNode": "graph-converter-3",
+      "toNode": "graph-converter-4",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-4",
+      "fromNode": "graph-converter-3",
+      "toNode": "graph-converter-5",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-5",
+      "fromNode": "validation-1",
+      "toNode": "validation-2",
+      "fromSide": "right",
+      "toSide": "left"
+    }
+  ]
 }

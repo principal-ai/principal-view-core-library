@@ -912,6 +912,8 @@ function validateCanvas(
   // Check nodes
   if (!Array.isArray(c.nodes)) {
     issues.push({ type: 'error', message: 'Canvas must have a "nodes" array' });
+  } else if (c.nodes.length === 0) {
+    issues.push({ type: 'error', message: 'Canvas must have at least one node' });
   } else {
     c.nodes.forEach((node: unknown, index: number) => {
       if (!node || typeof node !== 'object') {
@@ -1404,9 +1406,13 @@ The display name will be shown large on the node, and the event name will appear
     });
   }
 
-  // Check edges (optional but validated strictly if present)
-  if (c.edges !== undefined && !Array.isArray(c.edges)) {
-    issues.push({ type: 'error', message: '"edges" must be an array if present' });
+  // Check edges (required)
+  if (c.edges === undefined) {
+    issues.push({ type: 'error', message: 'Canvas must have an "edges" array' });
+  } else if (!Array.isArray(c.edges)) {
+    issues.push({ type: 'error', message: '"edges" must be an array' });
+  } else if (c.edges.length === 0) {
+    issues.push({ type: 'error', message: 'Canvas must have at least one edge' });
   } else if (Array.isArray(c.edges)) {
     const nodeIds = new Set((c.nodes as Array<{ id: string }>)?.map((n) => n.id) || []);
 
