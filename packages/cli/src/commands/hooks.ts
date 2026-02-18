@@ -21,14 +21,14 @@ const VV_HOOK_MARKER = '# Principal View checks';
 function getVVHookContent(): string {
   return `${VV_HOOK_MARKER}
 echo "Running Principal View doctor check..."
-npx @principal-ai/principal-view-cli doctor --errors-only || {
+npx @principal-ai/principal-view-cli@latest doctor --errors-only || {
   echo "❌ Principal View doctor check failed (errors found)"
   echo "   Run 'npx @principal-ai/principal-view-cli doctor' to see details"
   exit 1
 }
 
 echo "Running Principal View canvas validation..."
-npx @principal-ai/principal-view-cli validate --quiet 2>/dev/null || {
+npx @principal-ai/principal-view-cli@latest validate --quiet 2>/dev/null || {
   if [ $? -ne 0 ]; then
     echo "❌ Canvas validation failed"
     echo "   Run 'npx @principal-ai/principal-view-cli validate' to see details"
