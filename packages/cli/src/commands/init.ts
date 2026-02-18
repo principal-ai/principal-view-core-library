@@ -150,8 +150,26 @@ export function createInitCommand(): Command {
         if (existsSync(libraryFile) && !options.force) {
           console.log(chalk.yellow(`Library file already exists: .principal-views/library.yaml`));
         } else {
-          const libraryYaml = `version: "1.0.0"
+          const libraryYaml = `# Principal View Component Library
+version: "1.0.0"
 name: "Component Library"
+description: "Component library for Principal View visualizations"
+
+# Service resource registry
+# Define all services in this repository with their OTEL resource attributes
+# Each service configures its own resources at runtime, but declaring them here provides:
+# - Service documentation/registry
+# - Expected resource schema for validation
+# - Dev workspace trace routing
+#
+# Example:
+# resources:
+#   my-service:
+#     service.name: "my-service"
+#     service.version: "1.0.0"
+#     deployment.environment: "development"
+#
+resources: {}
 
 nodeComponents: {}
 

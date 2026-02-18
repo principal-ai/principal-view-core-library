@@ -53,6 +53,9 @@ export interface CustomNodeData extends Record<string, unknown> {
   // Whether this node is active (involved in current execution scenario)
   // If false, node will be dimmed to de-emphasize it
   isActive?: boolean;
+  // Whether this node is hidden by user (shift-click)
+  // If true, node will be dimmed less than inactive nodes
+  isHidden?: boolean;
 }
 
 /**
@@ -76,7 +79,13 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
     shiftKeyPressed = false,
     isHighlighted = false,
     isActive = true, // Default to active if not specified
+    isHidden = false, // Default to not hidden
   } = nodeProps;
+
+  // Calculate opacity based on node state
+  // Hidden nodes (shift-clicked) are dimmed to 0.4
+  // Inactive nodes (scenario filtering) are dimmed to 0.1
+  const nodeOpacity = isHidden ? 0.4 : isActive ? 1 : 0.1;
 
   // Only show tooltip when hovering, not dragging, and shift key is pressed
   const showTooltip = isHovered && !dragging && shiftKeyPressed;
@@ -110,7 +119,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
           justifyContent: 'center',
           boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
           zIndex: 10,
-          opacity: isActive ? 1 : 0.1,
+          opacity: nodeOpacity,
         }}
         title={`Sources: ${sources.join(', ')}`}
       >
@@ -162,7 +171,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
           justifyContent: 'center',
           boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
           zIndex: 10,
-          opacity: isActive ? 1 : 0.1,
+          opacity: nodeOpacity,
         }}
         title={statusTitles[status]}
       >
@@ -286,7 +295,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         : selected
         ? `0 0 0 2px ${strokeColor}`
         : '0 2px 4px rgba(0,0,0,0.1)',
-      opacity: isActive ? 1 : 0.1,
+      opacity: nodeOpacity,
       transition: 'box-shadow 0.2s ease, opacity 0.3s ease',
       animationDuration: animationType ? `${animationDuration}ms` : undefined,
       boxSizing: 'border-box' as const,
@@ -365,7 +374,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         minWidth: 20,
         minHeight: 20,
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        opacity: isActive ? 1 : 0.1,
+        opacity: nodeOpacity,
         transition: 'opacity 0.3s ease',
         boxSizing: 'border-box',
       }
@@ -411,7 +420,7 @@ export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging 
         minWidth: 20,
         minHeight: 20,
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-        opacity: isActive ? 1 : 0.1,
+        opacity: nodeOpacity,
         transition: 'opacity 0.3s ease',
         boxSizing: 'border-box',
       }

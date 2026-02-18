@@ -1,0 +1,82 @@
+{
+  "name": "@principal-ai/storybook-addon-otel",
+  "version": "0.3.21",
+  "description": "Storybook addon for forwarding OpenTelemetry traces to OTLP HTTP endpoint",
+  "keywords": [
+    "storybook-addons",
+    "opentelemetry",
+    "otel",
+    "tracing",
+    "observability"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/principal-ai/principal-view-core-library",
+    "directory": "packages/storybook-addon-otel"
+  },
+  "license": "Apache-2.0",
+  "author": "Principal AI Team",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/preset.js"
+    },
+    "./manager": "./dist/manager.js",
+    "./preview": "./dist/preview.js",
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/preset.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "*.js",
+    "*.d.ts"
+  ],
+  "scripts": {
+    "build": "bun run build:clean && bun run build:ts && bun run build:lib",
+    "build:clean": "rm -rf dist",
+    "build:ts": "tsc",
+    "build:lib": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opentelemetry/sdk-trace-web": "^1.28.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.55.0",
+    "@opentelemetry/resources": "^1.28.0",
+    "@opentelemetry/semantic-conventions": "^1.28.0",
+    "@opentelemetry/context-zone": "^1.28.0"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "storybook": "^10.0.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "storybook": "^10.1.2",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.4"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "bundler": {
+    "exportEntries": [
+      "src/index.ts"
+    ]
+  },
+  "storybook": {
+    "displayName": "OpenTelemetry",
+    "supportedFrameworks": ["react", "vue", "angular", "web-components"],
+    "icon": "https://user-images.githubusercontent.com/263385/101991160-c1876b80-3c7d-11eb-9c6d-b8d3c3e7e0e4.png"
+  }
+}

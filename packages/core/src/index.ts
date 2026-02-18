@@ -114,6 +114,14 @@ export type {
   OtelSeverityNumber,
 } from './types/otel';
 
+// Export registry-aware trace types
+export type {
+  RegisteredTrace,
+  RegistryLookupResult,
+  StoryboardRegistryInterface,
+  TraceRegistryMatcher,
+} from './types/registered-trace';
+
 // Export OTEL helper functions
 export {
   getAttributeStringValue,

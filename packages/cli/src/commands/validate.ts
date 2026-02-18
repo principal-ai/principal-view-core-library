@@ -235,6 +235,67 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
     });
   }
 
+  // Validate resources
+  if (lib.resources !== undefined) {
+    if (typeof lib.resources !== 'object' || lib.resources === null) {
+      issues.push({
+        type: 'error',
+        message: 'resources must be an object',
+        path: 'resources',
+        suggestion: 'Use {} for an empty service registry, or define services like: { my-service: { service.name: "my-service", ... } }',
+      });
+    } else {
+      const resources = lib.resources as Record<string, unknown>;
+      const resourceKeys = Object.keys(resources);
+
+      // Warn if resources is defined but empty
+      if (resourceKeys.length === 0) {
+        issues.push({
+          type: 'warning',
+          message: 'resources section is empty. Consider documenting services that emit OTEL traces.',
+          path: 'resources',
+          suggestion: 'See: npx @principal-ai/principal-view-cli formats library',
+        });
+      }
+
+      // Validate each resource entry
+      for (const [serviceId, serviceDef] of Object.entries(resources)) {
+        if (serviceDef && typeof serviceDef === 'object') {
+          const service = serviceDef as Record<string, unknown>;
+
+          // Check for required service.name
+          if (!service['service.name']) {
+            issues.push({
+              type: 'error',
+              message: `Missing required field "service.name" in resource "${serviceId}"`,
+              path: `resources.${serviceId}`,
+              suggestion: 'Add service.name attribute to identify the service in OTEL traces',
+            });
+          }
+
+          // Warn about missing recommended fields
+          if (!service['service.version']) {
+            issues.push({
+              type: 'warning',
+              message: `Missing recommended field "service.version" in resource "${serviceId}"`,
+              path: `resources.${serviceId}`,
+              suggestion: 'Consider adding service.version to track which version emitted traces',
+            });
+          }
+
+          if (!service['deployment.environment']) {
+            issues.push({
+              type: 'warning',
+              message: `Missing recommended field "deployment.environment" in resource "${serviceId}"`,
+              path: `resources.${serviceId}`,
+              suggestion: 'Consider adding deployment.environment (e.g., "development", "production")',
+            });
+          }
+        }
+      }
+    }
+  }
+
   return issues;
 }
 
@@ -924,6 +985,52 @@ function validateCanvas(
         });
       }
 
+      // Validate color - all nodes must have a color either directly or via nodeType
+      const hasDirectColor = typeof n.color === 'string' && n.color;
+      let hasNodeTypeColor = false;
+
+      if (!hasDirectColor && n.pv && typeof n.pv === 'object') {
+        const nodePv = n.pv as Record<string, unknown>;
+        const nodeTypeName = nodePv.nodeType as string;
+
+        if (typeof nodeTypeName === 'string' && nodeTypeName) {
+          // Check if nodeType has a color defined in canvas pv.nodeTypes
+          if (c.pv && typeof c.pv === 'object') {
+            const canvasPv = c.pv as Record<string, unknown>;
+            if (canvasPv.nodeTypes && typeof canvasPv.nodeTypes === 'object') {
+              const nodeTypes = canvasPv.nodeTypes as Record<string, unknown>;
+              const nodeTypeDef = nodeTypes[nodeTypeName];
+              if (nodeTypeDef && typeof nodeTypeDef === 'object') {
+                const typeDef = nodeTypeDef as Record<string, unknown>;
+                if (typeof typeDef.color === 'string' && typeDef.color) {
+                  hasNodeTypeColor = true;
+                }
+              }
+            }
+          }
+
+          // Check if nodeType has a color defined in library.nodeComponents
+          if (!hasNodeTypeColor && library) {
+            const nodeComponent = library.nodeComponents[nodeTypeName];
+            if (nodeComponent && typeof nodeComponent === 'object') {
+              const component = nodeComponent as Record<string, unknown>;
+              if (typeof component.color === 'string' && component.color) {
+                hasNodeTypeColor = true;
+              }
+            }
+          }
+        }
+      }
+
+      if (!hasDirectColor && !hasNodeTypeColor) {
+        issues.push({
+          type: 'error',
+          message: `Node "${nodeLabel}" must have a color`,
+          path: `${nodePath}`,
+          suggestion: 'Add a "color" field (e.g., "color": "#64748B") or use a pv.nodeType that defines a color',
+        });
+      }
+
       // Validate required fields for standard canvas types
       if (nodeType === 'text' && (typeof n.text !== 'string' || !n.text)) {
         issues.push({
@@ -1061,29 +1168,43 @@ function validateCanvas(
         }
 
         // Validate that display name doesn't match event name (poor UX)
-        if (nodeType === 'text' && typeof n.text === 'string' && nodePv.event && typeof nodePv.event === 'object') {
-          const eventObj = nodePv.event as { name?: string };
-          if (eventObj.name) {
+        // Check both inline event definitions (pv.event.name) and library references (pv.eventRef)
+        if (nodeType === 'text' && typeof n.text === 'string') {
+          let eventName: string | null = null;
+
+          // Check inline event definition
+          if (nodePv.event && typeof nodePv.event === 'object') {
+            const eventObj = nodePv.event as { name?: string };
+            if (eventObj.name) {
+              eventName = eventObj.name;
+            }
+          }
+          // Check library event reference
+          else if (nodePv.eventRef && typeof nodePv.eventRef === 'string') {
+            eventName = nodePv.eventRef;
+          }
+
+          if (eventName) {
             // Extract display name the same way CanvasConverter does
             const displayName = n.text.split('\n')[0].replace(/^#+ /, '').substring(0, 50);
-            if (displayName === eventObj.name) {
+            if (displayName === eventName) {
               issues.push({
                 type: 'error',
-                message: `Node "${nodeLabel}" has display name identical to event name "${eventObj.name}"`,
+                message: `Node "${nodeLabel}" has display name identical to event name "${eventName}"`,
                 path: `${nodePath}.text`,
                 suggestion: `The first line of the text field becomes the node's display name and should be human-readable, not a technical event name.
 
 Current:
-  text: "# ${eventObj.name}\\n..."
-  event.name: "${eventObj.name}"
+  text: "# ${eventName}\\n..."
+  ${nodePv.eventRef ? `eventRef: "${eventName}"` : `event.name: "${eventName}"`}
 
 Suggested:
   text: "# [Human-Readable Title]\\n..."
-  event.name: "${eventObj.name}"
+  ${nodePv.eventRef ? `eventRef: "${eventName}"` : `event.name: "${eventName}"`}
 
 Example:
   text: "# Registration Started\\nVersion registration request received"
-  event.name: "version.registration.started"
+  ${nodePv.eventRef ? `eventRef: "version.registration.started"` : `event.name: "version.registration.started"`}
 
 The display name will be shown large on the node, and the event name will appear below it in smaller monospace font.`,
               });
@@ -1959,6 +2080,55 @@ export function createValidateCommand(): Command {
             }
           }
 
+          // Check for duplicate canvas files (both .canvas and .otel.canvas with same basename)
+          const canvasByBasename = new Map<string, { regular?: string; otel?: string }>();
+
+          for (const result of results) {
+            if (result.fileType !== 'canvas') continue;
+
+            const filePath = result.file;
+            let basename: string;
+
+            if (filePath.endsWith('.otel.canvas')) {
+              basename = filePath.replace(/\.otel\.canvas$/, '');
+            } else if (filePath.endsWith('.canvas')) {
+              basename = filePath.replace(/\.canvas$/, '');
+            } else {
+              continue; // Skip if not a canvas file
+            }
+
+            // Track both types
+            if (!canvasByBasename.has(basename)) {
+              canvasByBasename.set(basename, {});
+            }
+            const entry = canvasByBasename.get(basename)!;
+
+            if (filePath.endsWith('.otel.canvas')) {
+              entry.otel = filePath;
+            } else {
+              entry.regular = filePath;
+            }
+          }
+
+          // Check for conflicts (both regular and otel exist)
+          for (const [basename, { regular, otel }] of canvasByBasename.entries()) {
+            if (regular && otel) {
+              // Add error to both files
+              for (const filePath of [regular, otel]) {
+                const result = results.find(r => r.file === filePath);
+                if (result) {
+                  result.isValid = false;
+                  result.issues.push({
+                    type: 'error',
+                    message: `Duplicate canvas files detected: both "${basename}.canvas" and "${basename}.otel.canvas" exist`,
+                    path: filePath,
+                    suggestion: `Remove the .canvas file and use only .otel.canvas. The .otel.canvas format supports both architectural nodes (without telemetry) and instrumented nodes (with telemetry). Use "status: draft" for planned instrumentation.`,
+                  });
+                }
+              }
+            }
+          }
+
           return outputResults(results, null, options);
         }
 
@@ -2084,6 +2254,60 @@ export function createValidateCommand(): Command {
             message: warning.message,
             path: warning.path,
           });
+        }
+
+        // Check for duplicate canvas files (both .canvas and .otel.canvas with same basename)
+        const canvasByBasename = new Map<string, { regular?: string; otel?: string }>();
+
+        for (const canvas of discoveryResult.canvases) {
+          // Extract basename without extension
+          let basename: string;
+          if (canvas.path.endsWith('.otel.canvas')) {
+            basename = canvas.path.replace(/\.otel\.canvas$/, '');
+          } else if (canvas.path.endsWith('.canvas')) {
+            basename = canvas.path.replace(/\.canvas$/, '');
+          } else {
+            continue; // Skip if not a canvas file
+          }
+
+          // Track both types
+          if (!canvasByBasename.has(basename)) {
+            canvasByBasename.set(basename, {});
+          }
+          const entry = canvasByBasename.get(basename)!;
+
+          if (canvas.type === 'otel') {
+            entry.otel = canvas.path;
+          } else {
+            entry.regular = canvas.path;
+          }
+        }
+
+        // Check for conflicts (both regular and otel exist)
+        for (const [basename, { regular, otel }] of canvasByBasename.entries()) {
+          if (regular && otel) {
+            // Add error to both files
+            for (const filePath of [regular, otel]) {
+              let result = results.find(r => r.file === filePath);
+              if (!result) {
+                result = {
+                  file: filePath,
+                  fileType: 'canvas',
+                  isValid: false,
+                  issues: [],
+                };
+                results.push(result);
+              }
+
+              result.isValid = false;
+              result.issues.push({
+                type: 'error',
+                message: `Duplicate canvas files detected: both "${basename}.canvas" and "${basename}.otel.canvas" exist`,
+                path: filePath,
+                suggestion: `Remove the .canvas file and use only .otel.canvas. The .otel.canvas format supports both architectural nodes (without telemetry) and instrumented nodes (with telemetry). Use "status: draft" for planned instrumentation.`,
+              });
+            }
+          }
         }
 
         // PHASE 1: Group workflows by canvas and collect all events used

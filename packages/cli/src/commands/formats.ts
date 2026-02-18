@@ -24,10 +24,15 @@ ${chalk.bold('3. Execution Files')} ${chalk.yellow('.otel.json')}
    Captured OTEL spans from test runs or production code, exported for
    visualization and validation against canvas schemas.
 
+${chalk.bold('4. Library Files')} ${chalk.yellow('library.yaml')}
+   Define service registry and component libraries for the project.
+   Documents OTEL resource attributes and service metadata.
+
 Run ${chalk.cyan('npx @principal-ai/principal-view-cli formats <section>')} for details on:
   ${chalk.yellow('canvas')}       .otel.canvas format and event schemas
   ${chalk.yellow('workflow')}    .workflow.json format and scenario structure
   ${chalk.yellow('execution')}    .otel.json format for captured spans
+  ${chalk.yellow('library')}      library.yaml format and service registry
   ${chalk.yellow('examples')}     Complete example files
 `,
 
@@ -304,6 +309,157 @@ ${chalk.bold('Validation:')}
 
 ${chalk.bold('Resources:')}
   OTLP Spec: https://opentelemetry.io/docs/specs/otlp/
+  OpenTelemetry JS: https://github.com/open-telemetry/opentelemetry-js
+`,
+
+  library: `
+${chalk.bold.cyan('Library Format (library.yaml)')}
+${chalk.dim('═'.repeat(70))}
+
+Library files define the service registry and component libraries for a project.
+They document OTEL resource attributes and provide a central registry of all
+services in the repository.
+
+${chalk.bold('File Location:')}
+  ${chalk.dim('.principal-views/')}${chalk.yellow('library.yaml')}
+  ${chalk.dim('(created by npx @principal-ai/principal-view-cli init)')}
+
+${chalk.bold('Required Structure:')}
+${chalk.dim('┌────────────────────────────────────────────────────────────────────┐')}
+${chalk.dim('│')} ${chalk.green('version')}: "1.0.0"                                                  ${chalk.dim('│')}
+${chalk.dim('│')} ${chalk.green('name')}: "@org/package-name"      ${chalk.dim('// npm package name')}           ${chalk.dim('│')}
+${chalk.dim('│')} ${chalk.green('description')}: "Package description"                                ${chalk.dim('│')}
+${chalk.dim('│')}                                                                    ${chalk.dim('│')}
+${chalk.dim('│')} ${chalk.yellow('# Service resource registry')}                                        ${chalk.dim('│')}
+${chalk.dim('│')} ${chalk.yellow('# Define all services in this repository with their OTEL resource')} ${chalk.dim('│')}
+${chalk.dim('│')} ${chalk.yellow('# attributes. Each service configures its own resources at runtime,')} ${chalk.dim('│')}
+${chalk.dim('│')} ${chalk.yellow('# but declaring them here provides:')}                                ${chalk.dim('│')}
+${chalk.dim('│')} ${chalk.yellow('# - Service documentation/registry')}                                 ${chalk.dim('│')}
+${chalk.dim('│')} ${chalk.yellow('# - Expected resource schema for validation')}                        ${chalk.dim('│')}
+${chalk.dim('│')} ${chalk.yellow('# - Dev workspace trace routing')}                                    ${chalk.dim('│')}
+${chalk.dim('│')}                                                                    ${chalk.dim('│')}
+${chalk.dim('│')} ${chalk.green('resources')}:                                                          ${chalk.dim('│')}
+${chalk.dim('│')}   my-service:                    ${chalk.dim('// Service identifier')}            ${chalk.dim('│')}
+${chalk.dim('│')}     ${chalk.cyan('service.name')}: "my-service"  ${chalk.dim('// OTEL service.name attribute')} ${chalk.dim('│')}
+${chalk.dim('│')}     ${chalk.cyan('service.version')}: "1.0.0"    ${chalk.dim('// OTEL service.version')}        ${chalk.dim('│')}
+${chalk.dim('│')}     ${chalk.cyan('deployment.environment')}: "development"  ${chalk.dim('// Environment')}      ${chalk.dim('│')}
+${chalk.dim('│')}     ${chalk.cyan('project')}: "my-project"       ${chalk.dim('// Project/feature name')}        ${chalk.dim('│')}
+${chalk.dim('│')}     ${chalk.yellow('# service.repository.url and service.commit.sha are auto-detected')} ${chalk.dim('│')}
+${chalk.dim('│')}     ${chalk.yellow('# from git locally and set via environment variables in production')} ${chalk.dim('│')}
+${chalk.dim('│')}                                                                    ${chalk.dim('│')}
+${chalk.dim('│')} ${chalk.green('nodeComponents')}: {}             ${chalk.dim('// Optional component library')}    ${chalk.dim('│')}
+${chalk.dim('│')} ${chalk.green('edgeComponents')}: {}             ${chalk.dim('// Optional component library')}    ${chalk.dim('│')}
+${chalk.dim('└────────────────────────────────────────────────────────────────────┘')}
+
+${chalk.bold('Service Resource Registry:')}
+
+The ${chalk.cyan('resources')} section documents all services in the repository that emit
+OpenTelemetry traces. Each service entry should match the resource attributes
+configured in your OTEL SDK initialization.
+
+${chalk.bold('Required Fields:')}
+  ${chalk.cyan('version')}             Library version (string)
+  ${chalk.cyan('name')}                Package name, typically npm package name
+  ${chalk.cyan('description')}         Brief description of the package
+  ${chalk.cyan('resources')}           Service registry object (can be empty {})
+  ${chalk.cyan('nodeComponents')}      Component definitions (can be empty {})
+  ${chalk.cyan('edgeComponents')}      Component definitions (can be empty {})
+
+${chalk.bold('Common OTEL Resource Attributes:')}
+
+${chalk.cyan('service.name')} ${chalk.dim('(required)')}
+  The logical name of the service. This is the primary identifier used to
+  group traces from the same service.
+  Example: "my-api-server", "storybook", "integration-tests"
+
+${chalk.cyan('service.version')} ${chalk.dim('(recommended)')}
+  The version of the service. Typically matches the package.json version.
+  Example: "1.2.3", "0.14.0"
+
+${chalk.cyan('deployment.environment')} ${chalk.dim('(recommended)')}
+  The deployment environment.
+  Common values: "development", "staging", "production"
+
+${chalk.bold('Auto-Detected Attributes:')}
+
+The following attributes are typically auto-detected from git:
+  ${chalk.cyan('service.repository.url')}  Git repository URL
+  ${chalk.cyan('service.commit.sha')}      Current commit hash
+
+${chalk.bold('Use Cases:')}
+
+${chalk.cyan('1. Storybook with OTEL Addon:')}
+${chalk.dim('┌────────────────────────────────────────────────────────────────────┐')}
+${chalk.dim('│')} resources:                                                         ${chalk.dim('│')}
+${chalk.dim('│')}   my-storybook:                                                    ${chalk.dim('│')}
+${chalk.dim('│')}     service.name: "my-storybook"                                   ${chalk.dim('│')}
+${chalk.dim('│')}     service.version: "0.1.0"                                       ${chalk.dim('│')}
+${chalk.dim('│')}     deployment.environment: "development"                          ${chalk.dim('│')}
+${chalk.dim('│')}     project: "ui-components"                                       ${chalk.dim('│')}
+${chalk.dim('└────────────────────────────────────────────────────────────────────┘')}
+
+${chalk.cyan('2. Multiple Services in Monorepo:')}
+${chalk.dim('┌────────────────────────────────────────────────────────────────────┐')}
+${chalk.dim('│')} resources:                                                         ${chalk.dim('│')}
+${chalk.dim('│')}   api-server:                                                      ${chalk.dim('│')}
+${chalk.dim('│')}     service.name: "api-server"                                     ${chalk.dim('│')}
+${chalk.dim('│')}     service.version: "2.0.0"                                       ${chalk.dim('│')}
+${chalk.dim('│')}     deployment.environment: "production"                           ${chalk.dim('│')}
+${chalk.dim('│')}   worker-service:                                                  ${chalk.dim('│')}
+${chalk.dim('│')}     service.name: "worker-service"                                 ${chalk.dim('│')}
+${chalk.dim('│')}     service.version: "1.5.0"                                       ${chalk.dim('│')}
+${chalk.dim('│')}     deployment.environment: "production"                           ${chalk.dim('│')}
+${chalk.dim('└────────────────────────────────────────────────────────────────────┘')}
+
+${chalk.cyan('3. Test Environment:')}
+${chalk.dim('┌────────────────────────────────────────────────────────────────────┐')}
+${chalk.dim('│')} resources:                                                         ${chalk.dim('│')}
+${chalk.dim('│')}   integration-tests:                                               ${chalk.dim('│')}
+${chalk.dim('│')}     service.name: "integration-tests"                              ${chalk.dim('│')}
+${chalk.dim('│')}     service.version: "1.0.0"                                       ${chalk.dim('│')}
+${chalk.dim('│')}     deployment.environment: "test"                                 ${chalk.dim('│')}
+${chalk.dim('│')}     test.suite: "integration"                                      ${chalk.dim('│')}
+${chalk.dim('└────────────────────────────────────────────────────────────────────┘')}
+
+${chalk.bold('Best Practices:')}
+
+${chalk.cyan('1. Service Name Consistency:')}
+   Ensure the ${chalk.yellow('service.name')} in library.yaml matches the resource attributes
+   configured in your OTEL SDK initialization code.
+
+${chalk.cyan('2. Version Synchronization:')}
+   Keep ${chalk.yellow('service.version')} in sync with your package.json version.
+
+${chalk.cyan('3. Document All Services:')}
+   Add an entry for every service in your repository that emits traces.
+   This creates a central registry for understanding trace sources.
+
+${chalk.cyan('4. Use Descriptive Service Names:')}
+   Service names should clearly identify the component:
+   ✅ "payment-processor-api"
+   ✅ "user-dashboard-ui"
+   ❌ "service1"
+   ❌ "app"
+
+${chalk.bold('Integration with OTEL SDK:')}
+
+Your OTEL SDK configuration should match library.yaml resources:
+
+${chalk.dim('// Example: @opentelemetry/sdk-trace-web initialization')}
+${chalk.dim('const provider = new WebTracerProvider({')}
+${chalk.dim('  resource: new Resource({')}
+${chalk.dim('    [SEMRESATTRS_SERVICE_NAME]: "my-storybook",')}
+${chalk.dim('    [SEMRESATTRS_SERVICE_VERSION]: "0.1.0",')}
+${chalk.dim('    [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: "development",')}
+${chalk.dim('  }),')}
+${chalk.dim('});')}
+
+${chalk.bold('Initialization:')}
+  ${chalk.cyan('npx @principal-ai/principal-view-cli init')}
+  Creates .principal-views/library.yaml with template and comments
+
+${chalk.bold('More Info:')}
+  OpenTelemetry Resource Spec: https://opentelemetry.io/docs/specs/semconv/resource/
   OpenTelemetry JS: https://github.com/open-telemetry/opentelemetry-js
 `,
 

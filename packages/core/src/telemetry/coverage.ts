@@ -96,9 +96,18 @@ export interface PackageCoverageMetrics {
 
 /**
  * Extract event name from a canvas node
+ * Supports both inline event definitions (pv.event.name) and library references (pv.eventRef)
  */
 function getEventName(node: ExtendedCanvasNode): string | null {
-  return node.pv?.event?.name || null;
+  // Check inline event definition first
+  if (node.pv?.event?.name) {
+    return node.pv.event.name;
+  }
+  // Check library event reference
+  if (node.pv?.eventRef) {
+    return node.pv.eventRef;
+  }
+  return null;
 }
 
 /**

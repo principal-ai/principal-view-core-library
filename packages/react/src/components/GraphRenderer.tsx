@@ -52,7 +52,6 @@ import {
 } from '../utils/graphConverter';
 import { EdgeInfoPanel } from './EdgeInfoPanel';
 import { NodeInfoPanel } from './NodeInfoPanel';
-import { SelectionSidebar } from './SelectionSidebar';
 
 /** Position change event for tracking node movements */
 export interface NodePositionChange {
@@ -483,6 +482,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   // Track shift key state for tooltip control
   const [shiftKeyPressed, setShiftKeyPressed] = useState(false);
 
+  // Track if we're currently processing a node hide operation
+  const hidingNodeRef = useRef(false);
+
   // Setup keyboard event listeners for shift key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -523,6 +525,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   // Track whether panel should be shown (only on explicit clicks, not after dragging)
   const [showNodePanel, setShowNodePanel] = useState(false);
   const [showEdgePanel, setShowEdgePanel] = useState(false);
+
+  // Track hidden nodes (shift-click to toggle)
+  const [hiddenNodeIds, setHiddenNodeIds] = useState<Set<string>>(new Set());
 
   // Track pending connection for edge type picker
   const [pendingConnection, setPendingConnection] = useState<{
@@ -746,9 +751,63 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     [editable, selectedEdgeIds]
   );
 
-  // Handle node click (toggle selection, supports Shift for multi-select)
+  // Handle node click (toggle selection, supports Cmd/Ctrl for hide/dim)
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
+      // Cmd+click (Mac) or Ctrl+click (Windows/Linux): toggle node visibility (hide edges and dim node)
+      if (event.metaKey || event.ctrlKey) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        // Mark that we're hiding a node to prevent ReactFlow's selection change
+        hidingNodeRef.current = true;
+
+        setHiddenNodeIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(node.id)) {
+            next.delete(node.id);
+          } else {
+            next.add(node.id);
+          }
+          return next;
+        });
+
+        // Reset the flag after state update completes
+        setTimeout(() => {
+          hidingNodeRef.current = false;
+        }, 0);
+
+        return;
+      }
+
+      // Shift+click: toggle node in selection (add/remove from multi-select)
+      if (event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        setSelectedNodeIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(node.id)) {
+            next.delete(node.id);
+          } else {
+            next.add(node.id);
+          }
+
+          // Also update local nodes selection state immediately
+          if (editable) {
+            setXyflowLocalNodes((nodes) =>
+              nodes.map((n) => ({
+                ...n,
+                selected: n.id === node.id ? !prev.has(node.id) : next.has(n.id),
+              }))
+            );
+          }
+
+          return next;
+        });
+        return;
+      }
+
       // Determine if we should show the panel based on showNodeDetailPanel prop
       const shouldShowPanel = showNodeDetailPanel !== false && (showNodeDetailPanel === true || !onNodeClickProp);
 
@@ -761,38 +820,41 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         }
       }
 
-      // Always update selection state for visual feedback (even in read-only mode)
-      if (event.shiftKey && editable) {
-        // Shift+click: toggle node in selection
-        setSelectedNodeIds((prev) => {
-          const next = new Set(prev);
-          if (next.has(node.id)) {
-            next.delete(node.id);
-          } else {
-            next.add(node.id);
-          }
-          return next;
-        });
+      // Regular click: single select (replace selection)
+      const shouldDeselect = selectedNodeIds.size === 1 && selectedNodeIds.has(node.id);
+      if (shouldDeselect) {
+        setSelectedNodeIds(new Set());
+        setShowNodePanel(false);
+
+        // Also update local nodes selection state immediately
+        if (editable) {
+          setXyflowLocalNodes((nodes) =>
+            nodes.map((n) => ({
+              ...n,
+              selected: false,
+            }))
+          );
+        }
+      } else {
+        setSelectedNodeIds(new Set([node.id]));
         if (shouldShowPanel) {
           setShowNodePanel(true);
         }
-      } else {
-        // Regular click: single select (replace selection)
-        const shouldDeselect = selectedNodeIds.size === 1 && selectedNodeIds.has(node.id);
-        if (shouldDeselect) {
-          setSelectedNodeIds(new Set());
-          setShowNodePanel(false);
-        } else {
-          setSelectedNodeIds(new Set([node.id]));
-          if (shouldShowPanel) {
-            setShowNodePanel(true);
-          }
+
+        // Also update local nodes selection state immediately
+        if (editable) {
+          setXyflowLocalNodes((nodes) =>
+            nodes.map((n) => ({
+              ...n,
+              selected: n.id === node.id,
+            }))
+          );
         }
-        setSelectedEdgeIds(new Set());
-        setShowEdgePanel(false);
       }
+      setSelectedEdgeIds(new Set());
+      setShowEdgePanel(false);
     },
-    [editable, selectedNodeIds, onNodeClickProp, showNodeDetailPanel]
+    [selectedNodeIds, onNodeClickProp, showNodeDetailPanel, editable]
   );
 
   // Handle close edge info panel
@@ -836,6 +898,11 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   // Handle selection change from ReactFlow (box selection and clicks)
   const handleSelectionChange = useCallback(
     ({ nodes: selectedNodes, edges: selectedEdges }: { nodes: Node[]; edges: Edge[] }) => {
+      // Ignore selection changes when we're hiding a node
+      if (hidingNodeRef.current) {
+        return;
+      }
+
       // Always update selection state, even in read-only mode (for visual feedback)
       setSelectedNodeIds(new Set(selectedNodes.map((n) => n.id)));
       setSelectedEdgeIds(new Set(selectedEdges.map((e) => e.id)));
@@ -1391,6 +1458,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           shiftKeyPressed,
           isHighlighted: highlightedNodeId === node.id,
           isActive: !activeNodeIds || activeNodeIds.length === 0 || activeNodeIds.includes(node.id),
+          isHidden: hiddenNodeIds.has(node.id),
           ...(animation
             ? {
                 animationType: animation.type,
@@ -1400,7 +1468,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         } as CustomNodeData,
       };
     });
-  }, [localNodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, highlightedNodeId, activeNodeIds, editStateRef, shiftKeyPressed, selectedNodeIds]);
+  }, [localNodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, highlightedNodeId, activeNodeIds, editStateRef, shiftKeyPressed, selectedNodeIds, hiddenNodeIds]);
 
   const baseNodesKey = useMemo(() => {
     return nodes
@@ -1567,14 +1635,24 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   const xyflowEdgesBase = useMemo(() => {
     const converted = convertToXYFlowEdges(edges, configuration, violations);
 
-    // Filter out edges connected to inactive nodes
-    const filtered = activeNodeIds && activeNodeIds.length > 0
-      ? converted.filter(edge => {
-          const sourceActive = activeNodeIds.includes(edge.source);
-          const targetActive = activeNodeIds.includes(edge.target);
-          return sourceActive && targetActive;
-        })
-      : converted;
+    // Filter out edges connected to inactive or hidden nodes
+    const filtered = converted.filter(edge => {
+      // Filter by hidden nodes (shift-clicked)
+      const sourceHidden = hiddenNodeIds.has(edge.source);
+      const targetHidden = hiddenNodeIds.has(edge.target);
+      if (sourceHidden || targetHidden) {
+        return false;
+      }
+
+      // Filter by active nodes (scenario playback)
+      if (activeNodeIds && activeNodeIds.length > 0) {
+        const sourceActive = activeNodeIds.includes(edge.source);
+        const targetActive = activeNodeIds.includes(edge.target);
+        return sourceActive && targetActive;
+      }
+
+      return true;
+    });
 
     // Debug: Log edge counts to help diagnose disappearing edges
     if (process.env.NODE_ENV === 'development') {
@@ -1618,7 +1696,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       if (!aSelected && bSelected) return -1; // b comes after a (rendered on top)
       return 0; // maintain original order
     });
-  }, [edges, configuration, violations, animationState.edgeAnimations, showTooltips, selectedEdgeIds, shiftKeyPressed, activeNodeIds]);
+  }, [edges, configuration, violations, animationState.edgeAnimations, showTooltips, selectedEdgeIds, shiftKeyPressed, activeNodeIds, hiddenNodeIds]);
 
   // Local xyflow edges state for reconnection
   const [xyflowLocalEdges, setXyflowLocalEdges] = useState<Edge<CustomEdgeData>[]>(xyflowEdgesBase);
@@ -1694,10 +1772,13 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         onReconnectEnd={handleReconnectEnd}
         onPaneClick={onPaneClick}
         onSelectionChange={handleSelectionChange}
-        panOnDrag={true}
-        selectionOnDrag={false}
-        selectionKeyCode={editable ? 'Shift' : null}
-        multiSelectionKeyCode="Shift"
+        panOnDrag={false}
+        panOnScroll={true}
+        zoomOnScroll={false}
+        zoomOnPinch={true}
+        selectionOnDrag={true}
+        selectionKeyCode={null}
+        multiSelectionKeyCode={null}
       >
         {showBackground && (
           <Background
@@ -1730,16 +1811,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           <AlignmentGuidesOverlay guides={alignmentGuides} color={theme.colors.primary} />
         )}
       </ReactFlow>
-
-      {/* Multi-selection sidebar - shown when 2+ nodes are selected via explicit click/box select */}
-      {selectedNodeIds.size >= 2 && showNodePanel && showNodeDetailPanel !== false && (
-        <SelectionSidebar
-          selectedNodeIds={selectedNodeIds}
-          nodes={nodes}
-          nodeTypeDefinitions={configuration.nodeTypes}
-          onClose={onCloseNodeInfoPanel}
-        />
-      )}
 
       {/* Single edge info panel - shown only on explicit click */}
       {selectedEdgeIds.size === 1 && selectedEdge && selectedEdgeTypeDefinition && showEdgePanel && (
