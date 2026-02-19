@@ -618,7 +618,7 @@ function loadExecutionFile(filePath: string): ExecutionData | null {
 /**
  * Determine file type based on naming convention
  */
-function determineFileType(filePath: string): 'canvas' | 'workflow' | 'testTrace' | 'library' {
+function determineFileType(filePath: string): 'canvas' | 'workflow' | 'testTrace' | 'library' | 'unknown' {
   const name = basename(filePath).toLowerCase();
 
   if (name.startsWith('library.')) {
@@ -630,7 +630,10 @@ function determineFileType(filePath: string): 'canvas' | 'workflow' | 'testTrace
   if (name.endsWith('.otel.json')) {
     return 'testTrace';
   }
-  return 'canvas';
+  if (name.endsWith('.canvas') || name.endsWith('.otel.canvas')) {
+    return 'canvas';
+  }
+  return 'unknown';
 }
 
 /**
@@ -2053,37 +2056,138 @@ export function createValidateCommand(): Command {
 
           const library = loadLibrary(resolve(repositoryPath, '.principal-views'));
 
-          // Validate each file based on its type
-          const results: ValidationResult[] = [];
+          // PHASE 1: Group workflows by canvas and collect all events used
+          const workflowsByCanvas = new Map<string, Set<string>>();
+          const workflowFiles: string[] = [];
+          const canvasFiles: string[] = [];
+          const testTraceFiles: string[] = [];
+          let libraryFile: string | null = null;
+
+          // First pass: categorize files and build workflow event map
           for (const file of matchedFiles) {
             const fileType = determineFileType(file);
             const absolutePath = resolve(file);
 
-            if (fileType === 'canvas') {
-              results.push(validateFile(file, library, repositoryPath));
-            } else if (fileType === 'workflow') {
-              const result = await validateWorkflow(
-                absolutePath,
-                undefined, // allWorkflowEvents not available in single-file mode
-                repositoryPath,
-                undefined, // executionFiles not available in single-file mode
-                undefined  // eventRegistry not available in single-file mode
-              );
-              results.push(result);
-            } else if (fileType === 'testTrace') {
-              results.push(validateExecution(absolutePath, repositoryPath));
-            } else if (fileType === 'library') {
-              if (library) {
-                const libraryIssues = validateLibrary(library);
-                const libraryHasErrors = libraryIssues.some((i) => i.type === 'error');
-                results.push({
-                  file: relative(repositoryPath, library.path),
-                  fileType: 'library',
-                  isValid: !libraryHasErrors,
-                  issues: libraryIssues,
-                });
-              }
+            // Skip unknown file types (e.g., .md files)
+            if (fileType === 'unknown') {
+              continue;
             }
+
+            if (fileType === 'canvas') {
+              canvasFiles.push(file);
+            } else if (fileType === 'workflow') {
+              workflowFiles.push(absolutePath);
+
+              // Load workflow and collect events
+              const workflow = loadWorkflowTemplate(absolutePath);
+              if (workflow && workflow.canvas) {
+                const canvasPath = resolve(repositoryPath, workflow.canvas);
+                const canvasKey = relative(repositoryPath, canvasPath);
+
+                // Collect events from this workflow
+                if (!workflowsByCanvas.has(canvasKey)) {
+                  workflowsByCanvas.set(canvasKey, new Set<string>());
+                }
+                const workflowEvents = workflowsByCanvas.get(canvasKey)!;
+
+                for (const scenario of workflow.scenarios) {
+                  if (scenario.template?.events) {
+                    for (const eventName of Object.keys(scenario.template.events)) {
+                      if (!eventName.includes('*')) {
+                        workflowEvents.add(eventName);
+                      }
+                    }
+                  }
+                }
+              }
+            } else if (fileType === 'testTrace') {
+              testTraceFiles.push(absolutePath);
+            } else if (fileType === 'library') {
+              libraryFile = file;
+            }
+          }
+
+          // PHASE 2: Validate canvases and build EventRegistry
+          const results: ValidationResult[] = [];
+          const parsedCanvases = new Map<string, ExtendedCanvas>();
+
+          for (const file of canvasFiles) {
+            const validationResult = validateFile(file, library, repositoryPath);
+            results.push(validationResult);
+
+            // Collect parsed canvas for EventRegistry
+            if (validationResult.canvas) {
+              parsedCanvases.set(file, validationResult.canvas);
+            }
+          }
+
+          // Build EventRegistry from library and all parsed canvases
+          const componentLibrary = library?.raw as ComponentLibrary | undefined;
+          const eventRegistry = EventRegistry.build(
+            componentLibrary,
+            parsedCanvases,
+            library?.path
+          );
+
+          // PHASE 3: Validate workflows with canvas-wide event knowledge
+          for (const absolutePath of workflowFiles) {
+            const workflow = loadWorkflowTemplate(absolutePath);
+            if (!workflow) {
+              results.push({
+                file: relative(repositoryPath, absolutePath),
+                fileType: 'workflow',
+                isValid: false,
+                issues: [{ type: 'error', message: 'Could not parse workflow file' }],
+              });
+              continue;
+            }
+
+            // Get combined event set for this workflow's canvas
+            const canvasPath = workflow.canvas
+              ? resolve(repositoryPath, workflow.canvas)
+              : undefined;
+            const canvasKey = canvasPath ? relative(repositoryPath, canvasPath) : undefined;
+            const allWorkflowEvents = canvasKey ? workflowsByCanvas.get(canvasKey) : undefined;
+
+            // Find co-located execution files
+            const workflowDir = dirname(absolutePath);
+            const executionFiles: string[] = [];
+            try {
+              const filesInDir = readdirSync(workflowDir);
+              for (const file of filesInDir) {
+                if (file.endsWith('.otel.json')) {
+                  executionFiles.push(resolve(workflowDir, file));
+                }
+              }
+            } catch {
+              // Directory not readable, skip
+            }
+
+            const validationResult = await validateWorkflow(
+              absolutePath,
+              allWorkflowEvents,
+              repositoryPath,
+              executionFiles,
+              eventRegistry
+            );
+            results.push(validationResult);
+          }
+
+          // PHASE 4: Validate test traces
+          for (const absolutePath of testTraceFiles) {
+            results.push(validateExecution(absolutePath, repositoryPath));
+          }
+
+          // PHASE 5: Validate library
+          if (libraryFile && library) {
+            const libraryIssues = validateLibrary(library);
+            const libraryHasErrors = libraryIssues.some((i) => i.type === 'error');
+            results.push({
+              file: relative(repositoryPath, library.path),
+              fileType: 'library',
+              isValid: !libraryHasErrors,
+              issues: libraryIssues,
+            });
           }
 
           // Check for duplicate canvas files (both .canvas and .otel.canvas with same basename)

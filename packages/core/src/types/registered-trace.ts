@@ -1,20 +1,222 @@
 /**
  * Registry-aware trace types
  *
- * These types integrate trace data with storyboard registry lookups
+ * These types integrate trace data with scope-based registry lookups
  * to provide complete matching, validation, and routing information.
+ *
+ * Design: Multi-scope aware with three-category matching results
+ * - Scenario Matches: Spans where both workflow and scenario matched
+ * - Storyboard Matches: Spans where workflow matched but no scenario (orphaned)
+ * - Unmatched Spans: Spans that didn't match any workflow
+ *
+ * See: docs/LIBRARY_TELEMETRY_AND_MATCHING.md for full design
  */
 
 import type { OtelExportTraceServiceRequest } from './otel';
+import type { VersionSnapshot } from './version-registry';
 
 /**
- * Registry-aware trace with matching and routing information
+ * Resource information from OTLP trace
+ */
+export interface TraceResource {
+  /** Service identifier for routing (e.g., "http://localhost:3000" or "web-ade") */
+  serviceIdentifier: string;
+
+  /** Service name from resource attributes */
+  serviceName: string;
+
+  /** Resource-level attributes */
+  attributes?: Record<string, unknown>;
+
+  /** Scopes within this resource */
+  scopes: Array<{
+    /** Instrumentation scope */
+    scope: {
+      /** Scope name (e.g., "web-ade-instrumentation", "pkg:npm/@acme/auth-library") */
+      name: string;
+
+      /** Scope version (e.g., "1.0.0") */
+      version: string;
+
+      /** Scope attributes */
+      attributes?: Record<string, unknown>;
+
+      /** OTLP schema URL */
+      schemaUrl?: string;
+    };
+
+    /** Span IDs that belong to this scope */
+    spanIds: string[];
+  }>;
+}
+
+/**
+ * Matched span information
+ */
+export interface MatchedSpan {
+  /** Span ID */
+  spanId: string;
+
+  /** Span name */
+  spanName: string;
+
+  /** Matched canvas node ID */
+  nodeId: string;
+
+  /** Start timestamp (milliseconds) */
+  timestamp: number;
+
+  /** Duration (milliseconds) */
+  duration: number;
+
+  /** Events that were matched from this span */
+  events: string[];
+
+  /** Span attributes */
+  attributes?: Record<string, unknown>;
+
+  /** Match confidence */
+  matchConfidence?: 'exact' | 'pattern' | 'wildcard';
+}
+
+/**
+ * Category 1: Scenario Match
+ * Spans where both workflow and scenario matched
+ */
+export interface ScenarioMatch {
+  /** Storyboard ID that matched */
+  storyboardId: string;
+
+  /** Scenario ID that matched */
+  scenarioId: string;
+
+  /** Scope name that this match came from */
+  scopeName: string;
+
+  /** Spans that matched this scenario */
+  matchedSpans: MatchedSpan[];
+
+  /** Scenario coverage percentage (matched events / total required events) */
+  coveragePercent?: number;
+
+  /** Was this a full match or partial match? */
+  matchType?: 'full' | 'partial';
+}
+
+/**
+ * Orphaned span information
+ */
+export interface OrphanedSpan {
+  /** Span ID */
+  spanId: string;
+
+  /** Span name */
+  spanName: string;
+
+  /** Canvas node ID that the span matched */
+  nodeId: string;
+
+  /** Start timestamp (milliseconds) */
+  timestamp: number;
+
+  /** Duration (milliseconds) */
+  duration: number;
+
+  /** Why did this span not match any scenario? */
+  reason: string;
+
+  /** Events that were observed in this span */
+  observedEvents: string[];
+
+  /** Events that were expected for scenarios */
+  expectedEvents?: string[];
+
+  /** Span attributes */
+  attributes?: Record<string, unknown>;
+}
+
+/**
+ * Category 2: Storyboard Match (Workflow-Orphaned)
+ * Spans where workflow matched but events didn't match any scenario
+ */
+export interface StoryboardMatch {
+  /** Storyboard ID that matched */
+  storyboardId: string;
+
+  /** Scope name that this match came from */
+  scopeName: string;
+
+  /** Spans that matched workflow but no scenario */
+  orphanedSpans: OrphanedSpan[];
+}
+
+/**
+ * Unmatched span information
+ */
+export interface UnmatchedSpan {
+  /** Span ID */
+  spanId: string;
+
+  /** Span name */
+  spanName: string;
+
+  /** Scope name this span came from */
+  scopeName: string;
+
+  /** Start timestamp (milliseconds) */
+  timestamp: number;
+
+  /** Duration (milliseconds) */
+  duration: number;
+
+  /** Why didn't this span match any workflow? */
+  reason: string;
+
+  /** Span attributes */
+  attributes?: Record<string, unknown>;
+}
+
+/**
+ * Category 3: Unmatched Spans
+ * Spans that didn't match any workflow
+ */
+export interface UnmatchedSpans {
+  /** Spans that didn't match any workflow */
+  spans: UnmatchedSpan[];
+}
+
+/**
+ * Validation issue found during matching
+ */
+export interface ValidationIssue {
+  /** Issue severity */
+  level: 'error' | 'warning' | 'info';
+
+  /** Issue category */
+  category: 'registry' | 'version' | 'matching' | 'data' | 'scope';
+
+  /** Human-readable message */
+  message: string;
+
+  /** Affected span ID (if span-specific) */
+  spanId?: string;
+
+  /** Affected scope name (if scope-specific) */
+  scopeName?: string;
+
+  /** Suggested fix */
+  suggestion?: string;
+}
+
+/**
+ * Registry-aware trace with scope-based matching
  *
- * Replaces TraceInfo with a type that knows:
- * - Whether it's matched to a registered storyboard
- * - Which schema version should be used
- * - Where it should be routed/displayed
- * - Detailed span-to-node matching results
+ * This is the primary output of the trace matching system.
+ * It contains:
+ * - Multi-resource, multi-scope trace information
+ * - Three categories of matching results
+ * - Validation issues
+ * - Original OTLP data for details
  */
 export interface RegisteredTrace {
   // ============================================================================
@@ -36,263 +238,148 @@ export interface RegisteredTrace {
   /** Duration (milliseconds) */
   duration: number;
 
-  /** Number of spans in this trace */
+  /** Total number of spans in this trace */
   spanCount: number;
-
-  /** Service name from resource attributes */
-  serviceName: string;
 
   /** Has any span with error status */
   hasErrors: boolean;
 
   // ============================================================================
-  // Instrumentation Scope (for versioning)
+  // Multi-Resource, Multi-Scope Structure
   // ============================================================================
 
-  /** Instrumentation scope that created this trace */
-  scope: {
-    /** Scope name (e.g., "checkout-instrumentation") */
-    name: string;
-
-    /** Scope version (e.g., "2.1.0") - used for schema matching */
-    version?: string;
-
-    /** Scope-level attributes */
-    attributes?: Record<string, unknown>;
-
-    /** OTLP schema URL */
-    schemaUrl?: string;
-  };
+  /**
+   * Resources in this trace
+   * A trace can contain multiple resources (e.g., multiple services)
+   * Each resource can have multiple scopes (e.g., service + libraries)
+   */
+  resources: TraceResource[];
 
   // ============================================================================
-  // Registry Matching Status
+  // Three-Category Matching Results
   // ============================================================================
 
-  /** Registry matching status */
-  registryStatus: 'matched' | 'unmatched' | 'version-mismatch' | 'not-registered' | 'error';
+  /**
+   * Category 1: Scenario Matches
+   * Spans where both workflow and scenario matched (✅)
+   */
+  scenarioMatches: ScenarioMatch[];
 
-  /** Match information (if trace has pv.* attributes) */
-  matchInfo?: {
-    /** Storyboard ID from trace attributes */
-    storyboardId: string;
+  /**
+   * Category 2: Storyboard Matches (Workflow-Orphaned)
+   * Spans where workflow matched but events didn't match any scenario (⚠️)
+   */
+  storyboardMatches: StoryboardMatch[];
 
-    /** Storyboard name from trace attributes */
-    storyboardName: string;
-
-    /** Workflow ID (optional) */
-    workflowId?: string;
-
-    /** Workflow name (optional) */
-    workflowName?: string;
-
-    /** Scenario ID (optional) */
-    scenarioId?: string;
-
-    /** Scenario name (optional) */
-    scenarioName?: string;
-
-    /** Resolved schema version (from scope.version or pv.schema.version) */
-    schemaVersion?: string;
-  };
-
-  /** Registry lookup result */
-  registry?: {
-    /** Is the storyboard registered in the registry? */
-    isRegistered: boolean;
-
-    /** Registered storyboard ID (may differ from matchInfo.storyboardId) */
-    storyboardId?: string;
-
-    /** Resolved schema version (what version was actually used) */
-    resolvedVersion?: string;
-
-    /** Available versions in registry */
-    availableVersions?: string[];
-
-    /** Latest version in registry */
-    latestVersion?: string;
-
-    /** Is the resolved version the latest? */
-    isLatestVersion?: boolean;
-
-    /** Version match status */
-    versionStatus?: 'exact-match' | 'fallback-to-latest' | 'not-found' | 'deprecated';
-  };
+  /**
+   * Category 3: Unmatched Spans
+   * Spans that didn't match any workflow (❌)
+   */
+  unmatchedSpans: UnmatchedSpans;
 
   // ============================================================================
-  // Span Matching Results
-  // ============================================================================
-
-  /** Per-span matching results */
-  spanMatches: Array<{
-    /** Span ID */
-    spanId: string;
-
-    /** Span name */
-    spanName: string;
-
-    /** Matched canvas node IDs */
-    matchedNodeIds: string[];
-
-    /** Timestamp (milliseconds) */
-    timestamp: number;
-
-    /** Duration (milliseconds) */
-    duration: number;
-
-    /** Match confidence (optional) */
-    matchConfidence?: 'exact' | 'pattern' | 'wildcard';
-
-    /** Unmatched reason (if no nodes matched) */
-    unmatchedReason?: 'no-criteria' | 'no-match' | 'excluded';
-  }>;
-
-  /** Summary of matched nodes across all spans */
-  matchedNodesSummary: {
-    /** Total unique node IDs matched */
-    totalNodesMatched: number;
-
-    /** Node IDs that matched */
-    matchedNodeIds: string[];
-
-    /** Nodes in storyboard that didn't match any span */
-    unmatchedNodeIds: string[];
-
-    /** Coverage percentage (matched nodes / total nodes) */
-    coveragePercent: number;
-  };
-
-  // ============================================================================
-  // Routing Information
-  // ============================================================================
-
-  /** Where should this trace be routed/displayed? */
-  routing: {
-    /** Source URL for routing (from dev.server.url or service.name) */
-    sourceUrl: string;
-
-    /** Suggested destination (which panel/view should display this) */
-    destination: 'trace-viewer' | 'storyboard-viewer' | 'scenario-viewer' | 'unmatched';
-
-    /** Routing params (what to open, what to highlight) */
-    params?: {
-      /** Storyboard to open */
-      storyboardId?: string;
-
-      /** Workflow to select */
-      workflowId?: string;
-
-      /** Scenario to show */
-      scenarioId?: string;
-
-      /** Nodes to highlight */
-      highlightNodeIds?: string[];
-
-      /** Schema version to use */
-      schemaVersion?: string;
-    };
-  };
-
-  // ============================================================================
-  // Validation Errors/Warnings
+  // Validation & Diagnostics
   // ============================================================================
 
   /** Validation issues found during matching */
-  validationIssues?: Array<{
-    /** Issue severity */
-    level: 'error' | 'warning' | 'info';
-
-    /** Issue category */
-    category: 'registry' | 'version' | 'matching' | 'data';
-
-    /** Human-readable message */
-    message: string;
-
-    /** Affected span ID (if span-specific) */
-    spanId?: string;
-
-    /** Suggested fix */
-    suggestion?: string;
-  }>;
+  validationIssues?: ValidationIssue[];
 
   // ============================================================================
-  // Raw Data Reference (for details view)
+  // Raw Data Reference
   // ============================================================================
 
-  /** Reference to full OTLP data (if needed for details) */
+  /** Reference to full OTLP data (if needed for details view) */
   otlpData?: OtelExportTraceServiceRequest;
-}
-
-/**
- * Registry lookup result
- */
-export interface RegistryLookupResult {
-  /** Is the storyboard registered? */
-  isRegistered: boolean;
-
-  /** Storyboard ID */
-  storyboardId?: string;
-
-  /** Resolved schema version */
-  resolvedVersion?: string;
-
-  /** Available versions */
-  availableVersions?: string[];
-
-  /** Latest version */
-  latestVersion?: string;
-
-  /** Is latest version? */
-  isLatestVersion?: boolean;
-
-  /** Version match status */
-  versionStatus?: 'exact-match' | 'fallback-to-latest' | 'not-found' | 'deprecated';
 }
 
 /**
  * Interface for storyboard registry
  *
- * This is implemented by the main process and injected into the
- * OTEL collector server for trace matching.
+ * This is the main registry interface that supports scope-based lookups.
+ * It can route to either local development registry (file-based, hot-reload)
+ * or remote registry (API-based, cached).
  */
 export interface StoryboardRegistryInterface {
   /**
-   * Look up a storyboard by ID and optional version
+   * Look up schematics by scope name and version
+   *
+   * This is the primary lookup method for the new scope-based matching.
+   *
+   * For published libraries (PURL):
+   *   scopeName: "pkg:npm/@acme/auth-library"
+   *   scopeVersion: "2.1.0"
+   *
+   * For services:
+   *   scopeName: "checkout-service"
+   *   scopeVersion: "v1.2.3"
+   *   resource.attributes must contain "customer.id"
+   *
+   * Returns null if not found.
    */
-  lookup(storyboardId: string, schemaVersion?: string): Promise<RegistryLookupResult>;
+  lookupByScope(
+    scope: { name: string; version: string },
+    resource: { attributes?: Record<string, unknown> }
+  ): Promise<VersionSnapshot | null>;
 
   /**
-   * Get list of registered storyboard IDs
+   * List all registered scopes
+   *
+   * Returns array of scope names and their available versions.
    */
-  listStoryboards(): Promise<string[]>;
+  listScopes(): Promise<
+    Array<{
+      name: string;
+      versions: string[];
+    }>
+  >;
 
   /**
-   * Check if a storyboard is registered
+   * Check if registry supports hot-reloading (local development mode)
    */
-  isRegistered(storyboardId: string): Promise<boolean>;
+  supportsHotReload(): boolean;
 }
 
 /**
  * Interface for trace registry matcher
  *
- * Converts OTLP traces to RegisteredTrace with full registry information.
+ * Converts OTLP traces to RegisteredTrace with full scope-based matching.
  */
 export interface TraceRegistryMatcher {
   /**
-   * Match a trace against the registry and enrich with routing info
+   * Match a trace against the registry
+   *
+   * This is the main entry point for trace matching:
+   * 1. Extract scopes from OTLP trace
+   * 2. Lookup schematics for each scope from registry
+   * 3. Match spans to workflows
+   * 4. Match events to scenarios
+   * 5. Categorize results into three buckets
+   * 6. Return RegisteredTrace with all matching information
    */
   matchTrace(otlpData: OtelExportTraceServiceRequest): Promise<RegisteredTrace>;
+}
 
-  /**
-   * Resolve schema version for a trace
-   */
-  resolveSchemaVersion(
-    storyboardId: string,
-    scopeVersion?: string,
-    scopeAttributes?: Record<string, unknown>
-  ): Promise<{
-    resolvedVersion?: string;
-    versionStatus: 'exact-match' | 'fallback-to-latest' | 'not-found';
-    availableVersions: string[];
-  }>;
+/**
+ * Resource information extracted from OTLP
+ */
+export interface Resource {
+  /** Resource attributes */
+  attributes: Record<string, unknown>;
+
+  /** Dropped attributes count */
+  droppedAttributesCount?: number;
+}
+
+/**
+ * Scope information extracted from OTLP
+ */
+export interface Scope {
+  /** Scope name */
+  name: string;
+
+  /** Scope version */
+  version?: string;
+
+  /** Scope attributes */
+  attributes?: Record<string, unknown>;
 }

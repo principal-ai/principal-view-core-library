@@ -1,0 +1,387 @@
+{
+  "nodes": [
+    {
+      "id": "otlp-trace",
+      "type": "text",
+      "x": 50,
+      "y": 50,
+      "width": 200,
+      "height": 100,
+      "color": "#3b82f6",
+      "text": "OTLP Trace\n(Input)",
+      "pv": {
+        "nodeType": "input",
+        "shape": "rectangle",
+        "fill": "#dbeafe",
+        "stroke": "#3b82f6"
+      }
+    },
+    {
+      "id": "registered-trace-types",
+      "type": "text",
+      "x": 300,
+      "y": 50,
+      "width": 200,
+      "height": 120,
+      "color": "#059669",
+      "text": "RegisteredTrace Types\n✅ IMPLEMENTED\n\nDefines output structure",
+      "pv": {
+        "nodeType": "type-definition",
+        "shape": "rectangle",
+        "fill": "#d1fae5",
+        "stroke": "#059669",
+        "icon": "FileCode",
+        "sources": ["packages/core/src/types/registered-trace.ts"]
+      }
+    },
+    {
+      "id": "scope-extraction",
+      "type": "text",
+      "x": 50,
+      "y": 200,
+      "width": 200,
+      "height": 100,
+      "color": "#dc2626",
+      "text": "Scope Extraction\n❌ MISSING\n\nExtract scope.name + version",
+      "pv": {
+        "nodeType": "missing",
+        "shape": "rectangle",
+        "fill": "#fee2e2",
+        "stroke": "#dc2626",
+        "icon": "AlertCircle"
+      }
+    },
+    {
+      "id": "registry-lookup",
+      "type": "text",
+      "x": 50,
+      "y": 350,
+      "width": 200,
+      "height": 120,
+      "color": "#dc2626",
+      "text": "Registry Lookup\n❌ MISSING\n\nscope@version → schematics\nStoryboardRegistryInterface",
+      "pv": {
+        "nodeType": "missing",
+        "shape": "rectangle",
+        "fill": "#fee2e2",
+        "stroke": "#dc2626",
+        "icon": "AlertCircle"
+      }
+    },
+    {
+      "id": "version-registry",
+      "type": "text",
+      "x": 300,
+      "y": 350,
+      "width": 200,
+      "height": 100,
+      "color": "#059669",
+      "text": "Version Registry\n✅ IMPLEMENTED\n\nIn-memory storage",
+      "pv": {
+        "nodeType": "registry",
+        "shape": "hexagon",
+        "fill": "#d1fae5",
+        "stroke": "#059669",
+        "icon": "Database",
+        "sources": ["packages/core/src/registry/VersionRegistry.ts"]
+      }
+    },
+    {
+      "id": "event-registry",
+      "type": "text",
+      "x": 550,
+      "y": 350,
+      "width": 200,
+      "height": 100,
+      "color": "#059669",
+      "text": "Event Registry\n✅ IMPLEMENTED\n\nEvent indexing",
+      "pv": {
+        "nodeType": "registry",
+        "shape": "hexagon",
+        "fill": "#d1fae5",
+        "stroke": "#059669",
+        "icon": "Database",
+        "sources": ["packages/core/src/registry/EventRegistry.ts"]
+      }
+    },
+    {
+      "id": "span-matcher",
+      "type": "text",
+      "x": 50,
+      "y": 520,
+      "width": 200,
+      "height": 120,
+      "color": "#059669",
+      "text": "Span Matcher\n✅ IMPLEMENTED\n\nMatches spans to canvas nodes\nCompiled matching rules",
+      "pv": {
+        "nodeType": "matcher",
+        "shape": "rectangle",
+        "fill": "#d1fae5",
+        "stroke": "#059669",
+        "icon": "GitBranch",
+        "sources": ["packages/core/src/matchers/SpanMatcher.ts"]
+      }
+    },
+    {
+      "id": "scenario-matcher",
+      "type": "text",
+      "x": 300,
+      "y": 520,
+      "width": 200,
+      "height": 140,
+      "color": "#059669",
+      "text": "Scenario Matcher\n✅ IMPLEMENTED\n\nMatches events → scenarios\nFull/partial matches\nRecommended scenario",
+      "pv": {
+        "nodeType": "matcher",
+        "shape": "rectangle",
+        "fill": "#d1fae5",
+        "stroke": "#059669",
+        "icon": "GitBranch",
+        "sources": ["packages/core/src/workflow/scenario-matcher.ts"]
+      }
+    },
+    {
+      "id": "trace-aggregation",
+      "type": "text",
+      "x": 550,
+      "y": 520,
+      "width": 200,
+      "height": 120,
+      "color": "#059669",
+      "text": "Trace Aggregation\n✅ IMPLEMENTED\n\nGroups spans by trace ID\nExtracts workflow info",
+      "pv": {
+        "nodeType": "utility",
+        "shape": "rectangle",
+        "fill": "#d1fae5",
+        "stroke": "#059669",
+        "icon": "Tool",
+        "sources": ["packages/core/src/utils/traceAggregation.ts"]
+      }
+    },
+    {
+      "id": "orchestrator",
+      "type": "text",
+      "x": 50,
+      "y": 700,
+      "width": 450,
+      "height": 140,
+      "color": "#dc2626",
+      "text": "Orchestration Pipeline\n❌ MISSING\n\n1. Extract scopes from OTLP\n2. Lookup schematics from registry\n3. Match spans to workflows\n4. Match events to scenarios\n5. Categorize results",
+      "pv": {
+        "nodeType": "missing",
+        "shape": "rectangle",
+        "fill": "#fee2e2",
+        "stroke": "#dc2626",
+        "icon": "AlertCircle"
+      }
+    },
+    {
+      "id": "result-categorizer",
+      "type": "text",
+      "x": 550,
+      "y": 700,
+      "width": 200,
+      "height": 160,
+      "color": "#dc2626",
+      "text": "Result Categorizer\n❌ MISSING\n\nProduces 3 categories:\n✅ Workflow + Scenario\n⚠️ Workflow-Orphaned\n❌ Unmatched",
+      "pv": {
+        "nodeType": "missing",
+        "shape": "rectangle",
+        "fill": "#fee2e2",
+        "stroke": "#dc2626",
+        "icon": "AlertCircle"
+      }
+    },
+    {
+      "id": "registered-trace-output",
+      "type": "text",
+      "x": 300,
+      "y": 900,
+      "width": 200,
+      "height": 120,
+      "color": "#3b82f6",
+      "text": "RegisteredTrace\n(Output)\n\nWith routing info,\nspan matches,\nregistry status",
+      "pv": {
+        "nodeType": "output",
+        "shape": "rectangle",
+        "fill": "#dbeafe",
+        "stroke": "#3b82f6",
+        "icon": "Upload"
+      }
+    },
+    {
+      "id": "storyboard-builder",
+      "type": "text",
+      "x": 800,
+      "y": 350,
+      "width": 200,
+      "height": 120,
+      "color": "#059669",
+      "text": "Storyboard Builder\n✅ IMPLEMENTED\n\nContext building\nNode ID resolution",
+      "pv": {
+        "nodeType": "builder",
+        "shape": "rectangle",
+        "fill": "#d1fae5",
+        "stroke": "#059669",
+        "icon": "Package",
+        "sources": ["packages/core/src/storyboard/builder.ts"]
+      }
+    },
+    {
+      "id": "workflow-discovery",
+      "type": "text",
+      "x": 800,
+      "y": 520,
+      "width": 200,
+      "height": 120,
+      "color": "#059669",
+      "text": "Workflow Discovery\n✅ IMPLEMENTED\n\nCanvas/workflow types\nEvent-to-node mapping",
+      "pv": {
+        "nodeType": "discovery",
+        "shape": "rectangle",
+        "fill": "#d1fae5",
+        "stroke": "#059669",
+        "icon": "Search",
+        "sources": ["packages/core/src/storyboard/"]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "input-to-scope-extraction",
+      "fromNode": "otlp-trace",
+      "toNode": "scope-extraction",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "data-flow"
+      }
+    },
+    {
+      "id": "scope-to-registry",
+      "fromNode": "scope-extraction",
+      "toNode": "registry-lookup",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "missing-flow"
+      }
+    },
+    {
+      "id": "registry-to-version",
+      "fromNode": "registry-lookup",
+      "toNode": "version-registry",
+      "fromSide": "right",
+      "toSide": "left",
+      "pv": {
+        "edgeType": "query"
+      }
+    },
+    {
+      "id": "registry-to-event",
+      "fromNode": "registry-lookup",
+      "toNode": "event-registry",
+      "fromSide": "right",
+      "toSide": "bottom",
+      "pv": {
+        "edgeType": "query"
+      }
+    },
+    {
+      "id": "registry-to-orchestrator",
+      "fromNode": "registry-lookup",
+      "toNode": "orchestrator",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "missing-flow"
+      }
+    },
+    {
+      "id": "orchestrator-to-span-matcher",
+      "fromNode": "orchestrator",
+      "toNode": "span-matcher",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "missing-flow"
+      }
+    },
+    {
+      "id": "orchestrator-to-scenario-matcher",
+      "fromNode": "orchestrator",
+      "toNode": "scenario-matcher",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "missing-flow"
+      }
+    },
+    {
+      "id": "orchestrator-to-aggregation",
+      "fromNode": "orchestrator",
+      "toNode": "trace-aggregation",
+      "fromSide": "right",
+      "toSide": "bottom",
+      "pv": {
+        "edgeType": "missing-flow"
+      }
+    },
+    {
+      "id": "orchestrator-to-categorizer",
+      "fromNode": "orchestrator",
+      "toNode": "result-categorizer",
+      "fromSide": "right",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "missing-flow"
+      }
+    },
+    {
+      "id": "categorizer-to-output",
+      "fromNode": "result-categorizer",
+      "toNode": "registered-trace-output",
+      "fromSide": "bottom",
+      "toSide": "right",
+      "pv": {
+        "edgeType": "missing-flow"
+      }
+    },
+    {
+      "id": "types-to-output",
+      "fromNode": "registered-trace-types",
+      "toNode": "registered-trace-output",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "pv": {
+        "edgeType": "type-definition"
+      }
+    },
+    {
+      "id": "storyboard-to-scenario",
+      "fromNode": "storyboard-builder",
+      "toNode": "scenario-matcher",
+      "fromSide": "left",
+      "toSide": "right",
+      "pv": {
+        "edgeType": "supports"
+      }
+    },
+    {
+      "id": "workflow-to-span",
+      "fromNode": "workflow-discovery",
+      "toNode": "span-matcher",
+      "fromSide": "left",
+      "toSide": "right",
+      "pv": {
+        "edgeType": "supports"
+      }
+    }
+  ],
+  "pv": {
+    "name": "Matching Logic - Current State",
+    "version": "1.0.0",
+    "description": "Documents what exists vs what needs to be implemented for the OTLP trace matching logic",
+    "markdown": ".principal-views/matching-logic-current-state.md"
+  }
+}

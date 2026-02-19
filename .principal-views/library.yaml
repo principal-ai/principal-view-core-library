@@ -126,6 +126,90 @@ nodeComponents:
       backpressure: { color: "#F5A623", label: "Backpressure" }
       error: { color: "#D0021B", label: "Error" }
 
+  # ─────────────────────────────────────────────
+  # Documentation Components
+  # ─────────────────────────────────────────────
+  input:
+    description: "Input data or external source"
+    tags: ["documentation", "io"]
+    defaultLabel: "Input"
+    shape: rectangle
+    icon: "Download"
+    color: "#3b82f6"
+    size: { width: 200, height: 100 }
+
+  output:
+    description: "Output data or result"
+    tags: ["documentation", "io"]
+    defaultLabel: "Output"
+    shape: rectangle
+    icon: "Upload"
+    color: "#3b82f6"
+    size: { width: 200, height: 100 }
+
+  type-definition:
+    description: "Type or interface definition"
+    tags: ["documentation", "types"]
+    defaultLabel: "Type"
+    shape: rectangle
+    icon: "FileCode"
+    color: "#059669"
+    size: { width: 200, height: 120 }
+
+  missing:
+    description: "Missing or not yet implemented component"
+    tags: ["documentation", "status"]
+    defaultLabel: "Missing"
+    shape: rectangle
+    icon: "AlertCircle"
+    color: "#dc2626"
+    size: { width: 200, height: 100 }
+
+  registry:
+    description: "Registry or data store"
+    tags: ["documentation", "storage"]
+    defaultLabel: "Registry"
+    shape: hexagon
+    icon: "Database"
+    color: "#059669"
+    size: { width: 200, height: 100 }
+
+  matcher:
+    description: "Matching or filtering component"
+    tags: ["documentation", "logic"]
+    defaultLabel: "Matcher"
+    shape: rectangle
+    icon: "GitBranch"
+    color: "#059669"
+    size: { width: 200, height: 120 }
+
+  utility:
+    description: "Utility or helper function"
+    tags: ["documentation", "helper"]
+    defaultLabel: "Utility"
+    shape: rectangle
+    icon: "Tool"
+    color: "#059669"
+    size: { width: 200, height: 120 }
+
+  builder:
+    description: "Builder or factory component"
+    tags: ["documentation", "factory"]
+    defaultLabel: "Builder"
+    shape: rectangle
+    icon: "Package"
+    color: "#059669"
+    size: { width: 200, height: 120 }
+
+  discovery:
+    description: "Discovery or search component"
+    tags: ["documentation", "search"]
+    defaultLabel: "Discovery"
+    shape: rectangle
+    icon: "Search"
+    color: "#059669"
+    size: { width: 200, height: 120 }
+
 edgeComponents:
   # ─────────────────────────────────────────────
   # Synchronous Communication
@@ -201,6 +285,52 @@ edgeComponents:
     animation:
       type: flow
       duration: 300
+
+  # ─────────────────────────────────────────────
+  # Documentation Flows
+  # ─────────────────────────────────────────────
+  data-flow:
+    description: "Data flow between components"
+    tags: ["documentation", "flow"]
+    style: solid
+    color: "#3b82f6"
+    width: 2
+    directed: true
+    animation:
+      type: flow
+      duration: 1500
+
+  missing-flow:
+    description: "Missing or not yet implemented flow"
+    tags: ["documentation", "flow", "missing"]
+    style: dashed
+    color: "#dc2626"
+    width: 2
+    directed: true
+
+  query:
+    description: "Query or lookup operation"
+    tags: ["documentation", "query"]
+    style: solid
+    color: "#059669"
+    width: 2
+    directed: true
+
+  type-definition:
+    description: "Type definition relationship"
+    tags: ["documentation", "types"]
+    style: dotted
+    color: "#6366f1"
+    width: 2
+    directed: true
+
+  supports:
+    description: "Support or helper relationship"
+    tags: ["documentation", "support"]
+    style: solid
+    color: "#8b5cf6"
+    width: 1
+    directed: true
 
 connectionRules:
   # API to services

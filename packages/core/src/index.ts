@@ -9,6 +9,17 @@
  * import { ... } from '@principal-ai/principal-view-core/node'
  */
 
+// Import canvas utility functions to re-export (avoids export-from syntax that breaks with exports field)
+import {
+  isTextNode,
+  isFileNode,
+  isLinkNode,
+  isGroupNode,
+  hasPVExtension,
+  CANVAS_COLOR_PRESETS,
+  resolveCanvasColor,
+} from './types/canvas';
+
 // Export essential types only
 export type {
   GraphConfiguration,
@@ -41,12 +52,66 @@ export type {
 // Export path-based configuration types (browser-safe)
 export type { PathBasedGraphConfiguration } from './types/path-based-config';
 
-// Export configuration loading (browser-safe - uses FileSystemAdapter abstraction)
-export { ConfigurationLoader } from './ConfigurationLoader';
-export type { ConfigurationFile, ConfigurationLoadResult } from './ConfigurationLoader';
+// Note: ConfigurationLoader is Node.js-only and exported from @principal-ai/principal-view-core/node
 
 // Export Canvas types and converter
-export * from './types/canvas';
+export type {
+  // JSON Canvas Spec types
+  CanvasColor,
+  CanvasSide,
+  CanvasEndpoint,
+  CanvasBackgroundStyle,
+  CanvasNodeBase,
+  CanvasTextNode,
+  CanvasFileNode,
+  CanvasLinkNode,
+  CanvasGroupNode,
+  CanvasNode,
+  CanvasEdge,
+  Canvas,
+  // Principal View extension types
+  PVAnimationType,
+  PVAnimationDirection,
+  PVNodeShape,
+  PVEdgeStyle,
+  PVLogLevel,
+  PVNodeState,
+  PVOtelKind,
+  PVOtelCategory,
+  PVOtelSpanMatch,
+  PVOtelResourceMatch,
+  PVOtelExtension,
+  PVEventFieldSchema,
+  PVEventSchema,
+  PVNodeStatus,
+  PVNodeExtension,
+  PVEdgeExtension,
+  PVPathConfig,
+  PVDisplayConfig,
+  PVNodeTypeDefinition,
+  PVEdgeTypeDefinition,
+  PVCanvasExtension,
+  // Extended Canvas types
+  ExtendedCanvasTextNode,
+  ExtendedCanvasFileNode,
+  ExtendedCanvasLinkNode,
+  ExtendedCanvasGroupNode,
+  ExtendedCanvasNode,
+  ExtendedCanvasEdge,
+  ExtendedCanvas,
+} from './types/canvas';
+
+// Re-export canvas utility functions (imported at top to avoid module resolution issues)
+export {
+  isTextNode,
+  isFileNode,
+  isLinkNode,
+  isGroupNode,
+  hasPVExtension,
+  CANVAS_COLOR_PRESETS,
+  resolveCanvasColor,
+};
+
 export { CanvasConverter } from './utils/CanvasConverter';
 export type { ReactFlowNode, ReactFlowEdge } from './utils/CanvasConverter';
 
@@ -117,10 +182,32 @@ export type {
 // Export registry-aware trace types
 export type {
   RegisteredTrace,
-  RegistryLookupResult,
+  TraceResource,
+  MatchedSpan,
+  ScenarioMatch,
+  OrphanedSpan,
+  StoryboardMatch,
+  UnmatchedSpan,
+  UnmatchedSpans,
+  ValidationIssue,
   StoryboardRegistryInterface,
   TraceRegistryMatcher,
+  Resource,
+  Scope,
 } from './types/registered-trace';
+
+// Export OTLP trace parser
+export { OtlpTraceParser } from './parsers/OtlpTraceParser';
+export type { ExtractedSpan, ExtractedEvent } from './parsers/OtlpTraceParser';
+
+// Export storyboard registries
+export { RemoteRegistry } from './registry/RemoteRegistry';
+export { LocalRegistry, type FileReader } from './registry/LocalRegistry';
+export { CompositeRegistry } from './registry/CompositeRegistry';
+
+// Export trace orchestrator
+export { TraceOrchestrator } from './orchestration/TraceOrchestrator';
+export type { TraceOrchestratorConfig } from './orchestration/TraceOrchestrator';
 
 // Export OTEL helper functions
 export {
