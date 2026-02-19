@@ -1,6 +1,6 @@
 {
   "name": "@principal-ai/principal-view-core",
-  "version": "0.24.9",
+  "version": "0.24.10",
   "description": "Core logic and types for graph-based principal view framework",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -52,6 +52,7 @@
   },
   "devDependencies": {
     "@principal-ai/codebase-composition": "^0.2.43",
+    "@principal-ai/principal-view-core": "0.24.10",
     "@types/handlebars": "^4.1.0",
     "@types/jest": "30.0.0",
     "@types/js-yaml": "4.0.9",

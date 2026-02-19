@@ -52,7 +52,10 @@ export type {
 // Export path-based configuration types (browser-safe)
 export type { PathBasedGraphConfiguration } from './types/path-based-config';
 
-// Note: ConfigurationLoader is Node.js-only and exported from @principal-ai/principal-view-core/node
+// Export configuration types (browser-safe - just TypeScript interfaces)
+export type { ConfigurationFile, ConfigurationLoadResult } from './ConfigurationLoader';
+
+// Note: ConfigurationLoader class is Node.js-only and exported from @principal-ai/principal-view-core/node
 
 // Export Canvas types and converter
 export type {
