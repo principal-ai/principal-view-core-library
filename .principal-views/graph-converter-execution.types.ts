@@ -9,9 +9,9 @@
  */
 
 /**
- * Event type for node: graph-converter-1
+ * Event types for component: graph-converter
  */
-export namespace GraphConverter1 {
+export namespace GraphConverter {
   /**
    * Triggered when graph conversion begins
    */
@@ -26,21 +26,6 @@ export namespace GraphConverter1 {
   }
 
   /**
-   * Event type for graph-converter-1
-   */
-  export type Event = ConversionStarted;
-
-  /**
-   * Event name for graph-converter-1
-   */
-  export type EventName = 'conversion.started';
-}
-
-/**
- * Event type for node: graph-converter-2
- */
-export namespace GraphConverter2 {
-  /**
    * Triggered during node processing
    */
   export interface ConversionProcessingNodes {
@@ -52,21 +37,6 @@ export namespace GraphConverter2 {
   }
 
   /**
-   * Event type for graph-converter-2
-   */
-  export type Event = ConversionProcessingNodes;
-
-  /**
-   * Event name for graph-converter-2
-   */
-  export type EventName = 'conversion.processingNodes';
-}
-
-/**
- * Event type for node: graph-converter-3
- */
-export namespace GraphConverter3 {
-  /**
    * Triggered during edge processing
    */
   export interface ConversionProcessingEdges {
@@ -77,21 +47,6 @@ export namespace GraphConverter3 {
     };
   }
 
-  /**
-   * Event type for graph-converter-3
-   */
-  export type Event = ConversionProcessingEdges;
-
-  /**
-   * Event name for graph-converter-3
-   */
-  export type EventName = 'conversion.processingEdges';
-}
-
-/**
- * Event type for node: graph-converter-4
- */
-export namespace GraphConverter4 {
   /**
    * Triggered when conversion completes successfully
    */
@@ -108,21 +63,6 @@ export namespace GraphConverter4 {
   }
 
   /**
-   * Event type for graph-converter-4
-   */
-  export type Event = ConversionComplete;
-
-  /**
-   * Event name for graph-converter-4
-   */
-  export type EventName = 'conversion.complete';
-}
-
-/**
- * Event type for node: graph-converter-5
- */
-export namespace GraphConverter5 {
-  /**
    * Triggered when conversion fails
    */
   export interface ConversionError {
@@ -136,20 +76,20 @@ export namespace GraphConverter5 {
   }
 
   /**
-   * Event type for graph-converter-5
+   * All event types for graph-converter
    */
-  export type Event = ConversionError;
+  export type Event = ConversionStarted | ConversionProcessingNodes | ConversionProcessingEdges | ConversionComplete | ConversionError;
 
   /**
-   * Event name for graph-converter-5
+   * All event names for graph-converter
    */
-  export type EventName = 'conversion.error';
+  export type EventName = 'conversion.started' | 'conversion.processingNodes' | 'conversion.processingEdges' | 'conversion.complete' | 'conversion.error';
 }
 
 /**
- * Event type for node: validation-1
+ * Event types for component: validation
  */
-export namespace Validation1 {
+export namespace Validation {
   /**
    * Triggered when validation begins
    */
@@ -161,21 +101,6 @@ export namespace Validation1 {
     };
   }
 
-  /**
-   * Event type for validation-1
-   */
-  export type Event = ValidationStarted;
-
-  /**
-   * Event name for validation-1
-   */
-  export type EventName = 'validation.started';
-}
-
-/**
- * Event type for node: validation-2
- */
-export namespace Validation2 {
   /**
    * Triggered when validation completes
    */
@@ -190,20 +115,46 @@ export namespace Validation2 {
   }
 
   /**
-   * Event type for validation-2
+   * All event types for validation
    */
-  export type Event = ValidationComplete;
+  export type Event = ValidationStarted | ValidationComplete;
 
   /**
-   * Event name for validation-2
+   * All event names for validation
    */
-  export type EventName = 'validation.complete';
+  export type EventName = 'validation.started' | 'validation.complete';
+}
+
+/**
+ * Event types for component: graph-output
+ */
+export namespace GraphOutput {
+  /**
+   * Triggered when output is created
+   */
+  export interface OutputCreated {
+    name: 'output.created';
+    attributes: {
+      /** Type of output created */
+      'output.type': string;
+    };
+  }
+
+  /**
+   * All event types for graph-output
+   */
+  export type Event = OutputCreated;
+
+  /**
+   * All event names for graph-output
+   */
+  export type EventName = 'output.created';
 }
 
 /**
  * Union of all event names in the canvas
  */
-export type AllEventNames = 'conversion.started' | 'conversion.processingNodes' | 'conversion.processingEdges' | 'conversion.complete' | 'conversion.error' | 'validation.started' | 'validation.complete';
+export type AllEventNames = 'conversion.started' | 'conversion.processingNodes' | 'conversion.processingEdges' | 'conversion.complete' | 'conversion.error' | 'validation.started' | 'validation.complete' | 'output.created';
 
 /**
  * Type-safe event emitter for a specific node

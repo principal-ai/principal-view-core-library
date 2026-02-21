@@ -26,6 +26,7 @@ module.exports = {
     node: true,
     es2020: true,
   },
+  ignorePatterns: ['**/generated/**'],
   rules: {
     '@typescript-eslint/no-explicit-any': 'error',
     '@typescript-eslint/no-unused-vars': ['error', {

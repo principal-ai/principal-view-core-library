@@ -90,8 +90,8 @@ describe('TypeScript Type Generator', () => {
     });
 
     expect(result.code).toContain('/**');
-    expect(result.code).toContain('Graph conversion begins');
-    expect(result.code).toContain('Number of node types in configuration');
+    expect(result.code).toContain('Triggered when graph conversion begins');
+    expect(result.code).toContain('Number of node types in config');
   });
 
   test('should omit JSDoc comments when disabled', () => {

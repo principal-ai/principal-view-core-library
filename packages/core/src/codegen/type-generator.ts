@@ -95,8 +95,12 @@ export class TypeScriptGenerator implements CodeGenerator {
       lines.push(`export namespace ${opts.namespace} {`);
     }
 
-    // Generate types for each node with event schema
+    // Group nodes by base ID (strip numeric suffixes like -1, -2, etc.)
+    // This allows multiple nodes representing states of the same component
+    // to be grouped into a single namespace
     if (canvas.nodes) {
+      const nodeGroups = new Map<string, Array<{ nodeId: string; eventSchema: PVEventSchema }>>();
+
       for (const node of canvas.nodes) {
         let eventSchema: PVEventSchema | undefined;
 
@@ -116,9 +120,19 @@ export class TypeScriptGenerator implements CodeGenerator {
         }
 
         if (eventSchema) {
-          lines.push(...this.generateNodeTypes(node.id, eventSchema, opts));
-          lines.push('');
+          // Group by base ID (e.g., "graph-converter-1" -> "graph-converter")
+          const baseId = node.id.replace(/-\d+$/, '');
+          if (!nodeGroups.has(baseId)) {
+            nodeGroups.set(baseId, []);
+          }
+          nodeGroups.get(baseId)!.push({ nodeId: node.id, eventSchema });
         }
+      }
+
+      // Generate types for each component group
+      for (const [baseId, nodes] of nodeGroups) {
+        lines.push(...this.generateComponentTypes(baseId, nodes, opts));
+        lines.push('');
       }
     }
 
@@ -142,6 +156,68 @@ export class TypeScriptGenerator implements CodeGenerator {
       extension: 'ts',
       filename,
     };
+  }
+
+  /**
+   * Generate types for a component (group of related nodes)
+   * Groups multiple node instances (e.g., graph-converter-1, graph-converter-2)
+   * into a single namespace with all their events
+   */
+  private generateComponentTypes(
+    baseId: string,
+    nodes: Array<{ nodeId: string; eventSchema: PVEventSchema }>,
+    opts: { readonly: boolean; strictNullChecks: boolean; includeDocComments: boolean }
+  ): string[] {
+    const lines: string[] = [];
+    const typeName = this.nodeIdToTypeName(baseId);
+
+    if (opts.includeDocComments) {
+      lines.push(`/**`);
+      lines.push(` * Event types for component: ${baseId}`);
+      lines.push(` */`);
+    }
+
+    lines.push(`export namespace ${typeName} {`);
+
+    // Generate interface for each event in the component
+    const interfaceNames: string[] = [];
+    const eventNames: string[] = [];
+
+    for (const { eventSchema } of nodes) {
+      lines.push(...this.generateEventInterface(eventSchema.name, eventSchema, opts));
+      lines.push('');
+      interfaceNames.push(this.eventNameToTypeName(eventSchema.name));
+      eventNames.push(eventSchema.name);
+    }
+
+    // Export union of all event types
+    if (opts.includeDocComments) {
+      lines.push('  /**');
+      lines.push(`   * All event types for ${baseId}`);
+      lines.push('   */');
+    }
+    if (interfaceNames.length === 1) {
+      lines.push(`  export type Event = ${interfaceNames[0]};`);
+    } else {
+      lines.push(`  export type Event = ${interfaceNames.join(' | ')};`);
+    }
+    lines.push('');
+
+    // Generate event name union
+    if (opts.includeDocComments) {
+      lines.push('  /**');
+      lines.push(`   * All event names for ${baseId}`);
+      lines.push('   */');
+    }
+    if (eventNames.length === 1) {
+      lines.push(`  export type EventName = '${eventNames[0]}';`);
+    } else {
+      lines.push(`  export type EventName = ${eventNames.map(n => `'${n}'`).join(' | ')};`);
+    }
+
+    lines.push('}');
+
+    return lines;
   }
 
   private generateNodeTypes(

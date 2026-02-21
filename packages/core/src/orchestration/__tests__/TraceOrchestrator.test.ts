@@ -26,7 +26,7 @@ class MockRegistry implements StoryboardRegistryInterface {
 
   async lookupByScope(
     scope: { name: string; version: string },
-    resource: { attributes?: Record<string, unknown> }
+    _resource: { attributes?: Record<string, unknown> }
   ): Promise<VersionSnapshot | null> {
     return this.snapshots.get(scope.name) || null;
   }

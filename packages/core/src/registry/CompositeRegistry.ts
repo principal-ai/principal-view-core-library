@@ -105,8 +105,8 @@ export class CompositeRegistry implements StoryboardRegistryInterface {
   /**
    * Register a local workspace (convenience method)
    */
-  registerWorkspace(scopeName: string, fileTree: FileTree): void {
-    this.localRegistry.registerWorkspace(scopeName, fileTree);
+  async registerWorkspace(fileTree: FileTree): Promise<string[]> {
+    return this.localRegistry.registerWorkspace(fileTree);
   }
 
   /**

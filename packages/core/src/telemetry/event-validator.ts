@@ -122,12 +122,22 @@ export class EventValidator {
 
     // If not found by event name, check if the specific node has a schema
     if (!eventSchema) {
+      // Check exact node ID first
       const nodeSchema = this.eventSchemasByNode.get(nodeId);
       if (nodeSchema) {
         // Node has a schema, but this event doesn't exist anywhere
         errors.push(`Event '${eventName}' is not defined in schema for node '${nodeId}'`);
         return { valid: false, errors };
       }
+
+      // Check base ID pattern (e.g., "graph-converter" for "graph-converter-1", etc.)
+      const baseId = nodeId.replace(/-\d+$/, '');
+      if (this.nodeIdsByBaseId.has(baseId)) {
+        // Component has schemas defined, but this event doesn't exist
+        errors.push(`Event '${eventName}' is not defined in schema for node '${nodeId}'`);
+        return { valid: false, errors };
+      }
+
       // No schema defined at all - allow all events (permissive mode)
       return { valid: true, errors: [] };
     }
@@ -230,9 +240,17 @@ export class EventValidator {
 
   /**
    * Check if a node has event schema defined
+   * Supports both exact node IDs and base IDs (without numeric suffixes)
    */
   hasSchema(nodeId: string): boolean {
-    return this.eventSchemasByNode.has(nodeId);
+    // Check exact match first
+    if (this.eventSchemasByNode.has(nodeId)) {
+      return true;
+    }
+
+    // Check base ID pattern (e.g., "graph-converter" matches "graph-converter-1", etc.)
+    const baseId = nodeId.replace(/-\d+$/, '');
+    return this.nodeIdsByBaseId.has(baseId);
   }
 }
 

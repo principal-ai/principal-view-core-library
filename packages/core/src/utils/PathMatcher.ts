@@ -109,7 +109,7 @@ export class PathMatcher {
           break;
         }
 
-        case '{':
+        case '{': {
           // {a,b,c} matches alternatives
           let k = i + 1;
           let depth = 1;
@@ -127,6 +127,7 @@ export class PathMatcher {
             i++;
           }
           break;
+        }
 
         // Escape special regex characters
         case '.':
@@ -167,7 +168,7 @@ export class PathMatcher {
   /**
    * Get the base directory from a glob pattern (part before first wildcard)
    *
-   * Example: "lib/services/**​/*.ts" → "lib/services"
+   * Example: "lib/services/\*\*\/\*.ts" becomes "lib/services"
    */
   public static getBaseDir(pattern: string): string {
     const firstWildcard = pattern.search(/[*?[\]{]/);

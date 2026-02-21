@@ -209,6 +209,32 @@
           }
         }
       }
+    },
+    {
+      "id": "graph-output",
+      "type": "text",
+      "text": "Graph Output",
+      "x": 600,
+      "y": 200,
+      "width": 200,
+      "height": 100,
+      "color": "#00BCD4",
+      "pv": {
+        "name": "Graph Output",
+        "description": "Graph output creation",
+        "shape": "roundedRect",
+        "event": {
+          "name": "output.created",
+          "description": "Triggered when output is created",
+          "attributes": {
+            "output.type": {
+              "type": "string",
+              "required": true,
+              "description": "Type of output created"
+            }
+          }
+        }
+      }
     }
   ],
   "edges": [

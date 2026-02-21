@@ -22,7 +22,7 @@ import type {
   OrphanedSpan,
 } from '../types/registered-trace';
 import type { VersionSnapshot } from '../types/version-registry';
-import type { DiscoveredStoryboardWithContent, DiscoveredWorkflowWithContent } from '../discovery/types';
+import type { DiscoveredStoryboardWithContent, DiscoveredWorkflowWithContent, DiscoveredCanvasWithContent } from '../discovery/types';
 import type { ExtendedCanvas } from '../types/canvas';
 import { OtlpTraceParser } from '../parsers/OtlpTraceParser';
 import { SpanMatcher } from '../matchers/SpanMatcher';
@@ -234,14 +234,15 @@ export class TraceOrchestrator {
 
       // Match against each storyboard
       for (const storyboard of scopeWithStoryboards.snapshot.storyboards) {
-        // Validate that content is loaded
-        if (!this.isStoryboardWithContent(storyboard)) {
-          console.error('[TraceOrchestrator] Storyboard content not loaded:', (storyboard as any).id);
+        // Validate that content is loaded - cast to check content
+        const sbWithContent = storyboard as DiscoveredStoryboardWithContent;
+        if (!this.isStoryboardWithContent(sbWithContent)) {
+          console.error('[TraceOrchestrator] Storyboard content not loaded:', storyboard.id);
           continue;
         }
 
-        // Get canvas content
-        const canvas = storyboard.canvas as any; // Will be DiscoveredCanvasWithContent
+        // TypeScript now knows sbWithContent is DiscoveredStoryboardWithContent
+        const canvas = sbWithContent.canvas as DiscoveredCanvasWithContent;
         if (!canvas.content) {
           console.error('[TraceOrchestrator] Canvas content not loaded:', storyboard.id);
           continue;
@@ -313,9 +314,10 @@ export class TraceOrchestrator {
    * Type guard to check if storyboard has content loaded
    */
   private isStoryboardWithContent(
-    storyboard: any
+    storyboard: DiscoveredStoryboardWithContent
   ): storyboard is DiscoveredStoryboardWithContent {
-    return storyboard.canvas?.content !== undefined;
+    const canvas = storyboard.canvas as DiscoveredCanvasWithContent | undefined;
+    return canvas?.content !== undefined;
   }
 
   /**
@@ -374,14 +376,15 @@ export class TraceOrchestrator {
 
     // Try each workflow in the storyboard
     for (const workflow of storyboard.workflows) {
-      // Validate that workflow has content loaded
-      if (!this.isWorkflowWithContent(workflow)) {
+      // Validate that workflow has content loaded - cast to check content
+      const wfWithContent = workflow as DiscoveredWorkflowWithContent;
+      if (!this.isWorkflowWithContent(wfWithContent)) {
         console.error('[TraceOrchestrator] Workflow content not loaded:', workflow.id);
         continue;
       }
 
       // Try to match scenario using scenario matcher
-      const scenarioMatchResult = selectScenario(workflow.content, otelEvents);
+      const scenarioMatchResult = selectScenario(wfWithContent.content, otelEvents);
 
       // Check if we have a recommended match with actual coverage
       // We only consider it a scenario match if there's meaningful overlap
@@ -408,6 +411,9 @@ export class TraceOrchestrator {
           type: 'scenario',
           match: {
             storyboardId: storyboard.id,
+            storyboardName: storyboard.name,
+            workflowId: wfWithContent.id,
+            workflowName: wfWithContent.name,
             scenarioId: detail.scenario.id,
             scopeName,
             matchedSpans,
@@ -426,7 +432,7 @@ export class TraceOrchestrator {
           duration: span.duration,
           reason: 'No scenario matched the observed events',
           observedEvents: span.events.map((e) => e.name),
-          expectedEvents: workflow.content.scenarios.flatMap((s) =>
+          expectedEvents: wfWithContent.content.scenarios.flatMap((s: { template: { events?: Record<string, unknown> } }) =>
             Object.keys(s.template.events || {})
           ),
           attributes: span.attributes,
@@ -436,6 +442,9 @@ export class TraceOrchestrator {
           type: 'storyboard',
           match: {
             storyboardId: storyboard.id,
+            storyboardName: storyboard.name,
+            workflowId: workflow.id,
+            workflowName: workflow.name,
             scopeName,
             orphanedSpans,
           },
@@ -450,7 +459,7 @@ export class TraceOrchestrator {
    * Type guard to check if workflow has content loaded
    */
   private isWorkflowWithContent(
-    workflow: any
+    workflow: DiscoveredWorkflowWithContent
   ): workflow is DiscoveredWorkflowWithContent {
     return workflow.content !== undefined;
   }

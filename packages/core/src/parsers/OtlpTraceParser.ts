@@ -20,7 +20,7 @@ import type {
   OtelKeyValue,
   OtelAnyValue,
 } from '../types/otel';
-import type { TraceResource, Resource, Scope } from '../types/registered-trace';
+import type { TraceResource } from '../types/registered-trace';
 
 /**
  * Extracted span information

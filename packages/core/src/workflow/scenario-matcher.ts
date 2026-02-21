@@ -9,7 +9,6 @@ import type {
   WorkflowScenario,
   WorkflowTemplate,
   OtelEvent,
-  ScenarioMatchResult,
   ScenarioMatchDetail,
   EnhancedScenarioMatchResult,
 } from './types';

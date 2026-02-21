@@ -323,10 +323,11 @@ function exampleSpanTree() {
 }
 
 // Run all examples
-if (import.meta.main) {
-  exampleSuccess();
-  exampleWithViolations();
-  exampleSpanTree();
-}
+// Commented out for CommonJS compatibility - uncomment if using ESM
+// if (import.meta.main) {
+//   exampleSuccess();
+//   exampleWithViolations();
+//   exampleSpanTree();
+// }
 
 export { exampleSuccess, exampleWithViolations, exampleSpanTree };
