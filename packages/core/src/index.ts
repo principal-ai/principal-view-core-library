@@ -335,7 +335,7 @@ export type {
   StoryboardContextSliceData,
   EventNodeMap,
   BuildStoryboardContextOptions,
-} from './storyboard';
+} from './storyboard/index';
 export {
   buildStoryboardContext,
   buildNodeSourcesMap,
@@ -345,7 +345,7 @@ export {
   resolveWorkflowNodeIds,
   findNodesMatchingEventPattern,
   getAllNodeIds,
-} from './storyboard';
+} from './storyboard/index';
 
 // Re-export FileSystemAdapter type from repository-abstraction (for custom adapter implementations)
 export type { FileSystemAdapter } from '@principal-ai/repository-abstraction';

@@ -87,6 +87,15 @@ export interface ScenarioMatch {
   /** Storyboard ID that matched */
   storyboardId: string;
 
+  /** Storyboard name (optional, for display) */
+  storyboardName?: string;
+
+  /** Workflow ID that matched */
+  workflowId: string;
+
+  /** Workflow name (optional, for display) */
+  workflowName?: string;
+
   /** Scenario ID that matched */
   scenarioId: string;
 
@@ -142,6 +151,15 @@ export interface OrphanedSpan {
 export interface StoryboardMatch {
   /** Storyboard ID that matched */
   storyboardId: string;
+
+  /** Storyboard name (optional, for display) */
+  storyboardName?: string;
+
+  /** Workflow ID that matched */
+  workflowId: string;
+
+  /** Workflow name (optional, for display) */
+  workflowName?: string;
 
   /** Scope name that this match came from */
   scopeName: string;

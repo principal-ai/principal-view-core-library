@@ -1,8 +1,8 @@
 # Agents Made OpenTelemetry Accessible
 
-The observability community got it right. OpenTelemetry is the correct standard. Structured events, distributed tracing, semantic conventions—it's all sound engineering.
+The observability community's work in creating OpenTelemetry standar and advocating for its addoption has done a lot to allow teams to ship software that is reliable. Despite their progress, in today's agentic era we still see people attempting to reinvent the wheel because the concept of open telemetry as a natural way to instrument software still feels foreign.
 
-The problem was never the approach. It was the cost.
+We don't believe the problem was with the approach, but instead with cost.
 
 ## The Implementation Gap
 
