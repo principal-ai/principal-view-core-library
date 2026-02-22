@@ -193,6 +193,11 @@ export class TraceOrchestrator {
 
   /**
    * Match spans against storyboards and categorize results
+   *
+   * Flow:
+   * 1. For each span, find workflows where spanPattern matches span name (exact match)
+   * 2. For matched workflows, run scenario matching against span events
+   * 3. Categorize into: scenario matches, storyboard matches (orphaned), unmatched
    */
   private async matchSpans(
     spans: ScopeSpan[],
@@ -232,57 +237,48 @@ export class TraceOrchestrator {
       // Get spans for this scope
       const scopeSpans = spans.filter((s) => s.scopeName === scopeWithStoryboards.scopeName);
 
-      // Match against each storyboard
+      // Match against each storyboard's workflows
       for (const storyboard of scopeWithStoryboards.snapshot.storyboards) {
-        // Validate that content is loaded - cast to check content
+        // Validate that content is loaded
         const sbWithContent = storyboard as DiscoveredStoryboardWithContent;
         if (!this.isStoryboardWithContent(sbWithContent)) {
           console.error('[TraceOrchestrator] Storyboard content not loaded:', storyboard.id);
           continue;
         }
 
-        // TypeScript now knows sbWithContent is DiscoveredStoryboardWithContent
+        // Get canvas for node highlighting (optional)
         const canvas = sbWithContent.canvas as DiscoveredCanvasWithContent;
-        if (!canvas.content) {
-          console.error('[TraceOrchestrator] Canvas content not loaded:', storyboard.id);
-          continue;
-        }
+        const spanMatcher = canvas?.content
+          ? new SpanMatcher(canvas.content as ExtendedCanvas)
+          : null;
 
-        // Create SpanMatcher for this canvas
-        const spanMatcher = new SpanMatcher(canvas.content as ExtendedCanvas);
-
-        // Match each span against the canvas
+        // Match each span against workflows by spanPattern (exact match)
         for (const span of scopeSpans) {
-          // Convert ScopeSpan to OtelSpanData format for SpanMatcher
-          const otelSpan = this.convertToOtelSpan(span);
-          const resource = { attributes: [] }; // Resource matching happens at scope level
+          // Skip if already matched by another storyboard
+          if (matchedSpanIds.has(span.spanId)) continue;
 
-          const matchResult = spanMatcher.matchSpan(otelSpan, resource);
+          // Find workflow where spanPattern matches span name
+          const workflowMatch = await this.matchSpanToWorkflow(
+            span,
+            sbWithContent,
+            scopeWithStoryboards.scopeName,
+            spanMatcher
+          );
 
-          if (matchResult.matchedNodeIds.length > 0) {
-            // This span matched canvas nodes! Now try workflow/scenario matching
-            const workflowMatch = await this.matchWorkflowsForSpan(
-              span,
-              matchResult.matchedNodeIds,
-              storyboard,
-              scopeWithStoryboards.scopeName
-            );
+          if (workflowMatch) {
+            matchedSpanIds.add(span.spanId);
 
-            if (workflowMatch) {
-              matchedSpanIds.add(span.spanId);
-
-              if (workflowMatch.type === 'scenario') {
-                scenarioMatches.push(workflowMatch.match as ScenarioMatch);
-              } else {
-                storyboardMatches.push(workflowMatch.match as StoryboardMatch);
-              }
+            if (workflowMatch.type === 'scenario') {
+              scenarioMatches.push(workflowMatch.match as ScenarioMatch);
+            } else {
+              storyboardMatches.push(workflowMatch.match as StoryboardMatch);
             }
           }
         }
       }
     }
 
-    // Collect unmatched spans (spans that didn't match any workflow)
+    // Collect unmatched spans (spans that didn't match any workflow's spanPattern)
     for (const span of spans) {
       if (!matchedSpanIds.has(span.spanId)) {
         const scopeHasStoryboards = scopeStoryboards.some(
@@ -296,7 +292,7 @@ export class TraceOrchestrator {
           timestamp: span.startTime,
           duration: span.duration,
           reason: scopeHasStoryboards
-            ? 'No canvas nodes matched this span'
+            ? 'No workflow spanPattern matched this span'
             : 'No storyboards found for scope',
           attributes: span.attributes,
         });
@@ -308,6 +304,138 @@ export class TraceOrchestrator {
     };
 
     return { scenarioMatches, storyboardMatches, unmatchedSpans };
+  }
+
+  /**
+   * Match a span against a storyboard's workflows by spanPattern
+   *
+   * Returns the first workflow where spanPattern === span.spanName,
+   * then runs scenario matching on that workflow.
+   */
+  private async matchSpanToWorkflow(
+    span: ScopeSpan,
+    storyboard: DiscoveredStoryboardWithContent,
+    scopeName: string,
+    spanMatcher: SpanMatcher | null
+  ): Promise<
+    | { type: 'scenario'; match: ScenarioMatch }
+    | { type: 'storyboard'; match: StoryboardMatch }
+    | null
+  > {
+    // Try each workflow in the storyboard
+    for (const workflow of storyboard.workflows) {
+      const wfWithContent = workflow as DiscoveredWorkflowWithContent;
+      if (!this.isWorkflowWithContent(wfWithContent)) {
+        console.error('[TraceOrchestrator] Workflow content not loaded:', workflow.id);
+        continue;
+      }
+
+      // Check if span name matches workflow's spanPattern (exact match)
+      const spanPattern = wfWithContent.content.spanPattern;
+      if (!spanPattern || span.spanName !== spanPattern) {
+        continue; // spanPattern doesn't match, try next workflow
+      }
+
+      // spanPattern matched! Now run scenario matching
+      console.log('[TraceOrchestrator] spanPattern matched:', {
+        spanName: span.spanName,
+        spanPattern,
+        workflowId: wfWithContent.id,
+      });
+
+      // Convert span events to OtelEvent format for scenario matcher
+      const otelEvents: OtelEvent[] = span.events.map((e) => ({
+        name: e.name,
+        timestamp: e.timestamp,
+        attributes: e.attributes as Record<string, string | number | boolean>,
+      }));
+
+      // Get matched canvas node IDs (for visualization)
+      let matchedNodeIds: string[] = [];
+      if (spanMatcher) {
+        const otelSpan = this.convertToOtelSpan(span);
+        const matchResult = spanMatcher.matchSpan(otelSpan, { attributes: [] });
+        matchedNodeIds = matchResult.matchedNodeIds;
+      }
+
+      // Run scenario matching
+      const scenarioMatchResult = selectScenario(wfWithContent.content, otelEvents);
+
+      if (
+        scenarioMatchResult.recommendedScenario &&
+        scenarioMatchResult.recommendedScenario.matchPercentage > 0
+      ) {
+        // Category 1: Scenario Match
+        const detail = scenarioMatchResult.recommendedScenario;
+
+        const matchedSpans: MatchedSpan[] = matchedNodeIds.length > 0
+          ? matchedNodeIds.map((nodeId) => ({
+              spanId: span.spanId,
+              spanName: span.spanName,
+              nodeId,
+              timestamp: span.startTime,
+              duration: span.duration,
+              events: detail.matchedEventNames,
+              attributes: span.attributes,
+              matchConfidence: 'exact' as const,
+            }))
+          : [{
+              spanId: span.spanId,
+              spanName: span.spanName,
+              nodeId: 'workflow-root', // No canvas node matched, use placeholder
+              timestamp: span.startTime,
+              duration: span.duration,
+              events: detail.matchedEventNames,
+              attributes: span.attributes,
+              matchConfidence: 'exact' as const,
+            }];
+
+        return {
+          type: 'scenario',
+          match: {
+            storyboardId: storyboard.id,
+            storyboardName: storyboard.name,
+            workflowId: wfWithContent.id,
+            workflowName: wfWithContent.name,
+            scenarioId: detail.scenario.id,
+            scopeName,
+            matchedSpans,
+            coveragePercent: detail.matchPercentage,
+            matchType: detail.matchPercentage === 100 ? 'full' : 'partial',
+          },
+        };
+      } else {
+        // Category 2: Storyboard Match (workflow matched, but scenario didn't)
+        const orphanedSpans: OrphanedSpan[] = [{
+          spanId: span.spanId,
+          spanName: span.spanName,
+          nodeId: matchedNodeIds[0] || 'workflow-root',
+          timestamp: span.startTime,
+          duration: span.duration,
+          reason: 'Workflow spanPattern matched but no scenario matched the observed events',
+          observedEvents: span.events.map((e) => e.name),
+          expectedEvents: wfWithContent.content.scenarios.flatMap(
+            (s: { template: { events?: Record<string, unknown> } }) =>
+              Object.keys(s.template.events || {})
+          ),
+          attributes: span.attributes,
+        }];
+
+        return {
+          type: 'storyboard',
+          match: {
+            storyboardId: storyboard.id,
+            storyboardName: storyboard.name,
+            workflowId: wfWithContent.id,
+            workflowName: wfWithContent.name,
+            scopeName,
+            orphanedSpans,
+          },
+        };
+      }
+    }
+
+    return null; // No workflow's spanPattern matched this span
   }
 
   /**
@@ -346,113 +474,6 @@ export class TraceOrchestrator {
       })),
       status: span.status,
     };
-  }
-
-  /**
-   * Try to match a span that matched canvas nodes against workflows
-   */
-  private async matchWorkflowsForSpan(
-    span: ScopeSpan,
-    matchedNodeIds: string[],
-    storyboard: DiscoveredStoryboardWithContent,
-    scopeName: string
-  ): Promise<
-    | {
-        type: 'scenario';
-        match: ScenarioMatch;
-      }
-    | {
-        type: 'storyboard';
-        match: StoryboardMatch;
-      }
-    | null
-  > {
-    // Convert span events to OtelEvent format for scenario matcher
-    const otelEvents: OtelEvent[] = span.events.map((e) => ({
-      name: e.name,
-      timestamp: e.timestamp,
-      attributes: e.attributes as Record<string, string | number | boolean>,
-    }));
-
-    // Try each workflow in the storyboard
-    for (const workflow of storyboard.workflows) {
-      // Validate that workflow has content loaded - cast to check content
-      const wfWithContent = workflow as DiscoveredWorkflowWithContent;
-      if (!this.isWorkflowWithContent(wfWithContent)) {
-        console.error('[TraceOrchestrator] Workflow content not loaded:', workflow.id);
-        continue;
-      }
-
-      // Try to match scenario using scenario matcher
-      const scenarioMatchResult = selectScenario(wfWithContent.content, otelEvents);
-
-      // Check if we have a recommended match with actual coverage
-      // We only consider it a scenario match if there's meaningful overlap
-      if (
-        scenarioMatchResult.recommendedScenario &&
-        scenarioMatchResult.recommendedScenario.matchPercentage > 0
-      ) {
-        const detail = scenarioMatchResult.recommendedScenario;
-
-        // Category 1: Scenario Match
-        // For each matched node, create a MatchedSpan
-        const matchedSpans: MatchedSpan[] = matchedNodeIds.map((nodeId) => ({
-          spanId: span.spanId,
-          spanName: span.spanName,
-          nodeId,
-          timestamp: span.startTime,
-          duration: span.duration,
-          events: detail.matchedEventNames,
-          attributes: span.attributes,
-          matchConfidence: 'exact' as const,
-        }));
-
-        return {
-          type: 'scenario',
-          match: {
-            storyboardId: storyboard.id,
-            storyboardName: storyboard.name,
-            workflowId: wfWithContent.id,
-            workflowName: wfWithContent.name,
-            scenarioId: detail.scenario.id,
-            scopeName,
-            matchedSpans,
-            coveragePercent: detail.matchPercentage,
-            matchType: detail.matchPercentage === 100 ? 'full' : 'partial',
-          },
-        };
-      } else {
-        // No scenario matched - create orphaned span
-        // Category 2: Storyboard Match (canvas matched, but scenario didn't)
-        const orphanedSpans: OrphanedSpan[] = matchedNodeIds.map((nodeId) => ({
-          spanId: span.spanId,
-          spanName: span.spanName,
-          nodeId,
-          timestamp: span.startTime,
-          duration: span.duration,
-          reason: 'No scenario matched the observed events',
-          observedEvents: span.events.map((e) => e.name),
-          expectedEvents: wfWithContent.content.scenarios.flatMap((s: { template: { events?: Record<string, unknown> } }) =>
-            Object.keys(s.template.events || {})
-          ),
-          attributes: span.attributes,
-        }));
-
-        return {
-          type: 'storyboard',
-          match: {
-            storyboardId: storyboard.id,
-            storyboardName: storyboard.name,
-            workflowId: workflow.id,
-            workflowName: workflow.name,
-            scopeName,
-            orphanedSpans,
-          },
-        };
-      }
-    }
-
-    return null; // No workflow matched
   }
 
   /**

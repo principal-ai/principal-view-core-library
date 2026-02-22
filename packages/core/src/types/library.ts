@@ -88,8 +88,27 @@ export interface ResourceAttributes {
   /** Messaging destination name */
   'messaging.destination.name'?: string;
 
+  /**
+   * Instrumentation scopes owned by this service
+   *
+   * Lists the tracer/instrumentation scope names that belong to this service.
+   * Spans from these scopes will be matched against this service's storyboards
+   * rather than looking up external registries.
+   *
+   * @example
+   * ```yaml
+   * resources:
+   *   web-ade:
+   *     service.name: "web-ade"
+   *     owned-scopes:
+   *       - "auth-me"
+   *       - "checkout"
+   * ```
+   */
+  'owned-scopes'?: string[];
+
   /** Allow arbitrary OTEL resource attributes */
-  [key: string]: string | undefined;
+  [key: string]: string | string[] | undefined;
 }
 
 // ============================================================================

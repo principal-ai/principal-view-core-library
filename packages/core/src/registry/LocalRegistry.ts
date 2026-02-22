@@ -29,7 +29,8 @@ export type FileReader = (path: string) => Promise<string>;
 interface WorkspaceRegistration {
   workspaceId: string;
   fileTree: FileTree;
-  scopeNames: string[]; // All discovered scope names for this workspace
+  serviceNames: string[]; // Service names (from service.name attribute)
+  ownedScopes: string[]; // All owned instrumentation scopes
 }
 
 /**
@@ -55,14 +56,15 @@ export class LocalRegistry implements StoryboardRegistryInterface {
   /**
    * Register a local workspace
    *
-   * Auto-discovers scope names from library.yaml resources section.
-   * Each service in resources with a service.name becomes a scope name.
+   * Auto-discovers service names and owned scopes from library.yaml resources section.
+   * Each service in resources with a service.name becomes a registered scope.
+   * Additionally, owned-scopes from each service are mapped to their owning service.
    *
    * File watching should be handled externally. When .principal-views files change,
    * call invalidateCache(scopeName) to rebuild the snapshot.
    *
    * @param fileTree - FileTree for the workspace
-   * @returns Array of discovered scope names
+   * @returns Array of all registered scope names (services + owned scopes)
    */
   async registerWorkspace(fileTree: FileTree): Promise<string[]> {
     const workspaceId = fileTree.metadata.id;
@@ -71,14 +73,14 @@ export class LocalRegistry implements StoryboardRegistryInterface {
     if (this.workspaces.has(workspaceId)) {
       console.log('[LocalRegistry] Workspace already registered:', workspaceId);
       const existing = this.workspaces.get(workspaceId)!;
-      return existing.scopeNames;
+      return [...existing.serviceNames, ...existing.ownedScopes];
     }
 
-    // Auto-discover scope names from library.yaml
-    const scopeNames = await this.discoverScopeNames(fileTree);
+    // Auto-discover service names and owned scopes from library.yaml
+    const { serviceNames, ownedScopes, scopeToServiceMap } = await this.discoverScopesInfo(fileTree);
 
-    if (scopeNames.length === 0) {
-      console.warn('[LocalRegistry] No scope names discovered for workspace:', workspaceId);
+    if (serviceNames.length === 0) {
+      console.warn('[LocalRegistry] No service names discovered for workspace:', workspaceId);
       console.warn('[LocalRegistry] Make sure library.yaml has a resources section with service.name attributes');
     }
 
@@ -86,21 +88,23 @@ export class LocalRegistry implements StoryboardRegistryInterface {
     this.workspaces.set(workspaceId, {
       workspaceId,
       fileTree,
-      scopeNames,
+      serviceNames,
+      ownedScopes,
     });
 
-    // Map all scope names to this workspace
-    for (const scopeName of scopeNames) {
+    // Map all scope names (services + owned scopes) to this workspace
+    for (const [scopeName] of scopeToServiceMap) {
       this.scopeToWorkspaceId.set(scopeName, workspaceId);
     }
 
     console.log('[LocalRegistry] Registered workspace:', {
       workspaceId,
-      scopeNames,
+      serviceNames,
+      ownedScopes,
       fileTreeSha: fileTree.sha,
     });
 
-    return scopeNames;
+    return [...serviceNames, ...ownedScopes];
   }
 
   /**
@@ -113,8 +117,9 @@ export class LocalRegistry implements StoryboardRegistryInterface {
       return;
     }
 
-    // Clear cache for all scope names
-    for (const scopeName of workspace.scopeNames) {
+    // Clear cache for all scope names (services + owned scopes)
+    const allScopes = [...workspace.serviceNames, ...workspace.ownedScopes];
+    for (const scopeName of allScopes) {
       this.cache.delete(scopeName);
       this.scopeToWorkspaceId.delete(scopeName);
     }
@@ -124,7 +129,8 @@ export class LocalRegistry implements StoryboardRegistryInterface {
 
     console.log('[LocalRegistry] Unregistered workspace:', {
       workspaceId,
-      scopeNames: workspace.scopeNames,
+      serviceNames: workspace.serviceNames,
+      ownedScopes: workspace.ownedScopes,
     });
   }
 
@@ -166,18 +172,22 @@ export class LocalRegistry implements StoryboardRegistryInterface {
   }
 
   /**
-   * Auto-discover scope names from library.yaml files
+   * Auto-discover service names and owned scopes from library.yaml files
    *
    * Uses LibraryDiscovery to find all library.yaml files across packages
-   * and extract service.name from their resources sections.
+   * and extract service.name and owned-scopes from their resources sections.
    *
-   * @param fileTree - FileTree to discover scope names from
-   * @returns Array of discovered scope names (service.name values)
+   * @param fileTree - FileTree to discover scopes from
+   * @returns Object with serviceNames, ownedScopes, and scopeToServiceMap
    */
-  private async discoverScopeNames(fileTree: FileTree): Promise<string[]> {
+  private async discoverScopesInfo(fileTree: FileTree): Promise<{
+    serviceNames: string[];
+    ownedScopes: string[];
+    scopeToServiceMap: Map<string, string>;
+  }> {
     if (!this.libraryDiscovery) {
       console.warn('[LocalRegistry] No LibraryDiscovery available - provide FileSystemAdapter to constructor');
-      return [];
+      return { serviceNames: [], ownedScopes: [], scopeToServiceMap: new Map() };
     }
 
     try {
@@ -189,11 +199,28 @@ export class LocalRegistry implements StoryboardRegistryInterface {
         console.warn('[LocalRegistry] Errors during library discovery:', result.errors);
       }
 
-      console.log('[LocalRegistry] Discovered service names:', result.allServiceNames);
-      return result.allServiceNames;
+      // Collect all owned scopes across all services
+      const ownedScopes: string[] = [];
+      for (const lib of result.libraries) {
+        for (const service of lib.servicesWithScopes) {
+          ownedScopes.push(...service.ownedScopes);
+        }
+      }
+
+      console.log('[LocalRegistry] Discovered services and scopes:', {
+        serviceNames: result.allServiceNames,
+        ownedScopes,
+        scopeToServiceMapSize: result.scopeToServiceMap.size,
+      });
+
+      return {
+        serviceNames: result.allServiceNames,
+        ownedScopes,
+        scopeToServiceMap: result.scopeToServiceMap,
+      };
     } catch (error) {
-      console.error('[LocalRegistry] Failed to discover scope names:', error);
-      return [];
+      console.error('[LocalRegistry] Failed to discover scopes:', error);
+      return { serviceNames: [], ownedScopes: [], scopeToServiceMap: new Map() };
     }
   }
 
@@ -218,11 +245,39 @@ export class LocalRegistry implements StoryboardRegistryInterface {
       },
     };
 
+    // Count workflows and check content loading
+    let totalWorkflows = 0;
+    let workflowsWithContent = 0;
+    const workflowDetails: Array<{ storyboard: string; workflow: string; hasContent: boolean; spanPattern?: string }> = [];
+
+    for (const storyboard of discoveryResult.storyboards) {
+      for (const workflow of storyboard.workflows) {
+        totalWorkflows++;
+        const hasContent = (workflow as { content?: unknown }).content !== undefined;
+        if (hasContent) workflowsWithContent++;
+        workflowDetails.push({
+          storyboard: storyboard.id,
+          workflow: workflow.id,
+          hasContent,
+          spanPattern: hasContent ? (workflow as { content?: { spanPattern?: string } }).content?.spanPattern : undefined,
+        });
+      }
+    }
+
     console.log('[LocalRegistry] Built snapshot from FileTree:', {
       sha: fileTree.sha,
       storyboards: discoveryResult.storyboards.length,
+      totalWorkflows,
+      workflowsWithContent,
       errors: discoveryResult.errors.length,
     });
+
+    console.log('[LocalRegistry] Workflow details:', workflowDetails);
+
+    // Log errors if any
+    if (discoveryResult.errors.length > 0) {
+      console.warn('[LocalRegistry] Discovery errors:', discoveryResult.errors);
+    }
 
     return snapshot;
   }
@@ -242,7 +297,9 @@ export class LocalRegistry implements StoryboardRegistryInterface {
     const scopes: Array<{ name: string; versions: string[] }> = [];
 
     for (const workspace of this.workspaces.values()) {
-      for (const scopeName of workspace.scopeNames) {
+      // Include service names and owned scopes
+      const allScopes = [...workspace.serviceNames, ...workspace.ownedScopes];
+      for (const scopeName of allScopes) {
         scopes.push({
           name: scopeName,
           versions: ['dev'], // Local workspaces always use 'dev' version
@@ -264,7 +321,9 @@ export class LocalRegistry implements StoryboardRegistryInterface {
     const workspaces: Array<{ scopeName: string; fileTreeSha: string }> = [];
 
     for (const workspace of this.workspaces.values()) {
-      for (const scopeName of workspace.scopeNames) {
+      // Include service names and owned scopes
+      const allScopes = [...workspace.serviceNames, ...workspace.ownedScopes];
+      for (const scopeName of allScopes) {
         workspaces.push({
           scopeName,
           fileTreeSha: workspace.fileTree.sha || 'unknown',
@@ -273,6 +332,49 @@ export class LocalRegistry implements StoryboardRegistryInterface {
     }
 
     return workspaces;
+  }
+
+  /**
+   * Get all cached VersionSnapshots
+   *
+   * Returns snapshots that have been built and cached via lookupByScope().
+   * Note: This only returns snapshots that have been looked up at least once.
+   * Call lookupByScope() for each scope to ensure all snapshots are cached.
+   */
+  getAllSnapshots(): VersionSnapshot[] {
+    return Array.from(this.cache.values());
+  }
+
+  /**
+   * Get all snapshots for all registered scopes
+   *
+   * Unlike getAllSnapshots(), this method ensures all registered scopes
+   * have their snapshots built and cached before returning.
+   * Note: Returns one snapshot per workspace (not per scope).
+   */
+  async getAllSnapshotsForRegisteredScopes(): Promise<VersionSnapshot[]> {
+    const snapshots: VersionSnapshot[] = [];
+    const seenWorkspaceIds = new Set<string>();
+
+    for (const workspace of this.workspaces.values()) {
+      // Only build one snapshot per workspace
+      if (seenWorkspaceIds.has(workspace.workspaceId)) continue;
+      seenWorkspaceIds.add(workspace.workspaceId);
+
+      // Use first service name to trigger snapshot build
+      const firstServiceName = workspace.serviceNames[0];
+      if (firstServiceName) {
+        const snapshot = await this.lookupByScope(
+          { name: firstServiceName, version: 'dev' },
+          {}
+        );
+        if (snapshot) {
+          snapshots.push(snapshot);
+        }
+      }
+    }
+
+    return snapshots;
   }
 
   /**

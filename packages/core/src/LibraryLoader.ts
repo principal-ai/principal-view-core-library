@@ -274,9 +274,19 @@ export class LibraryLoader {
           return `Resource entry '${serviceId}' is missing required attribute 'service.name' in ${filePath}`;
         }
 
-        // Validate all attribute values are strings
+        // Validate attribute values
         for (const [attrName, attrValue] of Object.entries(resourceAttrs)) {
-          if (typeof attrValue !== 'string') {
+          // owned-scopes is allowed to be an array of strings
+          if (attrName === 'owned-scopes') {
+            if (!Array.isArray(attrValue)) {
+              return `Resource '${serviceId}' attribute 'owned-scopes' must be an array in ${filePath}`;
+            }
+            for (const scope of attrValue) {
+              if (typeof scope !== 'string') {
+                return `Resource '${serviceId}' attribute 'owned-scopes' must contain only strings in ${filePath}`;
+              }
+            }
+          } else if (typeof attrValue !== 'string') {
             return `Resource '${serviceId}' attribute '${attrName}' must have a string value in ${filePath}`;
           }
         }

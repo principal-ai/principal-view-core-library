@@ -1,7 +1,7 @@
 # Matching Algorithm Refactor - Implementation Guide
 
-**Date**: February 18, 2026
-**Status**: 🚧 Planning Phase
+**Date**: February 22, 2026
+**Status**: ✅ Implemented (v0.24.21)
 **Related**: LIBRARY_TELEMETRY_AND_MATCHING.md
 
 ---
@@ -552,9 +552,110 @@ The refactor is complete when:
 
 ---
 
+## Workflow Template Fields
+
+### New Fields (v0.24.21+)
+
+Workflow templates now support additional fields for scope tracking and implementation status:
+
+```json
+{
+  "version": "1.0.0",
+  "canvas": ".principal-views/auth-me/auth-me.otel.canvas",
+  "mode": "span-tree",
+  "spanPattern": "auth.me",
+  "scope": "auth-me",
+  "status": "implemented",
+  "files": ["src/app/api/auth/me/route.ts"],
+  "name": "Get Current User",
+  "description": "Fetch the currently authenticated user's profile"
+}
+```
+
+#### `scope` (optional)
+The instrumentation scope name that emits this span. This should match:
+- A custom tracer name (e.g., `trace.getTracer('auth-me')`)
+- An owned scope declared in `library.yaml`
+
+**Important**: Use your custom scope, not auto-instrumentation scopes like `next.js`. If your span is created by auto-instrumentation, consider adding custom instrumentation for better control.
+
+#### `status` (optional)
+Workflow lifecycle status:
+- `draft` - Design/proposal phase (default)
+- `approved` - Design finalized, ready for implementation
+- `implemented` - Code exists with instrumentation
+
+#### `files` (optional, required for `approved`/`implemented`)
+Array of file paths where this span is instrumented:
+```json
+"files": ["src/app/api/auth/me/route.ts"]
+```
+
+### Validation Rules
+
+The CLI validator enforces:
+1. **Files required**: When `status` is `approved` or `implemented`, `files` must be specified
+2. **Files exist**: When `status` is `implemented`, all files must exist on disk
+
+---
+
+## Custom Instrumentation Pattern
+
+### Recommended Approach
+
+Use custom instrumentation with your own tracer rather than relying on auto-instrumentation:
+
+```typescript
+// Create a custom tracer with your scope name
+const tracer = trace.getTracer('auth-me');
+
+export async function GET(request: Request) {
+  // Create a span with your custom name
+  const span = tracer.startSpan('auth.me');
+
+  try {
+    // Add events to the span
+    span.addEvent('auth.me.get_token', { has_token: true });
+    span.addEvent('auth.me.fetch_github', { status: 200 });
+    span.addEvent('auth.me.success', { 'user.login': 'john' });
+
+    return NextResponse.json({ user });
+  } catch (error) {
+    span.addEvent('auth.me.error', { 'error.message': error.message });
+    throw error;
+  } finally {
+    span.end();
+  }
+}
+```
+
+### Why Custom Instrumentation?
+
+| Aspect | Auto-instrumentation (e.g., `next.js`) | Custom instrumentation |
+|--------|----------------------------------------|------------------------|
+| Span name | `GET /api/auth/me/route` (framework-defined) | `auth.me` (you control) |
+| Scope | `next.js` | `auth-me` (your tracer) |
+| Stability | May change between framework versions | You control |
+| Events | None (just span lifecycle) | Custom events attached |
+| Workflow match | Matches wrapper span | Matches your span with events |
+
+### Workflow Configuration
+
+```json
+{
+  "spanPattern": "auth.me",
+  "scope": "auth-me",
+  "status": "implemented",
+  "files": ["src/app/api/auth/me/route.ts"]
+}
+```
+
+---
+
 ## Related Documents
 
 - `LIBRARY_TELEMETRY_AND_MATCHING.md` - Design specification
+- `LOCAL_DEVELOPMENT_REGISTRY.md` - Local development and owned-scopes
 - `REGISTERED_TRACE_REDESIGN.md` (electron-app) - Related trace redesign
 - `.principal-views/matching-logic-current-state.canvas` - Visual storyboard
 - `.principal-views/matching-logic-current-state.md` - Current state documentation

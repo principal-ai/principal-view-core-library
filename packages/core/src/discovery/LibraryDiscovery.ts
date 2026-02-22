@@ -11,6 +11,17 @@ import { LibraryLoader } from '../LibraryLoader';
 import type { ComponentLibrary } from '../types/library';
 
 /**
+ * Service with its owned scopes
+ */
+export interface ServiceWithScopes {
+  /** Service name (from service.name attribute) */
+  serviceName: string;
+
+  /** Instrumentation scopes owned by this service */
+  ownedScopes: string[];
+}
+
+/**
  * Discovered library with metadata
  */
 export interface DiscoveredLibrary {
@@ -28,6 +39,9 @@ export interface DiscoveredLibrary {
 
   /** Service names from this library's resources */
   serviceNames: string[];
+
+  /** Services with their owned scopes */
+  servicesWithScopes: ServiceWithScopes[];
 }
 
 /**
@@ -39,6 +53,14 @@ export interface LibraryDiscoveryResult {
 
   /** All service names across all libraries */
   allServiceNames: string[];
+
+  /**
+   * Mapping from instrumentation scope name to owning service name
+   *
+   * Used to route spans from owned scopes to the correct service's storyboards.
+   * For example: { "auth-me": "web-ade", "checkout": "web-ade" }
+   */
+  scopeToServiceMap: Map<string, string>;
 
   /** Errors encountered during discovery */
   errors: Array<{ path: string; error: string }>;
@@ -104,8 +126,8 @@ export class LibraryDiscovery {
         const loadResult = await this.loader.load(pkg.packageData.path);
 
         if (loadResult.success && loadResult.library) {
-          // Extract service names from resources
-          const serviceNames = this.extractServiceNames(loadResult.library);
+          // Extract service names and owned scopes from resources
+          const { serviceNames, servicesWithScopes } = this.extractServicesInfo(loadResult.library);
 
           libraries.push({
             path: loadResult.path,
@@ -113,6 +135,7 @@ export class LibraryDiscovery {
             packagePath: pkg.packageData.path,
             library: loadResult.library,
             serviceNames,
+            servicesWithScopes,
           });
         } else if (loadResult.error && !loadResult.error.includes('No library file found')) {
           // Only report errors that aren't "file not found" (which is normal)
@@ -138,7 +161,7 @@ export class LibraryDiscovery {
         const loadResult = await this.loader.load(rootPath);
 
         if (loadResult.success && loadResult.library) {
-          const serviceNames = this.extractServiceNames(loadResult.library);
+          const { serviceNames, servicesWithScopes } = this.extractServicesInfo(loadResult.library);
 
           // Check if we already loaded this from a package
           const alreadyLoaded = libraries.some(lib => lib.path === loadResult.path);
@@ -150,6 +173,7 @@ export class LibraryDiscovery {
               packagePath: rootPath,
               library: loadResult.library,
               serviceNames,
+              servicesWithScopes,
             });
           }
         } else if (loadResult.error) {
@@ -166,12 +190,27 @@ export class LibraryDiscovery {
     // 4. Collect all service names
     const allServiceNames = libraries.flatMap(lib => lib.serviceNames);
 
-    // 5. Sort libraries by package name
+    // 5. Build scope to service mapping
+    const scopeToServiceMap = new Map<string, string>();
+    for (const lib of libraries) {
+      for (const service of lib.servicesWithScopes) {
+        // Map the service name to itself (service names are also valid scope names)
+        scopeToServiceMap.set(service.serviceName, service.serviceName);
+
+        // Map each owned scope to its owning service
+        for (const scope of service.ownedScopes) {
+          scopeToServiceMap.set(scope, service.serviceName);
+        }
+      }
+    }
+
+    // 6. Sort libraries by package name
     libraries.sort((a, b) => a.packageName.localeCompare(b.packageName));
 
     return {
       libraries,
       allServiceNames,
+      scopeToServiceMap,
       errors,
     };
   }
@@ -184,17 +223,35 @@ export class LibraryDiscovery {
   }
 
   /**
-   * Extract service names from a library's resources
+   * Extract service names and owned scopes from a library's resources
    */
-  private extractServiceNames(library: ComponentLibrary): string[] {
+  private extractServicesInfo(library: ComponentLibrary): {
+    serviceNames: string[];
+    servicesWithScopes: ServiceWithScopes[];
+  } {
     if (!library.resources) {
-      return [];
+      return { serviceNames: [], servicesWithScopes: [] };
     }
 
-    // resources is Record<string, ResourceAttributes>
-    return Object.values(library.resources)
-      .map(attrs => attrs['service.name'])
-      .filter((name): name is string => !!name);
+    const serviceNames: string[] = [];
+    const servicesWithScopes: ServiceWithScopes[] = [];
+
+    for (const attrs of Object.values(library.resources)) {
+      const serviceName = attrs['service.name'];
+      if (!serviceName) continue;
+
+      serviceNames.push(serviceName);
+
+      // Extract owned-scopes (defaults to empty array)
+      const ownedScopes = attrs['owned-scopes'] || [];
+
+      servicesWithScopes.push({
+        serviceName,
+        ownedScopes: Array.isArray(ownedScopes) ? ownedScopes : [],
+      });
+    }
+
+    return { serviceNames, servicesWithScopes };
   }
 
   /**

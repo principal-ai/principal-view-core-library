@@ -310,6 +310,7 @@ describe('TraceOrchestrator', () => {
       const workflow: WorkflowTemplate = {
         name: 'Checkout Flow',
         mode: 'strict',
+        spanPattern: 'handleCheckout', // Match span by name
         scenarios: [
           {
             id: 'successful-checkout',
@@ -438,6 +439,7 @@ describe('TraceOrchestrator', () => {
       const workflow: WorkflowTemplate = {
         name: 'Checkout Flow',
         mode: 'strict',
+        spanPattern: 'handleCheckout', // Match span by name
         scenarios: [
           {
             id: 'full-checkout',
@@ -561,6 +563,7 @@ describe('TraceOrchestrator', () => {
       const workflow: WorkflowTemplate = {
         name: 'Checkout Flow',
         mode: 'strict',
+        spanPattern: 'handleCheckout', // Match span by name
         scenarios: [
           {
             id: 'successful-checkout',
@@ -662,7 +665,7 @@ describe('TraceOrchestrator', () => {
         'checkout.failed'
       );
       expect(result.storyboardMatches[0].orphanedSpans[0].reason).toContain(
-        'No scenario matched'
+        'no scenario matched'
       );
 
       // No unmatched spans
@@ -755,7 +758,7 @@ describe('TraceOrchestrator', () => {
       // Should have unmatched span
       expect(result.unmatchedSpans.spans).toHaveLength(1);
       expect(result.unmatchedSpans.spans[0].spanId).toBe('span-001');
-      expect(result.unmatchedSpans.spans[0].reason).toBe('No canvas nodes matched this span');
+      expect(result.unmatchedSpans.spans[0].reason).toBe('No workflow spanPattern matched this span');
     });
 
     it('should mark all spans as unmatched when scope has no storyboards', async () => {
@@ -951,6 +954,7 @@ describe('TraceOrchestrator', () => {
       const workflow: WorkflowTemplate = {
         name: 'Test Workflow',
         mode: 'strict',
+        spanPattern: 'operation', // Match span by name
         scenarios: [
           {
             id: 'scenario-1',

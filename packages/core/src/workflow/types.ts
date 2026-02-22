@@ -70,6 +70,40 @@ export interface WorkflowTemplate {
   /** Exact span name this workflow applies to */
   spanPattern: string;
 
+  /**
+   * Instrumentation scope this workflow expects spans from
+   *
+   * Should match an entry in the library.yaml owned-scopes list.
+   * When specified, validation checks that the scope is in owned-scopes.
+   *
+   * @example "auth-me" - custom tracer scope
+   * @example "next.js" - Next.js auto-instrumentation scope
+   */
+  scope?: string;
+
+  /**
+   * Files where this span is instrumented
+   *
+   * Specifies the exact file paths where this span is created.
+   * Used by coverage tools to validate that spans are properly instrumented.
+   * Required when status is 'approved' or 'implemented'.
+   *
+   * @example ["src/app/api/auth/me/route.ts"]
+   */
+  files?: string[];
+
+  /**
+   * Workflow implementation status
+   *
+   * Tracks the lifecycle of a workflow from design to implementation.
+   * Aligns with canvas node status values.
+   *
+   * - 'draft': Design/proposal phase, no requirements (default if not specified)
+   * - 'approved': Design finalized, ready for implementation (requires files)
+   * - 'implemented': Code exists with instrumentation (requires files to exist)
+   */
+  status?: 'draft' | 'approved' | 'implemented';
+
   // Rendering configuration
   /** How to structure the workflow */
   mode: WorkflowMode;

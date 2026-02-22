@@ -67,6 +67,12 @@ export interface WorkflowValidationContext {
    * missing events are defined (in library or other canvases).
    */
   eventRegistry?: EventRegistry;
+
+  /**
+   * Optional: List of owned instrumentation scopes from library.yaml.
+   * When provided, validates that workflow scope is in this list.
+   */
+  ownedScopes?: string[];
 }
 
 export interface WorkflowViolation {
@@ -301,6 +307,95 @@ export class WorkflowValidator {
         suggestion: 'Provide a valid span name (e.g., "payment.authorize", "checkout.process")',
         fixable: false,
       });
+    } else if (workflow.spanPattern.includes('*')) {
+      // Reject glob/wildcard patterns - only exact match is supported
+      violations.push({
+        ruleId: 'workflow-span-pattern-exact',
+        severity: 'error',
+        file: workflowPath,
+        path: 'spanPattern',
+        message: `spanPattern contains wildcard "*" which is not supported: "${workflow.spanPattern}"`,
+        impact: 'Glob patterns create ambiguity when multiple workflows could match the same span',
+        suggestion: 'Use an exact span name instead (e.g., "payment.authorize" not "payment.*")',
+        fixable: false,
+      });
+    } else if (/[[\]{}()^$|\\+?]/.test(workflow.spanPattern)) {
+      // Reject regex special characters (except . which is common in span names)
+      violations.push({
+        ruleId: 'workflow-span-pattern-exact',
+        severity: 'error',
+        file: workflowPath,
+        path: 'spanPattern',
+        message: `spanPattern contains regex special characters which are not supported: "${workflow.spanPattern}"`,
+        impact: 'Regex patterns are not supported - only exact span name matching is used',
+        suggestion: 'Use an exact span name that matches your instrumented span (e.g., "GET /api/auth/me/route")',
+        fixable: false,
+      });
+    }
+
+    // Check scope against owned-scopes
+    if (workflow.scope && context.ownedScopes && context.ownedScopes.length > 0) {
+      if (!context.ownedScopes.includes(workflow.scope)) {
+        violations.push({
+          ruleId: 'workflow-scope-owned',
+          severity: 'error',
+          file: workflowPath,
+          path: 'scope',
+          message: `Scope "${workflow.scope}" is not in owned-scopes list`,
+          impact: 'Spans from this scope will not be matched - the scope must be declared in library.yaml owned-scopes',
+          suggestion: `Either:\n  - Add "${workflow.scope}" to owned-scopes in library.yaml\n  - Change scope to one of: ${context.ownedScopes.join(', ')}\n  - Remove scope if using a different tracer`,
+          fixable: false,
+        });
+      }
+    }
+
+    // Check status value
+    const validStatuses = ['draft', 'approved', 'implemented'];
+    if (workflow.status && !validStatuses.includes(workflow.status)) {
+      violations.push({
+        ruleId: 'workflow-schema-valid',
+        severity: 'error',
+        file: workflowPath,
+        path: 'status',
+        message: `Invalid status: "${workflow.status}"`,
+        impact: 'Status must be a valid lifecycle value',
+        suggestion: `Use one of: ${validStatuses.join(', ')}`,
+        fixable: false,
+      });
+    }
+
+    // Check files requirement based on status
+    const status = workflow.status || 'draft';
+    if ((status === 'approved' || status === 'implemented') && (!workflow.files || workflow.files.length === 0)) {
+      violations.push({
+        ruleId: 'workflow-files-required',
+        severity: 'error',
+        file: workflowPath,
+        path: 'files',
+        message: `Status "${status}" requires files to be specified`,
+        impact: 'Cannot validate implementation without knowing which files contain the span instrumentation',
+        suggestion: 'Add a "files" array with the paths where this span is created (e.g., ["src/app/api/auth/me/route.ts"])',
+        fixable: false,
+      });
+    }
+
+    // Check files exist when status is implemented
+    if (status === 'implemented' && workflow.files && workflow.files.length > 0) {
+      for (const file of workflow.files) {
+        const filePath = resolve(context.basePath, file);
+        if (!existsSync(filePath)) {
+          violations.push({
+            ruleId: 'workflow-files-exist',
+            severity: 'error',
+            file: workflowPath,
+            path: 'files',
+            message: `Implementation file not found: ${file}`,
+            impact: 'Workflow is marked as implemented but the source file does not exist',
+            suggestion: `Either:\n  - Create the file at ${file}\n  - Update the files array with the correct path\n  - Change status to "approved" or "draft"`,
+            fixable: false,
+          });
+        }
+      }
     }
 
     // Check mode

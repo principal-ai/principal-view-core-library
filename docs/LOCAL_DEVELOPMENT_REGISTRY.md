@@ -1,7 +1,7 @@
 # Local Development Registry Design
 
-**Date**: February 18, 2026
-**Status**: 🚧 Design Phase
+**Date**: February 22, 2026
+**Status**: ✅ Implemented (v0.24.21)
 **Related**: MATCHING_REFACTOR_IMPLEMENTATION.md, LIBRARY_TELEMETRY_AND_MATCHING.md
 
 ---
@@ -12,6 +12,155 @@ The registry must support two modes:
 
 1. **Production Mode**: Published libraries with immutable schematics from remote registry
 2. **Development Mode**: Local services with hot-reloading schematics from filesystem
+
+---
+
+## Owned Scopes
+
+### Declaring Owned Scopes in library.yaml
+
+Services declare which instrumentation scopes they own in the `resources` section of `library.yaml`:
+
+```yaml
+# .principal-views/library.yaml
+version: "1.0.0"
+name: "web-ade"
+
+resources:
+  web-ade:
+    service.name: "web-ade"
+    owned-scopes:
+      - "auth-me"
+      - "collections"
+      - "tts-generation"
+
+nodeComponents: {}
+edgeComponents: {}
+```
+
+### What Are Owned Scopes?
+
+Owned scopes are instrumentation scope names that belong to this service. They are used by custom tracers:
+
+```typescript
+// This creates spans under the "auth-me" scope
+const tracer = trace.getTracer('auth-me');
+const span = tracer.startSpan('auth.me');
+```
+
+### How LocalRegistry Uses Owned Scopes
+
+When a workspace is registered, LocalRegistry:
+1. Reads `library.yaml` to find all `owned-scopes`
+2. Maps each owned scope to the workspace
+3. When a trace arrives with scope `auth-me`, it looks up the workspace that owns it
+
+```typescript
+// LocalRegistry internals
+interface WorkspaceRegistration {
+  workspaceId: string;
+  fileTree: FileTree;
+  serviceNames: string[];  // From service.name
+  ownedScopes: string[];   // From owned-scopes
+}
+
+// Scope → Workspace mapping
+scopeToWorkspaceId: Map<string, string>
+// "auth-me" → "web-ade-workspace-123"
+// "collections" → "web-ade-workspace-123"
+```
+
+### Multiple Services, Multiple Scopes
+
+A monorepo might have multiple services, each with their own scopes:
+
+```yaml
+# Service A
+resources:
+  frontend:
+    service.name: "frontend"
+    owned-scopes:
+      - "ui-components"
+      - "state-management"
+
+# Service B
+resources:
+  backend:
+    service.name: "backend"
+    owned-scopes:
+      - "auth-me"
+      - "payment-processing"
+```
+
+---
+
+## Workflow Scope Field
+
+### Declaring Scope in Workflows
+
+Workflows can declare which instrumentation scope they expect spans from:
+
+```json
+{
+  "version": "1.0.0",
+  "canvas": ".principal-views/auth-me/auth-me.otel.canvas",
+  "spanPattern": "auth.me",
+  "scope": "auth-me",
+  "status": "implemented",
+  "files": ["src/app/api/auth/me/route.ts"],
+  "name": "Get Current User"
+}
+```
+
+### Custom vs Auto-Instrumentation Scopes
+
+**Use custom scopes** (recommended):
+```json
+{
+  "spanPattern": "auth.me",
+  "scope": "auth-me"
+}
+```
+
+This matches spans created by your custom tracer:
+```typescript
+const tracer = trace.getTracer('auth-me');
+const span = tracer.startSpan('auth.me');
+```
+
+**Avoid auto-instrumentation scopes** when possible:
+```json
+{
+  "spanPattern": "GET /api/auth/me/route",
+  "scope": "next.js"
+}
+```
+
+Auto-instrumentation spans:
+- Have framework-defined names that may change
+- Don't have your custom events attached
+- Are harder to match reliably
+
+### Workflow Status and Files
+
+Track implementation lifecycle:
+
+| Status | Description | Files Required |
+|--------|-------------|----------------|
+| `draft` | Design phase | No |
+| `approved` | Ready for implementation | Yes |
+| `implemented` | Code exists | Yes (must exist on disk) |
+
+```json
+{
+  "status": "implemented",
+  "files": ["src/app/api/auth/me/route.ts"]
+}
+```
+
+The CLI validates:
+- `files` is required when status is `approved` or `implemented`
+- Files must exist on disk when status is `implemented`
 
 ---
 
