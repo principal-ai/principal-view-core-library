@@ -57,6 +57,9 @@ export interface MatchedSpan {
   /** Span ID */
   spanId: string;
 
+  /** Parent span ID (for hierarchy) */
+  parentSpanId?: string;
+
   /** Span name */
   spanName: string;
 
@@ -119,6 +122,9 @@ export interface OrphanedSpan {
   /** Span ID */
   spanId: string;
 
+  /** Parent span ID (for hierarchy) */
+  parentSpanId?: string;
+
   /** Span name */
   spanName: string;
 
@@ -174,6 +180,9 @@ export interface StoryboardMatch {
 export interface UnmatchedSpan {
   /** Span ID */
   spanId: string;
+
+  /** Parent span ID (for hierarchy) */
+  parentSpanId?: string;
 
   /** Span name */
   spanName: string;

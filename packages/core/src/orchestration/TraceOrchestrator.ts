@@ -221,6 +221,7 @@ export class TraceOrchestrator {
         for (const span of scopeSpans) {
           unmatchedSpansList.push({
             spanId: span.spanId,
+            parentSpanId: span.parentSpanId,
             spanName: span.spanName,
             scopeName: span.scopeName,
             timestamp: span.startTime,
@@ -287,6 +288,7 @@ export class TraceOrchestrator {
 
         unmatchedSpansList.push({
           spanId: span.spanId,
+          parentSpanId: span.parentSpanId,
           spanName: span.spanName,
           scopeName: span.scopeName,
           timestamp: span.startTime,
@@ -371,6 +373,7 @@ export class TraceOrchestrator {
         const matchedSpans: MatchedSpan[] = matchedNodeIds.length > 0
           ? matchedNodeIds.map((nodeId) => ({
               spanId: span.spanId,
+              parentSpanId: span.parentSpanId,
               spanName: span.spanName,
               nodeId,
               timestamp: span.startTime,
@@ -381,6 +384,7 @@ export class TraceOrchestrator {
             }))
           : [{
               spanId: span.spanId,
+              parentSpanId: span.parentSpanId,
               spanName: span.spanName,
               nodeId: 'workflow-root', // No canvas node matched, use placeholder
               timestamp: span.startTime,
@@ -408,6 +412,7 @@ export class TraceOrchestrator {
         // Category 2: Storyboard Match (workflow matched, but scenario didn't)
         const orphanedSpans: OrphanedSpan[] = [{
           spanId: span.spanId,
+          parentSpanId: span.parentSpanId,
           spanName: span.spanName,
           nodeId: matchedNodeIds[0] || 'workflow-root',
           timestamp: span.startTime,
