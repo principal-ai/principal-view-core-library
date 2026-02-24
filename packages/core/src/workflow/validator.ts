@@ -319,8 +319,8 @@ export class WorkflowValidator {
         suggestion: 'Use an exact span name instead (e.g., "payment.authorize" not "payment.*")',
         fixable: false,
       });
-    } else if (/[[\]{}()^$|\\+?]/.test(workflow.spanPattern)) {
-      // Reject regex special characters (except . which is common in span names)
+    } else if (/[[\]{}^$|\\+?]/.test(workflow.spanPattern)) {
+      // Reject regex special characters (except . which is common in span names, and () which appear in framework span names like Next.js)
       violations.push({
         ruleId: 'workflow-span-pattern-exact',
         severity: 'error',

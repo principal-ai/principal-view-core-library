@@ -2101,5 +2101,59 @@ describe('WorkflowValidator', () => {
 
       expect(spanPatternViolations).toHaveLength(0);
     });
+
+    it('should allow parentheses in spanPattern (Next.js style span names)', async () => {
+      const canvasPath = join(tempDir, 'test.otel.canvas');
+      writeFileSync(canvasPath, JSON.stringify(createValidCanvas()));
+
+      // Next.js creates span names like "executing api route (app) /api/auth/me/route"
+      const context = createContext({
+        spanPattern: 'executing api route (app) /api/auth/me/route'
+      }, { canvasPath });
+      const result = await validator.validate(context);
+
+      const spanPatternViolations = result.violations.filter(
+        v => v.ruleId === 'workflow-span-pattern-exact' && v.path === 'spanPattern'
+      );
+
+      expect(spanPatternViolations).toHaveLength(0);
+    });
+
+    it('should error when spanPattern contains wildcard *', async () => {
+      const context = createContext({ spanPattern: 'payment.*' });
+      const result = await validator.validate(context);
+
+      const spanPatternViolations = result.violations.filter(
+        v => v.ruleId === 'workflow-span-pattern-exact' && v.path === 'spanPattern'
+      );
+
+      expect(spanPatternViolations).toHaveLength(1);
+      expect(spanPatternViolations[0].message).toContain('wildcard');
+    });
+
+    it('should error when spanPattern contains regex special characters', async () => {
+      const regexPatterns = [
+        'payment[type]',      // square brackets
+        'payment{1,2}',       // curly braces (quantifier)
+        'payment^start',      // caret
+        'payment$end',        // dollar
+        'payment|refund',     // pipe (alternation)
+        'payment\\d+',        // backslash
+        'payment+',           // plus
+        'payment?',           // question mark
+      ];
+
+      for (const pattern of regexPatterns) {
+        const context = createContext({ spanPattern: pattern });
+        const result = await validator.validate(context);
+
+        const spanPatternViolations = result.violations.filter(
+          v => v.ruleId === 'workflow-span-pattern-exact' && v.path === 'spanPattern'
+        );
+
+        expect(spanPatternViolations).toHaveLength(1);
+        expect(spanPatternViolations[0].message).toContain('regex special characters');
+      }
+    });
   });
 });

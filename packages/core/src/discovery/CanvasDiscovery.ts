@@ -2,7 +2,7 @@
  * Unified discovery system for canvas and execution files in a package-aware way
  */
 
-import type { FileTree } from '@principal-ai/repository-abstraction';
+import type { FileTree, GitStatusWithFiles } from '@principal-ai/repository-abstraction';
 import { PackageLayerModule, type PackageLayer } from '@principal-ai/codebase-composition';
 import type {
   DiscoveredCanvas,
@@ -102,6 +102,90 @@ export class CanvasDiscovery {
    */
   clearCache(): void {
     this.packageCache.clear();
+  }
+
+  /**
+   * Check if a file path is relevant to canvas discovery
+   * Uses package-aware path matching for .principal-views directories
+   */
+  isRelevantPath(path: string): boolean {
+    // Canvas files (.canvas, .otel.canvas)
+    if (this.isInCanvasDir(path) && this.parseCanvasPath(path)) {
+      return true;
+    }
+    // Workflow files (.workflow.json) in .principal-views
+    if (path.includes(CanvasDiscovery.CANVAS_DIR) && path.endsWith(CanvasDiscovery.WORKFLOW_EXTENSION)) {
+      return true;
+    }
+    // Test trace files (.otel.json) in .principal-views
+    if (path.includes(CanvasDiscovery.CANVAS_DIR) && path.endsWith('.otel.json')) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Get all file paths in the FileTree that are relevant to canvas discovery
+   * Uses package-aware path matching (respects packages/\*\/.principal-views/ etc.)
+   *
+   * @param fileTree - FileTree from repository-abstraction
+   * @returns Set of relevant file paths
+   */
+  getRelevantPaths(fileTree: FileTree): Set<string> {
+    const paths = new Set<string>();
+
+    for (const file of fileTree.allFiles) {
+      const path = file.relativePath || file.path || '';
+      if (this.isRelevantPath(path)) {
+        paths.add(path);
+      }
+    }
+
+    return paths;
+  }
+
+  /**
+   * Filter git status to only include changes relevant to canvas discovery
+   *
+   * For existing/modified/deleted files: filters to paths in the current FileTree's relevant paths
+   * For new/untracked files: checks if they match discovery patterns (could be new canvas files)
+   *
+   * @param fileTree - FileTree from repository-abstraction
+   * @param gitStatus - Git status with file lists
+   * @returns Filtered git status containing only relevant changes, or null if no relevant changes
+   */
+  filterRelevantGitChanges(
+    fileTree: FileTree,
+    gitStatus: GitStatusWithFiles
+  ): GitStatusWithFiles | null {
+    const relevantPaths = this.getRelevantPaths(fileTree);
+
+    // For existing files: filter to paths we know about
+    const filterExisting = (paths: string[]) =>
+      paths.filter(p => relevantPaths.has(p));
+
+    // For new/untracked files: check if they match discovery patterns
+    const filterNew = (paths: string[]) =>
+      paths.filter(p => this.isRelevantPath(p));
+
+    const filtered: GitStatusWithFiles = {
+      ...gitStatus,
+      modifiedFiles: filterExisting(gitStatus.modifiedFiles),
+      stagedFiles: filterNew(gitStatus.stagedFiles),
+      untrackedFiles: filterNew(gitStatus.untrackedFiles),
+      deletedFiles: filterExisting(gitStatus.deletedFiles),
+      createdFiles: filterNew(gitStatus.createdFiles || []),
+    };
+
+    // Return null if no relevant changes
+    const hasChanges =
+      filtered.modifiedFiles.length > 0 ||
+      filtered.stagedFiles.length > 0 ||
+      filtered.untrackedFiles.length > 0 ||
+      filtered.deletedFiles.length > 0 ||
+      filtered.createdFiles.length > 0;
+
+    return hasChanges ? filtered : null;
   }
 
   /**
