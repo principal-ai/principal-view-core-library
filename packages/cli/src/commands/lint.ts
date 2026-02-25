@@ -549,12 +549,13 @@ export function createLintCommand(): Command {
             const allWorkflowEvents = canvasKey ? canvasEventMap.get(canvasKey) : undefined;
 
             // Run workflow validation with canvas-wide event knowledge
+            // Use cwd as basePath since workflow files reference paths from repository root
             const workflowResult = await workflowValidator.validate({
               workflow: loaded.workflow,
               workflowPath: relativePath,
               canvas: canvas ?? undefined,
               canvasPath: canvasKey,
-              basePath: dirname(absolutePath),
+              basePath: cwd,
               rawContent: loaded.raw,
               allWorkflowEvents,
             });
