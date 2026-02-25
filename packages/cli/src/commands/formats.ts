@@ -122,8 +122,7 @@ ${chalk.bold.cyan('Workflow Format (.workflow.json)')}
 ${chalk.dim('═'.repeat(70))}
 
 Workflow files define scenarios for rendering execution data as human-readable
-stories. They evaluate conditions against captured events to select the best
-matching workflow template.
+stories. Scenarios are matched based on required events (derived from template.events).
 
 ${chalk.bold('File Location:')}
   ${chalk.dim('.principal-views/')}${chalk.yellow('<feature-name>.workflow.json')}
@@ -132,49 +131,66 @@ ${chalk.bold('File Location:')}
 ${chalk.bold('Required Structure:')}
 ${chalk.dim('┌────────────────────────────────────────────────────────────────────┐')}
 ${chalk.dim('│')} {                                                                  ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"version"')}: "1.0.0",          ${chalk.dim('// Schema version (required)')}    ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"canvas"')}: "./feature.otel.canvas",  ${chalk.dim('// Canvas reference')}     ${chalk.dim('│')}
 ${chalk.dim('│')}   ${chalk.green('"name"')}: "Feature Name",      ${chalk.dim('// NOT "Feature Name Workflows"')} ${chalk.dim('│')}
-${chalk.dim('│')}   ${chalk.green('"description"')}: "What the feature does",  ${chalk.dim('// Purpose, not "Workflows for..."')} ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"description"')}: "What the feature does",                        ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"spanPattern"')}: "feature.operation",  ${chalk.dim('// Exact span name')}     ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"mode"')}: "span-tree",         ${chalk.dim('// "span-tree" or "timeline"')}   ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"scenarioSelection"')}: "first-match",  ${chalk.dim('// Optional')}            ${chalk.dim('│')}
 ${chalk.dim('│')}   ${chalk.green('"scenarios"')}: [                                                 ${chalk.dim('│')}
 ${chalk.dim('│')}     {                                                              ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.yellow('"id"')}: "success",         ${chalk.dim('// Unique scenario ID')}         ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"priority"')}: 1,           ${chalk.dim('// Lower = higher priority')}   ${chalk.dim('│')}
-${chalk.dim('│')}       ${chalk.yellow('"condition"')}: "...",      ${chalk.dim('// JSONPath/logic expression')} ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.yellow('"description"')}: "Successful execution",                    ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"template"')}: {            ${chalk.dim('// Workflow template')}        ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"summary"')}: "Completed {{count}} items",  ${chalk.dim('// Handlebars template')} ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"events"')}: {                ${chalk.dim('// Per-event templates')}       ${chalk.dim('│')}
-${chalk.dim('│')}           "event.name": "Event {{attribute}} occurred"           ${chalk.dim('│')}
-${chalk.dim('│')}         }                                                          ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"events"')}: {                ${chalk.dim('// REQUIRED: per-event templates')} ${chalk.dim('│')}
+${chalk.dim('│')}           "event.started": "Started {{attr}}",                   ${chalk.dim('│')}
+${chalk.dim('│')}           "event.complete": "Completed successfully"             ${chalk.dim('│')}
+${chalk.dim('│')}         },                                                         ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"summary"')}: "Completed {{count}} items"  ${chalk.dim('// Optional')}    ${chalk.dim('│')}
 ${chalk.dim('│')}       }                                                            ${chalk.dim('│')}
 ${chalk.dim('│')}     }                                                              ${chalk.dim('│')}
 ${chalk.dim('│')}   ]                                                                ${chalk.dim('│')}
 ${chalk.dim('│')} }                                                                  ${chalk.dim('│')}
 ${chalk.dim('└────────────────────────────────────────────────────────────────────┘')}
 
-${chalk.bold('Naming Guidelines:')}
+${chalk.bold('Required Fields:')}
 
-  ❌ DON'T append "Workflows" to the name:
-     "name": "Package Processor Workflows"
+  ${chalk.cyan('version')}            Schema version (e.g., "1.0.0")
+  ${chalk.cyan('canvas')}             Path to .otel.canvas file
+  ${chalk.cyan('name')}               Human-readable name (NOT "...Workflows")
+  ${chalk.cyan('description')}        Feature purpose (NOT "Workflows for...")
+  ${chalk.cyan('spanPattern')}        Exact span name to match
+  ${chalk.cyan('mode')}               "span-tree" (hierarchy) or "timeline" (chronological)
+  ${chalk.cyan('scenarios')}          Array of scenario definitions
 
-  ✅ DO use the feature name directly:
-     "name": "Package Processor"
+${chalk.bold('Optional Fields:')}
 
-  ❌ DON'T prefix description with boilerplate:
-     "description": "Human-readable workflows for package extraction..."
-
-  ✅ DO describe the feature's purpose:
-     "description": "Package extraction and analysis from repository file trees"
+  ${chalk.cyan('scope')}              Instrumentation scope (must be in library.yaml owned-scopes)
+  ${chalk.cyan('status')}             "draft", "approved", or "implemented"
+  ${chalk.cyan('files')}              Source files (required if status is approved/implemented)
+  ${chalk.cyan('scenarioSelection')}  "first-match" (default) or "manual"
+  ${chalk.cyan('formatting')}         Display options (showTimestamps, showDuration, etc.)
 
 ${chalk.bold('Scenario Best Practices:')}
 
-${chalk.cyan('1. Priority ordering (scenarios evaluated in order):')}
+${chalk.cyan('1. Required scenario fields:')}
+   - ${chalk.green('id')}          Unique identifier (kebab-case)
+   - ${chalk.green('priority')}    Selection order (lower = higher priority)
+   - ${chalk.green('description')} What this scenario represents
+   - ${chalk.green('template')}    Template with events mapping
+
+${chalk.cyan('2. Priority ordering (scenarios evaluated in order):')}
    - ${chalk.green('1-10')}    Specific scenarios (success/failure cases)
    - ${chalk.yellow('999')}     Fallback scenario (catches anything)
 
-${chalk.cyan('2. Standard scenario set:')}
+${chalk.cyan('3. Standard scenario set:')}
    - ${chalk.green('Success')} (priority 1): Feature completed successfully
    - ${chalk.yellow('Failure')} (priority 2): Feature encountered error
    - ${chalk.dim('Fallback')} (priority 999): Generic execution captured
 
-${chalk.cyan('3. Template syntax (Handlebars):')}
+${chalk.cyan('4. Template syntax (Handlebars):')}
    Templates use Handlebars syntax for dynamic content:
 
    ${chalk.bold('Variables:')}
@@ -195,18 +211,23 @@ ${chalk.cyan('3. Template syntax (Handlebars):')}
    - eq, ne, lt, gt, lte, gte, and, or, not
    - Example: {{#if (gt count 10)}}Many{{/if}}
 
-${chalk.cyan('4. Template requirements:')}
+${chalk.cyan('5. Template requirements:')}
    ${chalk.bold('IMPORTANT:')} The ${chalk.yellow('"events"')} field is ${chalk.bold('REQUIRED')} in all templates
    - Must be a non-empty object mapping event names to templates
    - All event names must exist in the canvas
-   - Use to customize how each event type is displayed
+   - Required events are ${chalk.bold('automatically derived')} from template.events keys
    - Example: { "event.name": "Template with {{variables}}" }
 
-${chalk.cyan('5. Template style:')}
+${chalk.cyan('6. Template style:')}
    - Clear, concise summary line
    - 3-5 detail steps showing workflow
    - Use emojis for visual scanning (✅ ❌ 📋)
    - Include key metrics and IDs
+
+${chalk.red.bold('DEPRECATED - DO NOT USE:')}
+   The ${chalk.yellow('"condition"')} field is no longer supported.
+   Required events are now automatically derived from template.events keys.
+   Remove any "condition" fields from your workflow files.
 
 ${chalk.bold('Validation:')}
   ${chalk.cyan('npx @principal-ai/principal-view-cli workflow validate')}
@@ -566,36 +587,47 @@ ${chalk.dim('─'.repeat(70))}
 ${chalk.yellow('.principal-views/data-validator.workflow.json')}
 
 {
+  "version": "1.0.0",
+  "canvas": "./data-validator.otel.canvas",
   "name": "Data Validator",
   "description": "Validates data records against defined schemas",
+  "spanPattern": "validation.process",
+  "mode": "span-tree",
+  "scenarioSelection": "first-match",
   "scenarios": [
     {
+      "id": "success",
       "priority": 1,
-      "condition": "events[?name=='validation.complete']",
+      "description": "Validation completed successfully",
       "template": {
-        "summary": "Validated {{result.validCount}} records successfully",
         "events": {
           "validation.started": "Started validation of {{input.recordCount}} records",
-          "validation.complete": "Processed {{result.validCount}} valid and {{result.invalidCount}} invalid records"
-        }
+          "validation.complete": "Processed {{result.validCount}} valid, {{result.invalidCount}} invalid"
+        },
+        "summary": "Validated {{result.validCount}} records successfully"
       }
     },
     {
+      "id": "error",
       "priority": 2,
-      "condition": "events[?name=='validation.error']",
+      "description": "Validation encountered an error",
       "template": {
-        "summary": "Validation failed: {{error.message}}",
         "events": {
           "validation.started": "Started validation",
-          "validation.error": "Error occurred: {{error.message}} (type: {{error.type}})"
-        }
+          "validation.error": "Error: {{error.message}} (type: {{error.type}})"
+        },
+        "summary": "Validation failed: {{error.message}}"
       }
     },
     {
+      "id": "fallback",
       "priority": 999,
-      "condition": "true",
+      "description": "Generic validation execution",
       "template": {
-        "summary": "Validation execution captured ({{spans.length}} events, {{duration.ms}}ms)"
+        "events": {
+          "validation.started": "Validation started"
+        },
+        "summary": "Validation execution captured"
       }
     }
   ]
