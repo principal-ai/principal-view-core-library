@@ -112,10 +112,19 @@ export class LibraryDiscovery {
     const packages = await this.discoverPackagesWithCache(fileTree, fileReader);
 
     // 2. For each package, try to load its library.yaml
+    // Note: pkg.packageData.path is relative (e.g., '' for root or 'packages/foo' for nested)
+    // We must resolve against fileTree.root.path to get absolute paths for fsAdapter calls
+    const rootPath = fileTree.root.path;
+
     for (const pkg of packages) {
       try {
+        // Resolve package path to absolute
+        const absolutePackagePath = pkg.packageData.path
+          ? this.fsAdapter.join(rootPath, pkg.packageData.path)
+          : rootPath;
+
         // Check if this package has a .principal-views directory
-        const pvDir = this.fsAdapter.join(pkg.packageData.path, LibraryDiscovery.CANVAS_DIR);
+        const pvDir = this.fsAdapter.join(absolutePackagePath, LibraryDiscovery.CANVAS_DIR);
         const pvDirExists = await this.fsAdapter.exists(pvDir);
 
         if (!pvDirExists) {
@@ -123,7 +132,7 @@ export class LibraryDiscovery {
         }
 
         // Try to load library from this package
-        const loadResult = await this.loader.load(pkg.packageData.path);
+        const loadResult = await this.loader.load(absolutePackagePath);
 
         if (loadResult.success && loadResult.library) {
           // Extract service names and owned scopes from resources

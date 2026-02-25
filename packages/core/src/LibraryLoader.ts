@@ -194,19 +194,9 @@ export class LibraryLoader {
       return `Missing or invalid 'edgeComponents' in ${filePath}`;
     }
 
-    // Validate node components
-    for (const [key, node] of Object.entries(library.nodeComponents)) {
-      if (!node.shape) {
-        return `Node component '${key}' is missing required field 'shape' in ${filePath}`;
-      }
-    }
-
-    // Validate edge components
-    for (const [key, edge] of Object.entries(library.edgeComponents)) {
-      if (!edge.style) {
-        return `Edge component '${key}' is missing required field 'style' in ${filePath}`;
-      }
-    }
+    // Note: nodeComponents and edgeComponents fields like 'shape' and 'style' are optional.
+    // The CLI validator only checks for unknown fields, not required fields.
+    // Visual rendering code should handle missing shape/style gracefully with defaults.
 
     // Validate event schemas if present
     if (library.eventSchemas) {

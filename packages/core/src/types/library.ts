@@ -129,8 +129,8 @@ export interface LibraryNodeComponent {
   /** Default label/text for the node when added to canvas */
   defaultLabel?: string;
 
-  /** Visual shape */
-  shape: PVNodeShape;
+  /** Visual shape (optional - only needed for canvas rendering) */
+  shape?: PVNodeShape;
 
   /** Icon identifier (Lucide icons) */
   icon?: string;
@@ -174,8 +174,8 @@ export interface LibraryEdgeComponent {
   /** Tags for filtering/categorizing in the library UI */
   tags?: string[];
 
-  /** Line style */
-  style: PVEdgeStyle;
+  /** Line style (optional - only needed for canvas rendering) */
+  style?: PVEdgeStyle;
 
   /** Line color */
   color?: string;
