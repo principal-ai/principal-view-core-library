@@ -13,6 +13,7 @@ export const EVENTS = {
   STATUS_UPDATE: `${ADDON_ID}/status-update`,
   PROVIDER_READY: `${ADDON_ID}/provider-ready`,
   PROVIDER_ERROR: `${ADDON_ID}/provider-error`,
+  SEND_TEST_TRACE: `${ADDON_ID}/send-test-trace`,
 } as const;
 
 // Storage keys

@@ -12,6 +12,7 @@ import {
   ATTR_SERVICE_VERSION,
 } from '@opentelemetry/semantic-conventions';
 import { ZoneContextManager } from '@opentelemetry/context-zone';
+import { trace } from '@opentelemetry/api';
 import { addons } from 'storybook/preview-api';
 import { PARAM_KEY, EVENTS } from './constants';
 import type { OtelExportConfig, OtelExportStatus } from './types';
@@ -19,6 +20,7 @@ import type { OtelExportConfig, OtelExportStatus } from './types';
 // Global state to track initialization
 let provider: WebTracerProvider | null = null;
 let currentConfig: OtelExportConfig | null = null;
+let testTraceListenerRegistered = false;
 
 /**
  * Get default configuration
@@ -214,6 +216,49 @@ function sendStatusUpdate(
 }
 
 /**
+ * Send a test trace to verify the connection is working
+ */
+function sendTestTrace(): void {
+  if (!provider) {
+    console.warn('[OTEL Addon] Cannot send test trace: provider not initialized');
+    return;
+  }
+
+  const tracer = trace.getTracer('storybook-addon-otel-test');
+  const span = tracer.startSpan('test-trace', {
+    attributes: {
+      'test.type': 'connection-verification',
+      'test.timestamp': new Date().toISOString(),
+    },
+  });
+
+  console.log('[OTEL Addon] Sending test trace...');
+
+  // End the span immediately
+  span.end();
+
+  // Force flush to send it right away
+  provider.forceFlush().then(() => {
+    console.log('[OTEL Addon] Test trace sent and flushed successfully');
+  }).catch((err) => {
+    console.error('[OTEL Addon] Failed to flush test trace:', err);
+  });
+}
+
+/**
+ * Register listener for test trace event from manager
+ */
+function registerTestTraceListener(channel: any): void {
+  if (testTraceListenerRegistered) return;
+
+  channel.on(EVENTS.SEND_TEST_TRACE, () => {
+    sendTestTrace();
+  });
+
+  testTraceListenerRegistered = true;
+}
+
+/**
  * Decorator that initializes OTEL on each story render
  */
 export const withOtelExport = (storyFn: any, context: any) => {
@@ -227,6 +272,7 @@ export const withOtelExport = (storyFn: any, context: any) => {
 
     if (channel) {
       initializeProvider(config, channel);
+      registerTestTraceListener(channel);
     }
   }
 

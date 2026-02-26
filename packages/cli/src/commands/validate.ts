@@ -2267,9 +2267,9 @@ export function createValidateCommand(): Command {
           ? discoveryResult.testTraces
           : [];
 
-        // Check if any files were found (only count OTEL canvas files)
-        const otelCanvasCount = discoveryResult.canvases.filter(c => c.type === 'otel').length;
-        const totalFiles = otelCanvasCount + workflows.length + testTraces.length;
+        // Check if any files were found
+        const canvasCount = discoveryResult.canvases.length;
+        const totalFiles = canvasCount + workflows.length + testTraces.length;
         if (totalFiles === 0) {
           if (options.json) {
             console.log(JSON.stringify({
@@ -2310,15 +2310,9 @@ export function createValidateCommand(): Command {
         // Convert discovery results to validation results
         const results: ValidationResult[] = [];
 
-        // Add discovery errors as validation failures (only for OTEL canvas files)
+        // Add discovery errors as validation failures
         for (const error of discoveryResult.errors) {
-          // Find the canvas in discovery results to check its type
-          const canvas = discoveryResult.canvases.find(c => c.path === error.path);
-          // Skip regular canvas files
-          if (canvas && canvas.type !== 'otel') {
-            continue;
-          }
-          // Also skip if path doesn't look like a canvas file at all
+          // Skip if path doesn't look like a canvas file at all
           if (!error.path.endsWith('.canvas') && !error.path.endsWith('.otel.canvas')) {
             continue;
           }
@@ -2335,15 +2329,9 @@ export function createValidateCommand(): Command {
           });
         }
 
-        // Add discovery warnings (only for OTEL canvas files)
+        // Add discovery warnings
         for (const warning of discoveryResult.warnings) {
-          // Find the canvas in discovery results to check its type
-          const canvas = discoveryResult.canvases.find(c => c.path === warning.path);
-          // Skip regular canvas files
-          if (canvas && canvas.type !== 'otel') {
-            continue;
-          }
-          // Also skip if path doesn't look like a canvas file at all
+          // Skip if path doesn't look like a canvas file at all
           if (!warning.path.endsWith('.canvas') && !warning.path.endsWith('.otel.canvas')) {
             continue;
           }
@@ -2449,15 +2437,11 @@ export function createValidateCommand(): Command {
           }
         }
 
-        // PHASE 2: Validate canvases (only OTEL canvas files) and collect parsed canvases
+        // PHASE 2: Validate all canvas files and collect parsed canvases
         const parsedCanvases = new Map<string, ExtendedCanvas>();
 
         if (validateCanvases) {
           for (const canvas of discoveryResult.canvases) {
-            // Skip regular canvas files - we only validate OTEL canvas files
-            if (canvas.type !== 'otel') {
-              continue;
-            }
 
             // Check if we already have a result for this canvas (from discovery errors)
             const existingResult = results.find(r => r.file === canvas.path);

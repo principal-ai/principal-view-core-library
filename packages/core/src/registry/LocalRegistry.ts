@@ -67,12 +67,18 @@ export class LocalRegistry implements StoryboardRegistryInterface {
    * @returns Array of all registered scope names (services + owned scopes)
    */
   async registerWorkspace(fileTree: FileTree): Promise<string[]> {
-    const workspaceId = fileTree.metadata.id;
+    // Use stable identifier: rootPath (repository path) or sha (content hash)
+    // Note: metadata.id includes a timestamp suffix making it unique per build,
+    // which would cause duplicate registrations on every file tree update
+    const workspaceId =
+      (fileTree.metadata.sourceInfo?.rootPath as string) || fileTree.sha || fileTree.metadata.id;
 
     // Check if already registered
     if (this.workspaces.has(workspaceId)) {
       console.log('[LocalRegistry] Workspace already registered:', workspaceId);
       const existing = this.workspaces.get(workspaceId)!;
+      // Update the fileTree reference to the latest version
+      existing.fileTree = fileTree;
       return [...existing.serviceNames, ...existing.ownedScopes];
     }
 
@@ -109,7 +115,7 @@ export class LocalRegistry implements StoryboardRegistryInterface {
 
   /**
    * Unregister a workspace (cleanup)
-   * @param workspaceId - Workspace ID (from fileTree.metadata.id)
+   * @param workspaceId - Workspace ID (rootPath, sha, or metadata.id)
    */
   unregisterWorkspace(workspaceId: string): void {
     const workspace = this.workspaces.get(workspaceId);

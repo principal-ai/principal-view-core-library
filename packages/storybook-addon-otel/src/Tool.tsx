@@ -3,8 +3,8 @@
  * Shows current OTEL export status in Storybook toolbar
  */
 
-import React, { useState } from 'react';
-import { useChannel } from 'storybook/manager-api';
+import React, { useState, useCallback } from 'react';
+import { useChannel, addons } from 'storybook/manager-api';
 import { Button } from 'storybook/internal/components';
 import { styled } from 'storybook/theming';
 import { EVENTS, ADDON_ID } from './constants';
@@ -26,6 +26,29 @@ const StatusDot = styled.span<{ status: 'enabled' | 'disabled' | 'error' }>(
   })
 );
 
+const Container = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '4px',
+});
+
+const TestButton = styled.button({
+  background: 'transparent',
+  border: '1px solid currentColor',
+  borderRadius: '3px',
+  padding: '2px 6px',
+  fontSize: '10px',
+  cursor: 'pointer',
+  opacity: 0.8,
+  '&:hover': {
+    opacity: 1,
+  },
+  '&:disabled': {
+    opacity: 0.4,
+    cursor: 'not-allowed',
+  },
+});
+
 export const Tool = () => {
   const [status, setStatus] = useState<OtelExportStatus>({
     ready: false,
@@ -40,6 +63,11 @@ export const Tool = () => {
       setStatus(newStatus);
     },
   });
+
+  const handleSendTestTrace = useCallback(() => {
+    const channel = addons.getChannel();
+    channel.emit(EVENTS.SEND_TEST_TRACE);
+  }, []);
 
   const statusType = status.error
     ? 'error'
@@ -57,14 +85,25 @@ export const Tool = () => {
 
   const tooltipText = `Status: ${statusText}\nEndpoint: ${status.endpoint}\nService: ${status.serviceName}${status.error ? `\nError: ${status.error}` : ''}`;
 
+  const isActive = status.enabled && status.ready;
+
   return (
-    <Button
-      key={ADDON_ID}
-      title={tooltipText}
-      variant={status.enabled && status.ready ? 'solid' : 'ghost'}
-    >
-      <StatusDot status={statusType} />
-      OTEL
-    </Button>
+    <Container>
+      <Button
+        key={ADDON_ID}
+        title={tooltipText}
+        variant={isActive ? 'solid' : 'ghost'}
+      >
+        <StatusDot status={statusType} />
+        OTEL
+      </Button>
+      <TestButton
+        onClick={handleSendTestTrace}
+        disabled={!isActive}
+        title="Send a test trace to verify connection"
+      >
+        Test
+      </TestButton>
+    </Container>
   );
 };

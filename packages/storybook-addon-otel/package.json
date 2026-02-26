@@ -1,6 +1,6 @@
 {
   "name": "@principal-ai/storybook-addon-otel",
-  "version": "0.3.21",
+  "version": "0.3.22",
   "description": "Storybook addon for forwarding OpenTelemetry traces to OTLP HTTP endpoint",
   "keywords": [
     "storybook-addons",

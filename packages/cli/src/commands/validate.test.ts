@@ -154,6 +154,7 @@ describe('validate command - color validation', () => {
         nodeTypes: {
           service: {
             label: 'Service',
+            description: 'Service node',
             color: '#3B82F6',
           },
         },
@@ -222,6 +223,7 @@ describe('validate command - color validation', () => {
         nodeTypes: {
           service: {
             label: 'Service',
+            description: 'Service node',
             // No color defined
           },
         },
@@ -277,6 +279,7 @@ describe('validate command - color validation', () => {
         nodeTypes: {
           service: {
             label: 'Service',
+            description: 'Service node',
             color: '#3B82F6',
           },
         },
@@ -312,6 +315,7 @@ describe('validate command - color validation', () => {
         nodeTypes: {
           service: {
             label: 'Service',
+            description: 'Service node',
             color: '#3B82F6',
           },
         },
