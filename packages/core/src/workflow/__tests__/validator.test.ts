@@ -711,6 +711,129 @@ describe('WorkflowValidator', () => {
       );
       expect(flowViolations.length).toBeGreaterThan(0);
     });
+
+    it('should flag Handlebars {{#if}} conditionals', async () => {
+      const context = createContext({
+        scenarios: [
+          {
+            id: 'test',
+            priority: 1,
+            description: 'Test',
+            template: {
+              introduction: '{{#if hasError}}Error occurred{{/if}}',
+            },
+          },
+        ],
+      });
+      const result = await validator.validate(context);
+
+      expect(result.errorCount).toBeGreaterThan(0);
+      expect(result.violations).toContainEqual(
+        expect.objectContaining({
+          ruleId: 'workflow-template-conditional',
+          message: expect.stringContaining('Conditional syntax detected'),
+          suggestion: expect.stringContaining('Split into separate scenarios'),
+        })
+      );
+    });
+
+    it('should flag Handlebars {{#unless}} conditionals', async () => {
+      const context = createContext({
+        scenarios: [
+          {
+            id: 'test',
+            priority: 1,
+            description: 'Test',
+            template: {
+              summary: '{{#unless success}}Failed{{/unless}}',
+            },
+          },
+        ],
+      });
+      const result = await validator.validate(context);
+
+      expect(result.errorCount).toBeGreaterThan(0);
+      expect(result.violations).toContainEqual(
+        expect.objectContaining({
+          ruleId: 'workflow-template-conditional',
+          message: expect.stringContaining('{{#unless'),
+        })
+      );
+    });
+
+    it('should flag Handlebars {{#each}} iteration', async () => {
+      const context = createContext({
+        scenarios: [
+          {
+            id: 'test',
+            priority: 1,
+            description: 'Test',
+            template: {
+              introduction: '{{#each items}}{{name}}{{/each}}',
+            },
+          },
+        ],
+      });
+      const result = await validator.validate(context);
+
+      expect(result.errorCount).toBeGreaterThan(0);
+      expect(result.violations).toContainEqual(
+        expect.objectContaining({
+          ruleId: 'workflow-template-conditional',
+          message: expect.stringContaining('{{#each'),
+        })
+      );
+    });
+
+    it('should flag Handlebars {{else}} clause', async () => {
+      const context = createContext({
+        scenarios: [
+          {
+            id: 'test',
+            priority: 1,
+            description: 'Test',
+            template: {
+              events: {
+                'test.started': '{{#if fast}}Quick{{else}}Slow{{/if}}',
+              },
+            },
+          },
+        ],
+      });
+      const result = await validator.validate(context);
+
+      expect(result.errorCount).toBeGreaterThan(0);
+      expect(result.violations).toContainEqual(
+        expect.objectContaining({
+          ruleId: 'workflow-template-conditional',
+        })
+      );
+    });
+
+    it('should allow simple variable interpolation without conditionals', async () => {
+      const context = createContext({
+        scenarios: [
+          {
+            id: 'test',
+            priority: 1,
+            description: 'Test',
+            template: {
+              introduction: 'Test {{name}} completed in {{duration}}ms',
+              events: {
+                'test.started': 'Started {{testName}}',
+              },
+              summary: 'Result: {{status}}',
+            },
+          },
+        ],
+      });
+      const result = await validator.validate(context);
+
+      const conditionalViolations = result.violations.filter(
+        (v) => v.ruleId === 'workflow-template-conditional'
+      );
+      expect(conditionalViolations).toHaveLength(0);
+    });
   });
 
   // ============================================================================

@@ -1201,6 +1201,25 @@ export class WorkflowValidator {
       }
     });
 
+    // Check for Handlebars conditionals - these are not allowed in scenarios
+    // A scenario must represent a single deterministic trace, not multiple conditional paths
+    const handlebarsConditionalPattern = /\{\{#(if|unless|each)\b[^}]*\}\}|\{\{else\}\}/g;
+    const handlebarsConditionals = templateStr.match(handlebarsConditionalPattern) || [];
+
+    if (handlebarsConditionals.length > 0) {
+      const firstMatch = handlebarsConditionals[0];
+      violations.push({
+        ruleId: 'workflow-template-conditional',
+        severity: 'error',
+        file,
+        path,
+        message: `Conditional syntax detected: ${firstMatch}`,
+        impact: 'Scenarios must represent a single deterministic trace. Conditionals introduce ambiguity about which events should be present.',
+        suggestion: 'Split into separate scenarios for each conditional path. Each scenario should represent one specific trace shape.',
+        fixable: false,
+      });
+    }
+
     return violations;
   }
 
