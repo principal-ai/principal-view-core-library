@@ -427,4 +427,128 @@ describe('renderWorkflow', () => {
       expect(result.metadata.timeRange?.end).toBe(2000);
     });
   });
+
+  describe('@span attribute access', () => {
+    it('should render span attributes via @span namespace in timeline mode', () => {
+      const template: WorkflowTemplate = {
+        version: '1.0.0',
+        canvas: 'test.otel.canvas',
+        name: 'Span Attributes Test',
+        description: 'Test @span attribute access',
+        mode: 'timeline',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'default',
+            priority: 1,
+            description: 'Default scenario',
+            template: {
+              events: {
+                'kanban.loaded': 'Loaded {{tasks.count}} tasks (backlog: {{@span.output.isBacklogProject}})',
+              },
+            },
+          },
+        ],
+      };
+
+      const events: OtelEvent[] = [
+        {
+          name: 'kanban.loaded',
+          timestamp: 1000,
+          type: 'span',
+          attributes: {
+            'tasks.count': 42,
+            'has.more': true,
+          },
+          spanAttributes: {
+            'output.isBacklogProject': true,
+            'output.tasksLoaded': 42,
+          },
+        },
+      ];
+
+      const result = renderWorkflow(template, events);
+      expect(result.text).toContain('Loaded 42 tasks (backlog: true)');
+    });
+
+    it('should render span attributes via @span namespace in span-tree mode', () => {
+      const template: WorkflowTemplate = {
+        version: '1.0.0',
+        canvas: 'test.otel.canvas',
+        name: 'Span Tree Attributes Test',
+        description: 'Test @span in span-tree mode',
+        mode: 'span-tree',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'default',
+            priority: 1,
+            description: 'Default scenario',
+            template: {
+              span: '→ {{span.name}} (status: {{@span.output.status}})',
+              children: 'recurse',
+            },
+          },
+        ],
+      };
+
+      const events: OtelEvent[] = [
+        {
+          name: 'api.request',
+          timestamp: 1000,
+          type: 'span',
+          spanId: 'span1',
+          traceId: 'trace1',
+          spanAttributes: {
+            'output.status': 'success',
+          },
+        },
+      ];
+
+      const result = renderWorkflow(template, events);
+      expect(result.text).toContain('→ api.request (status: success)');
+    });
+
+    it('should allow event attributes to be accessed normally alongside @span', () => {
+      const template: WorkflowTemplate = {
+        version: '1.0.0',
+        canvas: 'test.otel.canvas',
+        name: 'Mixed Attributes Test',
+        description: 'Test event and span attributes together',
+        mode: 'timeline',
+        scenarioSelection: 'first-match',
+        scenarios: [
+          {
+            id: 'default',
+            priority: 1,
+            description: 'Default scenario',
+            template: {
+              events: {
+                'task.completed': 'Task {{task.id}} done in {{duration}}ms (project: {{@span.project.name}})',
+              },
+            },
+          },
+        ],
+      };
+
+      const events: OtelEvent[] = [
+        {
+          name: 'task.completed',
+          timestamp: 1000,
+          type: 'span',
+          attributes: {
+            'task.id': 'TASK-123',
+            'duration': 150,
+          },
+          spanAttributes: {
+            'project.name': 'My Project',
+            'project.id': 'proj-1',
+          },
+        },
+      ];
+
+      const result = renderWorkflow(template, events);
+      expect(result.text).toContain('Task TASK-123 done in 150ms (project: My Project)');
+    });
+  });
 });

@@ -30,6 +30,17 @@ export interface OtelEvent {
   /** Event attributes */
   attributes?: OtelAttributes;
 
+  /**
+   * Parent span's attributes (for template access via @span namespace)
+   *
+   * When an event is extracted from a span, this field carries the span's
+   * attributes so templates can reference them without duplicating data
+   * in event attributes.
+   *
+   * @example Template: "Status: {{@span.output.status}}"
+   */
+  spanAttributes?: OtelAttributes;
+
   /** Trace correlation */
   traceId?: string;
   spanId?: string;

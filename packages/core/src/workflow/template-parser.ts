@@ -283,16 +283,35 @@ function buildSegmentsWithResolvedVariables(
 }
 
 /**
+ * Data variables accessible via @ prefix in templates
+ *
+ * These are Handlebars "data" variables, accessed with @ prefix:
+ * - {{@span.attributeName}} - Parent span's attributes
+ */
+export interface TemplateData {
+  /** Parent span's attributes (flattened for dot-notation access) */
+  span?: Record<string, unknown>;
+}
+
+/**
  * Parse and evaluate a template string using Handlebars
  *
  * @param template - Template string with {{variables}}
  * @param context - Data context for variable lookup
+ * @param data - Optional data variables accessible via @ prefix (e.g., @span)
  * @returns ParsedTemplate with structured segments and variable metadata
+ *
+ * @example
+ * // Access event attributes directly
+ * parseTemplate("Count: {{tasks.count}}", { tasks: { count: 5 } })
+ *
+ * // Access span attributes via @span
+ * parseTemplate("Status: {{@span.output.status}}", context, { span: { output: { status: "ok" } } })
  */
-export function parseTemplate(template: string, context: TemplateContext): ParsedTemplate {
+export function parseTemplate(template: string, context: TemplateContext, data?: TemplateData): ParsedTemplate {
   try {
     const handlebarTemplate = Handlebars.compile(template, { noEscape: true });
-    const rendered = handlebarTemplate(context);
+    const rendered = handlebarTemplate(context, { data });
 
     // Build structured segments
     const segments = buildSegments(template, rendered, context);

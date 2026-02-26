@@ -171,4 +171,77 @@ Found 3 violations`;
       });
     });
   });
+
+  describe('@span data variables', () => {
+    it('should resolve @span attributes from data parameter', () => {
+      const spanData = {
+        span: {
+          output: { status: 'success', taskCount: 42 },
+          isBacklog: true,
+        },
+      };
+
+      const result = parseTemplate('Status: {{@span.output.status}}', context, spanData);
+      expect(result.toString()).toBe('Status: success');
+    });
+
+    it('should resolve nested @span attributes', () => {
+      const spanData = {
+        span: {
+          output: { nested: { deep: { value: 'found' } } },
+        },
+      };
+
+      const result = parseTemplate('Value: {{@span.output.nested.deep.value}}', context, spanData);
+      expect(result.toString()).toBe('Value: found');
+    });
+
+    it('should handle mixed event and span attributes', () => {
+      const eventContext = {
+        tasks: { count: 10 },
+      };
+      const spanData = {
+        span: {
+          output: { isBacklogProject: true, taskCount: 42 },
+        },
+      };
+
+      // Test with only @span attributes to isolate behavior
+      const result = parseTemplate(
+        'Loaded {{tasks.count}} tasks (backlog: {{@span.output.isBacklogProject}})',
+        eventContext,
+        spanData
+      );
+      expect(result.toString()).toBe('Loaded 10 tasks (backlog: true)');
+    });
+
+    it('should render empty for missing @span attributes (Handlebars data behavior)', () => {
+      // Note: Handlebars renders missing @data variables as empty string, not the original template
+      const result = parseTemplate('Missing: {{@span.missing.attribute}}', context, { span: {} });
+      expect(result.toString()).toBe('Missing: ');
+    });
+
+    it('should handle @span in conditionals', () => {
+      const spanData = {
+        span: { hasErrors: true },
+      };
+
+      const template = '{{#if @span.hasErrors}}Has errors{{else}}No errors{{/if}}';
+      expect(parseTemplate(template, context, spanData).toString()).toBe('Has errors');
+
+      const noErrorsData = { span: { hasErrors: false } };
+      expect(parseTemplate(template, context, noErrorsData).toString()).toBe('No errors');
+    });
+
+    it('should work without span data (backwards compatibility)', () => {
+      const result = parseTemplate('Count: {{result.nodes.count}}', context);
+      expect(result.toString()).toBe('Count: 12');
+    });
+
+    it('should render empty for @span when no data provided (Handlebars behavior)', () => {
+      // Note: Handlebars renders missing @data variables as empty string
+      const result = parseTemplate('Status: {{@span.status}}', context, undefined);
+      expect(result.toString()).toBe('Status: ');
+    });
+  });
 });

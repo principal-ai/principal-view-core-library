@@ -1677,19 +1677,24 @@ export class WorkflowValidator {
 
   /**
    * Extract template variable references from a template string
-   * Matches {{variableName}} patterns
+   * Matches {{variableName}} and {{@span.attributeName}} patterns
    */
   private extractTemplateVariables(template: string): string[] {
     const vars: string[] = [];
-    // Match {{variableName}} or {{object.property}} but not {{#if}} {{/if}} {{else}}
-    const pattern = /\{\{(?!\s*[#/])\s*([a-zA-Z_][a-zA-Z0-9._]*)\s*\}\}/g;
+    // Match {{variableName}}, {{object.property}}, or {{@span.attributeName}}
+    // but not {{#if}} {{/if}} {{else}}
+    const pattern = /\{\{(?!\s*[#/])\s*(@?[a-zA-Z_][a-zA-Z0-9._]*)\s*\}\}/g;
     let match;
 
     while ((match = pattern.exec(template)) !== null) {
       const varName = match[1];
       // Skip Handlebars helpers and keywords
       if (!['this', 'else', 'each', 'if', 'unless', 'with'].includes(varName)) {
-        vars.push(varName);
+        // Skip @span.* variables - they reference span attributes which are
+        // validated separately and don't need to be in event attributes
+        if (!varName.startsWith('@span.')) {
+          vars.push(varName);
+        }
       }
     }
 

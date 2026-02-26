@@ -211,6 +211,24 @@ ${chalk.cyan('4. Template syntax (Handlebars):')}
    - eq, ne, lt, gt, lte, gte, and, or, not
    - Example: {{#if (gt count 10)}}Many{{/if}}
 
+   ${chalk.bold('Span attributes (@span):')}
+   Access parent span attributes without duplicating them in events:
+
+   - {{@span.output.status}}        Span attribute "output.status"
+   - {{@span.project.name}}         Nested span attribute
+
+   ${chalk.dim('Why use @span?')}
+   Span attributes are set once on the span and apply to the entire operation.
+   Event attributes are specific to that moment. Using @span avoids duplicating
+   span-level data into every event:
+
+   ${chalk.dim('// In telemetry code - no duplication needed:')}
+   ${chalk.dim('span.setAttributes({ "output.status": "success" });')}
+   ${chalk.dim('span.addEvent("task.completed", { "task.id": "123" });')}
+
+   ${chalk.dim('// In template - access both:')}
+   ${chalk.dim('"Task {{task.id}} done (status: {{@span.output.status}})"')}
+
 ${chalk.cyan('5. Template requirements:')}
    ${chalk.bold('IMPORTANT:')} The ${chalk.yellow('"events"')} field is ${chalk.bold('REQUIRED')} in all templates
    - Must be a non-empty object mapping event names to templates
@@ -602,7 +620,7 @@ ${chalk.yellow('.principal-views/data-validator.workflow.json')}
       "template": {
         "events": {
           "validation.started": "Started validation of {{input.recordCount}} records",
-          "validation.complete": "Processed {{result.validCount}} valid, {{result.invalidCount}} invalid"
+          "validation.complete": "Processed {{result.validCount}} valid, {{result.invalidCount}} invalid (batch: {{@span.batch.id}})"
         },
         "summary": "Validated {{result.validCount}} records successfully"
       }

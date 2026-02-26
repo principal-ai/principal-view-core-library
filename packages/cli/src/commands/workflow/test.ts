@@ -1,11 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import {
-  selectScenario,
-  computeAggregates,
-  hasEventMatching,
-  getRequiredEvents,
-} from '@principal-ai/principal-view-core';
+import { selectScenario, computeAggregates } from '@principal-ai/principal-view-core';
 import {
   loadWorkflow,
   loadExecution,
@@ -38,44 +33,6 @@ export function createTestCommand(): Command {
 
         // Compute aggregates
         const aggregates = computeAggregates(events);
-
-        // Test each scenario
-        const scenarioResults = workflow.scenarios.map((scenario) => {
-          // Get required events from template.events
-          const requiredEvents = getRequiredEvents(scenario);
-          const eventResults: Array<{ eventName: string; matched: boolean; count: number }> = [];
-          let matched = true;
-          let reason: string | undefined;
-
-          // Check each required event
-          for (const eventName of requiredEvents) {
-            const hasMatch = hasEventMatching(events, eventName);
-            const count = events.filter((e) => hasEventMatching([e], eventName)).length;
-            eventResults.push({ eventName, matched: hasMatch, count });
-
-            if (!hasMatch) {
-              matched = false;
-              if (!reason) {
-                reason = `Missing required event '${eventName}'`;
-              }
-            }
-          }
-
-          // If all events matched
-          if (matched && requiredEvents.length > 0) {
-            reason = `All ${requiredEvents.length} required event(s) present`;
-          } else if (requiredEvents.length === 0) {
-            reason = 'No events required (empty template.events)';
-            matched = false;
-          }
-
-          return {
-            scenario,
-            matched,
-            reason,
-            eventResults,
-          };
-        });
 
         // Select the winning scenario using enhanced matching
         const matchResult = selectScenario(workflow, events);
@@ -199,7 +156,6 @@ export function createTestCommand(): Command {
 
           if (matchResult.recommendedScenario) {
             const isFullMatch = matchResult.recommendedScenario.isFullMatch;
-            const icon = isFullMatch ? chalk.green('✓') : chalk.yellow('⚠');
             const matchType = isFullMatch ? 'Full Match' : 'Partial Match';
             const percentage = matchResult.recommendedScenario.matchPercentage.toFixed(1);
 

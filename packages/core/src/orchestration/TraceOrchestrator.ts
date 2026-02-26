@@ -346,10 +346,12 @@ export class TraceOrchestrator {
       });
 
       // Convert span events to OtelEvent format for scenario matcher
+      // Include span attributes so templates can access them via @span namespace
       const otelEvents: OtelEvent[] = span.events.map((e) => ({
         name: e.name,
         timestamp: e.timestamp,
         attributes: e.attributes as Record<string, string | number | boolean>,
+        spanAttributes: span.attributes as Record<string, string | number | boolean>,
       }));
 
       // Get matched canvas node IDs (for visualization)

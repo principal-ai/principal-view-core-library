@@ -15,8 +15,41 @@ import type {
   FlowDirective,
   FormattingOptions,
 } from './types';
-import { parseTemplate, type TemplateContext } from './template-parser';
+import { parseTemplate, type TemplateContext, type TemplateData } from './template-parser';
 import { selectScenario, computeAggregates } from './scenario-matcher';
+
+/**
+ * Build @span data from span attributes for template access
+ *
+ * Flattens dot-notation keys to nested objects so templates can use:
+ * {{@span.output.status}} to access span attribute "output.status"
+ */
+function buildSpanData(spanAttributes?: Record<string, unknown>): TemplateData | undefined {
+  if (!spanAttributes || Object.keys(spanAttributes).length === 0) {
+    return undefined;
+  }
+
+  const span: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(spanAttributes)) {
+    if (key.includes('.')) {
+      // Nested key: convert "output.status" -> { output: { status: value } }
+      const parts = key.split('.');
+      let current: Record<string, unknown> = span;
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (!current[parts[i]] || typeof current[parts[i]] !== 'object') {
+          current[parts[i]] = {};
+        }
+        current = current[parts[i]] as Record<string, unknown>;
+      }
+      current[parts[parts.length - 1]] = value;
+    } else {
+      span[key] = value;
+    }
+  }
+
+  return { span };
+}
 
 /**
  * Render a workflow from a template and events
@@ -195,13 +228,16 @@ function renderSpanTree(
 
     eventContext.span = node.span;
 
+    // Build @span data from span attributes for template access
+    const spanData = buildSpanData(node.span.spanAttributes);
+
     // Render span
     if (scenario.template.span) {
-      const spanText = parseTemplate(scenario.template.span, eventContext as TemplateContext).toString();
+      const spanText = parseTemplate(scenario.template.span, eventContext as TemplateContext, spanData).toString();
       parts.push(indent + spanText);
     } else if (scenario.template.events?.[node.span.name]) {
       const eventTemplate = scenario.template.events[node.span.name];
-      const eventText = parseTemplate(eventTemplate, eventContext as TemplateContext).toString();
+      const eventText = parseTemplate(eventTemplate, eventContext as TemplateContext, spanData).toString();
       parts.push(indent + eventText);
     } else {
       // Default span rendering
@@ -212,7 +248,9 @@ function renderSpanTree(
     if (node.logs && node.logs.length > 0) {
       for (const log of node.logs) {
         const logContext = { ...context, log };
-        const logText = renderLog(log, scenario, logContext, formatting);
+        // Use log's spanAttributes if available, otherwise inherit from parent span
+        const logSpanData = buildSpanData(log.spanAttributes) || spanData;
+        const logText = renderLog(log, scenario, logContext, formatting, logSpanData);
         if (logText) {
           parts.push(indent + (formatting.indentPerLevel || '  ') + logText);
         }
@@ -277,12 +315,15 @@ function renderTimeline(
       }
     }
 
+    // Build @span data from span attributes for template access
+    const spanData = buildSpanData(event.spanAttributes);
+
     let eventText: string | undefined;
 
     if (event.type === 'log') {
-      eventText = renderLog(event, scenario, { ...eventContext, log: event }, formatting);
+      eventText = renderLog(event, scenario, { ...eventContext, log: event }, formatting, spanData);
     } else if (scenario.template.events?.[event.name]) {
-      eventText = parseTemplate(scenario.template.events[event.name], eventContext as TemplateContext).toString();
+      eventText = parseTemplate(scenario.template.events[event.name], eventContext as TemplateContext, spanData).toString();
     }
 
     if (eventText) {
@@ -305,26 +346,28 @@ function renderTimeline(
  * @param scenario - Scenario being rendered
  * @param context - Evaluation context
  * @param formatting - Formatting options
+ * @param spanData - Optional span data for @span template access
  * @returns Rendered log text
  */
 function renderLog(
   log: OtelEvent,
   scenario: WorkflowScenario,
   context: Record<string, unknown>,
-  _formatting: FormattingOptions
+  _formatting: FormattingOptions,
+  spanData?: TemplateData
 ): string | undefined {
   // Check for severity-specific template
   if (scenario.template.logs) {
     const severity = getSeverityLevel(log.severityNumber);
     const logTemplate = scenario.template.logs[severity] || scenario.template.logs.default;
     if (logTemplate) {
-      return parseTemplate(logTemplate, context as TemplateContext).toString();
+      return parseTemplate(logTemplate, context as TemplateContext, spanData).toString();
     }
   }
 
   // Check for event-specific template
   if (scenario.template.events?.[`log.${log.severityText?.toLowerCase()}`]) {
-    return parseTemplate(scenario.template.events[`log.${log.severityText?.toLowerCase()}`], context as TemplateContext).toString();
+    return parseTemplate(scenario.template.events[`log.${log.severityText?.toLowerCase()}`], context as TemplateContext, spanData).toString();
   }
 
   // Default log rendering
