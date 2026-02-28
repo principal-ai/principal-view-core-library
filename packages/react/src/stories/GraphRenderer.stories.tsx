@@ -2766,3 +2766,233 @@ This canvas serves as the "contract" for version registry observability:
     },
   },
 };
+
+// ============================================================================
+// Fit View to Nodes Story
+// ============================================================================
+
+/**
+ * Helper to select random nodes from an array
+ */
+function selectRandomNodes(allNodeIds: string[], count: number): string[] {
+  const shuffled = [...allNodeIds].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(count, allNodeIds.length));
+}
+
+const FitViewToNodesTemplate = () => {
+  // Get all node IDs from the version registry canvas
+  const allNodeIds = versionRegistryCanvas.nodes.map((n) => n.id);
+
+  const [selectedNodeIds, setSelectedNodeIds] = React.useState<string[]>([]);
+  const [nodeCount, setNodeCount] = React.useState(3);
+
+  const handleSelectRandom = () => {
+    const randomNodes = selectRandomNodes(allNodeIds, nodeCount);
+    setSelectedNodeIds(randomNodes);
+  };
+
+  const handleClear = () => {
+    setSelectedNodeIds([]);
+  };
+
+  // Pre-defined scenarios for quick testing
+  const handleSelectRegistrationFlow = () => {
+    setSelectedNodeIds([
+      'registration-started',
+      'registration-validated',
+      'registration-s3-stored',
+      'schematic-fetching',
+      'schematic-fetched',
+      'schematic-stored',
+      'registration-complete',
+    ]);
+  };
+
+  const handleSelectErrorNodes = () => {
+    setSelectedNodeIds([
+      'registration-error',
+      'lookup-error',
+      'list-error',
+      'lookup-not-found',
+    ]);
+  };
+
+  const handleSelectLookupFlow = () => {
+    setSelectedNodeIds([
+      'lookup-started',
+      'lookup-s3-retrieved',
+      'lookup-complete',
+    ]);
+  };
+
+  return (
+    <div>
+      <div
+        style={{
+          marginBottom: 16,
+          padding: 12,
+          backgroundColor: '#f0f9ff',
+          borderRadius: 4,
+          border: '1px solid #3b82f6',
+        }}
+      >
+        <strong style={{ color: '#1e40af' }}>Fit View to Specific Nodes</strong>
+        <div style={{ marginTop: 8, fontSize: 12, color: '#475569' }}>
+          <p style={{ margin: '4px 0' }}>
+            This demonstrates the <code>fitViewToNodeIds</code> prop that zooms/pans the viewport
+            to show only the specified nodes.
+          </p>
+          <p style={{ margin: '8px 0 4px 0' }}>
+            <strong>Currently showing:</strong>{' '}
+            {selectedNodeIds.length > 0 ? (
+              <span style={{ fontFamily: 'monospace', color: '#3b82f6' }}>
+                {selectedNodeIds.length} nodes: [{selectedNodeIds.join(', ')}]
+              </span>
+            ) : (
+              <span style={{ color: '#94a3b8' }}>All nodes (default fitView)</span>
+            )}
+          </p>
+        </div>
+
+        <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <label style={{ fontSize: 12, color: '#475569' }}>
+            Random count:
+            <select
+              value={nodeCount}
+              onChange={(e) => setNodeCount(Number(e.target.value))}
+              style={{
+                marginLeft: 4,
+                padding: '4px 8px',
+                borderRadius: 4,
+                border: '1px solid #cbd5e1',
+              }}
+            >
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            onClick={handleSelectRandom}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontSize: 12,
+              fontWeight: 'bold',
+            }}
+          >
+            Select Random Nodes
+          </button>
+          <button
+            onClick={handleClear}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: '#94a3b8',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontSize: 12,
+            }}
+          >
+            Clear (Show All)
+          </button>
+        </div>
+
+        <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11, color: '#64748b', alignSelf: 'center' }}>Quick scenarios:</span>
+          <button
+            onClick={handleSelectRegistrationFlow}
+            style={{
+              padding: '4px 10px',
+              backgroundColor: '#22c55e',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontSize: 11,
+            }}
+          >
+            Registration Flow (7 nodes)
+          </button>
+          <button
+            onClick={handleSelectLookupFlow}
+            style={{
+              padding: '4px 10px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontSize: 11,
+            }}
+          >
+            Lookup Flow (3 nodes)
+          </button>
+          <button
+            onClick={handleSelectErrorNodes}
+            style={{
+              padding: '4px 10px',
+              backgroundColor: '#ef4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontSize: 11,
+            }}
+          >
+            Error Nodes (4 nodes)
+          </button>
+        </div>
+      </div>
+      <div style={{ width: '100%', height: '600px' }}>
+        <GraphRenderer
+          canvas={versionRegistryCanvas}
+          fitViewToNodeIds={selectedNodeIds.length > 0 ? selectedNodeIds : undefined}
+          fitViewPadding={0.1}
+          activeNodeIds={selectedNodeIds.length > 0 ? selectedNodeIds : undefined}
+          showNodeDetailPanel={true}
+        />
+      </div>
+    </div>
+  );
+};
+
+export const FitViewToNodes: Story = {
+  render: () => <FitViewToNodesTemplate />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Fit View to Specific Nodes** - Demonstrates the \`fitViewToNodeIds\` prop for focusing on subsets of a graph.
+
+**Use Cases:**
+- **Scenario Playback**: When playing back a workflow scenario, fit the view to show only the nodes involved
+- **Search Results**: When searching for specific events, zoom to show matching nodes
+- **Error Investigation**: Focus on error paths without manually panning/zooming
+- **Step-by-Step Tutorials**: Highlight different parts of the graph as users progress
+
+**How It Works:**
+1. Pass an array of node IDs to \`fitViewToNodeIds\`
+2. The viewport animates to fit those specific nodes
+3. Pass \`undefined\` or empty array to return to default behavior (fit all nodes)
+
+**Props:**
+- \`fitViewToNodeIds\`: Array of node IDs to fit in view
+- \`fitViewPadding\`: Padding around the nodes (default: 0.2)
+
+**In This Demo:**
+- Select random nodes to see how the view adjusts
+- Try the pre-defined scenarios (Registration Flow, Lookup Flow, Error Nodes)
+- Clear selection to fit all nodes again
+        `,
+      },
+    },
+  },
+};

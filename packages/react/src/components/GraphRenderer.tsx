@@ -217,6 +217,19 @@ interface GraphRendererBaseProps {
    */
   resolveEventRef?: (eventRef: string) => PVEventSchema | undefined;
 
+  /**
+   * When set, fits the viewport to show these specific nodes.
+   * Useful for focusing on a subset of the graph (e.g., scenario nodes).
+   * Pass null/undefined/empty array to use default fitView behavior.
+   */
+  fitViewToNodeIds?: string[] | null;
+
+  /**
+   * Padding around nodes when fitting view to specific nodes.
+   * @default 0.2
+   */
+  fitViewPadding?: number;
+
 }
 
 /** GraphRenderer props - canvas format only */
@@ -444,6 +457,8 @@ interface GraphRendererInnerProps {
   onNodeClick?: (nodeId: string, event: React.MouseEvent) => void;
   showNodeDetailPanel?: boolean;
   resolveEventRef?: (eventRef: string) => PVEventSchema | undefined;
+  fitViewToNodeIds?: string[] | null;
+  fitViewPadding?: number;
 }
 
 /**
@@ -474,8 +489,10 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   onNodeClick: onNodeClickProp,
   showNodeDetailPanel,
   resolveEventRef,
+  fitViewToNodeIds,
+  fitViewPadding = 0.2,
 }) => {
-  const { fitView } = useReactFlow();
+  const { fitView, fitBounds, getNodes } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
   const { theme } = useTheme();
 
@@ -1725,6 +1742,11 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   // Fit view on mount and structure changes
   useEffect(() => {
+    // Skip default fitView if we have specific nodes to fit to
+    if (fitViewToNodeIds && fitViewToNodeIds.length > 0) {
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
       fitView({
         padding: 0.2,
@@ -1736,7 +1758,57 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [baseNodesKey, baseEdgesKey, fitView, fitViewDuration]);
+  }, [baseNodesKey, baseEdgesKey, fitView, fitViewDuration, fitViewToNodeIds]);
+
+  // Create a stable key from fitViewToNodeIds for dependency tracking
+  const fitViewToNodeIdsKey = useMemo(
+    () => (fitViewToNodeIds && fitViewToNodeIds.length > 0 ? fitViewToNodeIds.slice().sort().join(',') : ''),
+    [fitViewToNodeIds]
+  );
+
+  // Fit view to specific nodes when fitViewToNodeIds changes
+  useEffect(() => {
+    if (!fitViewToNodeIdsKey || !fitViewToNodeIds || fitViewToNodeIds.length === 0) {
+      return;
+    }
+
+    // Use a longer timeout to ensure nodes are rendered and measured
+    const timeoutId = setTimeout(() => {
+      // Get actual node objects from React Flow's internal state
+      const allNodes = getNodes();
+      const nodeIdsSet = new Set(fitViewToNodeIds);
+      const nodesToFit = allNodes.filter((node) => nodeIdsSet.has(node.id));
+
+      if (nodesToFit.length > 0) {
+        // Calculate bounding box from node positions
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+        for (const node of nodesToFit) {
+          const width = node.measured?.width ?? node.width ?? 200;
+          const height = node.measured?.height ?? node.height ?? 100;
+
+          minX = Math.min(minX, node.position.x);
+          minY = Math.min(minY, node.position.y);
+          maxX = Math.max(maxX, node.position.x + width);
+          maxY = Math.max(maxY, node.position.y + height);
+        }
+
+        const bounds = {
+          x: minX,
+          y: minY,
+          width: maxX - minX,
+          height: maxY - minY,
+        };
+
+        fitBounds(bounds, {
+          padding: fitViewPadding,
+          duration: fitViewDuration,
+        });
+      }
+    }, 150);
+
+    return () => clearTimeout(timeoutId);
+  }, [fitViewToNodeIdsKey, fitViewToNodeIds, fitViewPadding, fitView, fitViewDuration, getNodes]);
 
   // ============================================
   // RENDER
@@ -2215,6 +2287,8 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     onNodeClick,
     showNodeDetailPanel,
     resolveEventRef,
+    fitViewToNodeIds,
+    fitViewPadding,
   } = props;
 
   return (
@@ -2244,6 +2318,8 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           onNodeClick={onNodeClick}
           showNodeDetailPanel={showNodeDetailPanel}
           resolveEventRef={resolveEventRef}
+          fitViewToNodeIds={fitViewToNodeIds}
+          fitViewPadding={fitViewPadding}
         />
       </ReactFlowProvider>
     </div>
