@@ -78,6 +78,23 @@ Complete documentation for the Visual Validation React component library.
    - Common issues and solutions
    - Best practices for organization
 
+### 🧪 Telemetry Guides
+
+10. **[Adding OpenTelemetry to Tests](./guides/adding-opentelemetry-to-tests.md)**
+
+    - Basic test OTEL setup for bun/vitest/jest
+    - In-memory span collection
+    - Exporting traces to files
+    - Troubleshooting Bun async context issues
+
+11. **[Configuring Telemetry Routing](./guides/configuring-telemetry-routing.md)** ⭐ New
+
+    - Setting up `library.yaml` with `resources` and `owned-scopes`
+    - Adding `scope` field to `workflow.json`
+    - Test telemetry with OTLP exporter to dev workspace
+    - Storybook telemetry with `@principal-ai/storybook-otel-addon`
+    - Complete routing configuration examples
+
 ### 🎨 Visual Examples
 
 Each guide includes Mermaid diagrams showing:
@@ -120,6 +137,8 @@ For detailed TypeScript types and interfaces, see:
 | **Understand cost savings** | [Executive Summary (5 min)](./TELEMETRY_COST_OPTIMIZATION_EXECUTIVE_SUMMARY.md) ⭐ |
 | **Reduce telemetry costs** | [Full Cost Optimization Guide](./TELEMETRY_COST_OPTIMIZATION.md) ⭐ |
 | **GDPR/HIPAA compliance** | [Observability Compliance Guide](./OBSERVABILITY_COMPLIANCE_GUIDE.md) ⭐ |
+| **Add OTEL to tests** | [Adding OpenTelemetry to Tests](./guides/adding-opentelemetry-to-tests.md) |
+| **Route traces to storyboards** | [Configuring Telemetry Routing](./guides/configuring-telemetry-routing.md) ⭐ |
 | Define graph structure | [Configuration Guide - Node Types](./CONFIGURATION.md#node-types)                     |
 | Create connections     | [Configuration Guide - Connection Rules](./CONFIGURATION.md#connection-rules)         |
 | Stream events          | [Event System Guide - Event Stream Protocol](./EVENT_SYSTEM.md#event-stream-protocol) |

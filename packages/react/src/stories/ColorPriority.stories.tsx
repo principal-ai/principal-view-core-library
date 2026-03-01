@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
-import type { ExtendedCanvas, GraphEvent } from '@principal-ai/principal-view-core';
+import type { ExtendedCanvas, GraphEvent, ComponentLibrary } from '@principal-ai/principal-view-core';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 
 // Helper component that sets initial node states via events
@@ -633,6 +633,259 @@ This story shows all color priority chains at a glance:
 **Stroke Color:** Fill color → pv.stroke
 
 Higher priority always wins when multiple values are specified.
+        `,
+      },
+    },
+  },
+};
+
+// ============================================================================
+// Library Color Priority Story
+// Priority: library.nodeComponents.color → node.color → pv.fill → state.color
+// ============================================================================
+
+const libraryColorTestLibrary: ComponentLibrary = {
+  version: '1.0.0',
+  name: 'Color Test Library',
+  description: 'Library for testing color inheritance',
+  resources: {},
+  nodeComponents: {
+    'service-red': {
+      description: 'Service with red color from library',
+      shape: 'rectangle',
+      color: '#FF0000', // RED from library
+      icon: 'Server',
+    },
+    'service-green': {
+      description: 'Service with green color from library',
+      shape: 'rectangle',
+      color: '#00FF00', // GREEN from library
+      icon: 'Database',
+    },
+    'service-blue': {
+      description: 'Service with blue color from library',
+      shape: 'rectangle',
+      color: '#0000FF', // BLUE from library
+      icon: 'Settings',
+    },
+    'service-purple': {
+      description: 'Service with purple color from library',
+      shape: 'rectangle',
+      color: '#8B00FF', // PURPLE from library
+      icon: 'Zap',
+    },
+  },
+  edgeComponents: {
+    'flow-orange': {
+      description: 'Flow edge with orange color from library',
+      style: 'solid',
+      color: '#FFA500', // ORANGE from library
+      directed: true,
+    },
+    'flow-cyan': {
+      description: 'Flow edge with cyan color from library',
+      style: 'solid',
+      color: '#00FFFF', // CYAN from library
+      directed: true,
+    },
+  },
+};
+
+const libraryColorPriorityCanvas: ExtendedCanvas = {
+  nodes: [
+    // 1. Library color only (nodeType references library, no other colors)
+    {
+      id: 'library-only',
+      type: 'text',
+      x: 100,
+      y: 100,
+      width: 180,
+      height: 100,
+      text: 'SOURCE: library\nEXPECT: RED\n(from service-red)',
+      pv: {
+        nodeType: 'service-red', // Should get RED from library
+        shape: 'rectangle',
+      },
+    },
+    // 2. Library color overridden by node.color
+    {
+      id: 'library-vs-node-color',
+      type: 'text',
+      x: 320,
+      y: 100,
+      width: 180,
+      height: 100,
+      text: 'SOURCE: node.color\nEXPECT: YELLOW\n(library GREEN ignored)',
+      color: '#FFFF00', // YELLOW - should override library GREEN
+      pv: {
+        nodeType: 'service-green', // Would be GREEN, but overridden
+        shape: 'rectangle',
+      },
+    },
+    // 3. Library color overridden by pv.fill
+    {
+      id: 'library-vs-pv-fill',
+      type: 'text',
+      x: 540,
+      y: 100,
+      width: 180,
+      height: 100,
+      text: 'SOURCE: pv.fill\nEXPECT: CYAN\n(library BLUE ignored)',
+      pv: {
+        nodeType: 'service-blue', // Would be BLUE, but overridden
+        shape: 'rectangle',
+        fill: '#00FFFF', // CYAN - should override library BLUE
+      },
+    },
+    // 4. Library color overridden by state color
+    {
+      id: 'library-vs-state',
+      type: 'text',
+      x: 760,
+      y: 100,
+      width: 180,
+      height: 100,
+      text: 'SOURCE: state.color\nEXPECT: ORANGE\n(library PURPLE ignored)',
+      pv: {
+        nodeType: 'service-purple', // Would be PURPLE, but overridden by state
+        shape: 'rectangle',
+        states: {
+          active: { label: 'Active', color: '#FFA500' }, // ORANGE
+        },
+      },
+    },
+    // 5. Another library color node for comparison
+    {
+      id: 'library-green',
+      type: 'text',
+      x: 100,
+      y: 250,
+      width: 180,
+      height: 100,
+      text: 'SOURCE: library\nEXPECT: GREEN\n(from service-green)',
+      pv: {
+        nodeType: 'service-green',
+        shape: 'rectangle',
+      },
+    },
+    // 6. Library blue for comparison
+    {
+      id: 'library-blue',
+      type: 'text',
+      x: 320,
+      y: 250,
+      width: 180,
+      height: 100,
+      text: 'SOURCE: library\nEXPECT: BLUE\n(from service-blue)',
+      pv: {
+        nodeType: 'service-blue',
+        shape: 'rectangle',
+      },
+    },
+  ],
+  edges: [
+    // Edge using library color
+    {
+      id: 'edge-library-orange',
+      fromNode: 'library-green',
+      toNode: 'library-blue',
+      pv: {
+        edgeType: 'flow-orange', // Should get ORANGE from library
+      },
+    },
+    // Edge with library color overridden
+    {
+      id: 'edge-override',
+      fromNode: 'library-only',
+      toNode: 'library-vs-node-color',
+      color: '#FF00FF', // MAGENTA - overrides library
+      pv: {
+        edgeType: 'flow-cyan', // Would be CYAN, but overridden
+      },
+    },
+  ],
+  pv: {
+    version: '1.0.0',
+    name: 'Library Color Priority Demo',
+    description: 'Shows how library.yaml colors are applied and overridden',
+    edgeTypes: {},
+  },
+};
+
+// Helper component for library color test
+const GraphWithLibrary: React.FC<{
+  canvas: ExtendedCanvas;
+  library: ComponentLibrary;
+  width: number;
+  height: number;
+  showMinimap: boolean;
+  initialStates?: Record<string, string>;
+}> = ({ canvas, library, width, height, showMinimap, initialStates }) => {
+  const [events, setEvents] = useState<GraphEvent[]>([]);
+
+  useEffect(() => {
+    if (initialStates) {
+      const stateEvents: GraphEvent[] = Object.entries(initialStates).map(
+        ([nodeId, newState], idx) => ({
+          id: `init-state-${idx}`,
+          type: 'state_changed',
+          timestamp: Date.now(),
+          category: 'state' as const,
+          payload: { nodeId, newState },
+        })
+      );
+      setEvents(stateEvents);
+    }
+  }, []);
+
+  return (
+    <GraphRenderer
+      canvas={canvas}
+      library={library}
+      width={width}
+      height={height}
+      showMinimap={showMinimap}
+      events={events}
+    />
+  );
+};
+
+export const LibraryColorPriority: Story = {
+  render: () => (
+    <GraphWithLibrary
+      canvas={libraryColorPriorityCanvas}
+      library={libraryColorTestLibrary}
+      width={1050}
+      height={450}
+      showMinimap={false}
+      initialStates={{ 'library-vs-state': 'active' }}
+    />
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Library Color Priority** - Tests colors from library.yaml nodeComponents
+
+This story validates that the \`library\` prop correctly provides colors to nodes via nodeType lookup.
+
+**Full Fill Color Priority Chain** (lowest to highest):
+1. **Default** - Falls back to #888 gray
+2. **Library nodeComponent color** - Color from library.yaml nodeComponents[nodeType].color
+3. **node.color** - The standard canvas node color property
+4. **pv.fill** - Explicit fill color in the PV extension
+5. **state.color** - When a node has an active state with a color defined
+
+**In this demo:**
+- Row 1 Node 1: Uses \`service-red\` nodeType → gets RED from library
+- Row 1 Node 2: Uses \`service-green\` nodeType but has node.color=YELLOW → YELLOW wins
+- Row 1 Node 3: Uses \`service-blue\` nodeType but has pv.fill=CYAN → CYAN wins
+- Row 1 Node 4: Uses \`service-purple\` nodeType but is in "active" state → ORANGE wins
+- Row 2: Pure library colors (GREEN, BLUE) for visual comparison
+
+**Edge Colors:**
+- Bottom edge: Uses \`flow-orange\` edgeType → gets ORANGE from library
+- Top edge: Uses \`flow-cyan\` but has edge.color=MAGENTA → MAGENTA wins
         `,
       },
     },
