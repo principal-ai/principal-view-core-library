@@ -223,16 +223,16 @@ ${chalk.bold('Getting Help')}
 If you encounter issues during migration:
 
   1. Check this guide for common issues
-  2. Run ${chalk.cyan('privu doctor')} to check for configuration issues
-  3. Run ${chalk.cyan('privu validate')} to verify your structure
+  2. Run ${chalk.cyan('principal-ai doctor')} to check for configuration issues
+  3. Run ${chalk.cyan('principal-ai validate')} to verify your structure
   4. Open an issue in the repository with your current file structure
 
 ${chalk.bold('Related Commands')}
 
-  ${chalk.cyan('privu doctor')}     - Check for configuration staleness and issues
-  ${chalk.cyan('privu validate')}   - Validate your Principal View files
-  ${chalk.cyan('privu init')}       - Initialize a new .principal-views directory
-  ${chalk.cyan('privu create')}     - Create new canvas or workflow files
+  ${chalk.cyan('principal-ai doctor')}     - Check for configuration staleness and issues
+  ${chalk.cyan('principal-ai validate')}   - Validate your Principal View files
+  ${chalk.cyan('principal-ai init')}       - Initialize a new .principal-views directory
+  ${chalk.cyan('principal-ai create')}     - Create new canvas or workflow files
 
 ${chalk.dim('For the full detailed guide with more examples, visit:')}
 ${chalk.dim('https://github.com/principal-ai/principal-view-core-library/blob/main/docs/MIGRATION_GUIDE.md')}

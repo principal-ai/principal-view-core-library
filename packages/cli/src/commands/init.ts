@@ -14,61 +14,6 @@ const TEMPLATE_CANVAS: ExtendedCanvas = {
   edges: [],
 };
 
-const TEMPLATE_PRIVURC = `# Principal View Configuration Lint Rules
-# See: https://github.com/principal-ai/principal-view
-
-# File patterns to include
-include:
-  - ".principal-views/**/*.yaml"
-  - ".principal-views/**/*.yml"
-  - ".principal-views/**/*.json"
-
-# File patterns to exclude
-exclude:
-  - "**/node_modules/**"
-  - ".principal-views/library.yaml"
-
-# Path to component library (optional)
-library: ".principal-views/library.yaml"
-
-# Rule configuration
-# Severity: "off" | "warn" | "error" (or 0 | 1 | 2)
-rules:
-  # Schema rules - validate structure
-  no-unknown-fields: error
-  required-metadata: error
-  valid-node-types: error
-  valid-edge-types: error
-  valid-color-format: error
-
-  # Reference rules - check cross-references
-  connection-type-references: error
-  state-transition-references: error
-
-  # Structure rules - ensure completeness
-  minimum-node-sources:
-    severity: error
-    options:
-      minimum: 1
-      excludeNodeTypes: []
-  orphaned-node-types: error
-  orphaned-edge-types: error
-  unreachable-states: error
-  dead-end-states: error
-
-  # Pattern rules - validate regex patterns
-  valid-action-patterns:
-    severity: error
-    options:
-      strictMode: false
-
-  # Library rules - check against component library
-  library-node-type-match:
-    severity: error
-    options:
-      allowExtra: true
-`;
-
 const HUSKY_PRE_COMMIT = `# Run principal view linting on staged .principal-views files
 npx @principal-ai/principal-view-cli lint --quiet
 `;
@@ -121,14 +66,12 @@ export function createInitCommand(): Command {
     .option('-f, --force', 'Overwrite existing files')
     .option('-n, --name <name>', 'Name for the canvas file', 'architecture')
     .option('--no-husky', 'Skip Husky pre-commit hook setup')
-    .option('--no-lint-config', 'Skip .privurc.yaml creation')
     .action(async (options) => {
       try {
         const cwd = process.cwd();
         const principalViewsDir = join(cwd, '.principal-views');
         const canvasFile = join(principalViewsDir, `${options.name}.canvas`);
         const libraryFile = join(principalViewsDir, 'library.yaml');
-        const privurcFile = join(cwd, '.privurc.yaml');
 
         // Check if .principal-views directory exists
         if (!existsSync(principalViewsDir)) {
@@ -177,16 +120,6 @@ edgeComponents: {}
 `;
           writeFileSync(libraryFile, libraryYaml);
           console.log(chalk.green(`Created library file: .principal-views/library.yaml`));
-        }
-
-        // Create .privurc.yaml config file
-        if (options.lintConfig !== false) {
-          if (existsSync(privurcFile) && !options.force) {
-            console.log(chalk.yellow(`Config file already exists: .privurc.yaml`));
-          } else {
-            writeFileSync(privurcFile, TEMPLATE_PRIVURC);
-            console.log(chalk.green(`Created lint config: .privurc.yaml`));
-          }
         }
 
         // Set up Husky pre-commit hook
@@ -288,9 +221,6 @@ edgeComponents: {}
         console.log(
           `  • ${chalk.cyan(`.principal-views/${options.name}.canvas`)} - Graph canvas file`
         );
-        if (options.lintConfig !== false) {
-          console.log(`  • ${chalk.cyan('.privurc.yaml')} - Lint configuration`);
-        }
         if (huskySetup) {
           console.log(`  • ${chalk.cyan('.husky/pre-commit')} - Pre-commit hook`);
         }

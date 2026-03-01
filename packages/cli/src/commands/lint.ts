@@ -7,15 +7,13 @@
 
 import { Command } from 'commander';
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve, relative, dirname, basename } from 'node:path';
+import { resolve, relative, basename } from 'node:path';
 import chalk from 'chalk';
 import { globby } from 'globby';
 import yaml from 'js-yaml';
-// Node.js-specific imports (rules engine, config management, validators)
+// Node.js-specific imports (rules engine, validators)
 import {
   createDefaultRulesEngine,
-  validatePrivuConfig,
-  mergeConfigs,
   getDefaultConfig,
   type GraphLintResult,
   type GraphRuleViolation,
@@ -30,76 +28,6 @@ import type {
   WorkflowTemplate,
   ExtendedCanvas,
 } from '@principal-ai/principal-view-core';
-
-// ============================================================================
-// Config File Loading
-// ============================================================================
-
-/**
- * Config file names in resolution order
- */
-const CONFIG_FILE_NAMES = ['.privurc.yaml', '.privurc.yml', '.privurc.json'];
-
-/**
- * Find and load privurc config file
- */
-function findConfig(startDir: string): { config: PrivuConfig; path: string } | null {
-  let currentDir = resolve(startDir);
-
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    // Check for config files
-    for (const fileName of CONFIG_FILE_NAMES) {
-      const configPath = resolve(currentDir, fileName);
-      if (existsSync(configPath)) {
-        const config = loadConfigFile(configPath);
-        if (config) {
-          return { config, path: configPath };
-        }
-      }
-    }
-
-    // Check package.json for "privu" key
-    const packageJsonPath = resolve(currentDir, 'package.json');
-    if (existsSync(packageJsonPath)) {
-      try {
-        const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
-        if (packageJson.privu && typeof packageJson.privu === 'object') {
-          return { config: packageJson.privu as PrivuConfig, path: packageJsonPath };
-        }
-      } catch {
-        // Ignore parse errors
-      }
-    }
-
-    // Check for root flag or filesystem root
-    const parentDir = dirname(currentDir);
-    if (parentDir === currentDir) {
-      break; // Reached filesystem root
-    }
-    currentDir = parentDir;
-  }
-
-  return null;
-}
-
-/**
- * Load a config file (JSON or YAML)
- */
-function loadConfigFile(filePath: string): PrivuConfig | null {
-  try {
-    const content = readFileSync(filePath, 'utf8');
-    const ext = filePath.toLowerCase();
-
-    if (ext.endsWith('.json')) {
-      return JSON.parse(content) as PrivuConfig;
-    } else {
-      return yaml.load(content) as PrivuConfig;
-    }
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Load a component library file
@@ -344,7 +272,6 @@ export function createLintCommand(): Command {
       '[files...]',
       'Files or glob patterns to lint (defaults to .principal-views/**/*.yaml)'
     )
-    .option('-c, --config <path>', 'Path to config file')
     .option('--library <path>', 'Path to component library file')
     .option('-q, --quiet', 'Only output errors')
     .option('--json', 'Output results as JSON')
@@ -354,49 +281,8 @@ export function createLintCommand(): Command {
       try {
         const cwd = process.cwd();
 
-        // Load privurc config
-        let privuConfig: PrivuConfig = getDefaultConfig();
-
-        if (options.config) {
-          // Use specified config file
-          const loadedConfig = loadConfigFile(resolve(cwd, options.config));
-          if (!loadedConfig) {
-            console.error(chalk.red(`Error: Could not load config file: ${options.config}`));
-            process.exit(1);
-          }
-
-          // Validate config
-          const validation = validatePrivuConfig(loadedConfig);
-          if (!validation.valid) {
-            console.error(chalk.red('Configuration Error:'), options.config);
-            for (const error of validation.errors) {
-              console.error(chalk.red(`  ${error.path}: ${error.message}`));
-              if (error.suggestion) {
-                console.error(chalk.dim(`    → ${error.suggestion}`));
-              }
-            }
-            process.exit(1);
-          }
-
-          privuConfig = mergeConfigs(privuConfig, loadedConfig);
-        } else {
-          // Search for config file
-          const found = findConfig(cwd);
-          if (found) {
-            const validation = validatePrivuConfig(found.config);
-            if (!validation.valid) {
-              console.error(chalk.red('Configuration Error:'), found.path);
-              for (const error of validation.errors) {
-                console.error(chalk.red(`  ${error.path}: ${error.message}`));
-                if (error.suggestion) {
-                  console.error(chalk.dim(`    → ${error.suggestion}`));
-                }
-              }
-              process.exit(1);
-            }
-            privuConfig = mergeConfigs(privuConfig, found.config);
-          }
-        }
+        // Use default config (no config file support)
+        const privuConfig: PrivuConfig = getDefaultConfig();
 
         // Determine files to lint
         let patterns: string[];
@@ -418,14 +304,13 @@ export function createLintCommand(): Command {
           expandDirectories: false,
         });
 
-        // Filter out library files, config files, and execution artifacts
+        // Filter out library files and execution artifacts
         // INCLUDE both canvas files and workflow templates for linting
         const configFiles = matchedFiles.filter((f: string) => {
           const name = basename(f).toLowerCase();
           const isLibraryFile = name.startsWith('library.');
-          const isConfigFile = name.startsWith('.privurc');
           const isExecutionArtifact = f.includes('__executions__/');
-          return !isLibraryFile && !isConfigFile && !isExecutionArtifact;
+          return !isLibraryFile && !isExecutionArtifact;
         });
 
         if (configFiles.length === 0) {

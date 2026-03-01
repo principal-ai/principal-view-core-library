@@ -5,8 +5,7 @@
   "main": "dist/index.cjs",
   "types": "dist/index.d.ts",
   "bin": {
-    "privu": "dist/index.cjs",
-    "principal-view": "dist/index.cjs"
+    "principal-ai": "dist/index.cjs"
   },
   "type": "module",
   "scripts": {

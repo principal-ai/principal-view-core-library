@@ -196,23 +196,23 @@ function printCoverageReport(metrics: CoverageMetrics, rootDir: string, options:
       console.log(chalk.dim(`      - "implemented" if code already exists`));
       console.log(chalk.dim(`   3. For approved/implemented, add pv.otel.files`));
       console.log(chalk.dim(`   4. Example: { "pv": { "status": "implemented", "event": {...}, "otel": { "files": ["src/file.ts"] } } }`));
-      console.log(chalk.dim(`   5. Re-run: privu coverage`));
+      console.log(chalk.dim(`   5. Re-run: principal-ai coverage`));
     } else {
       console.log(chalk.dim(`   1. Fix the ${metrics.validationErrors.length} validation error(s) above`));
       console.log(chalk.dim(`   2. Add pv.otel.files to approved/implemented nodes`));
       console.log(chalk.dim(`   3. Example: { "pv": { "status": "implemented", "otel": { "files": ["src/file.ts"] } } }`));
-      console.log(chalk.dim(`   4. Re-run: privu coverage`));
+      console.log(chalk.dim(`   4. Re-run: principal-ai coverage`));
     }
   } else if (metrics.totalImplementationFiles === 0) {
     console.log(chalk.dim(`   1. Mark canvas nodes with status: "draft", "approved", or "implemented"`));
     console.log(chalk.dim(`   2. Add pv.otel.files to approved/implemented nodes`));
     console.log(chalk.dim(`   3. Example: { "pv": { "status": "implemented", "otel": { "files": ["src/app/api/route.ts"] } } }`));
-    console.log(chalk.dim(`   4. Re-run: privu coverage`));
+    console.log(chalk.dim(`   4. Re-run: principal-ai coverage`));
   } else if (uninstrumented.length > 0) {
     console.log(chalk.dim(`   1. Review the ${uninstrumented.length} uninstrumented file(s) above`));
     console.log(chalk.dim(`   2. Add the missing OpenTelemetry events to each file`));
     console.log(chalk.dim(`   3. Use span.addEvent('event.name', { ... }) to emit events`));
-    console.log(chalk.dim(`   4. Re-run: privu coverage`));
+    console.log(chalk.dim(`   4. Re-run: principal-ai coverage`));
   } else {
     console.log(chalk.green(`   ✅ All files have instrumentation!`));
   }
