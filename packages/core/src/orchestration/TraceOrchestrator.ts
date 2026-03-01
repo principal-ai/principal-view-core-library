@@ -22,7 +22,6 @@ import type {
   OrphanedSpan,
   ScopeLookupResult,
 } from '../types/registered-trace';
-import type { VersionSnapshot } from '../types/version-registry';
 import type { DiscoveredStoryboardWithContent, DiscoveredWorkflowWithContent, DiscoveredCanvasWithContent } from '../discovery/types';
 import type { ExtendedCanvas } from '../types/canvas';
 import { OtlpTraceParser } from '../parsers/OtlpTraceParser';
@@ -525,10 +524,11 @@ export class TraceOrchestrator {
   ): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
 
-    // Check for duplicate scenario matches
+    // Check for duplicate scenario matches (same workflow + scenario matched twice)
     const scenarioKeys = new Set<string>();
     for (const match of scenarioMatches) {
-      const key = `${match.storyboardId}:${match.scenarioId}:${match.scopeName}`;
+      // Include workflowId in key - different workflows can have same scenarioId (e.g., "success")
+      const key = `${match.storyboardId}:${match.workflowId}:${match.scenarioId}:${match.scopeName}`;
       if (scenarioKeys.has(key)) {
         issues.push({
           level: 'warning',

@@ -3,10 +3,19 @@
  * Runs in the preview iframe where components render
  */
 
+// Extend window for debugging utilities
+declare global {
+  interface Window {
+    __otelProvider?: WebTracerProvider;
+    __otelForceFlush?: () => Promise<void> | undefined;
+  }
+}
+
 import { WebTracerProvider } from '@opentelemetry/sdk-trace-web';
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-web';
+import { BatchSpanProcessor, type ReadableSpan, type SpanExporter } from '@opentelemetry/sdk-trace-web';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { Resource } from '@opentelemetry/resources';
+import type { ExportResult } from '@opentelemetry/core';
 import {
   ATTR_SERVICE_NAME,
   ATTR_SERVICE_VERSION,
@@ -16,6 +25,9 @@ import { trace } from '@opentelemetry/api';
 import { addons } from 'storybook/preview-api';
 import { PARAM_KEY, EVENTS } from './constants';
 import type { OtelExportConfig, OtelExportStatus } from './types';
+
+// Type alias for Storybook channel
+type Channel = ReturnType<typeof addons.getChannel>;
 
 // Global state to track initialization
 let provider: WebTracerProvider | null = null;
@@ -44,7 +56,7 @@ function getDefaultConfig(): Required<OtelExportConfig> {
  */
 function initializeProvider(
   config: Required<OtelExportConfig>,
-  channel: any
+  channel: Channel
 ): void {
   try {
     // Shutdown existing provider if configuration changed
@@ -93,11 +105,11 @@ function initializeProvider(
     });
 
     // Wrap exporter to add logging
-    const exporter = {
-      export: (spans: any, resultCallback: any) => {
+    const exporter: SpanExporter = {
+      export: (spans: ReadableSpan[], resultCallback: (result: ExportResult) => void) => {
         console.log(`[OTEL Addon] Exporting ${spans.length} span(s) to ${config.endpoint}`);
-        console.log(`[OTEL Addon] Span names:`, spans.map((s: any) => s.name));
-        baseExporter.export(spans, (result: any) => {
+        console.log(`[OTEL Addon] Span names:`, spans.map((s) => s.name));
+        baseExporter.export(spans, (result: ExportResult) => {
           if (result.code === 0) {
             console.log(`[OTEL Addon] Successfully exported ${spans.length} span(s)`);
           } else {
@@ -114,7 +126,7 @@ function initializeProvider(
     };
 
     // Create batch span processor
-    const processor = new BatchSpanProcessor(exporter as any, {
+    const processor = new BatchSpanProcessor(exporter, {
       maxQueueSize: config.maxQueueSize,
       maxExportBatchSize: config.maxExportBatchSize,
       scheduledDelayMillis: config.scheduledDelayMillis,
@@ -145,8 +157,8 @@ function initializeProvider(
 
     // Test that the provider is working by getting the global tracer
     if (typeof window !== 'undefined') {
-      (window as any).__otelProvider = provider;
-      (window as any).__otelForceFlush = () => {
+      window.__otelProvider = provider;
+      window.__otelForceFlush = () => {
         console.log('[OTEL Addon] Manual force flush triggered');
         return provider?.forceFlush().then(() => {
           console.log('[OTEL Addon] Force flush completed');
@@ -199,7 +211,7 @@ function configChanged(
  * Send status update to manager UI
  */
 function sendStatusUpdate(
-  channel: any,
+  channel: Channel,
   config: Required<OtelExportConfig>,
   ready: boolean,
   error?: string
@@ -248,7 +260,7 @@ function sendTestTrace(): void {
 /**
  * Register listener for test trace event from manager
  */
-function registerTestTraceListener(channel: any): void {
+function registerTestTraceListener(channel: Channel): void {
   if (testTraceListenerRegistered) return;
 
   channel.on(EVENTS.SEND_TEST_TRACE, () => {
@@ -261,7 +273,7 @@ function registerTestTraceListener(channel: any): void {
 /**
  * Decorator that initializes OTEL on each story render
  */
-export const withOtelExport = (storyFn: any, context: any) => {
+export const withOtelExport = (storyFn: () => unknown, context: { parameters: Record<string, unknown> }) => {
   // Get configuration from parameters
   const userConfig = context.parameters[PARAM_KEY] as OtelExportConfig | undefined;
   const config = { ...getDefaultConfig(), ...userConfig };

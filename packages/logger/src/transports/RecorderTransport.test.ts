@@ -119,7 +119,7 @@ describe('RecorderTransport', () => {
 
   describe('createBufferedRecorderTransport', () => {
     it('should buffer logs and flush on interval', async () => {
-      const receivedBatches: any[][] = [];
+      const receivedBatches: Array<Parameters<LogReceiver>[0]>[] = [];
       const transport = createBufferedRecorderTransport({
         onFlush: (logs) => receivedBatches.push(logs),
         flushIntervalMs: 50,
@@ -147,7 +147,7 @@ describe('RecorderTransport', () => {
     });
 
     it('should flush immediately when buffer is full', () => {
-      const receivedBatches: any[][] = [];
+      const receivedBatches: Array<Parameters<LogReceiver>[0]>[] = [];
       const transport = createBufferedRecorderTransport({
         onFlush: (logs) => receivedBatches.push(logs),
         flushIntervalMs: 10000, // Long interval
@@ -178,7 +178,7 @@ describe('RecorderTransport', () => {
     });
 
     it('should flush remaining logs on dispose', () => {
-      const receivedBatches: any[][] = [];
+      const receivedBatches: Array<Parameters<LogReceiver>[0]>[] = [];
       const transport = createBufferedRecorderTransport({
         onFlush: (logs) => receivedBatches.push(logs),
         flushIntervalMs: 10000,
@@ -204,7 +204,7 @@ describe('RecorderTransport', () => {
     });
 
     it('should respect filter option', () => {
-      const receivedBatches: any[][] = [];
+      const receivedBatches: Array<Parameters<LogReceiver>[0]>[] = [];
       const transport = createBufferedRecorderTransport({
         onFlush: (logs) => receivedBatches.push(logs),
         flushIntervalMs: 10000,
@@ -235,7 +235,7 @@ describe('RecorderTransport', () => {
     });
 
     it('should allow manual flush', () => {
-      const receivedBatches: any[][] = [];
+      const receivedBatches: Array<Parameters<LogReceiver>[0]>[] = [];
       const transport = createBufferedRecorderTransport({
         onFlush: (logs) => receivedBatches.push(logs),
         flushIntervalMs: 10000,

@@ -11,7 +11,6 @@
 
 import type { FileTree } from '@principal-ai/repository-abstraction';
 import type { StoryboardRegistryInterface, ScopeLookupResult } from '../types/registered-trace';
-import type { VersionSnapshot } from '../types/version-registry';
 import type { LocalRegistry } from './LocalRegistry';
 import type { RemoteRegistry } from './RemoteRegistry';
 

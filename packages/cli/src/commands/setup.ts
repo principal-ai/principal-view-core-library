@@ -133,7 +133,7 @@ ${chalk.dim('─'.repeat(70))}
 ${chalk.bold('Troubleshooting')}
 ${chalk.dim('─'.repeat(70))}
 
-${chalk.red('\"No storyboards found for scope\"')}
+${chalk.red('"No storyboards found for scope"')}
   Check:
   ${chalk.dim('1.')} ${chalk.yellow('scope')} field in workflow.json matches your TRACER_NAME
   ${chalk.dim('2.')} ${chalk.yellow('owned-scopes')} in library.yaml resource includes your library scope
