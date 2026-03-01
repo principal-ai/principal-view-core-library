@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Handle, Position, NodeResizer } from '@xyflow/react';
-import type { NodeProps } from '@xyflow/react';
+import type { NodeProps, Node } from '@xyflow/react';
 import type { NodeTypeDefinition } from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
 import { resolveIcon } from '../utils/iconResolver';
@@ -61,12 +61,11 @@ export interface CustomNodeData extends Record<string, unknown> {
 /**
  * Custom node component for xyflow that renders based on NodeTypeDefinition
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const CustomNode: React.FC<NodeProps<any>> = ({ data, selected, dragging }) => {
+export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, selected, dragging }) => {
   const { theme } = useTheme();
   const [isHovered, setIsHovered] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
-  const nodeProps = data as CustomNodeData;
+  const nodeProps = data;
   const {
     typeDefinition,
     state,

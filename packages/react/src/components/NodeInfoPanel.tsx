@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { NodeState, NodeTypeDefinition, JsonValue, PVEventSchema } from '@principal-ai/principal-view-core';
+import type { NodeState, NodeTypeDefinition, JsonValue, PVEventSchema, PVEventFieldSchema } from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
 import { resolveIcon } from '../utils/iconResolver';
 
@@ -302,7 +302,7 @@ export const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                             Event Attributes
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {Object.entries(displayEvent.attributes).map(([attrName, attrSchema]: [string, any]) => (
+                            {Object.entries(displayEvent.attributes).map(([attrName, attrSchema]: [string, PVEventFieldSchema]) => (
                               <div
                                 key={attrName}
                                 style={{

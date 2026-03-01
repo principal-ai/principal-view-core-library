@@ -28,7 +28,7 @@ type Story = StoryObj<typeof meta>;
  */
 const SideBySideComparison: React.FC<{
   title: string;
-  nodeDefinition: any;
+  nodeDefinition: Record<string, unknown>;
   canvas: ExtendedCanvas;
   description?: string;
 }> = ({ title, nodeDefinition, canvas, description }) => {

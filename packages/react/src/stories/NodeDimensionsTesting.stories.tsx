@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
-import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
+import type { ExtendedCanvas, ExtendedCanvasNode } from '@principal-ai/principal-view-core';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 
 const meta = {
@@ -61,7 +61,7 @@ const createGrid = (
   gapX = 40,
   gapY = 40
 ) => {
-  const nodes: any[] = [];
+  const nodes: ExtendedCanvasNode[] = [];
 
   rows.forEach((row, rowIdx) => {
     cols.forEach((col, colIdx) => {

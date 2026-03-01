@@ -21,8 +21,10 @@ import {
   applyEdgeChanges,
   type Edge,
   type EdgeChange,
+  type EdgeTypes,
   type NodeChange,
   type Node,
+  type NodeTypes,
   type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -246,14 +248,14 @@ export interface GraphRendererProps extends GraphRendererBaseProps {
 }
 
 // Define custom node types
-const nodeTypes = {
-  custom: CustomNode as any,
-};
+// Type assertion needed because ReactFlow's NodeTypes expects generic components
+// but CustomNode is properly typed with CustomNodeData for type safety internally
+const nodeTypes = { custom: CustomNode } as NodeTypes;
 
 // Define custom edge types
-const edgeTypes = {
-  custom: CustomEdge as any,
-};
+// Type assertion needed because ReactFlow's EdgeTypes expects generic components
+// but CustomEdge is properly typed with CustomEdgeData for type safety internally
+const edgeTypes = { custom: CustomEdge } as EdgeTypes;
 
 // Animation state for nodes and edges
 interface AnimationState {

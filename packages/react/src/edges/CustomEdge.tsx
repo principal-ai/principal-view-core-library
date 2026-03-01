@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
-import type { EdgeProps } from '@xyflow/react';
+import type { EdgeProps, Edge } from '@xyflow/react';
 import type { EdgeTypeDefinition } from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
 
@@ -22,8 +22,7 @@ export interface CustomEdgeData extends Record<string, unknown> {
 /**
  * Custom edge component for xyflow that renders based on EdgeTypeDefinition
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const CustomEdge: React.FC<EdgeProps<any>> = ({
+export const CustomEdge: React.FC<EdgeProps<Edge<CustomEdgeData>>> = ({
   id,
   sourceX,
   sourceY,
@@ -36,7 +35,7 @@ export const CustomEdge: React.FC<EdgeProps<any>> = ({
   selected,
 }) => {
   const { theme } = useTheme();
-  const edgeProps = data as CustomEdgeData | undefined;
+  const edgeProps = data;
   const {
     typeDefinition,
     hasViolations,
