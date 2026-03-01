@@ -8,7 +8,7 @@
  * - Version → commit hash resolution
  */
 
-import type { StoryboardRegistryInterface } from '../types/registered-trace';
+import type { StoryboardRegistryInterface, ScopeLookupResult } from '../types/registered-trace';
 import type { VersionSnapshot } from '../types/version-registry';
 
 /**
@@ -62,10 +62,17 @@ export class RemoteRegistry implements StoryboardRegistryInterface {
   async lookupByScope(
     scope: { name: string; version: string },
     resource: { attributes?: Record<string, unknown> }
-  ): Promise<VersionSnapshot | null> {
+  ): Promise<ScopeLookupResult> {
     // Check if this is a library (PURL format)
     if (scope.name.startsWith('pkg:')) {
-      return this.lookupLibrary(scope.name, scope.version);
+      const snapshot = await this.lookupLibrary(scope.name, scope.version);
+      if (!snapshot) {
+        return { found: false, reason: 'scope_not_owned', scopeName: scope.name };
+      }
+      if (snapshot.storyboards.length === 0) {
+        return { found: false, reason: 'no_storyboards', scopeName: scope.name };
+      }
+      return { found: true, snapshot };
     }
 
     // Otherwise it's a service - need customerId
@@ -75,10 +82,17 @@ export class RemoteRegistry implements StoryboardRegistryInterface {
         '[RemoteRegistry] Service scope requires customer.id in resource attributes:',
         { scopeName: scope.name }
       );
-      return null;
+      return { found: false, reason: 'scope_not_owned', scopeName: scope.name };
     }
 
-    return this.lookupService(customerId, scope.name, scope.version);
+    const snapshot = await this.lookupService(customerId, scope.name, scope.version);
+    if (!snapshot) {
+      return { found: false, reason: 'scope_not_owned', scopeName: scope.name };
+    }
+    if (snapshot.storyboards.length === 0) {
+      return { found: false, reason: 'no_storyboards', scopeName: scope.name };
+    }
+    return { found: true, snapshot };
   }
 
   /**

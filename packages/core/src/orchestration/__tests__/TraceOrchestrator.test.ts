@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { TraceOrchestrator } from '../TraceOrchestrator';
 import type { OtelExportTraceServiceRequest } from '../../types/otel';
-import type { StoryboardRegistryInterface } from '../../types/registered-trace';
+import type { StoryboardRegistryInterface, ScopeLookupResult } from '../../types/registered-trace';
 import type { VersionSnapshot } from '../../types/version-registry';
 import type { ExtendedCanvas } from '../../types/canvas';
 import type { WorkflowTemplate } from '../../workflow/types';
@@ -27,8 +27,15 @@ class MockRegistry implements StoryboardRegistryInterface {
   async lookupByScope(
     scope: { name: string; version: string },
     _resource: { attributes?: Record<string, unknown> }
-  ): Promise<VersionSnapshot | null> {
-    return this.snapshots.get(scope.name) || null;
+  ): Promise<ScopeLookupResult> {
+    const snapshot = this.snapshots.get(scope.name);
+    if (!snapshot) {
+      return { found: false, reason: 'scope_not_owned', scopeName: scope.name };
+    }
+    if (snapshot.storyboards.length === 0) {
+      return { found: false, reason: 'no_storyboards', scopeName: scope.name };
+    }
+    return { found: true, snapshot };
   }
 
   async listScopes(): Promise<Array<{ name: string; versions: string[] }>> {
@@ -107,7 +114,7 @@ describe('TraceOrchestrator', () => {
       expect(result.scenarioMatches).toHaveLength(0);
       expect(result.storyboardMatches).toHaveLength(0);
       expect(result.unmatchedSpans.spans).toHaveLength(1);
-      expect(result.unmatchedSpans.spans[0].reason).toBe('No storyboards found for scope');
+      expect(result.unmatchedSpans.spans[0].reason).toContain('is not registered in any owned-scopes');
     });
 
     it('should extract trace metadata correctly', async () => {
@@ -758,7 +765,7 @@ describe('TraceOrchestrator', () => {
       // Should have unmatched span
       expect(result.unmatchedSpans.spans).toHaveLength(1);
       expect(result.unmatchedSpans.spans[0].spanId).toBe('span-001');
-      expect(result.unmatchedSpans.spans[0].reason).toBe('No workflow spanPattern matched this span');
+      expect(result.unmatchedSpans.spans[0].reason).toContain('No workflow spanPattern matched span');
     });
 
     it('should mark all spans as unmatched when scope has no storyboards', async () => {
@@ -807,8 +814,8 @@ describe('TraceOrchestrator', () => {
 
       // All spans should be unmatched
       expect(result.unmatchedSpans.spans).toHaveLength(2);
-      expect(result.unmatchedSpans.spans[0].reason).toBe('No storyboards found for scope');
-      expect(result.unmatchedSpans.spans[1].reason).toBe('No storyboards found for scope');
+      expect(result.unmatchedSpans.spans[0].reason).toContain('is not registered in any owned-scopes');
+      expect(result.unmatchedSpans.spans[1].reason).toContain('is not registered in any owned-scopes');
     });
   });
 

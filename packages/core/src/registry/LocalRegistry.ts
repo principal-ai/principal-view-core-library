@@ -13,7 +13,7 @@
  */
 
 import type { FileTree, FileSystemAdapter } from '@principal-ai/repository-abstraction';
-import type { StoryboardRegistryInterface } from '../types/registered-trace';
+import type { StoryboardRegistryInterface, ScopeLookupResult } from '../types/registered-trace';
 import type { VersionSnapshot } from '../types/version-registry';
 import { CanvasDiscovery } from '../discovery/CanvasDiscovery';
 import { LibraryDiscovery } from '../discovery/LibraryDiscovery';
@@ -143,25 +143,29 @@ export class LocalRegistry implements StoryboardRegistryInterface {
   async lookupByScope(
     scope: { name: string; version: string },
     _resource: { attributes?: Record<string, unknown> }
-  ): Promise<VersionSnapshot | null> {
+  ): Promise<ScopeLookupResult> {
     // Map scope name to workspace ID
     const workspaceId = this.scopeToWorkspaceId.get(scope.name);
     if (!workspaceId) {
       console.log('[LocalRegistry] No workspace registered for scope:', scope.name);
-      return null;
+      return { found: false, reason: 'scope_not_owned', scopeName: scope.name };
     }
 
     const workspace = this.workspaces.get(workspaceId);
     if (!workspace) {
       console.error('[LocalRegistry] Workspace not found:', workspaceId);
-      return null;
+      return { found: false, reason: 'scope_not_owned', scopeName: scope.name };
     }
 
     // Check cache first (cache by scope name for granularity)
     const cacheKey = scope.name;
     if (this.cache.has(cacheKey)) {
       console.log('[LocalRegistry] Cache hit:', cacheKey);
-      return this.cache.get(cacheKey)!;
+      const cachedSnapshot = this.cache.get(cacheKey)!;
+      if (cachedSnapshot.storyboards.length === 0) {
+        return { found: false, reason: 'no_storyboards', scopeName: scope.name };
+      }
+      return { found: true, snapshot: cachedSnapshot };
     }
 
     // Build VersionSnapshot from FileTree
@@ -174,7 +178,12 @@ export class LocalRegistry implements StoryboardRegistryInterface {
     // Cache it
     this.cache.set(cacheKey, snapshot);
 
-    return snapshot;
+    // Check if storyboards were found
+    if (snapshot.storyboards.length === 0) {
+      return { found: false, reason: 'no_storyboards', scopeName: scope.name };
+    }
+
+    return { found: true, snapshot };
   }
 
   /**
@@ -370,12 +379,12 @@ export class LocalRegistry implements StoryboardRegistryInterface {
       // Use first service name to trigger snapshot build
       const firstServiceName = workspace.serviceNames[0];
       if (firstServiceName) {
-        const snapshot = await this.lookupByScope(
+        const result = await this.lookupByScope(
           { name: firstServiceName, version: 'dev' },
           {}
         );
-        if (snapshot) {
-          snapshots.push(snapshot);
+        if (result.found) {
+          snapshots.push(result.snapshot);
         }
       }
     }

@@ -10,7 +10,7 @@
  */
 
 import type { FileTree } from '@principal-ai/repository-abstraction';
-import type { StoryboardRegistryInterface } from '../types/registered-trace';
+import type { StoryboardRegistryInterface, ScopeLookupResult } from '../types/registered-trace';
 import type { VersionSnapshot } from '../types/version-registry';
 import type { LocalRegistry } from './LocalRegistry';
 import type { RemoteRegistry } from './RemoteRegistry';
@@ -27,7 +27,7 @@ export class CompositeRegistry implements StoryboardRegistryInterface {
   async lookupByScope(
     scope: { name: string; version: string },
     resource: { attributes?: Record<string, unknown> }
-  ): Promise<VersionSnapshot | null> {
+  ): Promise<ScopeLookupResult> {
     // Check if this is local development
     if (this.isLocalDevelopment(resource, scope)) {
       console.log('[CompositeRegistry] Using LocalRegistry for:', scope.name);

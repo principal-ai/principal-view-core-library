@@ -20,6 +20,7 @@ import type {
   ValidationIssue,
   MatchedSpan,
   OrphanedSpan,
+  ScopeLookupResult,
 } from '../types/registered-trace';
 import type { VersionSnapshot } from '../types/version-registry';
 import type { DiscoveredStoryboardWithContent, DiscoveredWorkflowWithContent, DiscoveredCanvasWithContent } from '../discovery/types';
@@ -57,7 +58,7 @@ interface ScopeSpan {
 interface ScopeWithStoryboards {
   scopeName: string;
   scopeVersion: string;
-  snapshot: VersionSnapshot | null;
+  lookupResult: ScopeLookupResult;
   spanIds: string[];
 }
 
@@ -134,7 +135,7 @@ export class TraceOrchestrator {
 
     for (const resource of resources) {
       for (const scopeInfo of resource.scopes) {
-        const snapshot = await this.config.registry.lookupByScope(
+        const lookupResult = await this.config.registry.lookupByScope(
           {
             name: scopeInfo.scope.name,
             version: scopeInfo.scope.version,
@@ -147,7 +148,7 @@ export class TraceOrchestrator {
         results.push({
           scopeName: scopeInfo.scope.name,
           scopeVersion: scopeInfo.scope.version,
-          snapshot,
+          lookupResult,
           spanIds: scopeInfo.spanIds,
         });
       }
@@ -164,12 +165,20 @@ export class TraceOrchestrator {
     resources: TraceResource[]
   ): ScopeSpan[] {
     const spans: ScopeSpan[] = [];
+    const seenSpanIds = new Set<string>();
 
     for (const resource of resources) {
       for (const scopeInfo of resource.scopes) {
         const scopeSpans = this.parser.getSpansForScope(otlpData, scopeInfo.scope.name);
 
         for (const span of scopeSpans) {
+          // Deduplicate spans by spanId - getSpansForScope may return same spans
+          // when called multiple times for the same scope across different resources
+          if (seenSpanIds.has(span.spanId)) {
+            continue;
+          }
+          seenSpanIds.add(span.spanId);
+
           spans.push({
             scopeName: scopeInfo.scope.name,
             scopeVersion: scopeInfo.scope.version,
@@ -215,9 +224,13 @@ export class TraceOrchestrator {
 
     // For each scope with storyboards
     for (const scopeWithStoryboards of scopeStoryboards) {
-      if (!scopeWithStoryboards.snapshot) {
-        // No storyboards found → all spans are unmatched
+      if (!scopeWithStoryboards.lookupResult.found) {
+        // Lookup failed → all spans are unmatched with specific reason
         const scopeSpans = spans.filter((s) => s.scopeName === scopeWithStoryboards.scopeName);
+        const reason = scopeWithStoryboards.lookupResult.reason === 'scope_not_owned'
+          ? `Scope "${scopeWithStoryboards.scopeName}" is not registered in any owned-scopes. Add it to library.yaml resources.owned-scopes`
+          : `Scope "${scopeWithStoryboards.scopeName}" is registered but has no storyboards defined in .principal-views/`;
+
         for (const span of scopeSpans) {
           unmatchedSpansList.push({
             spanId: span.spanId,
@@ -226,7 +239,7 @@ export class TraceOrchestrator {
             scopeName: span.scopeName,
             timestamp: span.startTime,
             duration: span.duration,
-            reason: 'No storyboards found for scope',
+            reason,
             attributes: span.attributes,
           });
           // Mark as processed so we don't add it again in the final loop
@@ -239,7 +252,7 @@ export class TraceOrchestrator {
       const scopeSpans = spans.filter((s) => s.scopeName === scopeWithStoryboards.scopeName);
 
       // Match against each storyboard's workflows
-      for (const storyboard of scopeWithStoryboards.snapshot.storyboards) {
+      for (const storyboard of scopeWithStoryboards.lookupResult.snapshot.storyboards) {
         // Validate that content is loaded
         const sbWithContent = storyboard as DiscoveredStoryboardWithContent;
         if (!this.isStoryboardWithContent(sbWithContent)) {
@@ -282,9 +295,22 @@ export class TraceOrchestrator {
     // Collect unmatched spans (spans that didn't match any workflow's spanPattern)
     for (const span of spans) {
       if (!matchedSpanIds.has(span.spanId)) {
-        const scopeHasStoryboards = scopeStoryboards.some(
-          (s) => s.scopeName === span.scopeName && s.snapshot !== null
-        );
+        const scopeData = scopeStoryboards.find((s) => s.scopeName === span.scopeName);
+        let reason: string;
+
+        if (!scopeData || !scopeData.lookupResult.found) {
+          // This shouldn't happen as we already processed these in the loop above,
+          // but handle it defensively
+          if (scopeData && !scopeData.lookupResult.found) {
+            reason = scopeData.lookupResult.reason === 'scope_not_owned'
+              ? `Scope "${span.scopeName}" is not registered in any owned-scopes`
+              : `Scope "${span.scopeName}" has no storyboards`;
+          } else {
+            reason = `Scope "${span.scopeName}" not found in trace resources`;
+          }
+        } else {
+          reason = `No workflow spanPattern matched span "${span.spanName}"`;
+        }
 
         unmatchedSpansList.push({
           spanId: span.spanId,
@@ -293,9 +319,7 @@ export class TraceOrchestrator {
           scopeName: span.scopeName,
           timestamp: span.startTime,
           duration: span.duration,
-          reason: scopeHasStoryboards
-            ? 'No workflow spanPattern matched this span'
-            : 'No storyboards found for scope',
+          reason,
           attributes: span.attributes,
         });
       }

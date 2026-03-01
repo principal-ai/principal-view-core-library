@@ -197,6 +197,7 @@ export type {
   TraceRegistryMatcher,
   Resource,
   Scope,
+  ScopeLookupResult,
 } from './types/registered-trace';
 
 // Export OTLP trace parser

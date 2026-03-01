@@ -320,6 +320,17 @@ export interface RegisteredTrace {
 }
 
 /**
+ * Result of a scope lookup operation
+ *
+ * Provides detailed information about why a lookup succeeded or failed,
+ * enabling better error messages and diagnostics.
+ */
+export type ScopeLookupResult =
+  | { found: true; snapshot: VersionSnapshot }
+  | { found: false; reason: 'scope_not_owned'; scopeName: string }
+  | { found: false; reason: 'no_storyboards'; scopeName: string };
+
+/**
  * Interface for storyboard registry
  *
  * This is the main registry interface that supports scope-based lookups.
@@ -341,12 +352,12 @@ export interface StoryboardRegistryInterface {
    *   scopeVersion: "v1.2.3"
    *   resource.attributes must contain "customer.id"
    *
-   * Returns null if not found.
+   * Returns a ScopeLookupResult indicating success or failure with reason.
    */
   lookupByScope(
     scope: { name: string; version: string },
     resource: { attributes?: Record<string, unknown> }
-  ): Promise<VersionSnapshot | null>;
+  ): Promise<ScopeLookupResult>;
 
   /**
    * List all registered scopes
