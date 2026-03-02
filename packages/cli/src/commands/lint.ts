@@ -8,6 +8,7 @@
 import { Command } from 'commander';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve, relative, basename } from 'node:path';
+import { determineFileType } from '../file-utils.js';
 import chalk from 'chalk';
 import { globby } from 'globby';
 import yaml from 'js-yaml';
@@ -115,22 +116,6 @@ function loadCanvas(filePath: string): ExtendedCanvas | null {
   }
 }
 
-/**
- * Determine file type
- */
-function getFileType(filePath: string): 'canvas' | 'workflow' | 'config' {
-  const name = basename(filePath).toLowerCase();
-
-  if (name.endsWith('.workflow.json')) {
-    return 'workflow';
-  }
-
-  if (name.endsWith('.canvas') || name.endsWith('.otel.canvas')) {
-    return 'canvas';
-  }
-
-  return 'config';
-}
 
 // ============================================================================
 // Output Formatting
@@ -355,7 +340,12 @@ export function createLintCommand(): Command {
         for (const filePath of configFiles) {
           const absolutePath = resolve(cwd, filePath);
           const relativePath = relative(cwd, absolutePath);
-          const fileType = getFileType(absolutePath);
+          const fileType = determineFileType(absolutePath);
+
+          // Skip test traces, library files, and unknown files - they're not linted
+          if (fileType === 'testTrace' || fileType === 'library' || fileType === 'unknown') {
+            continue;
+          }
 
           if (fileType === 'workflow') {
             const loaded = loadWorkflowTemplate(absolutePath);
@@ -395,7 +385,12 @@ export function createLintCommand(): Command {
         for (const filePath of configFiles) {
           const absolutePath = resolve(cwd, filePath);
           const relativePath = relative(cwd, absolutePath);
-          const fileType = getFileType(absolutePath);
+          const fileType = determineFileType(absolutePath);
+
+          // Skip test traces, library files, and unknown files - they're not linted
+          if (fileType === 'testTrace' || fileType === 'library' || fileType === 'unknown') {
+            continue;
+          }
 
           if (fileType === 'workflow') {
             // Validate workflow template

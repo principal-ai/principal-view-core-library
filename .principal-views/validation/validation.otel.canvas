@@ -14,6 +14,7 @@
         "description": "Codebase composition analysis begins",
         "shape": "roundedRect",
         "icon": "Play",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "lifecycle",
@@ -54,6 +55,7 @@
         "description": "Repository file tree constructed",
         "shape": "roundedRect",
         "icon": "FolderTree",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "operation",
@@ -91,6 +93,7 @@
         "description": "Monorepo packages identified",
         "shape": "roundedRect",
         "icon": "Package",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "operation",
@@ -133,6 +136,7 @@
         "description": "Canvas files found in packages",
         "shape": "roundedRect",
         "icon": "FileJson",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "operation",
@@ -180,6 +184,7 @@
         "description": "Execution files found in __executions__",
         "shape": "roundedRect",
         "icon": "Activity",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "operation",
@@ -217,6 +222,7 @@
         "description": "Component library definitions loaded",
         "shape": "roundedRect",
         "icon": "Library",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "operation",
@@ -264,6 +270,7 @@
         "description": "All discovery operations completed",
         "shape": "roundedRect",
         "icon": "CheckSquare",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "operation",
@@ -301,6 +308,7 @@
         "description": "Validation process begins on discovered items",
         "shape": "roundedRect",
         "icon": "PlayCircle",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "lifecycle",
@@ -323,7 +331,6 @@
         },
         "sources": [
           "packages/cli/src/commands/validate.ts",
-          "packages/cli/src/commands/validate-execution.ts",
           "packages/cli/src/commands/lint.ts"
         ]
       }
@@ -342,6 +349,7 @@
         "description": "File successfully parsed (JSON/YAML)",
         "shape": "roundedRect",
         "icon": "FileJson",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "operation",
@@ -387,6 +395,7 @@
         "description": "Determined which validation to perform",
         "shape": "roundedRect",
         "icon": "GitBranch",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "operation",
@@ -427,6 +436,7 @@
         "description": "Canvas file validation completed",
         "shape": "roundedRect",
         "icon": "CheckSquare",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "operation",
@@ -484,6 +494,7 @@
         "description": "Workflow template validation completed",
         "shape": "roundedRect",
         "icon": "FileText",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "operation",
@@ -534,6 +545,7 @@
         "description": "Execution file (OTLP) validation completed",
         "shape": "roundedRect",
         "icon": "Activity",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "operation",
@@ -565,7 +577,7 @@
           }
         },
         "sources": [
-          "packages/cli/src/commands/validate-execution.ts",
+          "packages/cli/src/commands/validate.ts",
           "packages/core/src/execution/ExecutionValidator.ts"
         ]
       }
@@ -584,6 +596,7 @@
         "description": "Library file validation completed",
         "shape": "roundedRect",
         "icon": "Library",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "operation",
@@ -626,6 +639,7 @@
         "description": "Linting rules execution completed",
         "shape": "roundedRect",
         "icon": "ListChecks",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "operation",
@@ -681,6 +695,7 @@
         "description": "All validation results combined",
         "shape": "roundedRect",
         "icon": "Layers",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "operation",
@@ -731,6 +746,7 @@
         "description": "All validations completed successfully",
         "shape": "roundedRect",
         "icon": "CheckCircle2",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "lifecycle",
@@ -764,8 +780,7 @@
         "sources": [
           "packages/cli/src/commands/validate.ts",
           "packages/cli/src/commands/lint.ts",
-          "packages/cli/src/commands/workflow/validate.ts",
-          "packages/cli/src/commands/validate-execution.ts"
+          "packages/cli/src/commands/workflow/validate.ts"
         ]
       }
     },
@@ -783,6 +798,7 @@
         "description": "Validation failed with errors",
         "shape": "roundedRect",
         "icon": "XCircle",
+        "status": "draft",
         "otel": {
           "kind": "event",
           "category": "error",

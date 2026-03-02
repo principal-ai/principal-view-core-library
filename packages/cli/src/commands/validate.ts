@@ -11,6 +11,7 @@
 import { Command } from 'commander';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, relative, dirname, basename } from 'node:path';
+import { determineFileType } from '../file-utils.js';
 import { readFile } from 'node:fs/promises';
 import chalk from 'chalk';
 import { globby } from 'globby';
@@ -613,27 +614,6 @@ function loadExecutionFile(filePath: string): ExecutionData | null {
   } catch {
     return null;
   }
-}
-
-/**
- * Determine file type based on naming convention
- */
-function determineFileType(filePath: string): 'canvas' | 'workflow' | 'testTrace' | 'library' | 'unknown' {
-  const name = basename(filePath).toLowerCase();
-
-  if (name.startsWith('library.')) {
-    return 'library';
-  }
-  if (name.endsWith('.workflow.json')) {
-    return 'workflow';
-  }
-  if (name.endsWith('.otel.json')) {
-    return 'testTrace';
-  }
-  if (name.endsWith('.canvas') || name.endsWith('.otel.canvas')) {
-    return 'canvas';
-  }
-  return 'unknown';
 }
 
 /**
