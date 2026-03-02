@@ -134,6 +134,7 @@ export class WorkflowValidator {
     // Run all validation rules
     violations.push(...this.checkSchema(context));
     violations.push(...this.checkCanvasExists(context));
+    violations.push(...this.checkCanvasCrossReference(context));
     violations.push(...this.checkDeprecatedFields(context));
     violations.push(...this.checkScenarios(context));
     violations.push(...this.checkScenarioSubsets(context));
@@ -534,6 +535,63 @@ export class WorkflowValidator {
     }
 
     return violations;
+  }
+
+  /**
+   * Check if workflow references a canvas from a different storyboard folder.
+   * Workflows should be co-located with their canvas in the same storyboard.
+   */
+  private checkCanvasCrossReference(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { workflow, workflowPath } = context;
+
+    if (!workflow.canvas) {
+      return violations;
+    }
+
+    // Extract storyboard folder from workflow path
+    // e.g., ".principal-views/task-management/task-workflow/task-complete.workflow.json"
+    // -> storyboard is "task-management"
+    const workflowStoryboard = this.extractStoryboardName(workflowPath);
+
+    // Extract storyboard folder from canvas path
+    // e.g., ".principal-views/cleanup-operations/cleanup-operations.otel.canvas"
+    // -> storyboard is "cleanup-operations"
+    const canvasStoryboard = this.extractStoryboardName(workflow.canvas);
+
+    if (workflowStoryboard && canvasStoryboard && workflowStoryboard !== canvasStoryboard) {
+      violations.push({
+        ruleId: 'workflow-canvas-cross-reference',
+        severity: 'error',
+        file: workflowPath,
+        path: 'canvas',
+        message: `Workflow in "${workflowStoryboard}" references canvas from different storyboard "${canvasStoryboard}"`,
+        impact: 'Cross-referencing canvases across storyboards makes it difficult to understand which workflows cover a canvas and fragments the storyboard organization',
+        suggestion: `Create a canvas in the "${workflowStoryboard}" storyboard with the events this workflow needs. ` +
+          `Duplicating events across canvases is acceptable - each storyboard should be self-contained. ` +
+          `Move or copy the relevant event nodes to ".principal-views/${workflowStoryboard}/${workflowStoryboard}.otel.canvas"`,
+        fixable: false,
+      });
+    }
+
+    return violations;
+  }
+
+  /**
+   * Extract storyboard name from a path within .principal-views
+   * e.g., ".principal-views/task-management/task-workflow/file.json" -> "task-management"
+   * e.g., ".principal-views/cleanup-operations/cleanup-operations.otel.canvas" -> "cleanup-operations"
+   */
+  private extractStoryboardName(filePath: string): string | null {
+    const parts = filePath.split('/');
+    const pvIndex = parts.indexOf('.principal-views');
+
+    if (pvIndex === -1 || parts.length < pvIndex + 2) {
+      return null;
+    }
+
+    // The storyboard name is the folder immediately after .principal-views
+    return parts[pvIndex + 1];
   }
 
   /**

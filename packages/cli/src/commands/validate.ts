@@ -2072,7 +2072,18 @@ export function createValidateCommand(): Command {
 
           const library = loadLibrary(resolve(repositoryPath, '.principal-views'));
 
+          // Helper to extract storyboard name from a path
+          const extractStoryboardName = (filePath: string): string | null => {
+            const parts = filePath.split('/');
+            const pvIndex = parts.indexOf('.principal-views');
+            if (pvIndex === -1 || parts.length < pvIndex + 2) {
+              return null;
+            }
+            return parts[pvIndex + 1];
+          };
+
           // PHASE 1: Group workflows by canvas and collect all events used
+          // Only include co-located workflows (same storyboard folder) for event coverage
           const workflowsByCanvas = new Map<string, Set<string>>();
           const workflowFiles: string[] = [];
           const canvasFiles: string[] = [];
@@ -2099,6 +2110,17 @@ export function createValidateCommand(): Command {
               if (workflow && workflow.canvas) {
                 const canvasPath = resolve(repositoryPath, workflow.canvas);
                 const canvasKey = relative(repositoryPath, canvasPath);
+
+                // Only include events from workflows that are co-located with the canvas
+                // (same storyboard folder). Cross-referenced workflows are validated separately.
+                const workflowRelativePath = relative(repositoryPath, absolutePath);
+                const workflowStoryboard = extractStoryboardName(workflowRelativePath);
+                const canvasStoryboard = extractStoryboardName(workflow.canvas);
+
+                if (workflowStoryboard !== canvasStoryboard) {
+                  // Skip cross-referenced workflows for event coverage calculation
+                  continue;
+                }
 
                 // Collect events from this workflow
                 if (!workflowsByCanvas.has(canvasKey)) {
@@ -2424,7 +2446,18 @@ export function createValidateCommand(): Command {
           }
         }
 
+        // Helper to extract storyboard name from a path
+        const extractStoryboardName = (filePath: string): string | null => {
+          const parts = filePath.split('/');
+          const pvIndex = parts.indexOf('.principal-views');
+          if (pvIndex === -1 || parts.length < pvIndex + 2) {
+            return null;
+          }
+          return parts[pvIndex + 1];
+        };
+
         // PHASE 1: Group workflows by canvas and collect all events used
+        // Only include co-located workflows (same storyboard folder) for event coverage
         const workflowsByCanvas = new Map<string, Set<string>>();
 
         for (const discoveredWorkflow of workflows) {
@@ -2435,6 +2468,16 @@ export function createValidateCommand(): Command {
           // Canvas paths are always relative to repository root
           const canvasPath = resolve(repositoryPath, workflow.canvas);
           const canvasKey = relative(repositoryPath, canvasPath);
+
+          // Only include events from workflows that are co-located with the canvas
+          // (same storyboard folder). Cross-referenced workflows are validated separately.
+          const workflowStoryboard = extractStoryboardName(discoveredWorkflow.path);
+          const canvasStoryboard = extractStoryboardName(workflow.canvas);
+
+          if (workflowStoryboard !== canvasStoryboard) {
+            // Skip cross-referenced workflows for event coverage calculation
+            continue;
+          }
 
           // Collect events from this workflow
           if (!workflowsByCanvas.has(canvasKey)) {
@@ -2484,7 +2527,52 @@ export function createValidateCommand(): Command {
           library?.path
         );
 
-        // PHASE 2.5: Cross-workflow validation (duplicate spanPatterns)
+        // PHASE 2.5a: Check that .otel.canvas files have co-located workflows
+        // Build a set of canvas paths that have co-located workflows
+        const canvasesWithColocatedWorkflows = new Set<string>();
+        for (const discoveredWorkflow of workflows) {
+          const absolutePath = resolve(repositoryPath, discoveredWorkflow.path);
+          const workflow = loadWorkflowTemplate(absolutePath);
+          if (!workflow || !workflow.canvas) continue;
+
+          const workflowStoryboard = extractStoryboardName(discoveredWorkflow.path);
+          const canvasStoryboard = extractStoryboardName(workflow.canvas);
+
+          // Only count as co-located if in same storyboard
+          if (workflowStoryboard === canvasStoryboard) {
+            canvasesWithColocatedWorkflows.add(workflow.canvas);
+          }
+        }
+
+        // Check each .otel.canvas storyboard for missing workflows
+        for (const storyboard of discoveryResult.storyboards) {
+          if (storyboard.canvas.type !== 'otel') continue;
+
+          if (!canvasesWithColocatedWorkflows.has(storyboard.canvas.path)) {
+            // Find or create result for this canvas
+            let result = results.find(r => r.file === storyboard.canvas.path);
+            if (!result) {
+              result = {
+                file: storyboard.canvas.path,
+                fileType: 'canvas',
+                isValid: false,
+                issues: [],
+              };
+              results.push(result);
+            }
+
+            result.isValid = false;
+            result.issues.push({
+              type: 'error',
+              message: `No workflows found for this .otel.canvas in the "${storyboard.basename}" storyboard`,
+              path: storyboard.canvas.path,
+              suggestion: `Create at least one workflow file in ".principal-views/${storyboard.basename}/${storyboard.basename}-workflow/" that references this canvas. ` +
+                `Workflows define how events in the canvas are visualized during trace playback.`,
+            });
+          }
+        }
+
+        // PHASE 2.5b: Cross-workflow validation (duplicate spanPatterns)
         if (validateWorkflows && workflows.length > 0) {
           // Collect all workflows with their templates
           const workflowsForSpanPatternValidation: Array<{
