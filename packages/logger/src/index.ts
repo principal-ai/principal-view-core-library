@@ -1,39 +1,35 @@
 /**
- * @principal-ai/visual-validation-logger
+ * @principal-ai/principal-view-logger
  *
- * Enhanced logger with automatic source path capture for visual validation framework
+ * Logger with OpenTelemetry integration for easy telemetry export
  */
 
+// Core logger
 export { EnhancedLogger } from './EnhancedLogger';
-export { SourceCapture } from './SourceCapture';
-export {
-  enhanceLogger,
-  wrapConsoleLogger,
-  createLogger,
-  createVVFTransport,
-  getEnhancedLogger,
-} from './wrappers';
+export { createLogger } from './wrappers';
+export type { CreateLoggerOptions } from './wrappers';
 
+// Types
 export type {
   LogLevel,
-  SourceLocation,
   LogMetadata,
   LogEntry,
   EnhancedLoggerOptions,
   LoggerEvent,
   LogTransport,
+  MetadataValue,
 } from './types';
 
-// Transports
+// OTel transport
+export { createOTelTransport } from './transports';
+export type { OTelTransportOptions } from './transports';
+
+// Telemetry (OpenTelemetry integration)
 export {
-  createRecorderTransport,
-  createBufferedRecorderTransport,
-  WebSocketTransport,
-  createWebSocketTransport,
-} from './transports';
-export type {
-  LogReceiver,
-  RecorderTransportOptions,
-  ConnectionState,
-  WebSocketTransportOptions,
-} from './transports';
+  setupTelemetry,
+  getTelemetryContext,
+  getTracer,
+  shutdownTelemetry,
+  isTelemetryEnabled,
+} from './telemetry';
+export type { TelemetryConfig, TelemetryContext } from './telemetry';

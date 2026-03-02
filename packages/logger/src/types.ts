@@ -1,26 +1,20 @@
 /**
- * Log levels supported by the enhanced logger
+ * Log levels supported by the logger
  */
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 /**
  * Acceptable metadata value types
  */
-export type MetadataValue = string | number | boolean | null | undefined | Error | Record<string, unknown>;
-
-/**
- * Source location information extracted from stack trace
- */
-export interface SourceLocation {
-  /** Relative file path from project root (e.g., "lib/lock-manager.ts") */
-  file: string;
-  /** Line number where log was called */
-  line?: number;
-  /** Column number where log was called */
-  column?: number;
-  /** Function name if available */
-  functionName?: string;
-}
+export type MetadataValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | Error
+  | MetadataValue[]
+  | Record<string, unknown>;
 
 /**
  * Metadata attached to every log entry
@@ -30,16 +24,7 @@ export interface LogMetadata {
   timestamp: number;
   /** Log severity level */
   level: LogLevel;
-  /** Source location where log was called */
-  source?: SourceLocation;
-  /**
-   * Instance identifier for multi-instance components.
-   * Used to differentiate between multiple nodes of the same type
-   * (e.g., "client-1", "client-2" for components of type "client").
-   * If not provided, events will target the node type rather than a specific instance.
-   */
-  instanceId?: string;
-  /** Additional custom metadata */
+  /** Additional attributes */
   [key: string]: MetadataValue;
 }
 
@@ -49,7 +34,7 @@ export interface LogMetadata {
 export interface LogEntry {
   /** Log message */
   message: string;
-  /** Log metadata including source and timestamp */
+  /** Log metadata including timestamp */
   metadata: LogMetadata;
   /** Additional arguments passed to logger */
   args?: MetadataValue[];
@@ -59,14 +44,10 @@ export interface LogEntry {
  * Configuration options for EnhancedLogger
  */
 export interface EnhancedLoggerOptions {
-  /** Project root directory for normalizing paths */
-  projectRoot?: string;
-  /** Whether to capture source locations (default: true) */
-  captureSource?: boolean;
-  /** Custom log level (default: 'info') */
+  /** Minimum log level (default: 'info') */
   level?: LogLevel;
-  /** Whether to enable sampling (1/N logs) */
-  samplingRate?: number;
+  /** Service name for telemetry */
+  serviceName?: string;
 }
 
 /**
