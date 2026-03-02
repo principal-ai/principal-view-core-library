@@ -913,6 +913,9 @@ function validateCanvas(
   const allDefinedEdgeTypes = [...new Set([...canvasEdgeTypes, ...libraryEdgeTypes])];
 
   // Check nodes
+  // Track if any nodes have status: 'implemented' for library resources validation
+  let hasImplementedNodes = false;
+
   if (!Array.isArray(c.nodes)) {
     issues.push({ type: 'error', message: 'Canvas must have a "nodes" array' });
   } else if (c.nodes.length === 0) {
@@ -1266,6 +1269,11 @@ The display name will be shown large on the node, and the event name will appear
               const otelFiles = (nodePv.otel as Record<string, unknown> | undefined)?.files;
               const hasFiles = Array.isArray(otelFiles) && otelFiles.length > 0;
 
+              // Track if any nodes are implemented for resources/owned-scopes validation
+              if (status === 'implemented') {
+                hasImplementedNodes = true;
+              }
+
               if ((status === 'approved' || status === 'implemented') && !hasFiles) {
                 issues.push({
                   type: 'error',
@@ -1407,6 +1415,34 @@ The display name will be shown large on the node, and the event name will appear
         }
       }
     });
+  }
+
+  // For .otel.canvas files with implemented nodes: validate library has resources with owned-scopes
+  if (filePath.endsWith('.otel.canvas') && hasImplementedNodes) {
+    const resources = library?.raw?.resources as Record<string, Record<string, unknown>> | undefined;
+
+    if (!resources || Object.keys(resources).length === 0) {
+      issues.push({
+        type: 'error',
+        message: 'Canvas has implemented nodes but library.yaml is missing "resources" section',
+        path: 'library.yaml:resources',
+        suggestion: 'Add a resources section to library.yaml defining your services and their owned-scopes:\n  resources:\n    my-service:\n      service.name: "my-service"\n      owned-scopes:\n        - "my-instrumentation-scope"',
+      });
+    } else {
+      // Check that at least one resource has owned-scopes
+      const hasOwnedScopes = Object.values(resources).some(
+        (resource) => Array.isArray(resource['owned-scopes']) && resource['owned-scopes'].length > 0
+      );
+
+      if (!hasOwnedScopes) {
+        issues.push({
+          type: 'error',
+          message: 'Canvas has implemented nodes but no resources in library.yaml have "owned-scopes" defined',
+          path: 'library.yaml:resources',
+          suggestion: 'Add owned-scopes to at least one resource to specify which instrumentation scopes belong to your services:\n  resources:\n    my-service:\n      service.name: "my-service"\n      owned-scopes:\n        - "my-instrumentation-scope"',
+        });
+      }
+    }
   }
 
   // Check edges (required)

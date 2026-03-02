@@ -150,6 +150,7 @@ export class WorkflowValidator {
     }
 
     violations.push(...this.checkTemplateSyntax(context));
+    violations.push(...this.checkConflictingAttributePaths(context));
     violations.push(...this.checkFormattingOptions(context));
 
     // Check execution data completeness if execution files are provided
@@ -1219,6 +1220,118 @@ export class WorkflowValidator {
         fixable: false,
       });
     }
+
+    // Check for emojis - templates should be plain text without emoji characters
+    const emojiPattern = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2300}-\u{23FF}]|[\u{2B50}-\u{2B55}]|[\u{200D}]|[\u{FE0F}]/gu;
+    const emojiMatches = templateStr.match(emojiPattern);
+
+    if (emojiMatches && emojiMatches.length > 0) {
+      const uniqueEmojis = [...new Set(emojiMatches)].slice(0, 5);
+      violations.push({
+        ruleId: 'workflow-template-emoji',
+        severity: 'error',
+        file,
+        path,
+        message: `Template contains emoji characters: ${uniqueEmojis.join(' ')}`,
+        impact: 'Emojis in templates can cause rendering issues and inconsistent display across platforms',
+        suggestion: 'Remove emoji characters and use plain text descriptions instead',
+        fixable: true,
+      });
+    }
+
+    return violations;
+  }
+
+  /**
+   * Check for conflicting attribute paths in templates
+   *
+   * Detects when one attribute path is a prefix of another, which causes
+   * rendering issues. For example:
+   * - `git.branch` (expects string value)
+   * - `git.branch.source` (expects git.branch to be an object)
+   *
+   * When both are used, the nested object conversion will clobber the string
+   * value, resulting in `[object Object]` being rendered.
+   */
+  private checkConflictingAttributePaths(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { workflow, workflowPath } = context;
+
+    // Check each scenario's template
+    workflow.scenarios.forEach((scenario, scenarioIdx) => {
+      if (!scenario.template) return;
+
+      // Collect all attribute paths from this scenario's templates
+      const allPaths = new Set<string>();
+
+      // From introduction
+      if (scenario.template.introduction) {
+        this.extractAttributeReferences(scenario.template.introduction).forEach(p => allPaths.add(p));
+      }
+
+      // From summary
+      if (scenario.template.summary) {
+        this.extractAttributeReferences(scenario.template.summary).forEach(p => allPaths.add(p));
+      }
+
+      // From event templates
+      if (scenario.template.events) {
+        Object.values(scenario.template.events).forEach(templateStr => {
+          this.extractAttributeReferences(templateStr).forEach(p => allPaths.add(p));
+        });
+      }
+
+      // From flow templates
+      if (scenario.template.flow && Array.isArray(scenario.template.flow)) {
+        scenario.template.flow.forEach((item) => {
+          if (typeof item === 'string') {
+            this.extractAttributeReferences(item).forEach(p => allPaths.add(p));
+          } else if (typeof item === 'object' && item.template) {
+            this.extractAttributeReferences(item.template).forEach(p => allPaths.add(p));
+          }
+        });
+      }
+
+      // Check for conflicts: path A is a prefix of path B
+      const pathArray = Array.from(allPaths);
+      const conflicts = new Map<string, string[]>(); // parent -> children that conflict
+
+      for (let i = 0; i < pathArray.length; i++) {
+        for (let j = 0; j < pathArray.length; j++) {
+          if (i === j) continue;
+
+          const pathA = pathArray[i];
+          const pathB = pathArray[j];
+
+          // Check if pathA is a prefix of pathB (pathA.something)
+          if (pathB.startsWith(pathA + '.')) {
+            if (!conflicts.has(pathA)) {
+              conflicts.set(pathA, []);
+            }
+            if (!conflicts.get(pathA)!.includes(pathB)) {
+              conflicts.get(pathA)!.push(pathB);
+            }
+          }
+        }
+      }
+
+      // Report violations
+      for (const [parent, children] of conflicts.entries()) {
+        violations.push({
+          ruleId: 'workflow-attribute-path-conflict',
+          severity: 'error',
+          file: workflowPath,
+          path: `scenarios[${scenarioIdx}].template`,
+          message: `Conflicting attribute paths: "{{${parent}}}" conflicts with ${children.map(c => `"{{${c}}}"`).join(', ')}`,
+          impact: `"{{${parent}}}" will render as "[object Object]" because nested paths require it to be an object, not a primitive value`,
+          suggestion: `Options:\n` +
+            `  1. Remove "{{${parent}}}" and only use the nested paths\n` +
+            `  2. Rename attributes to avoid conflicts (e.g., "${parent}" → "${parent}_value" or "${parent}.value")\n` +
+            `  3. Use different attribute names that don't share a common prefix`,
+          fixable: false,
+        });
+      }
+    });
 
     return violations;
   }

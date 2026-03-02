@@ -837,6 +837,167 @@ describe('WorkflowValidator', () => {
   });
 
   // ============================================================================
+  // Emoji Validation Tests
+  // ============================================================================
+
+  describe('checkTemplateEmojis', () => {
+    it('should flag emojis in event templates', async () => {
+      const context = createContext({
+        scenarios: [
+          {
+            id: 'test',
+            priority: 1,
+            description: 'Test',
+            template: {
+              events: {
+                'test.started': '🚀 Starting test',
+              },
+            },
+          },
+        ],
+      });
+      const result = await validator.validate(context);
+
+      expect(result.errorCount).toBeGreaterThan(0);
+      expect(result.violations).toContainEqual(
+        expect.objectContaining({
+          ruleId: 'workflow-template-emoji',
+          message: expect.stringContaining('emoji'),
+          suggestion: expect.stringContaining('Remove emoji'),
+        })
+      );
+    });
+
+    it('should flag emojis in introduction', async () => {
+      const context = createContext({
+        scenarios: [
+          {
+            id: 'test',
+            priority: 1,
+            description: 'Test',
+            template: {
+              introduction: '✅ Test Started',
+              events: {
+                'test.started': 'Started',
+              },
+            },
+          },
+        ],
+      });
+      const result = await validator.validate(context);
+
+      expect(result.violations).toContainEqual(
+        expect.objectContaining({
+          ruleId: 'workflow-template-emoji',
+        })
+      );
+    });
+
+    it('should flag emojis in summary', async () => {
+      const context = createContext({
+        scenarios: [
+          {
+            id: 'test',
+            priority: 1,
+            description: 'Test',
+            template: {
+              events: {
+                'test.started': 'Started',
+              },
+              summary: '❌ Failed',
+            },
+          },
+        ],
+      });
+      const result = await validator.validate(context);
+
+      expect(result.violations).toContainEqual(
+        expect.objectContaining({
+          ruleId: 'workflow-template-emoji',
+        })
+      );
+    });
+
+    it('should flag multiple different emojis', async () => {
+      const context = createContext({
+        scenarios: [
+          {
+            id: 'test',
+            priority: 1,
+            description: 'Test',
+            template: {
+              introduction: '🔄 Loading...',
+              events: {
+                'test.started': '▶️ Started',
+                'test.complete': '✅ Done',
+              },
+              summary: '🎉 Success!',
+            },
+          },
+        ],
+      });
+      const result = await validator.validate(context);
+
+      const emojiViolations = result.violations.filter(
+        (v) => v.ruleId === 'workflow-template-emoji'
+      );
+      expect(emojiViolations.length).toBeGreaterThan(0);
+    });
+
+    it('should allow templates without emojis', async () => {
+      const context = createContext({
+        scenarios: [
+          {
+            id: 'test',
+            priority: 1,
+            description: 'Test',
+            template: {
+              introduction: '[START] Test Beginning',
+              events: {
+                'test.started': 'Started: {{name}}',
+                'test.complete': 'Completed in {{duration}}ms',
+              },
+              summary: '[DONE] Test finished successfully',
+            },
+          },
+        ],
+      });
+      const result = await validator.validate(context);
+
+      const emojiViolations = result.violations.filter(
+        (v) => v.ruleId === 'workflow-template-emoji'
+      );
+      expect(emojiViolations).toHaveLength(0);
+    });
+
+    it('should allow special characters that are not emojis', async () => {
+      const context = createContext({
+        scenarios: [
+          {
+            id: 'test',
+            priority: 1,
+            description: 'Test',
+            template: {
+              introduction: '>>> Test Output <<<',
+              events: {
+                'test.started': '* Started @ {{timestamp}}',
+                'test.complete': '# Complete - Duration: {{duration}}ms',
+              },
+              summary: '=== Summary ===',
+            },
+          },
+        ],
+      });
+      const result = await validator.validate(context);
+
+      const emojiViolations = result.violations.filter(
+        (v) => v.ruleId === 'workflow-template-emoji'
+      );
+      expect(emojiViolations).toHaveLength(0);
+    });
+  });
+
+  // ============================================================================
   // Formatting Options Tests
   // ============================================================================
 
@@ -952,12 +1113,12 @@ describe('WorkflowValidator', () => {
             priority: 1,
             description: 'Error scenario',
             template: {
-              introduction: '❌ Error Occurred\n{"━".repeat(50)}',
+              introduction: '[ERROR] Error Occurred',
               events: {
                 'test.started': 'Started: {test.name}',
                 'test.error': 'Error: {error.message}',
               },
-              summary: '❌ Failed',
+              summary: '[FAILED]',
             },
           },
           {
@@ -965,17 +1126,17 @@ describe('WorkflowValidator', () => {
             priority: 2,
             description: 'Success scenario',
             template: {
-              introduction: '✅ Test Passed',
+              introduction: '[SUCCESS] Test Passed',
               events: {
                 'test.started': 'Started: {test.name}',
                 'test.complete': 'Completed in {duration}ms',
               },
               flow: [
                 'Test execution summary:',
-                '  • Status: {test.status}',
-                '  • Duration: {duration}ms',
+                '  - Status: {test.status}',
+                '  - Duration: {duration}ms',
               ],
-              summary: '✅ Success',
+              summary: '[SUCCESS]',
             },
           },
         ],
