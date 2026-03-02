@@ -105,6 +105,9 @@ export interface ScenarioMatch {
   /** Scope name that this match came from */
   scopeName: string;
 
+  /** Scope version that this match came from */
+  scopeVersion?: string;
+
   /** Spans that matched this scenario */
   matchedSpans: MatchedSpan[];
 
@@ -170,6 +173,9 @@ export interface StoryboardMatch {
   /** Scope name that this match came from */
   scopeName: string;
 
+  /** Scope version that this match came from */
+  scopeVersion?: string;
+
   /** Spans that matched workflow but no scenario */
   orphanedSpans: OrphanedSpan[];
 }
@@ -189,6 +195,9 @@ export interface UnmatchedSpan {
 
   /** Scope name this span came from */
   scopeName: string;
+
+  /** Scope version this span came from */
+  scopeVersion?: string;
 
   /** Start timestamp (milliseconds) */
   timestamp: number;

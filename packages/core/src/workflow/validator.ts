@@ -218,6 +218,43 @@ export class WorkflowValidator {
     const violations: WorkflowViolation[] = [];
     const { workflow, workflowPath } = context;
 
+    // Valid fields at the workflow root level
+    const validWorkflowFields = [
+      'version',
+      'canvas',
+      'name',
+      'description',
+      'spanPattern',
+      'scope',
+      'files',
+      'status',
+      'mode',
+      'scenarioSelection',
+      'showLogsPerSpan',
+      'interleaveSignals',
+      'scenarios',
+      'formatting',
+    ];
+
+    // Check for unknown fields at workflow level
+    const workflowRecord = workflow as unknown as Record<string, unknown>;
+    const workflowKeys = Object.keys(workflowRecord);
+
+    for (const key of workflowKeys) {
+      if (!validWorkflowFields.includes(key)) {
+        violations.push({
+          ruleId: 'workflow-unknown-field',
+          severity: 'error',
+          file: workflowPath,
+          path: key,
+          message: `Unknown workflow field "${key}"`,
+          impact: 'This field will be ignored and may indicate a misunderstanding of the schema',
+          suggestion: `Valid workflow fields are: ${validWorkflowFields.join(', ')}. Remove the "${key}" field or check for typos.`,
+          fixable: false,
+        });
+      }
+    }
+
     // Check version
     if (!workflow.version) {
       violations.push({
@@ -689,7 +726,33 @@ export class WorkflowValidator {
     const scenarioIds = new Set<string>();
     const priorities = new Set<number>();
 
+    // Valid fields for scenario objects
+    const validScenarioFields = ['id', 'priority', 'description', 'template'];
+
     workflow.scenarios.forEach((scenario, idx) => {
+      // Check for unknown fields at scenario level
+      const scenarioRecord = scenario as unknown as Record<string, unknown>;
+      const scenarioKeys = Object.keys(scenarioRecord);
+
+      for (const key of scenarioKeys) {
+        if (!validScenarioFields.includes(key)) {
+          violations.push({
+            ruleId: 'workflow-scenario-unknown-field',
+            severity: 'error',
+            file: workflowPath,
+            path: `scenarios[${idx}].${key}`,
+            message: `Unknown scenario field "${key}"`,
+            impact: 'This field will be ignored and may indicate a misunderstanding of the schema',
+            suggestion: `Valid scenario fields are: ${validScenarioFields.join(', ')}. ` +
+              (key === 'match' || key === 'excludeEvents'
+                ? 'Scenario matching is based solely on template.events keys - there is no separate match configuration.'
+                : key === 'condition' || key === 'requires'
+                  ? 'Required events are automatically derived from template.events keys.'
+                  : `Remove the "${key}" field or check for typos.`),
+            fixable: false,
+          });
+        }
+      }
       // Check for required fields
       if (!scenario.id) {
         violations.push({

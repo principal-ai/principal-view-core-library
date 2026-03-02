@@ -238,6 +238,24 @@ export { InMemoryVersionRegistry, createInMemoryVersionRegistry } from './regist
 // Export trace aggregation utilities
 export { groupSpansByTrace } from './utils/traceAggregation';
 
+// Export RegisteredTrace helper utilities
+export {
+  getScopeFromScenarioMatch,
+  getScopeFromStoryboardMatch,
+  getScopeFromUnmatchedSpan,
+  getPrimaryScope,
+  getAllScopes,
+  getMatchedScopes,
+  getPartialMatchedScopes,
+  getUnmatchedScopes,
+  findScopeByName,
+  getSpanCountForScope,
+  getScopeWithMostSpans,
+  scopeHasMatches,
+  getScopeMatchSummary,
+} from './utils/registeredTraceHelpers';
+export type { ScopeInfo } from './utils/registeredTraceHelpers';
+
 // Export span matcher
 export { SpanMatcher } from './matchers/SpanMatcher';
 export type { SpanMatchResult } from './matchers/SpanMatcher';
