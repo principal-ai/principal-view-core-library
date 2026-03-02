@@ -1255,9 +1255,64 @@ export class WorkflowValidator {
    */
   private checkConflictingAttributePaths(context: WorkflowValidationContext): WorkflowViolation[] {
     const violations: WorkflowViolation[] = [];
-    const { workflow, workflowPath } = context;
+    const { workflow, workflowPath, canvas, canvasPath } = context;
 
-    // Check each scenario's template
+    // Helper function to find conflicts in a set of paths
+    const findConflicts = (paths: Set<string>): Map<string, string[]> => {
+      const pathArray = Array.from(paths);
+      const conflicts = new Map<string, string[]>();
+
+      for (let i = 0; i < pathArray.length; i++) {
+        for (let j = 0; j < pathArray.length; j++) {
+          if (i === j) continue;
+
+          const pathA = pathArray[i];
+          const pathB = pathArray[j];
+
+          // Check if pathA is a prefix of pathB (pathA.something)
+          if (pathB.startsWith(pathA + '.')) {
+            if (!conflicts.has(pathA)) {
+              conflicts.set(pathA, []);
+            }
+            if (!conflicts.get(pathA)!.includes(pathB)) {
+              conflicts.get(pathA)!.push(pathB);
+            }
+          }
+        }
+      }
+
+      return conflicts;
+    };
+
+    // 1. Check canvas event schema attributes for conflicts
+    if (canvas?.nodes) {
+      for (const node of canvas.nodes) {
+        // Only check nodes that have event schemas (not text nodes)
+        if (!('event' in node) || !node.event) continue;
+        const eventSchema = node.event as { name?: string; attributes?: Record<string, unknown> };
+        if (eventSchema.attributes && typeof eventSchema.attributes === 'object') {
+          const attributeNames = new Set<string>(Object.keys(eventSchema.attributes));
+          const conflicts = findConflicts(attributeNames);
+
+          for (const [parent, children] of conflicts.entries()) {
+            violations.push({
+              ruleId: 'canvas-event-attribute-conflict',
+              severity: 'error',
+              file: canvasPath || workflowPath,
+              path: `nodes[${node.id}].event.attributes`,
+              message: `Conflicting attribute paths in event "${eventSchema.name || 'unknown'}": "${parent}" conflicts with ${children.map(c => `"${c}"`).join(', ')}`,
+              impact: `When rendered in workflow templates, "${parent}" will become "[object Object]" because nested paths require it to be an object`,
+              suggestion: `Rename attributes to avoid conflicts:\n` +
+                `  - "${parent}" → "${parent}Value" or "${parent.replace(/\./g, '_')}"\n` +
+                `  - Or use a different naming scheme that doesn't nest (e.g., "${parent.split('.').slice(0, -1).join('.')}_${parent.split('.').pop()}")`,
+              fixable: false,
+            });
+          }
+        }
+      }
+    }
+
+    // 2. Check each scenario's template variables for conflicts
     workflow.scenarios.forEach((scenario, scenarioIdx) => {
       if (!scenario.template) return;
 
@@ -1292,28 +1347,8 @@ export class WorkflowValidator {
         });
       }
 
-      // Check for conflicts: path A is a prefix of path B
-      const pathArray = Array.from(allPaths);
-      const conflicts = new Map<string, string[]>(); // parent -> children that conflict
-
-      for (let i = 0; i < pathArray.length; i++) {
-        for (let j = 0; j < pathArray.length; j++) {
-          if (i === j) continue;
-
-          const pathA = pathArray[i];
-          const pathB = pathArray[j];
-
-          // Check if pathA is a prefix of pathB (pathA.something)
-          if (pathB.startsWith(pathA + '.')) {
-            if (!conflicts.has(pathA)) {
-              conflicts.set(pathA, []);
-            }
-            if (!conflicts.get(pathA)!.includes(pathB)) {
-              conflicts.get(pathA)!.push(pathB);
-            }
-          }
-        }
-      }
+      // Check for conflicts
+      const conflicts = findConflicts(allPaths);
 
       // Report violations
       for (const [parent, children] of conflicts.entries()) {
