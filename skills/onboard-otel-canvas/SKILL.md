@@ -1,28 +1,27 @@
 ---
 name: onboard-otel-canvas
-description: Guide users through onboarding existing functionality: create one canvas, add scenarios, and add test execution
+description: Guide users through onboarding existing functionality: create a canvas and workflow scenarios
 ---
 
 # Onboard OTEL Canvas Skill
 
-Guide users through onboarding existing functionality into the Principal View OTEL workflow: create one canvas, add scenarios, and add test execution.
+Guide users through documenting existing functionality with Principal View OTEL: create a canvas defining event schemas and workflow scenarios for human-readable rendering.
 
 ## Purpose
 
-This skill provides a **focused onboarding experience** for users who want to start using Principal View OTEL canvases with their existing code. It's designed for the first-time user who needs a complete, working example.
+This skill provides a **focused onboarding experience** for users who want to document their features with OTEL canvases and workflows. It's designed for the first-time user who needs to understand the schema and rendering layer.
 
 ## What is Principal View OTEL?
 
-Principal View OTEL is a workflow for documenting and validating OpenTelemetry event schemas using a hierarchical structure:
+Principal View OTEL is a system for documenting and rendering OpenTelemetry event schemas using a hierarchical structure:
 
 ### The Hierarchy
 
-**Storyboard** (Feature Area) → **Workflow** (Span/Use Case) → **Scenario** (Execution Outcome)
+**Storyboard** (Feature Area) -> **Workflow** (Span/Use Case) -> **Scenario** (Execution Outcome)
 
 **File Types:**
 1. **`.otel.canvas`** - Defines event schemas (what events can be emitted and their attributes)
 2. **`.workflow.json`** - Defines how to render span events as human-readable text (contains scenarios)
-3. **`.otel.json`** - Actual OTEL trace data captured from instrumented code
 
 ### Key Concepts
 
@@ -42,24 +41,24 @@ Principal View OTEL is a workflow for documenting and validating OpenTelemetry e
 
 **See:** `docs/STORYBOARDS_WORKFLOWS_SCENARIOS_GUIDE.md` for detailed guidance on when to create workflows vs scenarios.
 
-## When to Use This Skill 
+## When to Use This Skill
 
 Use this skill when the user wants to:
 - Get started with Principal View OTEL for the first time
-- Document existing functionality with telemetry
-- Create their first canvas, scenarios, and tests
-- Learn the complete workflow from canvas → scenarios → test execution
+- Document existing functionality with telemetry schemas
+- Create their first canvas and workflow scenarios
+- Understand the schema and rendering layer before instrumenting code
 
 ## What This Skill Does
 
 This skill provides an **interactive, step-by-step workflow** to:
 1. Pick one existing feature/function to document
-2. Create a .otel.canvas file mapping its telemetry
+2. Create a .otel.canvas file defining its event schemas
 3. Create .workflow.json scenarios for success/failure cases
-4. Instrument tests to emit OTEL and validate against the canvas
-5. Export test execution data for visualization
 
-**Scope**: One feature, one canvas, basic scenarios, working tests. Keep it simple and achievable.
+**Scope**: One feature, one canvas, basic scenarios. Keep it simple and achievable.
+
+**Next step after this skill**: Use the `setup-otel-testing` skill to instrument your code and validate telemetry against your canvas.
 
 ## Interactive Workflow
 
@@ -155,8 +154,7 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
      └── <storyboard-name>/
          ├── <storyboard-name>.otel.canvas
          └── <workflow-name>/
-             ├── <workflow-name>.workflow.json
-             └── <execution>.otel.json
+             └── <workflow-name>.workflow.json
    ```
 
    The flat structure (files directly in `.principal-views/`) is deprecated and will produce validation errors.
@@ -165,7 +163,7 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
    - **One node per event type** - Each event gets its own node in the canvas
    - Example: If you have 4 events (`validation.started`, `validation.complete`, `validation.error`, `validation.progress`), create 4 nodes
    - Each node contains ONE event schema in its `pv.event` field
-   - Connect nodes with edges to show the event flow (start → progress → complete/error)
+   - Connect nodes with edges to show the event flow (start -> progress -> complete/error)
 
    **RECOMMENDED: Node Sizing and Layout**
    - **Use consistent dimensions** for all event nodes: `width: 200, height: 100`
@@ -189,7 +187,7 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
      Error branch (x: 450, offset 350px right):
        error:      x: 450, y:  50   (aligned with start)
      ```
-   - Edges: Connect `fromSide: "bottom"` → `toSide: "top"` for vertical flow
+   - Edges: Connect `fromSide: "bottom"` -> `toSide: "top"` for vertical flow
    - Best for: Sequential operations, pipelines, CLI commands
 
    **Option 2: Horizontal/Left-Right Layout (for parallel operations)**
@@ -205,17 +203,17 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
      complete:   x: 700, y: 320  (220px down)
      error:      x: 100, y: 320  (below start)
      ```
-   - Edges: Connect `fromSide: "right"` → `toSide: "left"` for horizontal flow
+   - Edges: Connect `fromSide: "right"` -> `toSide: "left"` for horizontal flow
    - Best for: Parallel processes, service architectures
 
    **REQUIRED: Sources Field**
    - **All OTEL nodes MUST have a `pv.sources` field** with at least one source file path
    - Sources are exact file paths (relative to repository root) - **NO glob patterns, NO line numbers**
    - Examples:
-     - ✅ Good: `"sources": ["src/commands/validate.ts"]`
-     - ✅ Good: `"sources": ["lib/data-validator.ts", "lib/validator-utils.ts"]`
-     - ❌ Bad: `"sources": ["src/**/*.ts"]` (glob pattern not supported)
-     - ❌ Bad: `"sources": ["src/validator.ts:123"]` (line numbers not supported)
+     - Good: `"sources": ["src/commands/validate.ts"]`
+     - Good: `"sources": ["lib/data-validator.ts", "lib/validator-utils.ts"]`
+     - Bad: `"sources": ["src/**/*.ts"]` (glob pattern not supported)
+     - Bad: `"sources": ["src/validator.ts:123"]` (line numbers not supported)
    - This tells the system which source files emit the events for this node
 
    **Format reference**: Canvas files use JSON Canvas format with `pv` (Principal View) extensions. Run `npx @principal-ai/principal-view-cli schema examples` to see example canvas files, or look at existing `.otel.canvas` files in `.principal-views/` directory.
@@ -238,8 +236,8 @@ Use the `create-workflow-scenarios` skill to create scenarios:
    # Example: Simple data validator with one execution path
    .principal-views/data-validator/
    ├── data-validator.otel.canvas
-   └── validate-data/                              ← One workflow
-       └── validate-data.workflow.json             ← Scenarios: success, failure, timeout
+   └── validate-data/                              # One workflow
+       └── validate-data.workflow.json             # Scenarios: success, failure, timeout
    ```
 
    **If you have MULTIPLE use case variations:**
@@ -247,12 +245,12 @@ Use the `create-workflow-scenarios` skill to create scenarios:
    # Example: Data import with different format types
    .principal-views/data-import/
    ├── data-import.otel.canvas
-   ├── csv-import/                                 ← Workflow variation 1
-   │   └── csv-import.workflow.json                ← Scenarios: success, parse-error
-   ├── json-import/                                ← Workflow variation 2
-   │   └── json-import.workflow.json               ← Scenarios: success, schema-error
-   └── xml-import/                                 ← Workflow variation 3
-       └── xml-import.workflow.json                ← Scenarios: success, dtd-error
+   ├── csv-import/                                 # Workflow variation 1
+   │   └── csv-import.workflow.json                # Scenarios: success, parse-error
+   ├── json-import/                                # Workflow variation 2
+   │   └── json-import.workflow.json               # Scenarios: success, schema-error
+   └── xml-import/                                 # Workflow variation 3
+       └── xml-import.workflow.json                # Scenarios: success, dtd-error
    ```
 
    **Key principle:** Each workflow = ONE span name in your instrumentation
@@ -268,10 +266,10 @@ Use the `create-workflow-scenarios` skill to create scenarios:
    - Example: `"spanPattern": "data.validation"`
 
    **IMPORTANT: Naming and Description Guidelines**
-   - ❌ **Don't** append "Workflows" to the name: `"Package Processor Workflows"`
-   - ✅ **Do** use the feature name directly: `"Package Processor"`
-   - ❌ **Don't** prefix description with framework boilerplate: `"Human-readable workflows for package extraction..."`
-   - ✅ **Do** describe the feature's purpose: `"Package extraction and analysis from repository file trees"`
+   - **Don't** append "Workflows" to the name: `"Package Processor Workflows"`
+   - **Do** use the feature name directly: `"Package Processor"`
+   - **Don't** prefix description with framework boilerplate: `"Human-readable workflows for package extraction..."`
+   - **Do** describe the feature's purpose: `"Package extraction and analysis from repository file trees"`
    - Focus on WHAT the feature does, not WHAT the file contains
    - Keep it concise and domain-focused
 
@@ -282,11 +280,11 @@ Use the `create-workflow-scenarios` skill to create scenarios:
    **NEW (v0.23.0+):** Scenarios are matched based on which events are present in the trace. Required events are automatically derived from `template.events` keys.
 
    - **Success scenario** (priority 1): Workflow completed successfully
-     - Template: "✅ Validated {{record.count}} records successfully"
+     - Template: "[SUCCESS] Validated {{record.count}} records successfully"
      - Example events: `{ "validation.started": "...", "validation.complete": "..." }`
 
    - **Failure scenario** (priority 2): Workflow failed
-     - Template: "❌ Validation failed: {{error.message}}"
+     - Template: "[ERROR] Validation failed: {{error.message}}"
      - Example events: `{ "validation.started": "...", "validation.error": "..." }`
      - Note: Mutually exclusive with success due to different distinguishing events (validation.complete vs validation.error)
 
@@ -296,7 +294,6 @@ Use the `create-workflow-scenarios` skill to create scenarios:
    - Clear summary line
    - 3-5 steps showing flow
    - Key details (IDs, counts, errors)
-   - Use emojis for visual scanning
 
 6. **Validate**:
    ```bash
@@ -305,191 +302,42 @@ Use the `create-workflow-scenarios` skill to create scenarios:
 
 **Goal**: Working .workflow.json with success, failure, and fallback scenarios.
 
-### Phase 4: Set Up Test Infrastructure
+### Phase 4: Verify and Next Steps
 
-Use the `setup-otel-testing` skill to set up OTEL in tests:
+Walk through verification and explain next steps:
 
-1. **Check test framework**:
-   - Ask: "What test framework are you using? (Bun, Vitest, Jest)"
-
-2. **Install OTEL dependencies** (if needed):
-   ```bash
-   bun add -d @opentelemetry/api @opentelemetry/sdk-trace-base
-   ```
-
-   **Note**: These are the official OpenTelemetry JavaScript libraries:
-   - `@opentelemetry/api` - Core tracing API for instrumentation
-   - `@opentelemetry/sdk-trace-base` - SDK for test infrastructure (tracers, exporters)
-   - See References section for GitHub repos if you need troubleshooting help
-
-3. **Create `test/otel-setup.ts`** (or similar):
-   - Set up tracer with InMemorySpanExporter
-   - Create helper functions: `startTestSpan()`, `createValidatedSpanEmitter()`
-   - Add afterAll hook to export spans to workflow folders (e.g., `.principal-views/data-validator/test-execution/`)
-
-4. **IMPORTANT: Execution files must be committed to git**:
-   - Ensure workflow folders are NOT in .gitignore
-   - Execution files (.otel.json) must be committed for visualization
-   - Check that `.principal-views/` is tracked in git
-
-**Goal**: Working OTEL test infrastructure ready to use.
-
-### Phase 5: Instrument Source Code and Create Test
-
-Instrument the actual source code, then create a test that captures its telemetry:
-
-1. **Instrument the source code** for the feature:
-   ```typescript
-   // src/data-validator.ts
-   import { trace } from '@opentelemetry/api';
-
-   const tracer = trace.getTracer('data-validator');
-
-   export async function validateData(data: any[]) {
-     const span = tracer.startSpan('data.validation');
-
-     // Emit start event
-     span.addEvent('validation.started', {
-       'input.recordCount': data.length,
-     });
-
-     try {
-       // Actual validation logic
-       const results = performValidation(data);
-
-       // Emit completion event
-       span.addEvent('validation.complete', {
-         'result.validCount': results.valid,
-         'result.invalidCount': results.invalid,
-         'duration.ms': results.duration,
-       });
-
-       span.end();
-       return results;
-     } catch (error) {
-       // Emit error event
-       span.addEvent('validation.error', {
-         'error.type': error.name,
-         'error.message': error.message,
-       });
-       span.end();
-       throw error;
-     }
-   }
-   ```
-
-2. **Create test that calls instrumented code**:
-   ```typescript
-   import { test, expect } from 'bun:test';
-   import { validateData } from '../src/data-validator';
-   // OTEL setup from test/otel-setup.ts ensures events are captured
-
-   test('data validator success case', async () => {
-     const testData = [/* test records */];
-
-     // Call the instrumented code - it will emit OTEL events
-     const result = await validateData(testData);
-
-     // Verify the business logic
-     expect(result.valid).toBeGreaterThan(0);
-
-     // Events are automatically validated against canvas and exported
-   });
-   ```
-
-3. **Run the test**:
-   ```bash
-   bun test
-   ```
-
-4. **Verify**:
-   - Test should pass (business logic works)
-   - Events are validated against canvas schema (strict mode in tests)
-   - No validation errors means events match your canvas
-
-5. **Check exported file**:
-   ```bash
-   ls .principal-views/data-validator/test-execution/
-   # Should see: test-run.otel.json or specific test execution files
-   ```
-
-   **Format reference**: Execution files are OpenTelemetry span data in JSON format. Run `npx @principal-ai/principal-view-cli validate-execution .principal-views/*/*/*.otel.json` to validate execution files
-
-**Goal**: Instrumented source code with one passing test that captures real telemetry and exports execution data.
-
-### Phase 6: Add Failure Test
-
-Add a test for the failure scenario:
-
-1. **Create test for error case**:
-   ```typescript
-   test('data validator error case', async () => {
-     const invalidData = [/* malformed test records */];
-
-     // Call the instrumented code with invalid data
-     // The source code will emit error events automatically
-     await expect(validateData(invalidData)).rejects.toThrow();
-
-     // Error events are automatically captured and validated
-   });
-   ```
-
-   **Note**: The error event emission is already in the source code (Phase 5 step 1).
-   The test just needs to trigger the error path - the instrumented code handles the rest.
-
-2. **Run both tests**:
-   ```bash
-   bun test
-   ```
-
-3. **Verify both scenarios export**:
-   - Success execution → success workflow
-   - Failure execution → failure workflow
-
-**Goal**: Two tests covering success and failure scenarios, both capturing real telemetry from instrumented source code.
-
-### Phase 7: Verify the Complete Workflow
-
-Walk through the end-to-end flow:
-
-1. **Canvas exists and validates**: ✅
+1. **Canvas validates**:
    ```bash
    npx @principal-ai/principal-view-cli validate
    ```
 
-2. **Scenarios exist and validate**: ✅
+2. **Workflow validates**:
    ```bash
-   # Check .workflow.json file validates
+   npx @principal-ai/principal-view-cli validate
+   # Both canvas and workflow files are validated
    ```
 
-3. **Tests run and emit OTEL**: ✅
-   ```bash
-   bun test
-   # See: "Exported N spans to .principal-views/.../..."
+3. **Explain what they have**:
+   ```
+   You now have:
+   - A canvas defining what events your feature should emit
+   - Workflow scenarios defining how to render those events as readable text
+
+   These serve as the "contract" for your feature's telemetry.
    ```
 
-4. **Execution files exist**: ✅
-   ```bash
-   ls .principal-views/data-validator/*/\*.otel.json
-   # Lists all execution files in workflow folders
+4. **Show next steps**:
+   ```
+   Next: Instrument your code and tests
+
+   Use the `setup-otel-testing` skill to:
+   - Set up OTEL test infrastructure
+   - Configure a local OTEL collector
+   - Instrument your source code to emit events
+   - Validate emitted events against your canvas schemas
    ```
 
-5. **Show next steps**:
-   ```
-   Next: Visualize your execution data
-
-   Option 1: In Storybook
-   - Load ExecutionViewerPanel
-   - Point it to your canvas
-   - See workflow rendering of test executions
-
-   Option 2: In ADE
-   - Open canvas in ADE
-   - View executions tab
-   - Click execution files to see workflows
-   ```
-
-**Goal**: User has complete, working example they can build on.
+**Goal**: User understands their canvas and workflow files and is ready for instrumentation.
 
 ## Guidelines for Success
 
@@ -498,13 +346,12 @@ Walk through the end-to-end flow:
 - **Basic events**: Start event, end event, error event (2-4 total)
 - **One node per event**: Each event type gets its own canvas node
 - **Simple scenarios**: Success, failure, fallback
-- **Two tests**: Happy path + error case
 
 ### Make It Real
-- Use actual code from their project
-- Real inputs/outputs, not fake examples
+- Use actual code from their project as reference
+- Real inputs/outputs they actually use
 - Actual error cases they encounter
-- Test data that makes sense
+- Event schemas that reflect real behavior
 
 ### Be Interactive
 - Explore the codebase proactively to find candidates
@@ -528,7 +375,7 @@ I look for:
 - **API routes** - Full request handling: `POST /api/users` from request validation through response
 - **CLI commands** - Complete tool execution: `validate --input data.json` from args parsing to exit
 - **Complete operations** - End-to-end workflows: "validate and transform data", not just "validate" alone
-- **Processing pipelines** - Full data flow: CSV input → parsing → validation → output
+- **Processing pipelines** - Full data flow: CSV input -> parsing -> validation -> output
 
 I avoid recommending:
 - Individual helper functions (too granular - these are steps WITHIN a canvas)
@@ -557,7 +404,7 @@ A: Use the `spanPattern` field in your workflow.json:
 A: **One node per event type**. Each event gets its own node in the canvas:
 - If you have 3 events (`started`, `complete`, `error`), create 3 nodes
 - Each node has ONE event schema defined in its `pv.event` field
-- Connect nodes with edges to show the flow (started → complete/error)
+- Connect nodes with edges to show the flow (started -> complete/error)
 - This keeps the visual structure clear and matches the event emission pattern
 
 **Q: "What size should I make the nodes?"**
@@ -584,93 +431,59 @@ A: The `pv.sources` field is **required for all OTEL nodes**. It tells the syste
 - For features spanning multiple files, list all relevant files: `"sources": ["src/validator.ts", "src/validator-helpers.ts"]`
 - Validation will fail if OTEL nodes don't have sources defined
 
-**Q: "Do I instrument my production code or my tests?"**
-A: **Instrument your actual source code**, then write tests that call it:
-- Add OTEL emit calls to your feature's source code (src/index.ts, src/commands/*.ts, etc.)
-- Tests call the instrumented code and capture the real telemetry
-- This documents what your actual code does, not simulated behavior
-- Tests use `strict: true` validation to ensure events match your canvas schema
-
-**Q: "Where do execution files go?"**
-A: In workflow folders within the storyboard structure:
-- Inside workflow folders: `.principal-views/data-validator/happy-path/success-1.otel.json`
-- Multiple executions per workflow: `.principal-views/data-validator/happy-path/success-2.otel.json`
-- **MUST be committed to git** (not gitignored)
-- Visualization tools need these files tracked
-
-**DEPRECATED:** The `__executions__/` directory structure is no longer supported. Use workflow folders instead.
+**Q: "How do I actually emit these events from my code?"**
+A: That's covered in the `setup-otel-testing` skill. This skill focuses on defining *what* events should be emitted. The testing skill covers *how* to instrument your code to emit them and validate against your canvas.
 
 ## Success Criteria
 
 After completing onboarding, user should have:
 
-✅ **One working canvas** (.otel.canvas)
+**One working canvas** (.otel.canvas)
 - 2-4 event schemas defined
 - All OTEL nodes have required `pv.sources` field with exact file paths
 - Validates with CLI
 - Documents real feature
 
-✅ **Scenarios for workflows** (.workflow.json)
-- Required `spanPattern` field matching instrumentation
+**Scenarios for workflows** (.workflow.json)
+- Required `spanPattern` field matching the span name they'll use
 - Success scenario
 - Failure scenario
 - Mutually exclusive scenarios (no subsets)
 - Validates with CLI
 
-✅ **Test infrastructure** (otel-setup.ts)
-- Tracer configured
-- Helper functions
-- Export to workflow folders in storyboard structure
-
-✅ **Instrumented source code** (feature implementation)
-- Source code emits OTEL events as it executes
-- Events validated against canvas schema in strict mode
-
-✅ **Tests that capture telemetry** (2+ tests)
-- Success case test
-- Failure case test
-- Both call instrumented code and capture real telemetry
-- Both export execution data
-
-✅ **Execution files** (.principal-views/<storyboard>/<workflow>/*.otel.json)
-- Exported from test runs to workflow folders
-- Committed to git
-- Ready for visualization
+**Understanding of next steps**
+- User knows they need to instrument their code to emit these events
+- User knows to use `setup-otel-testing` skill for instrumentation
 
 ## What NOT to Do
 
-❌ **Don't over-engineer**:
+**Don't over-engineer**:
 - No need for dozens of events on first pass
 - No need for complex nested attributes
 - No need for exhaustive scenario coverage
 
-❌ **Don't skip validation**:
+**Don't skip validation**:
 - Always run `npx @principal-ai/principal-view-cli validate`
 - Fix issues immediately
 - Don't proceed with invalid files
 
-❌ **Don't gitignore executions**:
-- Workflow folders with .otel.json files must be committed
-- Canvas viewers need these files
-- Ensure `.principal-views/` is tracked in git
-
-❌ **Don't emit fake events in tests**:
-- Instrument your actual source code, not test files
-- Tests should call instrumented code and capture real telemetry
-- Simulated events in tests don't reflect actual behavior
+**Don't design events in isolation**:
+- Look at the actual code to understand what data is available
+- Event schemas should reflect real behavior
+- Think about what information would be useful for debugging
 
 ## Example Session
 
 ```
 User: "I want to get started with Principal View OTEL"
 
-Claude: "Great! I'll guide you through onboarding one feature. Let me explore
-your codebase to find good candidates for your first canvas."
+Claude: "Great! I'll guide you through documenting one feature with a canvas
+and workflow scenarios. Let me explore your codebase to find good candidates."
 
 [Uses Task tool with subagent_type=Explore to discover features]
 
-Claude: "I've explored your codebase and found several good candidates for
-onboarding. Here are the best options:
+Claude: "I've explored your codebase and found several good candidates.
+Here are the best options:
 
 1. **Data Import Command** (src/commands/import.ts)
    - Reads and validates CSV files, complete workflow from file input to results
@@ -711,64 +524,45 @@ User: "Yes, let's do it"
 
 Claude: [Creates .otel.canvas, validates, shows file]
 
-"✅ Canvas created and validated!
+"Canvas created and validated!
 
 Next, let's add workflow scenarios. I'll create a workflow.json with:
 - spanPattern: "data.import"
-- Success scenario: Events [import.started, import.complete] → '✅ Parsed {{rows.count}} rows'
-- Error scenario: Events [import.started, import.error] → '❌ CSV parsing failed: {{error.message}}'
+- Success scenario: Events [import.started, import.complete] -> '[SUCCESS] Imported {{rows.count}} rows'
+- Error scenario: Events [import.started, import.error] -> '[ERROR] Import failed: {{error.message}}'
 
 These scenarios are mutually exclusive because they have different distinguishing events.
 
 [Creates .workflow.json, validates]
 
-✅ Scenarios created!
+Scenarios created and validated!
 
-Now let's instrument your import command source code. What test framework
-are you using?"
+You now have:
+- A canvas defining what events your import command should emit
+- Workflow scenarios defining how to render those events as readable text
 
-User: "Bun"
+These serve as the 'contract' for your feature's telemetry.
 
-Claude: [Sets up otel-setup.ts, instruments src/commands/import.ts]
-
-"I've created test/otel-setup.ts for OTEL infrastructure, and I've
-instrumented your src/commands/import.ts to emit events as it executes.
-
-Now here's a test that calls your instrumented code and captures the telemetry:
-
-[Shows test code that calls the instrumented import command]
-
-Would you like me to create this test file, or would you prefer to
-update your existing test?"
-
-User: "Create new file"
-
-Claude: [Creates test file]
-
-"✅ Test created! Run it:
-  bun test
-
-This will:
-1. Validate events match your canvas schema across the full import workflow
-2. Export execution to .principal-views/import-command/test-execution/run.otel.json
-
-After running, you can visualize the complete import operation execution
-in Storybook or ADE!"
+**Next step**: Use the `setup-otel-testing` skill to:
+- Set up OTEL test infrastructure
+- Instrument your source code to emit these events
+- Validate emitted events against your canvas schemas"
 ```
 
 ## Integration with Other Skills
 
-This skill orchestrates the other three:
+This skill orchestrates:
 - **create-otel-canvas**: Phase 2 (create canvas)
 - **create-workflow-scenarios**: Phase 3 (create scenarios)
-- **setup-otel-testing**: Phases 4-5 (setup and instrument tests)
+
+**Follow-up skill**:
+- **setup-otel-testing**: After completing this skill, users should use setup-otel-testing to instrument their code and validate telemetry
 
 ## Templates to Reference
 
 Point users to these examples after onboarding:
 - `.principal-views/validation/validation.otel.canvas` - Real storyboard structure example
 - `.principal-views/validation/validation-workflow/` - Example workflow folder
-- Test examples in the codebase with OTEL instrumentation
 
 **Note:** Legacy flat structure examples may exist but are deprecated.
 
@@ -777,32 +571,32 @@ Point users to these examples after onboarding:
 After successful onboarding:
 
 ```
-🎉 Onboarding complete!
+Onboarding complete!
 
 You now have:
-✅ Canvas documenting your CSV parser telemetry
-✅ Scenarios for success/failure workflows
-✅ Instrumented source code emitting validated OTEL
-✅ Tests that capture real telemetry from your code
-✅ Execution data exported for visualization
+- Canvas documenting your feature's telemetry schema
+- Workflow scenarios for success/failure rendering
 
-Next steps:
-1. View your executions in Storybook ExecutionViewerPanel
-2. Add more scenarios as you find edge cases
-3. Onboard another feature using the same workflow
-4. Your instrumented code is ready for production use!
+These files define the "contract" for your feature's telemetry:
+- What events should be emitted
+- What attributes each event should have
+- How to render events as human-readable workflows
+
+Next step:
+Use the `setup-otel-testing` skill to instrument your code and
+validate that it emits the events defined in your canvas.
 
 Resources:
-- create-otel-canvas skill: Add more features
-- create-workflow-scenarios skill: Add more scenarios
-- setup-otel-testing skill: Instrument more tests
+- create-otel-canvas skill: Add canvases for more features
+- create-workflow-scenarios skill: Add more scenarios to existing workflows
+- setup-otel-testing skill: Instrument code and set up telemetry validation
 ```
 
 ## References
 
 - **create-otel-canvas**: Canvas creation details
 - **create-workflow-scenarios**: Scenario creation details
-- **setup-otel-testing**: Test instrumentation details
+- **setup-otel-testing**: Test instrumentation details (use after this skill)
 - **CLI schema command**: `npx @principal-ai/principal-view-cli schema` - Canvas format documentation
   - `schema nodes` - Node types and properties
   - `schema edges` - Edge properties
@@ -810,18 +604,9 @@ Resources:
   - `schema examples` - Complete example canvas files
 - **CLI workflow commands**: `npx @principal-ai/principal-view-cli workflow` - Workflow tools
   - `workflow validate <file>` - Validate workflow template syntax and schema
-  - `workflow render <workflow> <execution>` - Render workflow with execution data
-  - `workflow test <workflow> <execution>` - Test scenario matching
   - `workflow list` - List all workflow files in project
 - **CLI validation commands**:
-  - `validate` - Validate all OTEL canvas files, workflow templates, and execution artifacts
+  - `validate` - Validate all OTEL canvas files and workflow templates
   - `validate --canvas-only` - Validate only .otel.canvas files (skips regular .canvas files)
   - `validate --workflow-only` - Validate only .workflow.json files
-  - `validate --execution-only` - Validate only .otel.json execution files
-- **OpenTelemetry JavaScript Libraries**:
-  - Main repository: https://github.com/open-telemetry/opentelemetry-js
-  - API repository: https://github.com/open-telemetry/opentelemetry-js-api
-  - Packages used: `@opentelemetry/api` (core tracing API) and `@opentelemetry/sdk-trace-base` (SDK for test infrastructure)
-  - If you encounter issues with OTEL instrumentation, configuration, or API usage, refer to these repositories for documentation and troubleshooting
 - **Example files**: See `.principal-views/validation/` storyboard structure in the repository for the correct organization pattern
-- docs/guides/adding-opentelemetry-to-tests.md: OTEL patterns and test setup
