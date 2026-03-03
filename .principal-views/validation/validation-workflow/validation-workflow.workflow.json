@@ -13,36 +13,36 @@
       "priority": 1,
       "description": "Validation pipeline execution",
       "template": {
-        "introduction": "[INFO] Validation Pipeline\n{'━'.repeat(50)}",
-        "span": "-> {span.name}",
+        "introduction": "[INFO] Validation Pipeline\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "span": "-> {{span.name}}",
         "children": "recurse",
         "events": {
-          "analysis.started": "  [>] Analysis started\n    - Repository: {repository.path}\n    - Type: {analysis.type}",
-          "filetree.built": "  [>] FileTree built\n    - Total files: {files.total}\n    - SHA: {filetree.sha}",
-          "packages.discovered": "  [>] Packages discovered\n    - Count: {packages.count}\n    - Type: {repository.type}",
-          "canvases.discovered": "  [>] Canvases discovered\n    - Total: {canvases.total}\n    - Regular: {canvases.regular}\n    - OTEL: {canvases.otel}",
-          "executions.discovered": "  [>] Executions discovered\n    - Total: {executions.total}",
-          "library.loaded": "  [>] Library loaded\n    - Found: {library.found ? 'Yes' : 'No'}\n    - Node types: {nodeComponents.count ? nodeComponents.count : 'N/A'}\n    - Edge types: {edgeComponents.count ? edgeComponents.count : 'N/A'}",
-          "discovery.complete": "  [DONE] Discovery complete\n    - Items discovered: {items.discovered}\n    - Duration: {discovery.duration ? discovery.duration + 'ms' : 'N/A'}",
-          "validation.started": "  [>] Validation started\n    - Type: {validation.type}\n    - Files: {input.fileCount ? input.fileCount : 'N/A'}",
-          "file.parsed": "  [>] Parsed {file.path}\n    - Format: {file.format}\n    - Size: {file.size ? file.size + ' bytes' : 'unknown'}",
-          "type.detected": "  [>] Type detected: {detected.type}",
-          "canvas.validated": "  [PASS] Canvas validated\n    - Type: {canvas.type}\n    - Nodes: {nodes.count ? nodes.count : 'N/A'}\n    - Edges: {edges.count ? edges.count : 'N/A'}\n    - Checks: {checks.passed}/{checks.total} passed",
-          "workflow.validated": "  [PASS] Workflow validated\n    - Scenarios: {scenarios.count}\n    - Violations: {violations.count}\n    - Errors: {errors.count}\n    - Warnings: {warnings.count}",
-          "execution.validated": "  [PASS] Execution validated\n    - Format: {format}\n    - Spans: {spans.count}\n    - Events: {events.count}\n    - Errors: {errors.count}",
-          "library.validated": "  [PASS] Library validated\n    - Node components: {nodeComponents.count}\n    - Edge components: {edgeComponents.count}\n    - Issues: {issues.count}",
-          "rules.executed": "  [PASS] Rules executed\n    - Rules run: {rules.count}\n    - Violations: {violations.total}\n    - Errors: {violations.error}\n    - Warnings: {violations.warning}\n    - Fixable: {fixable.count ? fixable.count : 0}",
-          "results.aggregated": "  [>] Results aggregated\n    - Total files: {total.files}\n    - Errors: {total.errors}\n    - Warnings: {total.warnings}",
-          "validation.complete": "  [PASS] Validation complete\n    - Valid: {result.validCount}\n    - Invalid: {result.invalidCount}\n    - Duration: {duration.ms}ms",
-          "validation.error": "  [FAIL] Validation error\n    - Type: {error.type}\n    - Stage: {error.stage}\n    - File: {error.file}\n    - Line: {error.line ? error.line : 'N/A'}\n    - Message: {error.message}"
+          "analysis.started": "  [>] Analysis started\n    - Repository: {{repository.path}}\n    - Type: {{analysis.type}}",
+          "filetree.built": "  [>] FileTree built\n    - Total files: {{files.total}}\n    - SHA: {{filetree.sha}}",
+          "packages.discovered": "  [>] Packages discovered\n    - Count: {{packages.count}}\n    - Names: {{packages.names}}\n    - Type: {{repository.type}}",
+          "canvases.discovered": "  [>] Canvases discovered\n    - Total: {{canvases.total}}\n    - Regular: {{canvases.regular}}\n    - OTEL: {{canvases.otel}}\n    - By package: {{canvases.byPackage}}",
+          "executions.discovered": "  [>] Executions discovered\n    - Total: {{executions.total}}\n    - By canvas: {{executions.byCanvas}}",
+          "library.loaded": "  [>] Library loaded\n    - Found: {{library.found}}\n    - Path: {{library.path}}\n    - Node types: {{nodeComponents.count}}\n    - Edge types: {{edgeComponents.count}}",
+          "discovery.complete": "  [DONE] Discovery complete\n    - Items discovered: {{items.discovered}}\n    - Duration: {{discovery.duration}}ms",
+          "validation.started": "  [>] Validation started\n    - Type: {{validation.type}}\n    - Files: {{input.fileCount}}",
+          "file.parsed": "  [>] Parsed {{file.path}}\n    - Format: {{file.format}}\n    - Size: {{file.size}} bytes",
+          "type.detected": "  [>] Type detected: {{detected.type}}\n    - Method: {{detection.method}}",
+          "canvas.validated": "  [PASS] Canvas validated\n    - Type: {{canvas.type}}\n    - Nodes: {{nodes.count}}\n    - Edges: {{edges.count}}\n    - Checks: {{checks.passed}}/{{checks.total}} passed ({{checks.failed}} failed)",
+          "workflow.validated": "  [PASS] Workflow validated\n    - Scenarios: {{scenarios.count}}\n    - Violations: {{violations.count}}\n    - Errors: {{errors.count}}\n    - Warnings: {{warnings.count}}",
+          "execution.validated": "  [PASS] Execution validated\n    - Format: {{format}}\n    - Spans: {{spans.count}}\n    - Events: {{events.count}}\n    - Errors: {{errors.count}}",
+          "library.validated": "  [PASS] Library validated\n    - Node components: {{nodeComponents.count}}\n    - Edge components: {{edgeComponents.count}}\n    - Issues: {{issues.count}}",
+          "rules.executed": "  [PASS] Rules executed\n    - Rules run: {{rules.count}}\n    - Violations: {{violations.total}}\n    - Errors: {{violations.error}}\n    - Warnings: {{violations.warning}}\n    - Fixable: {{fixable.count}}",
+          "results.aggregated": "  [>] Results aggregated\n    - Total files: {{total.files}}\n    - Errors: {{total.errors}}\n    - Warnings: {{total.warnings}}\n    - Validations: {{validations.performed}}",
+          "validation.complete": "  [PASS] Validation complete\n    - Valid: {{result.valid}}\n    - Valid count: {{result.validCount}}\n    - Invalid count: {{result.invalidCount}}\n    - Duration: {{duration.ms}}ms",
+          "validation.error": "  [FAIL] Validation error\n    - Type: {{error.type}}\n    - Stage: {{error.stage}}\n    - File: {{error.file}}\n    - Line: {{error.line}}\n    - Message: {{error.message}}"
         },
         "logs": {
-          "error": "    [ERROR] {log.body}",
-          "warn": "    [WARN] {log.body}",
-          "info": "    [INFO] {log.body}",
-          "debug": "    [DEBUG] {log.body}"
+          "error": "    [ERROR] {{log.body}}",
+          "warn": "    [WARN] {{log.body}}",
+          "info": "    [INFO] {{log.body}}",
+          "debug": "    [DEBUG] {{log.body}}"
         },
-        "summary": "{'━'.repeat(50)}\n\nValidation Pipeline Complete\n\nDiscovery:\n  - Packages: {packages.count}\n  - Canvases: {canvases.total}\n  - Executions: {executions.total}\n\nValidation:\n  - Valid items: {result.validCount}\n  - Total duration: {duration.ms}ms"
+        "summary": "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nValidation Pipeline Complete\n\nDiscovery:\n  - Packages: {{packages.count}}\n  - Canvases: {{canvases.total}}\n  - Executions: {{executions.total}}\n\nValidation:\n  - Valid items: {{result.validCount}}\n  - Total duration: {{duration.ms}}ms"
       }
     }
   ],
