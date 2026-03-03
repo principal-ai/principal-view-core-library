@@ -389,6 +389,60 @@ export class RemoteRegistry implements StoryboardRegistryInterface {
   }
 
   /**
+   * Register a schematic directly (for preloading)
+   *
+   * This is similar to LocalRegistry's registerWorkspace() - it allows you to
+   * preload schematics before traces arrive, so the owned-scopes mapping is
+   * already populated when lookupByScope is called.
+   *
+   * @param snapshot - The VersionSnapshot to register
+   * @returns Array of registered scope names (from owned-scopes)
+   *
+   * @example
+   * ```typescript
+   * // Fetch schematic from your API
+   * const response = await fetch('/api/schematics/my-panel');
+   * const snapshot = await response.json();
+   *
+   * // Register it with RemoteRegistry
+   * const scopes = registry.registerSchematic(snapshot);
+   * console.log('Registered scopes:', scopes);
+   * // Now traces with these scopes will match this schematic's storyboards
+   * ```
+   */
+  registerSchematic(snapshot: VersionSnapshot): string[] {
+    const cacheKey = `${snapshot.repositoryUrl}@${snapshot.commitSha}`;
+
+    // Cache the snapshot
+    this.cache.set(cacheKey, {
+      snapshot,
+      expiresAt: Date.now() + this.cacheTTL,
+    });
+
+    // Register owned scopes
+    const registeredScopes: string[] = [];
+    if (snapshot.resources) {
+      for (const [_resourceName, attrs] of Object.entries(snapshot.resources)) {
+        const ownedScopes = attrs['owned-scopes'];
+        if (ownedScopes && Array.isArray(ownedScopes)) {
+          for (const scope of ownedScopes) {
+            this.scopeToSnapshotKey.set(scope, cacheKey);
+            registeredScopes.push(scope);
+          }
+        }
+      }
+    }
+
+    console.log('[RemoteRegistry] Registered schematic:', {
+      cacheKey,
+      storyboardCount: snapshot.storyboards?.length || 0,
+      registeredScopes,
+    });
+
+    return registeredScopes;
+  }
+
+  /**
    * Register owned scopes from a schematic's resources
    *
    * This builds a mapping from instrumentation scope names to their owning
