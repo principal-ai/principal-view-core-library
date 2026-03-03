@@ -1655,6 +1655,16 @@ export class WorkflowValidator {
       return violations;
     }
 
+    // Collect all event names referenced in workflow scenarios
+    // Only validate attributes for events that are INCLUDED in the workflow
+    const workflowEventNames = new Set<string>();
+    for (const scenario of workflow.scenarios) {
+      if (!scenario.template?.events) continue;
+      for (const eventName of Object.keys(scenario.template.events)) {
+        workflowEventNames.add(eventName);
+      }
+    }
+
     // Collect all attribute references from workflow templates by event name
     const templateAttributesByEvent = new Map<string, Set<string>>();
 
@@ -1671,7 +1681,7 @@ export class WorkflowValidator {
       }
     }
 
-    // Check each canvas node's event schema
+    // Check each canvas node's event schema (only for events included in the workflow)
     for (const node of canvas.nodes) {
       if (!node.pv) continue;
 
@@ -1696,6 +1706,12 @@ export class WorkflowValidator {
 
       if (!eventName || !eventSchema?.attributes) {
         continue; // No schema to validate
+      }
+
+      // Skip events not included in this workflow
+      // This allows canvases with disconnected subgraphs where different workflows focus on different flows
+      if (!workflowEventNames.has(eventName)) {
+        continue;
       }
 
       // Get displayable attributes (where display !== false)

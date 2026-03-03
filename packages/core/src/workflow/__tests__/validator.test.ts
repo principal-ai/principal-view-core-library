@@ -2806,5 +2806,136 @@ describe('WorkflowValidator', () => {
       expect(violations[0].message).toContain('user.signup');
       expect(violations[0].message).toContain('name');
     });
+
+    it('should not validate attributes for events not included in workflow (disconnected subgraph support)', async () => {
+      // This test verifies the fix for Issue 3: Conflicting Validation Rules for Shared Canvases with Disconnected Subgraphs
+      // A canvas may have multiple disconnected flows, and workflows may focus on only one flow.
+      // We should NOT report "attribute not used" errors for events that aren't even part of the workflow.
+
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Navigation Flow',
+        description: 'Workflow focusing only on navigation events (subgraph 1)',
+        mode: 'span-tree',
+        canvas: 'multi-flow.otel.canvas',
+        scenarios: [{
+          id: 'navigation',
+          priority: 1,
+          description: 'Navigation flow',
+          template: {
+            events: {
+              // Only uses events from the navigation subgraph
+              'panel.opened': 'Panel {{panelName}} opened',
+              'panel.closed': 'Panel {{panelName}} closed'
+            }
+          }
+        }]
+      };
+
+      // Canvas with TWO disconnected subgraphs:
+      // Subgraph 1 (navigation): panel.opened -> panel.closed
+      // Subgraph 2 (tool execution): tool.started -> tool.completed
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          // Subgraph 1: Navigation (included in workflow)
+          {
+            id: 'nav1',
+            type: 'text',
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+            pv: {
+              event: {
+                name: 'panel.opened',
+                description: 'Panel opened event',
+                attributes: {
+                  panelName: { type: 'string' }
+                }
+              }
+            }
+          },
+          {
+            id: 'nav2',
+            type: 'text',
+            x: 200,
+            y: 0,
+            width: 100,
+            height: 50,
+            pv: {
+              event: {
+                name: 'panel.closed',
+                description: 'Panel closed event',
+                attributes: {
+                  panelName: { type: 'string' }
+                }
+              }
+            }
+          },
+          // Subgraph 2: Tool execution (NOT included in workflow)
+          {
+            id: 'tool1',
+            type: 'text',
+            x: 0,
+            y: 200,
+            width: 100,
+            height: 50,
+            pv: {
+              event: {
+                name: 'tool.started',
+                description: 'Tool started event',
+                attributes: {
+                  toolName: { type: 'string' },
+                  toolArgs: { type: 'string' } // These attributes are NOT used in the workflow
+                }
+              }
+            }
+          },
+          {
+            id: 'tool2',
+            type: 'text',
+            x: 200,
+            y: 200,
+            width: 100,
+            height: 50,
+            pv: {
+              event: {
+                name: 'tool.completed',
+                description: 'Tool completed event',
+                attributes: {
+                  toolName: { type: 'string' },
+                  result: { type: 'string' } // These attributes are NOT used in the workflow
+                }
+              }
+            }
+          }
+        ],
+        edges: [
+          // Subgraph 1 edges
+          { id: 'e1', fromNode: 'nav1', fromSide: 'right', toNode: 'nav2', toSide: 'left' },
+          // Subgraph 2 edges (disconnected from subgraph 1)
+          { id: 'e2', fromNode: 'tool1', fromSide: 'right', toNode: 'tool2', toSide: 'left' }
+        ],
+        pv: { version: '1.0.0', name: 'Multi-Flow Canvas', markdown: 'test.md' }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'navigation.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const attributeViolations = result.violations.filter(v => v.ruleId === 'workflow-attribute-unused');
+      const connectivityViolations = result.violations.filter(v => v.ruleId === 'workflow-event-connectivity');
+
+      // Should NOT have any "attribute not used" errors for tool.started or tool.completed
+      // because those events are not part of this workflow
+      expect(attributeViolations).toHaveLength(0);
+
+      // Should NOT have connectivity errors because the workflow only uses connected events
+      expect(connectivityViolations).toHaveLength(0);
+    });
   });
 });
