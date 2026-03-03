@@ -10,6 +10,7 @@
 
 import type { StoryboardRegistryInterface, ScopeLookupResult } from '../types/registered-trace';
 import type { VersionSnapshot } from '../types/version-registry';
+import type { ResourceAttributes } from '../types/library';
 
 /**
  * Version lookup response from web-ade API
@@ -50,6 +51,7 @@ interface PURLComponents {
  */
 export class RemoteRegistry implements StoryboardRegistryInterface {
   private cache = new Map<string, CacheEntry>();
+  private scopeToSnapshotKey = new Map<string, string>();
   private cacheTTL: number;
 
   constructor(
@@ -63,6 +65,24 @@ export class RemoteRegistry implements StoryboardRegistryInterface {
     scope: { name: string; version: string },
     resource: { attributes?: Record<string, unknown> }
   ): Promise<ScopeLookupResult> {
+    // First, check if this scope is owned by a cached schematic
+    const owningCacheKey = this.scopeToSnapshotKey.get(scope.name);
+    if (owningCacheKey) {
+      const cached = this.cache.get(owningCacheKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        console.log('[RemoteRegistry] Scope found via owned-scopes mapping:', {
+          scopeName: scope.name,
+          cacheKey: owningCacheKey,
+        });
+        if (cached.snapshot.storyboards.length === 0) {
+          return { found: false, reason: 'no_storyboards', scopeName: scope.name };
+        }
+        return { found: true, snapshot: cached.snapshot };
+      }
+      // Cache expired, remove stale mapping
+      this.scopeToSnapshotKey.delete(scope.name);
+    }
+
     // Check if this is a library (PURL format)
     if (scope.name.startsWith('pkg:')) {
       const snapshot = await this.lookupLibrary(scope.name, scope.version);
@@ -239,10 +259,16 @@ export class RemoteRegistry implements StoryboardRegistryInterface {
         expiresAt: Date.now() + this.cacheTTL,
       });
 
+      // Register owned scopes for routing
+      if (snapshot.resources) {
+        this.registerOwnedScopes(cacheKey, snapshot.resources);
+      }
+
       console.log('[RemoteRegistry] Schematic fetched:', {
         repositoryUrl,
         commitSha,
         storyboardCount: snapshot.storyboards.length,
+        ownedScopes: this.getOwnedScopesFromResources(snapshot.resources),
       });
 
       return snapshot;
@@ -363,19 +389,64 @@ export class RemoteRegistry implements StoryboardRegistryInterface {
   }
 
   /**
+   * Register owned scopes from a schematic's resources
+   *
+   * This builds a mapping from instrumentation scope names to their owning
+   * schematic cache key. When a trace comes in with a scope listed in
+   * `owned-scopes`, we can route it to the correct storyboards without
+   * needing a separate lookup.
+   */
+  private registerOwnedScopes(
+    cacheKey: string,
+    resources: Record<string, ResourceAttributes>
+  ): void {
+    for (const [_resourceName, attrs] of Object.entries(resources)) {
+      const ownedScopes = attrs['owned-scopes'];
+      if (ownedScopes && Array.isArray(ownedScopes)) {
+        for (const scope of ownedScopes) {
+          this.scopeToSnapshotKey.set(scope, cacheKey);
+          console.log('[RemoteRegistry] Registered owned scope:', {
+            scope,
+            cacheKey,
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * Extract all owned scopes from resources (for logging)
+   */
+  private getOwnedScopesFromResources(
+    resources?: Record<string, ResourceAttributes>
+  ): string[] {
+    if (!resources) return [];
+    const scopes: string[] = [];
+    for (const attrs of Object.values(resources)) {
+      const ownedScopes = attrs['owned-scopes'];
+      if (ownedScopes && Array.isArray(ownedScopes)) {
+        scopes.push(...ownedScopes);
+      }
+    }
+    return scopes;
+  }
+
+  /**
    * Clear the cache (useful for testing)
    */
   clearCache(): void {
     this.cache.clear();
+    this.scopeToSnapshotKey.clear();
   }
 
   /**
    * Get cache statistics
    */
-  getCacheStats(): { size: number; ttl: number } {
+  getCacheStats(): { size: number; ttl: number; ownedScopesCount: number } {
     return {
       size: this.cache.size,
       ttl: this.cacheTTL,
+      ownedScopesCount: this.scopeToSnapshotKey.size,
     };
   }
 }

@@ -7,6 +7,7 @@
  */
 
 import type { DiscoveredStoryboard } from '../discovery/types';
+import type { ComponentLibrary, ResourceAttributes } from './library';
 
 /**
  * Version identifier combining repository URL and commit SHA
@@ -30,6 +31,32 @@ export interface VersionSnapshot extends VersionIdentifier {
    * Includes all metadata: canvas info, workflow paths, package names, etc.
    */
   storyboards: DiscoveredStoryboard[];
+
+  /**
+   * Library metadata from library.yaml
+   *
+   * Contains the library name, version, and description for identification.
+   */
+  library?: Pick<ComponentLibrary, 'version' | 'name' | 'description'>;
+
+  /**
+   * Resource definitions with owned-scopes for scope routing
+   *
+   * Maps resource identifiers to their OTEL resource attributes.
+   * The `owned-scopes` field in each resource is used to route
+   * instrumentation scopes to this snapshot's storyboards.
+   *
+   * @example
+   * ```yaml
+   * resources:
+   *   web-ade:
+   *     service.name: "web-ade"
+   *     owned-scopes:
+   *       - "auth-me"
+   *       - "@backlog-md/core"
+   * ```
+   */
+  resources?: Record<string, ResourceAttributes>;
 
   /** When this version was registered */
   registeredAt?: string;
