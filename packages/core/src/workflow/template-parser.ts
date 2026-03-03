@@ -226,7 +226,6 @@ function buildSegmentsWithResolvedVariables(
   }
 
   let templateIndex = 0;
-  let renderedIndex = 0;
 
   for (const match of templateMatches) {
     const varName = match[1].trim();
@@ -249,7 +248,6 @@ function buildSegmentsWithResolvedVariables(
     // (literal text doesn't change during template rendering)
     if (textBefore) {
       segments.push({ type: 'text', value: textBefore });
-      renderedIndex += textBefore.length;
     }
 
     // Resolve the variable to get its rendered value
@@ -263,7 +261,6 @@ function buildSegmentsWithResolvedVariables(
         variableName: varName,
         resolved: true,
       });
-      renderedIndex += valueStr.length;
     } else {
       // Unresolved - should appear as {{varName}} in output
       const unresolvedStr = `{{${varName}}}`;
@@ -273,7 +270,6 @@ function buildSegmentsWithResolvedVariables(
         variableName: varName,
         resolved: false,
       });
-      renderedIndex += unresolvedStr.length;
     }
 
     templateIndex = match.index! + match[0].length;

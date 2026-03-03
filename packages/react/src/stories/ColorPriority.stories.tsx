@@ -27,6 +27,7 @@ const GraphWithInitialStates: React.FC<{
       );
       setEvents(stateEvents);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally run only on mount
   }, []);
 
   return (
@@ -836,6 +837,7 @@ const GraphWithLibrary: React.FC<{
       );
       setEvents(stateEvents);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally run only on mount
   }, []);
 
   return (

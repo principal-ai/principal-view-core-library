@@ -117,7 +117,7 @@ export function usePathBasedEvents({
     const latestEvent = events[events.length - 1];
 
     switch (latestEvent.type) {
-      case 'component-activity':
+      case 'component-activity': {
         // Milestone 1: Component activity from log
         // Check if log level is high enough to trigger animation
         const levels = ['debug', 'info', 'warn', 'error'];
@@ -125,6 +125,7 @@ export function usePathBasedEvents({
           processActivityEvent(latestEvent);
         }
         break;
+      }
 
       case 'component-action':
         // Milestone 2: Specific action from pattern match

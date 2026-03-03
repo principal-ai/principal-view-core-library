@@ -864,9 +864,40 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       setSelectedNodeIds(new Set(selectedNodes.map((n) => n.id)));
       setSelectedEdgeIds(new Set(selectedEdges.map((e) => e.id)));
     },
-    [editable]
+    []
   );
 
+
+  // Create edge helper
+  const createEdge = useCallback(
+    (from: string, to: string, type: string, sourceHandle?: string, targetHandle?: string) => {
+      const edgeId = `${from}-${to}-${type}-${Date.now()}`;
+
+      // Add to local state with handle information
+      const newEdge: EdgeState & { sourceHandle?: string; targetHandle?: string } = {
+        id: edgeId,
+        type,
+        from,
+        to,
+        data: {},
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        sourceHandle,
+        targetHandle,
+      };
+      setLocalEdges((prev) => [...prev, newEdge]);
+
+      // Track the change
+      updateEditState((prev) => ({
+        ...prev,
+        createdEdges: [
+          ...prev.createdEdges,
+          { id: edgeId, from, to, type, sourceHandle, targetHandle },
+        ],
+      }));
+    },
+    [updateEditState]
+  );
 
   // Handle new connection from drag
   const handleConnect = useCallback(
@@ -912,38 +943,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         });
       }
     },
-    [editable, nodes, configuration.allowedConnections]
-  );
-
-  // Create edge helper
-  const createEdge = useCallback(
-    (from: string, to: string, type: string, sourceHandle?: string, targetHandle?: string) => {
-      const edgeId = `${from}-${to}-${type}-${Date.now()}`;
-
-      // Add to local state with handle information
-      const newEdge: EdgeState & { sourceHandle?: string; targetHandle?: string } = {
-        id: edgeId,
-        type,
-        from,
-        to,
-        data: {},
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        sourceHandle,
-        targetHandle,
-      };
-      setLocalEdges((prev) => [...prev, newEdge]);
-
-      // Track the change
-      updateEditState((prev) => ({
-        ...prev,
-        createdEdges: [
-          ...prev.createdEdges,
-          { id: edgeId, from, to, type, sourceHandle, targetHandle },
-        ],
-      }));
-    },
-    [updateEditState]
+    [editable, nodes, configuration.allowedConnections, createEdge]
   );
 
   // Handle edge type selection from picker
@@ -1372,23 +1372,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           change.resizing === false
       );
 
-      // Debug logging for dimension changes
-      if (process.env.NODE_ENV === 'development') {
-        const allDimensionChanges = changes.filter(c => c.type === 'dimensions');
-        if (allDimensionChanges.length > 0) {
-          console.log('[GraphRenderer] Dimension changes detected:', allDimensionChanges.map(c => ({
-            // @ts-expect-error - accessing properties for debug
-            id: c.id,
-            // @ts-expect-error - accessing properties for debug
-            dimensions: c.dimensions,
-            // @ts-expect-error - accessing properties for debug
-            resizing: c.resizing,
-            // @ts-expect-error - accessing properties for debug
-            isGroup: nodes.find(n => n.id === c.id)?.data?.canvasType === 'group'
-          })));
-        }
-      }
-
       if (dimensionChanges.length > 0) {
         updateEditState((prev) => {
           const newDimensions = new Map(prev.dimensionChanges);
@@ -1441,18 +1424,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
       return true;
     });
-
-    // Debug: Log edge counts to help diagnose disappearing edges
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[GraphRenderer] xyflowEdges computed:', {
-        inputEdges: edges.length,
-        convertedEdges: converted.length,
-        filteredEdges: filtered.length,
-        editable,
-        propEdgesCount: propEdges.length,
-        localEdgesCount: localEdges.length,
-      });
-    }
 
     const mappedEdges = filtered.map((edge) => {
       const animation = animationState.edgeAnimations[edge.id];
@@ -1579,7 +1550,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     }, 150);
 
     return () => clearTimeout(timeoutId);
-  }, [fitViewToNodeIdsKey, fitViewToNodeIds, fitViewPadding, fitView, fitViewDuration, getNodes]);
+  }, [fitViewToNodeIdsKey, fitViewToNodeIds, fitViewPadding, fitView, fitViewDuration, getNodes, fitBounds]);
 
   // ============================================
   // RENDER

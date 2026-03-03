@@ -50,7 +50,7 @@ export interface OTelTransportOptions {
  */
 function tryRequire<T>(moduleName: string): T | null {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
     return require(moduleName) as T;
   } catch {
     return null;
