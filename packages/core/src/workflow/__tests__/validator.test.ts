@@ -2440,4 +2440,371 @@ describe('WorkflowValidator', () => {
       }
     });
   });
+
+  // ============================================================================
+  // Event Attribute Requirements
+  // ============================================================================
+
+  describe('Event Attribute Requirements', () => {
+    it('should error when event has no displayable attributes', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          template: {
+            events: {
+              'event.heartbeat': 'Heartbeat received'
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          {
+            id: 'n1',
+            type: 'text',
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+            pv: {
+              event: {
+                name: 'event.heartbeat',
+                description: 'System heartbeat',
+                attributes: {
+                  // All attributes are telemetry-only
+                  timestamp: { type: 'number', display: false },
+                  traceId: { type: 'string', display: false }
+                }
+              }
+            }
+          }
+        ],
+        edges: [],
+        pv: { version: '1.0.0', name: 'Test Canvas', markdown: 'test.md' }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const violations = result.violations.filter(v => v.ruleId === 'canvas-event-no-displayable-attributes');
+
+      expect(violations).toHaveLength(1);
+      expect(violations[0].message).toContain('event.heartbeat');
+      expect(violations[0].message).toContain('no displayable attributes');
+    });
+
+    it('should pass when event has at least one displayable attribute', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          template: {
+            events: {
+              'event.login': 'User {{username}} logged in'
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          {
+            id: 'n1',
+            type: 'text',
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+            pv: {
+              event: {
+                name: 'event.login',
+                description: 'User login event',
+                attributes: {
+                  username: { type: 'string' },
+                  sessionId: { type: 'string', display: false } // telemetry only
+                }
+              }
+            }
+          }
+        ],
+        edges: [],
+        pv: { version: '1.0.0', name: 'Test Canvas', markdown: 'test.md' }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const violations = result.violations.filter(v => v.ruleId === 'canvas-event-no-displayable-attributes');
+
+      expect(violations).toHaveLength(0);
+    });
+
+    it('should error when displayable attribute is not used in any template', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          template: {
+            events: {
+              'order.completed': 'Order {{orderId}} completed' // total is not used
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          {
+            id: 'n1',
+            type: 'text',
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+            pv: {
+              event: {
+                name: 'order.completed',
+                description: 'Order completion event',
+                attributes: {
+                  orderId: { type: 'string' },
+                  total: { type: 'number' } // displayable but not used
+                }
+              }
+            }
+          }
+        ],
+        edges: [],
+        pv: { version: '1.0.0', name: 'Test Canvas', markdown: 'test.md' }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const violations = result.violations.filter(v => v.ruleId === 'workflow-attribute-unused');
+
+      expect(violations).toHaveLength(1);
+      expect(violations[0].message).toContain('order.completed');
+      expect(violations[0].message).toContain('total');
+      expect(violations[0].message).toContain('not used in any template');
+    });
+
+    it('should pass when all displayable attributes are used', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          template: {
+            events: {
+              'order.completed': 'Order {{orderId}} for {{total}}'
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          {
+            id: 'n1',
+            type: 'text',
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+            pv: {
+              event: {
+                name: 'order.completed',
+                description: 'Order completion event',
+                attributes: {
+                  orderId: { type: 'string' },
+                  total: { type: 'number' },
+                  traceId: { type: 'string', display: false } // not required to be used
+                }
+              }
+            }
+          }
+        ],
+        edges: [],
+        pv: { version: '1.0.0', name: 'Test Canvas', markdown: 'test.md' }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const violations = result.violations.filter(v => v.ruleId === 'workflow-attribute-unused');
+
+      expect(violations).toHaveLength(0);
+    });
+
+    it('should consider nested property access as using the parent attribute', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          template: {
+            events: {
+              'config.loaded': 'Loaded {{config.timeout}} ms timeout'
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          {
+            id: 'n1',
+            type: 'text',
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+            pv: {
+              event: {
+                name: 'config.loaded',
+                description: 'Configuration loaded',
+                attributes: {
+                  config: { type: 'object' } // used via nested path {{config.timeout}}
+                }
+              }
+            }
+          }
+        ],
+        edges: [],
+        pv: { version: '1.0.0', name: 'Test Canvas', markdown: 'test.md' }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const violations = result.violations.filter(v => v.ruleId === 'workflow-attribute-unused');
+
+      expect(violations).toHaveLength(0);
+    });
+
+    it('should check library event schemas via eventRef', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          template: {
+            events: {
+              'user.signup': 'User {{email}} signed up' // name is not used
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          {
+            id: 'n1',
+            type: 'text',
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+            pv: {
+              eventRef: 'user.signup'
+            }
+          }
+        ],
+        edges: [],
+        pv: { version: '1.0.0', name: 'Test Canvas', markdown: 'test.md' }
+      };
+
+      const library: ComponentLibrary = {
+        version: '1.0.0',
+        eventSchemas: {
+          'user.signup': {
+            description: 'User signup event',
+            attributes: {
+              email: { type: 'string' },
+              name: { type: 'string' } // displayable but not used
+            }
+          }
+        }
+      };
+
+      const canvases = new Map<string, ExtendedCanvas>();
+      canvases.set('test.otel.canvas', canvas);
+      const eventRegistry = EventRegistry.build(library, canvases, 'library.yaml');
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir,
+        eventRegistry
+      };
+
+      const result = await validator.validate(context);
+      const violations = result.violations.filter(v => v.ruleId === 'workflow-attribute-unused');
+
+      expect(violations).toHaveLength(1);
+      expect(violations[0].message).toContain('user.signup');
+      expect(violations[0].message).toContain('name');
+    });
+  });
 });

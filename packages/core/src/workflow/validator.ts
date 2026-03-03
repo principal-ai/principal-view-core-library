@@ -148,6 +148,7 @@ export class WorkflowValidator {
       violations.push(...this.checkEventReferences(context));
       violations.push(...this.checkAttributeReferences(context));
       violations.push(...this.checkEventConnectivity(context));
+      violations.push(...this.checkEventAttributeRequirements(context));
     }
 
     violations.push(...this.checkTemplateSyntax(context));
@@ -1632,6 +1633,113 @@ export class WorkflowValidator {
           suggestion: `Access a property instead: ${suggestions.join(', ')}`,
           fixable: false,
         });
+      }
+    }
+
+    return violations;
+  }
+
+  /**
+   * Check event attribute requirements:
+   * 1. Every event schema must have at least one displayable attribute
+   * 2. All displayable attributes must be used in at least one template
+   *
+   * This ensures events carry meaningful displayable data and that
+   * all defined attributes have a purpose.
+   */
+  private checkEventAttributeRequirements(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { workflow, workflowPath, canvas, canvasPath } = context;
+
+    if (!canvas?.nodes) {
+      return violations;
+    }
+
+    // Collect all attribute references from workflow templates by event name
+    const templateAttributesByEvent = new Map<string, Set<string>>();
+
+    for (const scenario of workflow.scenarios) {
+      if (!scenario.template?.events) continue;
+
+      for (const [eventName, eventTemplate] of Object.entries(scenario.template.events)) {
+        const attrs = this.extractAttributeReferences(eventTemplate);
+        if (!templateAttributesByEvent.has(eventName)) {
+          templateAttributesByEvent.set(eventName, new Set());
+        }
+        const eventAttrs = templateAttributesByEvent.get(eventName)!;
+        attrs.forEach((attr) => eventAttrs.add(attr));
+      }
+    }
+
+    // Check each canvas node's event schema
+    for (const node of canvas.nodes) {
+      if (!node.pv) continue;
+
+      let eventName: string | undefined;
+      let eventSchema: { attributes?: Record<string, { display?: boolean }> } | undefined;
+      let schemaSource: 'inline' | 'library' = 'inline';
+
+      // Get event schema - either inline or from registry
+      if (node.pv.event && typeof node.pv.event === 'object' && node.pv.event.name) {
+        eventName = node.pv.event.name;
+        eventSchema = node.pv.event;
+      } else if (node.pv.eventRef && typeof node.pv.eventRef === 'string') {
+        eventName = node.pv.eventRef;
+        schemaSource = 'library';
+        // Try to get schema from registry
+        const sources = context.eventRegistry?.findEvent(eventName) ?? [];
+        const librarySource = sources.find((s) => s.type === 'library' && s.eventSchema);
+        if (librarySource?.eventSchema) {
+          eventSchema = librarySource.eventSchema;
+        }
+      }
+
+      if (!eventName || !eventSchema?.attributes) {
+        continue; // No schema to validate
+      }
+
+      // Get displayable attributes (where display !== false)
+      const displayableAttrs = Object.entries(eventSchema.attributes)
+        .filter(([_, fieldSchema]) => fieldSchema.display !== false)
+        .map(([attrName]) => attrName);
+
+      // Rule 1: Require at least one displayable attribute
+      if (displayableAttrs.length === 0) {
+        violations.push({
+          ruleId: 'canvas-event-no-displayable-attributes',
+          severity: 'error',
+          file: canvasPath || workflowPath,
+          path: schemaSource === 'inline' ? `nodes[${node.id}].pv.event.attributes` : `nodes[${node.id}].pv.eventRef`,
+          message: `Event "${eventName}" has no displayable attributes`,
+          impact: 'Event templates cannot display any meaningful data from this event',
+          suggestion:
+            'Add at least one attribute without display: false, or remove the event schema if no data is needed',
+          fixable: false,
+        });
+        continue; // Skip unused check for this event
+      }
+
+      // Rule 2: All displayable attributes must be used
+      const usedAttrs = templateAttributesByEvent.get(eventName) ?? new Set<string>();
+
+      for (const attr of displayableAttrs) {
+        // Check if attribute is used (direct match or as prefix of a nested path)
+        const isUsed = Array.from(usedAttrs).some(
+          (usedAttr) => usedAttr === attr || usedAttr.startsWith(attr + '.')
+        );
+
+        if (!isUsed) {
+          violations.push({
+            ruleId: 'workflow-attribute-unused',
+            severity: 'error',
+            file: canvasPath || workflowPath,
+            path: schemaSource === 'inline' ? `nodes[${node.id}].pv.event.attributes.${attr}` : `library.eventSchemas.${eventName}.attributes.${attr}`,
+            message: `Event "${eventName}" defines attribute "${attr}" that is not used in any template`,
+            impact: 'This attribute is defined but never displayed to users',
+            suggestion: `Either use {{${attr}}} in a template for event "${eventName}" or mark it as display: false if it's for telemetry only`,
+            fixable: false,
+          });
+        }
       }
     }
 

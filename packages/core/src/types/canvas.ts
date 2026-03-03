@@ -370,6 +370,12 @@ export interface PVEventFieldSchema {
   required?: boolean;
   /** Description of what this field represents */
   description?: string;
+  /**
+   * Whether this attribute is intended for template display.
+   * Set to false for telemetry/analytics-only attributes.
+   * Defaults to true.
+   */
+  display?: boolean;
 }
 
 /**
