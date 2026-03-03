@@ -39,8 +39,6 @@ import type {
   StateEvent,
   ExtendedCanvas,
   ComponentLibrary,
-  JsonValue,
-  PVEventSchema,
 } from '@principal-ai/principal-view-core';
 import { CanvasConverter } from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
@@ -52,8 +50,6 @@ import {
   convertToXYFlowNodes,
   convertToXYFlowEdges,
 } from '../utils/graphConverter';
-import { EdgeInfoPanel } from './EdgeInfoPanel';
-import { NodeInfoPanel } from './NodeInfoPanel';
 
 /** Position change event for tracking node movements */
 export interface NodePositionChange {
@@ -210,14 +206,6 @@ interface GraphRendererBaseProps {
    * Set to false to hide panel completely.
    */
   showNodeDetailPanel?: boolean;
-
-  /**
-   * Optional callback to resolve event references to full event schemas.
-   * When a node has an eventRef (string reference like "order.completed"),
-   * this function is called to retrieve the full event definition.
-   * Return undefined if the event reference cannot be resolved.
-   */
-  resolveEventRef?: (eventRef: string) => PVEventSchema | undefined;
 
   /**
    * When set, fits the viewport to show these specific nodes.
@@ -458,7 +446,6 @@ interface GraphRendererInnerProps {
   editStateRef: React.MutableRefObject<EditState>;
   onNodeClick?: (nodeId: string, event: React.MouseEvent) => void;
   showNodeDetailPanel?: boolean;
-  resolveEventRef?: (eventRef: string) => PVEventSchema | undefined;
   fitViewToNodeIds?: string[] | null;
   fitViewPadding?: number;
 }
@@ -490,7 +477,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   editStateRef,
   onNodeClick: onNodeClickProp,
   showNodeDetailPanel,
-  resolveEventRef,
   fitViewToNodeIds,
   fitViewPadding = 0.2,
 }) => {
@@ -541,9 +527,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   // Track selected nodes for info panel (supports multi-select)
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
-  // Track whether panel should be shown (only on explicit clicks, not after dragging)
-  const [showNodePanel, setShowNodePanel] = useState(false);
-  const [showEdgePanel, setShowEdgePanel] = useState(false);
 
   // Track hidden nodes (shift-click to toggle)
   const [hiddenNodeIds, setHiddenNodeIds] = useState<Set<string>>(new Set());
@@ -557,14 +540,12 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     validTypes: string[];
   } | null>(null);
 
-  // Sync highlightedNodeId to selection state so info panel shows
+  // Sync highlightedNodeId to selection state
   useEffect(() => {
     if (highlightedNodeId) {
       setSelectedNodeIds(new Set([highlightedNodeId]));
-      setShowNodePanel(true);
       // Clear edge selection when highlighting a node
       setSelectedEdgeIds(new Set());
-      setShowEdgePanel(false);
     }
   }, [highlightedNodeId]);
 
@@ -752,19 +733,15 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           }
           return next;
         });
-        setShowEdgePanel(true);
       } else {
         // Regular click: single select (replace selection)
         const shouldDeselect = selectedEdgeIds.size === 1 && selectedEdgeIds.has(edge.id);
         if (shouldDeselect) {
           setSelectedEdgeIds(new Set());
-          setShowEdgePanel(false);
         } else {
           setSelectedEdgeIds(new Set([edge.id]));
-          setShowEdgePanel(true);
         }
         setSelectedNodeIds(new Set());
-        setShowNodePanel(false);
       }
     },
     [editable, selectedEdgeIds]
@@ -827,9 +804,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         return;
       }
 
-      // Determine if we should show the panel based on showNodeDetailPanel prop
-      const shouldShowPanel = showNodeDetailPanel !== false && (showNodeDetailPanel === true || !onNodeClickProp);
-
       // If custom node click handler is provided, call it
       if (onNodeClickProp) {
         onNodeClickProp(node.id, event);
@@ -843,7 +817,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       const shouldDeselect = selectedNodeIds.size === 1 && selectedNodeIds.has(node.id);
       if (shouldDeselect) {
         setSelectedNodeIds(new Set());
-        setShowNodePanel(false);
 
         // Also update local nodes selection state immediately
         if (editable) {
@@ -856,9 +829,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         }
       } else {
         setSelectedNodeIds(new Set([node.id]));
-        if (shouldShowPanel) {
-          setShowNodePanel(true);
-        }
 
         // Also update local nodes selection state immediately
         if (editable) {
@@ -871,47 +841,15 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         }
       }
       setSelectedEdgeIds(new Set());
-      setShowEdgePanel(false);
     },
     [selectedNodeIds, onNodeClickProp, showNodeDetailPanel, editable]
   );
 
-  // Handle close edge info panel
-  const onCloseEdgeInfoPanel = useCallback(() => {
-    setSelectedEdgeIds(new Set());
-    setShowEdgePanel(false);
-  }, []);
-
-  // Handle edge side updates from EdgeInfoPanel
-  const handleUpdateEdgeSides = useCallback((edgeId: string, fromSide: string, toSide: string) => {
-    setLocalEdges((currentEdges) =>
-      currentEdges.map((edge) =>
-        edge.id === edgeId
-          ? {
-              ...edge,
-              data: {
-                ...edge.data,
-                fromSide,
-                toSide,
-              },
-            }
-          : edge
-      )
-    );
-  }, []);
-
-  // Handle close node info panel
-  const onCloseNodeInfoPanel = useCallback(() => {
-    setSelectedNodeIds(new Set());
-    setShowNodePanel(false);
-  }, []);
 
   // Handle pane click (clear selection when clicking empty space)
   const onPaneClick = useCallback(() => {
     setSelectedNodeIds(new Set());
     setSelectedEdgeIds(new Set());
-    setShowNodePanel(false);
-    setShowEdgePanel(false);
   }, []);
 
   // Handle selection change from ReactFlow (box selection and clicks)
@@ -925,136 +863,10 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       // Always update selection state, even in read-only mode (for visual feedback)
       setSelectedNodeIds(new Set(selectedNodes.map((n) => n.id)));
       setSelectedEdgeIds(new Set(selectedEdges.map((e) => e.id)));
-
-      // Only show panels in edit mode or when explicitly enabled
-      if (editable) {
-        // Box selection is an explicit action, so show panels
-        if (selectedNodes.length > 0) {
-          setShowNodePanel(true);
-        }
-        if (selectedEdges.length > 0) {
-          setShowEdgePanel(true);
-        }
-      }
     },
     [editable]
   );
 
-  // Handle node update (internal - updates local state only)
-  const handleNodeUpdate = useCallback(
-    (nodeId: string, updates: { type?: string; data?: Record<string, JsonValue> }) => {
-      if (!editable) return;
-
-      // Update local nodes
-      setLocalNodes((prev) =>
-        prev.map((node) => {
-          if (node.id === nodeId) {
-            return {
-              ...node,
-              type: updates.type ?? node.type,
-              data: updates.data ? { ...node.data, ...updates.data } : node.data,
-            };
-          }
-          return node;
-        })
-      );
-
-      // Track the change
-      updateEditState((prev) => {
-        const newUpdates = new Map(prev.nodeUpdates);
-        const existing = newUpdates.get(nodeId) || {};
-        newUpdates.set(nodeId, {
-          type: updates.type ?? existing.type,
-          data: updates.data ? { ...existing.data, ...updates.data } : existing.data,
-        });
-        return { ...prev, nodeUpdates: newUpdates };
-      });
-    },
-    [editable, updateEditState]
-  );
-
-  // Handle node delete (internal)
-  const handleNodeDelete = useCallback(
-    (nodeId: string) => {
-      if (!editable) return;
-
-      // Remove from local state
-      setLocalNodes((prev) => prev.filter((n) => n.id !== nodeId));
-      setLocalEdges((prev) => prev.filter((e) => e.from !== nodeId && e.to !== nodeId));
-
-      // Track the change
-      updateEditState((prev) => {
-        const newDeletedNodes = new Set(prev.deletedNodeIds);
-        newDeletedNodes.add(nodeId);
-        // Remove any pending updates for this node
-        const newUpdates = new Map(prev.nodeUpdates);
-        newUpdates.delete(nodeId);
-        // Remove any position changes for this node
-        const newPositions = new Map(prev.positionChanges);
-        newPositions.delete(nodeId);
-        // Remove any dimension changes for this node
-        const newDimensions = new Map(prev.dimensionChanges);
-        newDimensions.delete(nodeId);
-        // Remove created edges that involve this node
-        const newCreatedEdges = prev.createdEdges.filter(
-          (e) => e.from !== nodeId && e.to !== nodeId
-        );
-        return {
-          ...prev,
-          deletedNodeIds: newDeletedNodes,
-          nodeUpdates: newUpdates,
-          positionChanges: newPositions,
-          dimensionChanges: newDimensions,
-          createdEdges: newCreatedEdges,
-        };
-      });
-
-      setSelectedNodeIds(new Set());
-    },
-    [editable, updateEditState]
-  );
-
-  // Handle edge delete (internal)
-  const handleEdgeDelete = useCallback(
-    (edgeId: string) => {
-      if (!editable) return;
-
-      // Find the edge before removing it so we can track its full info
-      const edgeToDelete = localEdges.find((e) => e.id === edgeId);
-
-      // Remove from local state
-      setLocalEdges((prev) => prev.filter((e) => e.id !== edgeId));
-
-      // Track the change
-      updateEditState((prev) => {
-        // Check if this was a newly created edge
-        const createdEdgeIndex = prev.createdEdges.findIndex((e) => e.id === edgeId);
-        if (createdEdgeIndex >= 0) {
-          // Just remove it from created edges
-          const newCreatedEdges = [...prev.createdEdges];
-          newCreatedEdges.splice(createdEdgeIndex, 1);
-          return { ...prev, createdEdges: newCreatedEdges };
-        }
-        // Otherwise mark as deleted with full edge info
-        if (edgeToDelete) {
-          const newDeletedEdges = [
-            ...prev.deletedEdges,
-            {
-              id: edgeId,
-              from: edgeToDelete.from,
-              to: edgeToDelete.to,
-              type: edgeToDelete.type,
-            },
-          ];
-          return { ...prev, deletedEdges: newDeletedEdges };
-        }
-        return prev;
-      });
-
-      setSelectedEdgeIds(new Set());
-    },
-    [editable, updateEditState, localEdges]
-  );
 
   // Handle new connection from drag
   const handleConnect = useCallback(
@@ -1307,36 +1119,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   // ============================================
 
   // Get first selected edge (for single-selection info panel)
-  const selectedEdgeId = useMemo(() => {
-    if (selectedEdgeIds.size === 0) return null;
-    return selectedEdgeIds.values().next().value;
-  }, [selectedEdgeIds]);
-
-  const selectedEdge = useMemo(() => {
-    if (!selectedEdgeId) return null;
-    return edges.find((e) => e.id === selectedEdgeId);
-  }, [selectedEdgeId, edges]);
-
-  const selectedEdgeTypeDefinition = useMemo(() => {
-    if (!selectedEdge) return null;
-    return configuration.edgeTypes[selectedEdge.type];
-  }, [selectedEdge, configuration.edgeTypes]);
-
-  // Get first selected node (for single-selection info panel)
-  const selectedNodeId = useMemo(() => {
-    if (selectedNodeIds.size === 0) return null;
-    return selectedNodeIds.values().next().value;
-  }, [selectedNodeIds]);
-
-  const selectedNode = useMemo(() => {
-    if (!selectedNodeId) return null;
-    return nodes.find((n) => n.id === selectedNodeId);
-  }, [selectedNodeId, nodes]);
-
-  const selectedNodeTypeDefinition = useMemo(() => {
-    if (!selectedNode) return null;
-    return configuration.nodeTypes[selectedNode.type];
-  }, [selectedNode, configuration.nodeTypes]);
 
   // ============================================
   // ANIMATIONS
@@ -1557,19 +1339,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       if (!editable) return;
 
       setXyflowLocalNodes((nds) => applyNodeChanges(changes, nds) as Node<CustomNodeData>[]);
-
-      // Check if dragging started - hide panel when dragging starts
-      const hasDragging = changes.some(
-        (change) =>
-          change.type === 'position' &&
-          'dragging' in change &&
-          change.dragging === true
-      );
-
-      if (hasDragging) {
-        // Hide panel when dragging starts - it won't show again until an explicit click
-        setShowNodePanel(false);
-      }
 
       // Track position changes on drag end
       const positionChanges = changes.filter(
@@ -1886,31 +1655,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         )}
       </ReactFlow>
 
-      {/* Single edge info panel - shown only on explicit click */}
-      {selectedEdgeIds.size === 1 && selectedEdge && selectedEdgeTypeDefinition && showEdgePanel && (
-        <EdgeInfoPanel
-          edge={selectedEdge}
-          typeDefinition={selectedEdgeTypeDefinition}
-          sourceNodeId={selectedEdge.from}
-          targetNodeId={selectedEdge.to}
-          onClose={onCloseEdgeInfoPanel}
-          onDelete={editable ? handleEdgeDelete : undefined}
-          onUpdateSides={editable ? handleUpdateEdgeSides : undefined}
-        />
-      )}
-
-      {/* Single node info panel - shown only on explicit click */}
-      {selectedNodeIds.size === 1 && selectedNode && selectedNodeTypeDefinition && showNodePanel && showNodeDetailPanel !== false && (
-        <NodeInfoPanel
-          node={selectedNode}
-          typeDefinition={selectedNodeTypeDefinition}
-          availableNodeTypes={configuration.nodeTypes}
-          onClose={onCloseNodeInfoPanel}
-          onDelete={editable ? handleNodeDelete : undefined}
-          onUpdate={editable ? handleNodeUpdate : undefined}
-          resolveEventRef={resolveEventRef}
-        />
-      )}
 
 
       {pendingConnection && (
@@ -2288,7 +2032,6 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     onPendingChangesChange,
     onNodeClick,
     showNodeDetailPanel,
-    resolveEventRef,
     fitViewToNodeIds,
     fitViewPadding,
   } = props;
@@ -2319,7 +2062,6 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           editStateRef={editStateRef}
           onNodeClick={onNodeClick}
           showNodeDetailPanel={showNodeDetailPanel}
-          resolveEventRef={resolveEventRef}
           fitViewToNodeIds={fitViewToNodeIds}
           fitViewPadding={fitViewPadding}
         />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BaseEdge, EdgeLabelRenderer, getBezierPath } from '@xyflow/react';
+import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath } from '@xyflow/react';
 import type { EdgeProps, Edge } from '@xyflow/react';
 import type { EdgeTypeDefinition } from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
@@ -77,14 +77,16 @@ export const CustomEdge: React.FC<EdgeProps<Edge<CustomEdgeData>>> = ({
   const color = hasViolations ? '#D0021B' : edgeColor || typeDefinition.color || '#888';
   const width = typeDefinition.width || 2;
 
-  // Get Bezier path
-  const [edgePath, labelX, labelY] = getBezierPath({
+  // Get SmoothStep path (orthogonal routing with rounded corners)
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
     sourcePosition,
     targetX,
     targetY,
     targetPosition,
+    borderRadius: 0,
+    offset: 20,
   });
 
   // Style based on edge type

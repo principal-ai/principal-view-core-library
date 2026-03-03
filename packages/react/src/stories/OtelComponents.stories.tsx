@@ -2,9 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 import { GraphRenderer } from '../components/GraphRenderer';
-import { NodeInfoPanel } from '../components/NodeInfoPanel';
 import { NodeTooltip } from '../components/NodeTooltip';
-import type { NodeState, NodeTypeDefinition } from '@principal-ai/principal-view-core';
 
 // OTEL Log Association canvas data
 const otelCanvas = {
@@ -353,48 +351,3 @@ Use \`config.json\` to customize.`}
   ),
 };
 
-/**
- * NodeInfoPanel with OTEL information section.
- */
-export const InfoPanelWithOtel: StoryObj = {
-  render: () => {
-    const selectedNode: NodeState = {
-      id: 'log-router',
-      type: 'otel-service',
-      name: 'LogRouter',
-      data: {
-        description:
-          'Routes incoming OTEL logs to canvas nodes based on scope and resourceMatch criteria',
-        otel: {
-          kind: 'service',
-          category: 'router',
-          isNew: true,
-        },
-        icon: 'GitBranch',
-        color: '#7ED321',
-        sources: ['src/services/LogRouter.ts'],
-      },
-      position: { x: 0, y: 0 },
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    const typeDefinition: NodeTypeDefinition = {
-      shape: 'hexagon',
-      color: '#7ED321',
-      icon: 'GitBranch',
-    };
-
-    return (
-      <ThemeProvider theme={defaultEditorTheme}>
-        <div style={{ padding: '20px', position: 'relative', minHeight: '400px' }}>
-          <h3 style={{ marginBottom: '20px' }}>NodeInfoPanel with OTEL Section</h3>
-          <p style={{ marginBottom: '20px', color: '#666' }}>
-            The panel shows the OpenTelemetry section with kind badge, category, and NEW indicator.
-          </p>
-          <NodeInfoPanel node={selectedNode} typeDefinition={typeDefinition} onClose={() => {}} />
-        </div>
-      </ThemeProvider>
-    );
-  },
-};

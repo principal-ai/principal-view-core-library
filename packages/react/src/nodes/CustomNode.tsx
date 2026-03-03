@@ -94,10 +94,48 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
   const description = nodeData?.description as string | undefined;
   const sources = nodeData?.sources as string[] | undefined;
 
+  // Get badge shape styles based on node shape
+  const getBadgeShapeStyles = (): React.CSSProperties => {
+    const shape = typeDefinition.shape;
+    const baseSize = 18;
+
+    switch (shape) {
+      case 'circle':
+        return {
+          width: baseSize,
+          height: baseSize,
+          borderRadius: '50%',
+        };
+      case 'diamond':
+        return {
+          width: baseSize - 4,
+          height: baseSize - 4,
+          borderRadius: 0,
+          transform: 'rotate(45deg)',
+        };
+      case 'hexagon':
+        return {
+          width: baseSize,
+          height: baseSize,
+          borderRadius: 0,
+          clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
+        };
+      case 'rectangle':
+      default:
+        return {
+          width: baseSize,
+          height: baseSize,
+          borderRadius: 0,
+        };
+    }
+  };
+
   // Render Sources badge (top-right)
   const renderSourcesBadge = () => {
     const sources = nodeData?.sources as string[] | undefined;
     if (!sources || sources.length === 0) return null;
+
+    const shapeStyles = getBadgeShapeStyles();
 
     return (
       <div
@@ -105,9 +143,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
           position: 'absolute',
           top: -6,
           right: -6,
-          width: 18,
-          height: 18,
-          borderRadius: '50%',
+          ...shapeStyles,
           backgroundColor: '#10b981', // Green for sources
           color: 'white',
           fontSize: theme.fontSizes[0],
@@ -122,7 +158,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
         }}
         title={`Sources: ${sources.join(', ')}`}
       >
-        S
+        <span style={{ transform: shapeStyles.transform ? 'rotate(-45deg)' : undefined }}>S</span>
       </div>
     );
   };
@@ -151,15 +187,15 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
       implemented: 'Implemented - Code exists',
     };
 
+    const shapeStyles = getBadgeShapeStyles();
+
     return (
       <div
         style={{
           position: 'absolute',
           top: -6,
           left: -6,
-          width: 18,
-          height: 18,
-          borderRadius: '50%',
+          ...shapeStyles,
           backgroundColor: statusColors[status],
           color: 'white',
           fontSize: theme.fontSizes[0],
@@ -174,7 +210,9 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
         }}
         title={statusTitles[status]}
       >
-        {statusLabels[status]}
+        <span style={{ transform: shapeStyles.transform ? 'rotate(-45deg)' : undefined }}>
+          {statusLabels[status]}
+        </span>
       </div>
     );
   };
@@ -339,7 +377,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
       default:
         return {
           ...baseStyles,
-          borderRadius: '8px',
+          borderRadius: '0',
         };
     }
   };

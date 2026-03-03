@@ -37,12 +37,6 @@ export type {
   PendingChanges,
 } from './components/GraphRenderer';
 
-export { EdgeInfoPanel } from './components/EdgeInfoPanel';
-export type { EdgeInfoPanelProps } from './components/EdgeInfoPanel';
-
-export { NodeInfoPanel } from './components/NodeInfoPanel';
-export type { NodeInfoPanelProps } from './components/NodeInfoPanel';
-
 export { ConfigurationSelector } from './components/ConfigurationSelector';
 export type { ConfigurationSelectorProps } from './components/ConfigurationSelector';
 
