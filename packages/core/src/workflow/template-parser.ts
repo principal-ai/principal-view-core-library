@@ -204,7 +204,10 @@ function buildSegments(
 
 /**
  * Build segments when all variables are resolved
- * This uses template analysis to identify variable positions
+ *
+ * Strategy: Process template sequentially, tracking positions in both
+ * template and rendered strings. The text before each variable is the same
+ * in both (it's literal text), so we can use it to stay synchronized.
  */
 function buildSegmentsWithResolvedVariables(
   template: string,
@@ -239,15 +242,17 @@ function buildSegmentsWithResolvedVariables(
       continue; // Skip helpers for now
     }
 
-    // Add text before this variable
+    // The text before this variable in the template
     const textBefore = template.substring(templateIndex, match.index);
-    if (textBefore && renderedIndex < rendered.length) {
-      const textLength = textBefore.length;
-      segments.push({ type: 'text', value: rendered.substring(renderedIndex, renderedIndex + textLength) });
-      renderedIndex += textLength;
+
+    // This same text should appear in the rendered output at renderedIndex
+    // (literal text doesn't change during template rendering)
+    if (textBefore) {
+      segments.push({ type: 'text', value: textBefore });
+      renderedIndex += textBefore.length;
     }
 
-    // Resolve the variable
+    // Resolve the variable to get its rendered value
     const [value, resolved] = resolveVariable(varName, context as TemplateContext);
 
     if (resolved && value !== undefined) {
@@ -274,9 +279,10 @@ function buildSegmentsWithResolvedVariables(
     templateIndex = match.index! + match[0].length;
   }
 
-  // Add remaining text
-  if (renderedIndex < rendered.length) {
-    segments.push({ type: 'text', value: rendered.substring(renderedIndex) });
+  // Add remaining text after the last variable
+  const remainingTemplate = template.substring(templateIndex);
+  if (remainingTemplate) {
+    segments.push({ type: 'text', value: remainingTemplate });
   }
 
   return segments;

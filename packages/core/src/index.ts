@@ -124,7 +124,7 @@ export type { YamlParseResult } from './utils/YamlParser';
 
 // Export workflow template system (browser-safe)
 // Import directly from files to avoid pulling in Node.js validator
-export { renderWorkflow } from './workflow/template-renderer';
+export { renderWorkflow, renderEventTemplate } from './workflow/template-renderer';
 export { parseTemplate, ParsedTemplate } from './workflow/template-parser';
 export type { TemplateSegment, TemplateContext, TemplateValue, TemplateData } from './workflow/template-parser';
 export {

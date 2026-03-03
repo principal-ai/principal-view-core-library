@@ -34,7 +34,7 @@ export { parseTemplate, ParsedTemplate } from './template-parser';
 export type { TemplateSegment, TemplateContext, TemplateValue, TemplateData } from './template-parser';
 
 // Template Rendering
-export { renderWorkflow } from './template-renderer';
+export { renderWorkflow, renderEventTemplate } from './template-renderer';
 
 // Validation
 export type {

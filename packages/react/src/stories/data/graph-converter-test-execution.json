@@ -1,8 +1,226 @@
 [
   {
     "id": "span-1",
+    "name": "rules.lint.with.violations",
+    "startTime": 1772501743614,
+    "attributes": {
+      "span.kind": "test.case",
+      "test.name": "rules.lint.with.violations",
+      "test.framework": "bun",
+      "test.result": "pass"
+    },
+    "events": [
+      {
+        "time": 1772501743614,
+        "name": "test.started",
+        "attributes": {
+          "code.filepath": "rules-engine-instrumented.test.ts",
+          "code.lineno": 93,
+          "test.type": "integration",
+          "test.subject": "rules-engine"
+        }
+      },
+      {
+        "time": 1772501743614,
+        "name": "engine.creating",
+        "attributes": {
+          "code.filepath": "rules-engine-instrumented.test.ts",
+          "code.lineno": 99,
+          "engine.type": "default"
+        }
+      },
+      {
+        "time": 1772501743614,
+        "name": "engine.created",
+        "attributes": {
+          "code.filepath": "rules-engine-instrumented.test.ts",
+          "code.lineno": 104,
+          "engine.rules.count": 14
+        }
+      },
+      {
+        "time": 1772501743614,
+        "name": "lint.starting",
+        "attributes": {
+          "code.filepath": "rules-engine-instrumented.test.ts",
+          "code.lineno": 109,
+          "config.node.types.count": 3,
+          "config.edge.types.count": 2,
+          "config.connections.count": 1
+        }
+      },
+      {
+        "time": 1772501743618,
+        "name": "lint.completed",
+        "attributes": {
+          "code.filepath": "rules-engine-instrumented.test.ts",
+          "code.lineno": 119,
+          "result.violations.total": 6,
+          "result.violations.errors": 6,
+          "result.violations.warnings": 0,
+          "result.violations.fixable": 1
+        }
+      },
+      {
+        "time": 1772501743618,
+        "name": "violations.analyzed",
+        "attributes": {
+          "code.filepath": "rules-engine-instrumented.test.ts",
+          "code.lineno": 135,
+          "violation.required-metadata.found": true,
+          "violation.valid-color-format.found": true,
+          "violation.minimum-node-sources.found": true
+        }
+      }
+    ],
+    "status": "OK",
+    "endTime": 1772501743618,
+    "duration": 4
+  },
+  {
+    "id": "span-2",
+    "name": "rules.lint.valid.config",
+    "startTime": 1772501743618,
+    "attributes": {
+      "span.kind": "test.case",
+      "test.name": "rules.lint.valid.config",
+      "test.framework": "bun",
+      "test.result": "pass"
+    },
+    "events": [
+      {
+        "time": 1772501743618,
+        "name": "test.started",
+        "attributes": {
+          "code.filepath": "rules-engine-instrumented.test.ts",
+          "code.lineno": 153,
+          "test.type": "integration",
+          "test.subject": "rules-engine",
+          "test.expectation": "no-violations"
+        }
+      },
+      {
+        "time": 1772501743618,
+        "name": "lint.starting",
+        "attributes": {
+          "code.filepath": "rules-engine-instrumented.test.ts",
+          "code.lineno": 161,
+          "config.node.types.count": 1,
+          "config.edge.types.count": 1
+        }
+      },
+      {
+        "time": 1772501743619,
+        "name": "lint.completed",
+        "attributes": {
+          "code.filepath": "rules-engine-instrumented.test.ts",
+          "code.lineno": 170,
+          "result.violations.total": 0,
+          "result.violations.errors": 0,
+          "result.violations.warnings": 0
+        }
+      }
+    ],
+    "status": "OK",
+    "endTime": 1772501743619,
+    "duration": 1
+  },
+  {
+    "id": "span-3",
+    "name": "rules.lint.severity.override",
+    "startTime": 1772501743619,
+    "attributes": {
+      "span.kind": "test.case",
+      "test.name": "rules.lint.severity.override",
+      "test.framework": "bun",
+      "test.result": "pass"
+    },
+    "events": [
+      {
+        "time": 1772501743619,
+        "name": "test.started",
+        "attributes": {
+          "code.filepath": "rules-engine-instrumented.test.ts",
+          "code.lineno": 187,
+          "test.type": "integration",
+          "test.subject": "rules-engine-config"
+        }
+      },
+      {
+        "time": 1772501743619,
+        "name": "lint.starting",
+        "attributes": {
+          "code.filepath": "rules-engine-instrumented.test.ts",
+          "code.lineno": 194,
+          "config.has.violations": true,
+          "config.severity.override": "valid-color-format=warn"
+        }
+      },
+      {
+        "time": 1772501743619,
+        "name": "lint.completed",
+        "attributes": {
+          "code.filepath": "rules-engine-instrumented.test.ts",
+          "code.lineno": 207,
+          "result.violations.total": 6,
+          "violation.color.severity": "warn"
+        }
+      }
+    ],
+    "status": "OK",
+    "endTime": 1772501743619,
+    "duration": 0
+  },
+  {
+    "id": "span-4",
+    "name": "rules.lint.disabled.rules",
+    "startTime": 1772501743619,
+    "attributes": {
+      "span.kind": "test.case",
+      "test.name": "rules.lint.disabled.rules",
+      "test.framework": "bun",
+      "test.result": "pass"
+    },
+    "events": [
+      {
+        "time": 1772501743619,
+        "name": "test.started",
+        "attributes": {
+          "code.filepath": "rules-engine-instrumented.test.ts",
+          "code.lineno": 222,
+          "test.type": "integration",
+          "test.subject": "rules-engine-config"
+        }
+      },
+      {
+        "time": 1772501743619,
+        "name": "lint.starting",
+        "attributes": {
+          "code.filepath": "rules-engine-instrumented.test.ts",
+          "code.lineno": 229,
+          "config.disabled.rules": "valid-color-format,minimum-node-sources"
+        }
+      },
+      {
+        "time": 1772501743619,
+        "name": "lint.completed",
+        "attributes": {
+          "code.filepath": "rules-engine-instrumented.test.ts",
+          "code.lineno": 241,
+          "result.violations.total": 4,
+          "violation.color.disabled": true,
+          "violation.sources.disabled": true
+        }
+      }
+    ],
+    "status": "OK",
+    "endTime": 1772501743619,
+    "duration": 0
+  },
+  {
+    "id": "span-5",
     "name": "should convert simple config to nodes and edges",
-    "startTime": 1772390255065,
+    "startTime": 1772501743878,
     "attributes": {
       "span.kind": "test.case",
       "test.name": "should convert simple config to nodes and edges",
@@ -13,7 +231,7 @@
     },
     "events": [
       {
-        "time": 1772390255065,
+        "time": 1772501743878,
         "name": "setup.started",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -22,7 +240,7 @@
         }
       },
       {
-        "time": 1772390255065,
+        "time": 1772501743878,
         "name": "setup.complete",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -32,7 +250,7 @@
         }
       },
       {
-        "time": 1772390255065,
+        "time": 1772501743878,
         "name": "execution.started",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -41,7 +259,7 @@
         }
       },
       {
-        "time": 1772390255065,
+        "time": 1772501743878,
         "name": "execution.complete",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -51,7 +269,7 @@
         }
       },
       {
-        "time": 1772390255065,
+        "time": 1772501743878,
         "name": "assertion.started",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -60,7 +278,7 @@
         }
       },
       {
-        "time": 1772390255065,
+        "time": 1772501743878,
         "name": "assertion.complete",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -71,13 +289,13 @@
       }
     ],
     "status": "OK",
-    "endTime": 1772390255065,
+    "endTime": 1772501743878,
     "duration": 0
   },
   {
-    "id": "span-2",
+    "id": "span-6",
     "name": "should extract manual positions from node types",
-    "startTime": 1772390255065,
+    "startTime": 1772501743878,
     "attributes": {
       "span.kind": "test.case",
       "test.name": "should extract manual positions from node types",
@@ -88,7 +306,7 @@
     },
     "events": [
       {
-        "time": 1772390255065,
+        "time": 1772501743878,
         "name": "setup.started",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -97,7 +315,7 @@
         }
       },
       {
-        "time": 1772390255065,
+        "time": 1772501743878,
         "name": "setup.complete",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -107,7 +325,7 @@
         }
       },
       {
-        "time": 1772390255065,
+        "time": 1772501743878,
         "name": "execution.started",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -116,7 +334,7 @@
         }
       },
       {
-        "time": 1772390255065,
+        "time": 1772501743878,
         "name": "execution.complete",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -125,7 +343,7 @@
         }
       },
       {
-        "time": 1772390255065,
+        "time": 1772501743878,
         "name": "assertion.started",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -134,7 +352,7 @@
         }
       },
       {
-        "time": 1772390255065,
+        "time": 1772501743878,
         "name": "assertion.complete",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -145,13 +363,13 @@
       }
     ],
     "status": "OK",
-    "endTime": 1772390255065,
+    "endTime": 1772501743878,
     "duration": 0
   },
   {
-    "id": "span-3",
+    "id": "span-7",
     "name": "should handle nodes without positions",
-    "startTime": 1772390255065,
+    "startTime": 1772501743878,
     "attributes": {
       "span.kind": "test.case",
       "test.name": "should handle nodes without positions",
@@ -162,7 +380,7 @@
     },
     "events": [
       {
-        "time": 1772390255065,
+        "time": 1772501743878,
         "name": "setup.started",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -171,7 +389,7 @@
         }
       },
       {
-        "time": 1772390255065,
+        "time": 1772501743878,
         "name": "setup.complete",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -181,7 +399,7 @@
         }
       },
       {
-        "time": 1772390255065,
+        "time": 1772501743878,
         "name": "execution.started",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -190,7 +408,7 @@
         }
       },
       {
-        "time": 1772390255066,
+        "time": 1772501743878,
         "name": "execution.complete",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -199,7 +417,7 @@
         }
       },
       {
-        "time": 1772390255066,
+        "time": 1772501743878,
         "name": "assertion.started",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -208,7 +426,7 @@
         }
       },
       {
-        "time": 1772390255066,
+        "time": 1772501743878,
         "name": "assertion.complete",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -219,7 +437,7 @@
       }
     ],
     "status": "OK",
-    "endTime": 1772390255066,
-    "duration": 1
+    "endTime": 1772501743878,
+    "duration": 0
   }
 ]

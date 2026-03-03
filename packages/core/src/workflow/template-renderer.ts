@@ -15,7 +15,7 @@ import type {
   FlowDirective,
   FormattingOptions,
 } from './types';
-import { parseTemplate, type TemplateContext, type TemplateData } from './template-parser';
+import { parseTemplate, ParsedTemplate, type TemplateContext, type TemplateData } from './template-parser';
 import { selectScenario, computeAggregates } from './scenario-matcher';
 
 /**
@@ -49,6 +49,68 @@ function buildSpanData(spanAttributes?: Record<string, unknown>): TemplateData |
   }
 
   return { span };
+}
+
+/**
+ * Build a nested context object from flat dot-notation attributes.
+ * Converts { 'user.name': 'John' } to { user: { name: 'John' } }
+ */
+function buildContextFromAttributes(attributes?: Record<string, unknown>): Record<string, unknown> {
+  if (!attributes || Object.keys(attributes).length === 0) {
+    return {};
+  }
+
+  const context: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(attributes)) {
+    if (key.includes('.')) {
+      const parts = key.split('.');
+      let current: Record<string, unknown> = context;
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (!current[parts[i]] || typeof current[parts[i]] !== 'object') {
+          current[parts[i]] = {};
+        }
+        current = current[parts[i]] as Record<string, unknown>;
+      }
+      current[parts[parts.length - 1]] = value;
+    } else {
+      context[key] = value;
+    }
+  }
+
+  return context;
+}
+
+/**
+ * Render a template string using an OtelEvent's attributes.
+ *
+ * This is the recommended way to render event templates in UI components.
+ * It handles:
+ * - Building nested context from event.attributes for {{variable}} access
+ * - Building @span data from event.spanAttributes for {{@span.variable}} access
+ * - Returns ParsedTemplate with segments for proper variable highlighting
+ *
+ * @param template - Template string with {{variables}}
+ * @param event - Optional OtelEvent providing attribute data
+ * @returns ParsedTemplate with segments indicating resolved/unresolved variables
+ *
+ * @example
+ * // With event data
+ * const parsed = renderEventTemplate("User {{user.name}} logged in", event);
+ * parsed.segments.forEach(seg => {
+ *   if (seg.type === 'variable') {
+ *     // Style based on seg.resolved
+ *   }
+ * });
+ *
+ * // Without event (preview mode) - variables remain unresolved
+ * const preview = renderEventTemplate("User {{user.name}} logged in");
+ */
+export function renderEventTemplate(template: string, event?: OtelEvent): ParsedTemplate {
+  const context = buildContextFromAttributes(event?.attributes);
+  const spanData = buildSpanData(event?.spanAttributes);
+
+  return parseTemplate(template, context as TemplateContext, spanData);
 }
 
 /**
