@@ -1,4 +1,4 @@
-import { useMemo, forwardRef } from 'react';
+import { useMemo, useCallback, useRef, forwardRef } from 'react';
 import type { ExtendedCanvas, ExtendedCanvasNode, ExtendedCanvasEdge } from '@principal-ai/principal-view-core';
 import { GraphRenderer } from './GraphRenderer';
 import type { GraphRendererProps, GraphRendererHandle } from './GraphRenderer';
@@ -205,13 +205,84 @@ export const MultiCanvasRenderer = forwardRef<
   GraphRendererHandle,
   MultiCanvasRendererProps
 >(function MultiCanvasRenderer(
-  { layout, onLayoutChange: _onLayoutChange, showGroups = true, ...graphRendererProps },
+  { layout, onLayoutChange, showGroups = true, ...graphRendererProps },
   ref
 ) {
+  // Track group positions at the start of drag to calculate deltas
+  const groupPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+
   // Merge all canvases into a single canvas
   const mergedCanvas = useMemo(
     () => mergeCanvases(layout.placements, { showGroups }),
     [layout.placements, showGroups]
+  );
+
+  // Calculate group node IDs for dragging
+  const draggableNodeIds = useMemo(() => {
+    if (!showGroups) return undefined;
+    const ids = new Set<string>();
+    for (const placement of layout.placements) {
+      if (placement.canvas.nodes && placement.canvas.nodes.length > 0) {
+        ids.add(`${placement.canvasId}:__group__`);
+      }
+    }
+    return ids.size > 0 ? ids : undefined;
+  }, [layout.placements, showGroups]);
+
+  // Store initial group positions whenever layout changes
+  useMemo(() => {
+    groupPositionsRef.current.clear();
+    for (const placement of layout.placements) {
+      if (placement.canvas.nodes && placement.canvas.nodes.length > 0) {
+        const bounds = calculateCanvasBounds(placement.canvas);
+        // Group position = placement position + bounds offset - padding
+        groupPositionsRef.current.set(`${placement.canvasId}:__group__`, {
+          x: placement.position.x + bounds.minX - GROUP_PADDING,
+          y: placement.position.y + bounds.minY - GROUP_PADDING,
+        });
+      }
+    }
+  }, [layout.placements]);
+
+  // Handle group drag to update layout positions
+  const handleNodeDragStop = useCallback(
+    (nodeId: string, newPosition: { x: number; y: number }) => {
+      // Only handle group nodes
+      if (!nodeId.endsWith(':__group__')) return;
+      if (!onLayoutChange) return;
+
+      const parsed = parseNodeId(nodeId);
+      if (!parsed) return;
+      const { canvasId } = parsed;
+
+      // Get the original group position
+      const originalGroupPos = groupPositionsRef.current.get(nodeId);
+      if (!originalGroupPos) return;
+
+      // Calculate delta
+      const deltaX = newPosition.x - originalGroupPos.x;
+      const deltaY = newPosition.y - originalGroupPos.y;
+
+      // Skip if no significant movement
+      if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) return;
+
+      // Create updated layout with new position for this canvas
+      const updatedPlacements = layout.placements.map((placement) => {
+        if (placement.canvasId === canvasId) {
+          return {
+            ...placement,
+            position: {
+              x: placement.position.x + deltaX,
+              y: placement.position.y + deltaY,
+            },
+          };
+        }
+        return placement;
+      });
+
+      onLayoutChange({ placements: updatedPlacements });
+    },
+    [layout.placements, onLayoutChange]
   );
 
   return (
@@ -219,6 +290,8 @@ export const MultiCanvasRenderer = forwardRef<
       ref={ref}
       canvas={mergedCanvas}
       editable={false}
+      draggableNodeIds={draggableNodeIds}
+      onNodeDragStop={handleNodeDragStop}
       {...graphRendererProps}
     />
   );

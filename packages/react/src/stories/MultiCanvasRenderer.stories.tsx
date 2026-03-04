@@ -327,3 +327,44 @@ export const WithoutGroups: Story = {
     showGroups: false,
   },
 };
+
+/**
+ * Draggable groups - drag the group borders to rearrange canvases
+ */
+export const DraggableGroups: Story = {
+  render: () => {
+    const [layout, setLayout] = React.useState<MultiCanvasLayout>(fourCanvasLayout);
+
+    const handleLayoutChange = React.useCallback((newLayout: MultiCanvasLayout) => {
+      console.log('Layout changed:', newLayout.placements.map(p => ({
+        canvasId: p.canvasId,
+        position: p.position,
+      })));
+      setLayout(newLayout);
+    }, []);
+
+    return (
+      <div style={{ width: '100%', height: '100%' }}>
+        <div style={{
+          position: 'absolute',
+          top: 10,
+          left: 10,
+          zIndex: 100,
+          background: 'rgba(0,0,0,0.7)',
+          color: 'white',
+          padding: '8px 12px',
+          borderRadius: 4,
+          fontSize: 12,
+        }}>
+          Drag the group borders to move entire canvases
+        </div>
+        <MultiCanvasRenderer
+          layout={layout}
+          onLayoutChange={handleLayoutChange}
+          showControls
+          showBackground
+        />
+      </div>
+    );
+  },
+};

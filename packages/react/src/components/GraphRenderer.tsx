@@ -213,6 +213,19 @@ interface GraphRendererBaseProps {
    */
   fitViewPadding?: number;
 
+  /**
+   * Set of node IDs that should be draggable even when editable=false.
+   * Useful for allowing specific nodes (like group containers) to be moved
+   * while keeping other nodes locked in place.
+   */
+  draggableNodeIds?: Set<string>;
+
+  /**
+   * Callback fired when a node drag operation completes.
+   * Receives the node ID and its new position.
+   */
+  onNodeDragStop?: (nodeId: string, position: { x: number; y: number }) => void;
+
 }
 
 /** GraphRenderer props - canvas format only */
@@ -440,6 +453,8 @@ interface GraphRendererInnerProps {
   onNodeClick?: (nodeId: string, event: React.MouseEvent) => void;
   fitViewToNodeIds?: string[] | null;
   fitViewPadding?: number;
+  draggableNodeIds?: Set<string>;
+  onNodeDragStop?: (nodeId: string, position: { x: number; y: number }) => void;
 }
 
 /**
@@ -470,6 +485,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   onNodeClick: onNodeClickProp,
   fitViewToNodeIds,
   fitViewPadding = 0.2,
+  draggableNodeIds,
+  onNodeDragStop: onNodeDragStopProp,
 }) => {
   const { fitView, fitBounds, getNodes } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
@@ -598,6 +615,17 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       setAnimationState({ nodeAnimations: {}, edgeAnimations: {} });
     }
   }, [propNodes, propEdges, editStateRef, onEditStateChange, onPendingChangesChange]);
+
+  // When draggableNodeIds is provided, positions are managed externally
+  // Sync positions from props whenever they change (only when props actually change from parent)
+  const propNodesRef = useRef(propNodes);
+  useEffect(() => {
+    if (!draggableNodeIds || draggableNodeIds.size === 0) return;
+    // Only sync if propNodes reference actually changed (from parent update)
+    if (propNodesRef.current === propNodes) return;
+    propNodesRef.current = propNodes;
+    setLocalNodes(propNodes);
+  }, [propNodes, draggableNodeIds]);
 
   // Always use localNodes for rendering - it syncs with props when structure changes
   // and receives state_changed event updates. localEdges only used in edit mode.
@@ -1319,10 +1347,24 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       const animation = animationState.nodeAnimations[node.id];
       // Apply any pending position changes
       const pendingPosition = editStateRef.current.positionChanges.get(node.id);
+      // Allow specific nodes to be draggable even when not in edit mode
+      const isDraggable = editable || draggableNodeIds?.has(node.id);
+      // When draggableNodeIds is provided, we need to explicitly control each node's draggability
+      // because nodesDraggable will be true to allow the specific nodes to drag
+      const hasDraggableNodeIds = draggableNodeIds && draggableNodeIds.size > 0;
+      // React Flow v12 requires measured dimensions for controlled drag to work
+      const dataWidth = typeof node.data?.width === 'number' ? node.data.width : undefined;
+      const dataHeight = typeof node.data?.height === 'number' ? node.data.height : undefined;
+      const nodeWidth = node.width ?? dataWidth ?? 200;
+      const nodeHeight = node.height ?? dataHeight ?? 100;
       return {
         ...node,
         ...(pendingPosition ? { position: pendingPosition } : {}),
         selected: selectedNodeIds.has(node.id),
+        // Explicitly set draggable for each node when using draggableNodeIds
+        draggable: hasDraggableNodeIds ? isDraggable : (editable || false),
+        // Set measured dimensions for React Flow v12 controlled drag
+        measured: { width: nodeWidth, height: nodeHeight },
         data: {
           ...node.data,
           editable,
@@ -1340,7 +1382,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         } as CustomNodeData,
       };
     });
-  }, [localNodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, highlightedNodeId, activeNodeIds, editStateRef, shiftKeyPressed, selectedNodeIds, hiddenNodeIds]);
+  }, [localNodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, highlightedNodeId, activeNodeIds, editStateRef, shiftKeyPressed, selectedNodeIds, hiddenNodeIds, draggableNodeIds]);
 
   const baseNodesKey = useMemo(() => {
     return nodes
@@ -1402,37 +1444,130 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     prevEditableRef.current = editable;
   }, [editable, xyflowNodesBase, updateNodeInternals]);
 
-  const xyflowNodes = editable ? xyflowLocalNodes : xyflowNodesBase;
+  // Use local nodes state when editable OR when we have draggable nodes (for drag visual updates)
+  const hasDraggableNodes = draggableNodeIds && draggableNodeIds.size > 0;
+  const xyflowNodes = (editable || hasDraggableNodes) ? xyflowLocalNodes : xyflowNodesBase;
+
+  // Sync xyflowLocalNodes from xyflowNodesBase when draggable nodes are present
+  // This ensures React Flow has the correct node state for drag calculations
+  const prevHasDraggableNodesRef = useRef(false);
+  useEffect(() => {
+    const hadDraggableNodes = prevHasDraggableNodesRef.current;
+    prevHasDraggableNodesRef.current = hasDraggableNodes || false;
+
+    // When draggable nodes first appear, sync local nodes and update internals
+    if (hasDraggableNodes && !hadDraggableNodes) {
+      setXyflowLocalNodes(xyflowNodesBase);
+
+      // Give React Flow time to render, then update internals
+      setTimeout(() => {
+        draggableNodeIds?.forEach((nodeId) => {
+          updateNodeInternals(nodeId);
+        });
+      }, 50);
+    }
+  }, [hasDraggableNodes, xyflowNodesBase, draggableNodeIds, updateNodeInternals]);
 
   // Handle node drag to show alignment guides
   const handleNodeDrag = useCallback(
     (_event: React.MouseEvent, node: Node) => {
-      if (!editable) return;
+      // Allow dragging if editable OR if this node is in draggableNodeIds
+      const canDrag = editable || draggableNodeIds?.has(node.id);
+      if (!canDrag) return;
 
-      const guides = detectAlignmentGuides(node.id, xyflowNodes);
-      setAlignmentGuides(guides);
+      // Only show alignment guides in full edit mode
+      if (editable) {
+        const guides = detectAlignmentGuides(node.id, xyflowNodes);
+        setAlignmentGuides(guides);
+      }
     },
-    [editable, xyflowNodes, detectAlignmentGuides]
+    [editable, draggableNodeIds, xyflowNodes, detectAlignmentGuides]
   );
 
-  // Clear guides when drag ends
-  const handleNodeDragStop = useCallback(() => {
-    setAlignmentGuides([]);
-  }, []);
+  // Clear guides when drag ends and notify parent
+  const handleNodeDragStop = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      setAlignmentGuides([]);
+
+      // Call the callback if provided (for draggable nodes outside edit mode)
+      if (onNodeDragStopProp && node.position) {
+        onNodeDragStopProp(node.id, node.position);
+      }
+    },
+    [onNodeDragStopProp]
+  );
 
   // Handle node changes (drag and resize events)
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      if (!editable) return;
+      const hasDraggableNodes = draggableNodeIds && draggableNodeIds.size > 0;
+
+      // In edit mode, apply all changes
+      // When we have draggable nodes, apply position changes for those nodes
+      if (!editable && !hasDraggableNodes) return;
 
       // Filter out selection changes - we manage selection ourselves via selectedNodeIds
-      const nonSelectionChanges = changes.filter((change) => change.type !== 'select');
+      let changesToApply = changes.filter((change) => change.type !== 'select');
 
-      // Only apply changes if there are non-selection changes to apply
-      if (nonSelectionChanges.length > 0) {
+      // When not in full edit mode but have draggable nodes,
+      // only apply position changes for draggable nodes
+      if (!editable && hasDraggableNodes) {
+        changesToApply = changesToApply.filter(
+          (change) =>
+            change.type === 'position' &&
+            'id' in change &&
+            draggableNodeIds.has(change.id)
+        );
+      }
+
+      // Only apply changes if there are changes to apply
+      if (changesToApply.length > 0) {
         setXyflowLocalNodes((nds) => {
+          // For group nodes (ending in :__group__), also move child nodes with same prefix
+          const groupPositionChanges = changesToApply.filter(
+            (change): change is NodeChange & { type: 'position'; id: string; position: { x: number; y: number } } =>
+              change.type === 'position' &&
+              'id' in change &&
+              typeof change.id === 'string' &&
+              change.id.endsWith(':__group__') &&
+              'position' in change &&
+              change.position !== undefined
+          );
+
+          // Calculate deltas for each group
+          const groupDeltas = new Map<string, { dx: number; dy: number }>();
+          for (const change of groupPositionChanges) {
+            const canvasPrefix = change.id.replace(':__group__', ':');
+            const currentNode = nds.find((n) => n.id === change.id);
+            if (currentNode && change.position) {
+              const dx = change.position.x - currentNode.position.x;
+              const dy = change.position.y - currentNode.position.y;
+              groupDeltas.set(canvasPrefix, { dx, dy });
+            }
+          }
+
           // Apply changes but preserve our selection state
-          const updated = applyNodeChanges(nonSelectionChanges, nds) as Node<CustomNodeData>[];
+          let updated = applyNodeChanges(changesToApply, nds) as Node<CustomNodeData>[];
+
+          // Also apply deltas to child nodes of moved groups
+          if (groupDeltas.size > 0) {
+            updated = updated.map((node) => {
+              // Check if this node belongs to a moved group (but isn't the group itself)
+              for (const [prefix, delta] of groupDeltas) {
+                if (node.id.startsWith(prefix) && !node.id.endsWith(':__group__')) {
+                  return {
+                    ...node,
+                    position: {
+                      x: node.position.x + delta.dx,
+                      y: node.position.y + delta.dy,
+                    },
+                  };
+                }
+              }
+              return node;
+            });
+          }
+
           // Restore selection state from our managed selectedNodeIds
           return updated.map((node) => ({
             ...node,
@@ -1501,7 +1636,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         });
       }
     },
-    [editable, updateEditState, selectedNodeIds]
+    [editable, updateEditState, selectedNodeIds, draggableNodeIds]
   );
 
   const xyflowEdgesBase = useMemo(() => {
@@ -1674,7 +1809,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}
         proOptions={{ hideAttribution: true }}
-        nodesDraggable={editable}
+        nodesDraggable={editable || (draggableNodeIds && draggableNodeIds.size > 0)}
         elementsSelectable={editable}
         selectNodesOnDrag={false}
         nodesConnectable={editable}
@@ -2108,6 +2243,8 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     onNodeClick,
     fitViewToNodeIds,
     fitViewPadding,
+    draggableNodeIds,
+    onNodeDragStop,
   } = props;
 
   return (
@@ -2137,6 +2274,8 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           onNodeClick={onNodeClick}
           fitViewToNodeIds={fitViewToNodeIds}
           fitViewPadding={fitViewPadding}
+          draggableNodeIds={draggableNodeIds}
+          onNodeDragStop={onNodeDragStop}
         />
       </ReactFlowProvider>
     </div>
