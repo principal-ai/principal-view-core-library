@@ -1,6 +1,8 @@
 /**
  * Rule: minimum-node-sources
- * Ensures each nodeType has at least a minimum number of sources defined
+ * Ensures each nodeType has at least a minimum number of references (or sources) defined
+ *
+ * Note: This rule checks `references` field, with fallback to deprecated `sources` field.
  */
 
 import type { GraphRule, GraphRuleContext, GraphRuleViolation, RuleOptions } from '../types';
@@ -10,7 +12,7 @@ import type { GraphRule, GraphRuleContext, GraphRuleViolation, RuleOptions } fro
  */
 export interface MinimumNodeSourcesOptions extends RuleOptions {
   /**
-   * Minimum number of sources required per nodeType
+   * Minimum number of references required per nodeType
    * @default 1
    */
   minimum: number;
@@ -29,9 +31,9 @@ const DEFAULT_OPTIONS: MinimumNodeSourcesOptions = {
 
 export const minimumNodeSources: GraphRule<MinimumNodeSourcesOptions> = {
   id: 'minimum-node-sources',
-  name: 'Minimum Node Sources',
-  description: 'Each nodeType must have at least a minimum number of sources defined',
-  impact: 'NodeTypes without sources cannot be associated with log activity',
+  name: 'Minimum Node References',
+  description: 'Each nodeType must have at least a minimum number of references defined',
+  impact: 'NodeTypes without references cannot be associated with log activity',
   severity: 'error',
   category: 'structure',
   enabled: true,
@@ -55,23 +57,23 @@ export const minimumNodeSources: GraphRule<MinimumNodeSourcesOptions> = {
         continue;
       }
 
-      // Get sources from nodeType (may be extended via path-based config)
+      // Get references from nodeType, with fallback to deprecated sources
       const nodeTypeAny = nodeType as unknown as Record<string, unknown>;
-      const sources = nodeTypeAny.sources;
-      const sourceCount = Array.isArray(sources) ? sources.length : 0;
+      const refs = nodeTypeAny.references ?? nodeTypeAny.sources;
+      const refCount = Array.isArray(refs) ? refs.length : 0;
 
-      if (sourceCount < minimum) {
+      if (refCount < minimum) {
         violations.push({
           ruleId: 'minimum-node-sources',
           severity: 'error',
           file: configPath,
-          path: `nodeTypes.${typeId}.sources`,
+          path: `nodeTypes.${typeId}.references`,
           message:
-            sourceCount === 0
-              ? `Node type "${typeId}" has no sources defined`
-              : `Node type "${typeId}" has ${sourceCount} source(s), minimum required is ${minimum}`,
+            refCount === 0
+              ? `Node type "${typeId}" has no references defined`
+              : `Node type "${typeId}" has ${refCount} reference(s), minimum required is ${minimum}`,
           impact: 'This node type cannot be associated with log activity from source files',
-          suggestion: `Add at least ${minimum} source path(s) to nodeTypes.${typeId}.sources`,
+          suggestion: `Add at least ${minimum} reference path(s) to nodeTypes.${typeId}.references`,
           fixable: false,
         });
       }

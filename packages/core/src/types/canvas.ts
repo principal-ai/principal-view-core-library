@@ -446,10 +446,39 @@ export interface PVNodeExtension {
   stroke?: string;
   /** State definitions */
   states?: Record<string, PVNodeState>;
+
   /**
-   * Exact source file paths for log association
-   * (glob patterns and line numbers are not supported)
-   * @example ["src/services/order-service.ts", "lib/lock-manager.ts"]
+   * Origin of the code this node represents
+   *
+   * - `internal` (default): Code exists in this repository, file paths in `pv.otel.files` will be validated
+   * - `external`: Code exists in external packages/libraries, file existence validation is skipped
+   *
+   * Use `external` for:
+   * - npm dependencies (e.g., `@logfire/pydantic-ai`)
+   * - Auto-instrumented events from observability libraries
+   * - Third-party APIs or services
+   * - Cross-repository references
+   *
+   * When `origin: "external"`, the `references` field is required to document
+   * what external package or service this node represents.
+   *
+   * @example "external"
+   */
+  origin?: 'internal' | 'external';
+
+  /**
+   * Auxiliary references and related documentation
+   *
+   * Use for documenting related packages, external dependencies, or supplementary notes.
+   * Required when `origin: "external"` to document what external package/service this represents.
+   *
+   * @example ["@logfire/pydantic-ai"] // external package reference
+   * @example ["https://docs.pydantic.dev/logfire/"] // documentation link
+   */
+  references?: string[];
+
+  /**
+   * @deprecated Use `references` instead. Will be removed in a future version.
    */
   sources?: string[];
 

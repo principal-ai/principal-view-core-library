@@ -51,16 +51,16 @@ export interface BuildStoryboardContextOptions {
 // ============================================================================
 
 /**
- * Build a map of canvas node ID to source file paths.
- * Extracts `pv.sources` from each node in the canvas.
+ * Build a map of canvas node ID to reference paths.
+ * Extracts `pv.references` (or deprecated `pv.sources`) from each node.
  *
  * @param canvas - The extended canvas with nodes
- * @returns Record mapping node IDs to their source file paths
+ * @returns Record mapping node IDs to their reference paths
  *
  * @example
  * ```typescript
  * const nodeSources = buildNodeSourcesMap(canvas);
- * // { 'node-abc': ['src/auth/login.ts'], 'node-xyz': ['src/api/fetch.ts'] }
+ * // { 'node-abc': ['src/auth/login.ts'], 'node-xyz': ['@logfire/pydantic-ai'] }
  * ```
  */
 export function buildNodeSourcesMap(canvas: ExtendedCanvas): Record<string, string[]> {
@@ -71,8 +71,10 @@ export function buildNodeSourcesMap(canvas: ExtendedCanvas): Record<string, stri
   }
 
   for (const node of canvas.nodes) {
-    if (node.pv?.sources && node.pv.sources.length > 0) {
-      nodeSources[node.id] = [...node.pv.sources];
+    // Prefer references, fall back to deprecated sources
+    const refs = node.pv?.references ?? node.pv?.sources;
+    if (refs && refs.length > 0) {
+      nodeSources[node.id] = [...refs];
     }
   }
 

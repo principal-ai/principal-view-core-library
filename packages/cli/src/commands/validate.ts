@@ -464,7 +464,9 @@ const ALLOWED_CANVAS_FIELDS = {
     'fill',
     'stroke',
     'states',
-    'sources',
+    'origin',
+    'references',
+    'sources', // deprecated, use references
     'resourceMatch',
     'actions',
     'dataSchema',
@@ -1200,18 +1202,45 @@ The display name will be shown large on the node, and the event name will appear
           }
         }
 
+        // Validate origin and references
+        const origin = (nodePv.origin as string) || 'internal';
+        const isExternal = origin === 'external';
+
+        // Validate origin value
+        if (nodePv.origin !== undefined && nodePv.origin !== 'internal' && nodePv.origin !== 'external') {
+          issues.push({
+            type: 'error',
+            message: `Node "${nodeLabel}" has invalid origin value "${nodePv.origin}"`,
+            path: `${nodePath}.pv.origin`,
+            suggestion: 'Valid values: "internal" (default), "external"',
+          });
+        }
+
+        // Deprecation warning for sources field
+        if (nodePv.sources !== undefined) {
+          issues.push({
+            type: 'warning',
+            message: `Node "${nodeLabel}" uses deprecated "pv.sources" field`,
+            path: `${nodePath}.pv.sources`,
+            suggestion: 'Use "pv.references" instead. The "sources" field will be removed in a future version.',
+          });
+        }
+
+        // When origin is external, references is required
+        if (isExternal) {
+          if (!Array.isArray(nodePv.references) || nodePv.references.length === 0) {
+            issues.push({
+              type: 'error',
+              message: `Node "${nodeLabel}" has origin "external" but is missing required "pv.references" field`,
+              path: `${nodePath}.pv.references`,
+              suggestion: 'Add references to document the external package/service, e.g.: "references": ["@logfire/pydantic-ai"]',
+            });
+          }
+        }
+
         // Validate source file references for OTEL event nodes
         const hasOtelFeatures = nodePv.otel !== undefined || nodePv.event !== undefined || nodePv.eventRef !== undefined;
         if (hasOtelFeatures) {
-          // OTEL nodes must have at least one source file reference
-          if (!Array.isArray(nodePv.sources) || nodePv.sources.length === 0) {
-            issues.push({
-              type: 'error',
-              message: `Node "${nodeLabel}" has OTEL features but is missing required "pv.sources" field`,
-              path: `${nodePath}.pv.sources`,
-              suggestion: 'Add at least one source file reference, e.g.: "sources": ["src/services/MyService.ts"]',
-            });
-          }
 
           // For .otel.canvas files: nodes with event or eventRef must have pv.otel for UI rendering
           if (filePath.endsWith('.otel.canvas') && (nodePv.event !== undefined || nodePv.eventRef !== undefined) && nodePv.otel === undefined) {
@@ -1244,7 +1273,7 @@ The display name will be shown large on the node, and the event name will appear
                 });
               }
 
-              // Validate approved and implemented nodes have pv.otel.files
+              // Validate approved and implemented nodes have pv.otel.files (unless external origin)
               const status = nodePv.status as string;
               const otelFiles = (nodePv.otel as Record<string, unknown> | undefined)?.files;
               const hasFiles = Array.isArray(otelFiles) && otelFiles.length > 0;
@@ -1254,17 +1283,18 @@ The display name will be shown large on the node, and the event name will appear
                 hasImplementedNodes = true;
               }
 
-              if ((status === 'approved' || status === 'implemented') && !hasFiles) {
+              // External origin nodes don't need pv.otel.files since implementation is in external package
+              if ((status === 'approved' || status === 'implemented') && !hasFiles && !isExternal) {
                 issues.push({
                   type: 'error',
                   message: `Node "${nodeLabel}" with status="${status}" must have pv.otel.files specified`,
                   path: `${nodePath}.pv.otel.files`,
-                  suggestion: 'Add file paths where this event is instrumented, e.g.: "otel": { "files": ["src/app/api/route.ts"] }',
+                  suggestion: 'Add file paths where this event is instrumented, e.g.: "otel": { "files": ["src/app/api/route.ts"] }. For external/auto-instrumented events, set "origin": "external" instead.',
                 });
               }
 
-              // For implemented nodes: validate that events exist in the specified files
-              if (status === 'implemented' && hasFiles && repositoryPath) {
+              // For implemented nodes: validate that events exist in the specified files (skip for external origin)
+              if (status === 'implemented' && hasFiles && repositoryPath && !isExternal) {
                 // Extract event name
                 let eventName: string | null = null;
                 if (nodePv.event && typeof nodePv.event === 'object') {
@@ -1283,7 +1313,7 @@ The display name will be shown large on the node, and the event name will appear
                         type: 'error',
                         message: `Node "${nodeLabel}" references non-existent file in pv.otel.files: ${file}`,
                         path: `${nodePath}.pv.otel.files[${fileIndex}]`,
-                        suggestion: `Verify the file path is correct relative to repository root: ${repositoryPath}`,
+                        suggestion: `Verify the file path is correct relative to repository root: ${repositoryPath}. If this is an auto-instrumented event from an external library, set "origin": "external" and add "references" to document the external package.`,
                       });
                     } else {
                       // Check if event is in the file
@@ -1332,8 +1362,8 @@ The display name will be shown large on the node, and the event name will appear
                 });
               }
 
-              // Validate that source file exists (if repository path is provided)
-              if (repositoryPath) {
+              // Validate that source file exists (if repository path is provided and not external)
+              if (repositoryPath && !isExternal) {
                 const fullPath = resolve(repositoryPath, source);
 
                 if (!existsSync(fullPath)) {
@@ -1341,7 +1371,7 @@ The display name will be shown large on the node, and the event name will appear
                     type: 'error',
                     message: `Node "${nodeLabel}" references non-existent source file: ${source}`,
                     path: `${nodePath}.pv.sources[${sourceIndex}]`,
-                    suggestion: `Verify the file path is correct relative to repository root: ${repositoryPath}`,
+                    suggestion: `Verify the file path is correct relative to repository root: ${repositoryPath}. If this references an external package or auto-instrumented code, set "origin": "external" and use "references" to document the external dependency.`,
                   });
                 }
               }
