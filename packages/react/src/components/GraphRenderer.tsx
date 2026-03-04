@@ -2,6 +2,7 @@ import React, {
   useMemo,
   useState,
   useEffect,
+  useLayoutEffect,
   useCallback,
   useRef,
   useImperativeHandle,
@@ -198,14 +199,6 @@ interface GraphRendererBaseProps {
    * Receives the node ID and the click event. If provided, overrides default node selection behavior.
    */
   onNodeClick?: (nodeId: string, event: React.MouseEvent) => void;
-
-  /**
-   * Whether to show the node detail panel when nodes are clicked.
-   * Defaults to undefined (auto), which shows panel only when onNodeClick is not provided.
-   * Set to true to force showing panel even with custom onNodeClick handler.
-   * Set to false to hide panel completely.
-   */
-  showNodeDetailPanel?: boolean;
 
   /**
    * When set, fits the viewport to show these specific nodes.
@@ -445,7 +438,6 @@ interface GraphRendererInnerProps {
   onEditStateChange?: (editState: EditState) => void;
   editStateRef: React.MutableRefObject<EditState>;
   onNodeClick?: (nodeId: string, event: React.MouseEvent) => void;
-  showNodeDetailPanel?: boolean;
   fitViewToNodeIds?: string[] | null;
   fitViewPadding?: number;
 }
@@ -476,7 +468,6 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   onEditStateChange,
   editStateRef,
   onNodeClick: onNodeClickProp,
-  showNodeDetailPanel,
   fitViewToNodeIds,
   fitViewPadding = 0.2,
 }) => {
@@ -789,12 +780,12 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
             next.add(node.id);
           }
 
-          // Also update local nodes selection state immediately
+          // Update local nodes selection state immediately for edit mode
           if (editable) {
             setXyflowLocalNodes((nodes) =>
               nodes.map((n) => ({
                 ...n,
-                selected: n.id === node.id ? !prev.has(node.id) : next.has(n.id),
+                selected: next.has(n.id),
               }))
             );
           }
@@ -804,21 +795,15 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         return;
       }
 
-      // If custom node click handler is provided, call it
-      if (onNodeClickProp) {
-        onNodeClickProp(node.id, event);
-        // If showNodeDetailPanel is not explicitly true, return early (old behavior)
-        if (showNodeDetailPanel !== true) {
-          return;
-        }
-      }
-
       // Regular click: single select (replace selection)
+      event.preventDefault();
+      event.stopPropagation();
+
       const shouldDeselect = selectedNodeIds.size === 1 && selectedNodeIds.has(node.id);
       if (shouldDeselect) {
         setSelectedNodeIds(new Set());
 
-        // Also update local nodes selection state immediately
+        // Update local nodes selection state immediately for edit mode
         if (editable) {
           setXyflowLocalNodes((nodes) =>
             nodes.map((n) => ({
@@ -830,7 +815,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       } else {
         setSelectedNodeIds(new Set([node.id]));
 
-        // Also update local nodes selection state immediately
+        // Update local nodes selection state immediately for edit mode
         if (editable) {
           setXyflowLocalNodes((nodes) =>
             nodes.map((n) => ({
@@ -841,16 +826,94 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         }
       }
       setSelectedEdgeIds(new Set());
+
+      // If custom node click handler is provided, call it after selection is updated
+      if (onNodeClickProp) {
+        onNodeClickProp(node.id, event);
+      }
     },
-    [selectedNodeIds, onNodeClickProp, showNodeDetailPanel, editable]
+    [selectedNodeIds, onNodeClickProp, editable]
   );
 
+
+  // Track the last node we fitted to (for toggle behavior)
+  const lastFittedNodeRef = useRef<string | null>(null);
+
+  // Handle double-click on node in non-edit mode to fit/focus around it
+  const onNodeDoubleClick = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      // Prevent default zoom behavior
+      event.preventDefault();
+      event.stopPropagation();
+
+      // Only fit to node in non-edit mode
+      if (editable) return;
+
+      // Toggle behavior: if we already fitted to this node, zoom out to full view
+      if (lastFittedNodeRef.current === node.id) {
+        lastFittedNodeRef.current = null;
+
+        // Calculate bounds for ALL nodes
+        const allNodes = getNodes();
+        if (allNodes.length > 0) {
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+          for (const n of allNodes) {
+            const w = n.measured?.width ?? n.width ?? 200;
+            const h = n.measured?.height ?? n.height ?? 100;
+            minX = Math.min(minX, n.position.x);
+            minY = Math.min(minY, n.position.y);
+            maxX = Math.max(maxX, n.position.x + w);
+            maxY = Math.max(maxY, n.position.y + h);
+          }
+
+          fitBounds({
+            x: minX,
+            y: minY,
+            width: maxX - minX,
+            height: maxY - minY,
+          }, {
+            padding: 0.2,
+            duration: fitViewDuration,
+          });
+        }
+        return;
+      }
+
+      // Get the node's dimensions (use measured dimensions if available)
+      const width = node.measured?.width ?? node.width ?? 200;
+      const height = node.measured?.height ?? node.height ?? 100;
+
+      // Fit the view to the node's bounds
+      lastFittedNodeRef.current = node.id;
+      fitBounds({
+        x: node.position.x,
+        y: node.position.y,
+        width,
+        height,
+      }, {
+        padding: 0.5,
+        duration: fitViewDuration,
+      });
+    },
+    [editable, fitBounds, getNodes, fitViewDuration]
+  );
 
   // Handle pane click (clear selection when clicking empty space)
   const onPaneClick = useCallback(() => {
     setSelectedNodeIds(new Set());
     setSelectedEdgeIds(new Set());
-  }, []);
+
+    // In edit mode, also update local nodes selection state
+    if (editable) {
+      setXyflowLocalNodes((nodes) =>
+        nodes.map((n) => ({
+          ...n,
+          selected: false,
+        }))
+      );
+    }
+  }, [editable]);
 
   // Handle selection change from ReactFlow (box selection and clicks)
   const handleSelectionChange = useCallback(
@@ -860,11 +923,19 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         return;
       }
 
-      // Always update selection state, even in read-only mode (for visual feedback)
-      setSelectedNodeIds(new Set(selectedNodes.map((n) => n.id)));
+      // In edit mode, we manage selection ourselves via onNodeClick
+      // Skip handleSelectionChange to avoid ReactFlow overwriting our selection state
+      if (editable) {
+        return;
+      }
+
+      const newSelectedNodeIds = new Set(selectedNodes.map((n) => n.id));
+
+      // Update selection state for read-only mode (for visual feedback)
+      setSelectedNodeIds(newSelectedNodeIds);
       setSelectedEdgeIds(new Set(selectedEdges.map((e) => e.id)));
     },
-    []
+    [editable]
   );
 
 
@@ -1288,7 +1359,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   // Local xyflow nodes state for dragging
   const [xyflowLocalNodes, setXyflowLocalNodes] = useState<Node<CustomNodeData>[]>(xyflowNodesBase);
 
-  // Sync when base changes
+  // Sync when base node IDs change
   const prevBaseNodesKeyRef = useRef(baseNodesKey);
   useEffect(() => {
     if (prevBaseNodesKeyRef.current !== baseNodesKey) {
@@ -1296,6 +1367,22 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       setXyflowLocalNodes(xyflowNodesBase);
     }
   }, [baseNodesKey, xyflowNodesBase]);
+
+  // Sync selection state to local nodes when selectedNodeIds changes (edit mode only)
+  // Use useLayoutEffect to ensure sync happens before paint (prevents flash)
+  const prevSelectedNodeIdsRef = useRef(selectedNodeIds);
+  useLayoutEffect(() => {
+    if (!editable) return;
+    if (prevSelectedNodeIdsRef.current === selectedNodeIds) return;
+    prevSelectedNodeIdsRef.current = selectedNodeIds;
+
+    setXyflowLocalNodes((localNodes) =>
+      localNodes.map((localNode) => ({
+        ...localNode,
+        selected: selectedNodeIds.has(localNode.id),
+      }))
+    );
+  }, [editable, selectedNodeIds]);
 
   // Also sync when entering edit mode or when base nodes change content
   const prevEditableRef = useRef(editable);
@@ -1338,7 +1425,21 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     (changes: NodeChange[]) => {
       if (!editable) return;
 
-      setXyflowLocalNodes((nds) => applyNodeChanges(changes, nds) as Node<CustomNodeData>[]);
+      // Filter out selection changes - we manage selection ourselves via selectedNodeIds
+      const nonSelectionChanges = changes.filter((change) => change.type !== 'select');
+
+      // Only apply changes if there are non-selection changes to apply
+      if (nonSelectionChanges.length > 0) {
+        setXyflowLocalNodes((nds) => {
+          // Apply changes but preserve our selection state
+          const updated = applyNodeChanges(nonSelectionChanges, nds) as Node<CustomNodeData>[];
+          // Restore selection state from our managed selectedNodeIds
+          return updated.map((node) => ({
+            ...node,
+            selected: selectedNodeIds.has(node.id),
+          }));
+        });
+      }
 
       // Track position changes on drag end
       const positionChanges = changes.filter(
@@ -1400,7 +1501,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         });
       }
     },
-    [editable, updateEditState]
+    [editable, updateEditState, selectedNodeIds]
   );
 
   const xyflowEdgesBase = useMemo(() => {
@@ -1569,11 +1670,13 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         defaultEdgeOptions={{ type: 'custom' }}
         onEdgeClick={onEdgeClick}
         onNodeClick={onNodeClick}
+        onNodeDoubleClick={onNodeDoubleClick}
         onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}
         proOptions={{ hideAttribution: true }}
         nodesDraggable={editable}
-        elementsSelectable={true}
+        elementsSelectable={editable}
+        selectNodesOnDrag={false}
         nodesConnectable={editable}
         edgesReconnectable={editable}
         reconnectRadius={25}
@@ -1586,13 +1689,14 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         onReconnectEnd={handleReconnectEnd}
         onPaneClick={onPaneClick}
         onSelectionChange={handleSelectionChange}
-        panOnDrag={false}
+        panOnDrag={!editable}
         panOnScroll={true}
         zoomOnScroll={false}
         zoomOnPinch={true}
-        selectionOnDrag={true}
+        zoomOnDoubleClick={false}
+        selectionOnDrag={false}
         selectionKeyCode={null}
-        multiSelectionKeyCode={null}
+        multiSelectionKeyCode="Shift"
       >
         {showBackground && (
           <Background
@@ -2002,7 +2106,6 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     editable,
     onPendingChangesChange,
     onNodeClick,
-    showNodeDetailPanel,
     fitViewToNodeIds,
     fitViewPadding,
   } = props;
@@ -2032,7 +2135,6 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           onPendingChangesChange={onPendingChangesChange}
           editStateRef={editStateRef}
           onNodeClick={onNodeClick}
-          showNodeDetailPanel={showNodeDetailPanel}
           fitViewToNodeIds={fitViewToNodeIds}
           fitViewPadding={fitViewPadding}
         />

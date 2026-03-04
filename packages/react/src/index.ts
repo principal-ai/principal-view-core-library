@@ -37,6 +37,13 @@ export type {
   PendingChanges,
 } from './components/GraphRenderer';
 
+export { MultiCanvasRenderer, mergeCanvases, parseNodeId } from './components/MultiCanvasRenderer';
+export type {
+  MultiCanvasRendererProps,
+  MultiCanvasLayout,
+  CanvasPlacement,
+} from './components/MultiCanvasRenderer';
+
 export { ConfigurationSelector } from './components/ConfigurationSelector';
 export type { ConfigurationSelectorProps } from './components/ConfigurationSelector';
 
@@ -70,3 +77,5 @@ export {
   swapNodePositions,
   swapEdgeSides,
 } from './utils/orientationUtils';
+export { getCanvasBounds, getCanvasDisplaySize } from './utils/canvasBounds';
+export type { CanvasBounds } from './utils/canvasBounds';
