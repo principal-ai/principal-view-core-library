@@ -82,13 +82,14 @@ ${chalk.bold('Custom Node Types:')}
     ${chalk.green('"type"')}: "api-gateway",  ${chalk.dim('// Custom type')}
     ${chalk.green('"x"')}: 100, ${chalk.green('"y"')}: 100,
     ${chalk.green('"width"')}: 150, ${chalk.green('"height"')}: 80,
+    ${chalk.green('"color"')}: "#3b82f6",     ${chalk.dim('// Required: hex color')}
     ${chalk.green('"pv"')}: {
       ${chalk.yellow('"nodeType"')}: "api-gateway",  ${chalk.dim('// Required')}
       ${chalk.yellow('"shape"')}: "rectangle",       ${chalk.dim('// Required')}
       ${chalk.cyan('"fill"')}: "#3b82f6",           ${chalk.dim('// Optional: fill color')}
       ${chalk.cyan('"stroke"')}: "#1d4ed8",         ${chalk.dim('// Optional: border color')}
       ${chalk.cyan('"icon"')}: "Server",            ${chalk.dim('// Optional: Lucide icon')}
-      ${chalk.cyan('"sources"')}: ["src/api/**"]    ${chalk.dim('// Optional: file patterns')}
+      ${chalk.cyan('"references"')}: ["src/api/**"] ${chalk.dim('// Optional: file patterns')}
     }
   ${chalk.dim('}')}
 
@@ -199,7 +200,7 @@ ${chalk.bold('Node-Level pv (for custom types):')}
     '// Optional: Border color (hex)'
   )}
       ${chalk.cyan('"icon"')}: "Server",              ${chalk.dim('// Optional: Lucide icon name')}
-      ${chalk.cyan('"sources"')}: ["src/**/*.ts"],    ${chalk.dim('// Optional: Source patterns')}
+      ${chalk.cyan('"references"')}: ["src/**/*.ts"], ${chalk.dim('// Optional: Source patterns')}
       ${chalk.cyan('"states"')}: {                    ${chalk.dim('// Optional: State definitions')}
         "active": { "color": "#22c55e" },
         "error": { "color": "#ef4444" }

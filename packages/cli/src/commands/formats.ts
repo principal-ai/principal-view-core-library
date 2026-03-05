@@ -53,20 +53,25 @@ ${chalk.dim('│')}   ${chalk.green('"nodes"')}: [                  ${chalk.dim(
 ${chalk.dim('│')}     {                                                              ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"id"')}: "event-id",      ${chalk.dim('// Unique identifier')}         ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"type"')}: "text",                                              ${chalk.dim('│')}
-${chalk.dim('│')}       ${chalk.yellow('"text"')}: "# Event Name", ${chalk.dim('// Markdown description')}     ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.yellow('"text"')}: "Event Name",  ${chalk.dim('// Display text')}              ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"x"')}: 0, ${chalk.yellow('"y"')}: 0, ${chalk.yellow('"width"')}: 200, ${chalk.yellow('"height"')}: 100,                   ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.yellow('"color"')}: "#4CAF50",    ${chalk.dim('// Required: hex color')}       ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.green('"pv"')}: {                                                        ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"event"')}: "feature.event.name",  ${chalk.dim('// Event name')}          ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"sources"')}: ["src/file.ts"],     ${chalk.dim('// Source files')}        ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"status"')}: "draft",     ${chalk.dim('// Required: draft|approved|implemented')} ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"event"')}: {             ${chalk.dim('// Event schema (object, NOT string)')} ${chalk.dim('│')}
+${chalk.dim('│')}           ${chalk.yellow('"name"')}: "feature.event.name",                         ${chalk.dim('│')}
+${chalk.dim('│')}           ${chalk.yellow('"attributes"')}: {    ${chalk.dim('// Attribute definitions')}     ${chalk.dim('│')}
+${chalk.dim('│')}             "attr.name": {                                           ${chalk.dim('│')}
+${chalk.dim('│')}               ${chalk.green('"type"')}: "string",                                  ${chalk.dim('│')}
+${chalk.dim('│')}               ${chalk.green('"description"')}: "What this attribute is",         ${chalk.dim('│')}
+${chalk.dim('│')}               ${chalk.green('"required"')}: true                                   ${chalk.dim('│')}
+${chalk.dim('│')}             }                                                        ${chalk.dim('│')}
+${chalk.dim('│')}           }                                                          ${chalk.dim('│')}
+${chalk.dim('│')}         },                                                           ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"references"')}: ["src/file.ts"],  ${chalk.dim('// Source files')}      ${chalk.dim('│')}
 ${chalk.dim('│')}         ${chalk.cyan('"otel"')}: {                       ${chalk.dim('// OTEL metadata')}       ${chalk.dim('│')}
 ${chalk.dim('│')}           ${chalk.yellow('"kind"')}: "event",                                       ${chalk.dim('│')}
 ${chalk.dim('│')}           ${chalk.yellow('"category"')}: "lifecycle"                               ${chalk.dim('│')}
-${chalk.dim('│')}         },                                                           ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"dataSchema"')}: {                 ${chalk.dim('// Attribute definitions')} ${chalk.dim('│')}
-${chalk.dim('│')}           ${chalk.yellow('"attr.name"')}: {                                         ${chalk.dim('│')}
-${chalk.dim('│')}             ${chalk.green('"type"')}: "string",                                    ${chalk.dim('│')}
-${chalk.dim('│')}             ${chalk.green('"required"')}: true                                     ${chalk.dim('│')}
-${chalk.dim('│')}           }                                                          ${chalk.dim('│')}
 ${chalk.dim('│')}         }                                                            ${chalk.dim('│')}
 ${chalk.dim('│')}       }                                                                ${chalk.dim('│')}
 ${chalk.dim('│')}     }                                                                  ${chalk.dim('│')}
@@ -74,10 +79,45 @@ ${chalk.dim('│')}   ],                                                        
 ${chalk.dim('│')}   ${chalk.green('"edges"')}: [],                ${chalk.dim('// Optional: event relationships')} ${chalk.dim('│')}
 ${chalk.dim('│')}   ${chalk.green('"pv"')}: {                                                          ${chalk.dim('│')}
 ${chalk.dim('│')}     ${chalk.yellow('"name"')}: "Feature Name",  ${chalk.dim('// Feature name (NOT "...Canvas")')} ${chalk.dim('│')}
-${chalk.dim('│')}     ${chalk.yellow('"version"')}: "1.0.0"                                            ${chalk.dim('│')}
+${chalk.dim('│')}     ${chalk.yellow('"version"')}: "1.0.0",                                           ${chalk.dim('│')}
+${chalk.dim('│')}     ${chalk.yellow('"markdown"')}: ".principal-views/feature.md"  ${chalk.dim('// Required: docs')} ${chalk.dim('│')}
 ${chalk.dim('│')}   }                                                                    ${chalk.dim('│')}
 ${chalk.dim('│')} }                                                                      ${chalk.dim('│')}
 ${chalk.dim('└────────────────────────────────────────────────────────────────────┘')}
+
+${chalk.bold('Node Required Fields:')}
+
+  ${chalk.green('color')}      ${chalk.dim('string')}   Hex color (e.g., "#4CAF50")
+  ${chalk.green('pv.status')}  ${chalk.dim('string')}   "draft" | "approved" | "implemented"
+  ${chalk.green('pv.event')}   ${chalk.dim('object')}   Event schema with name and attributes
+
+${chalk.bold('Event Schema Format:')}
+${chalk.red.bold('IMPORTANT:')} The "event" field must be an ${chalk.bold('object')}, not a string!
+
+${chalk.dim('┌─────────────────────────────────────────────────────────────────┐')}
+${chalk.dim('│')} ${chalk.green('"event"')}: {                                                    ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.yellow('"name"')}: "validation.started",     ${chalk.dim('// Event name')}         ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.yellow('"attributes"')}: {                   ${chalk.dim('// Attribute definitions')} ${chalk.dim('│')}
+${chalk.dim('│')}     "input.recordCount": {                                        ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.cyan('"type"')}: "integer",            ${chalk.dim('// string|number|integer|boolean|object|array')} ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.cyan('"description"')}: "Number of records to validate",       ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.cyan('"required"')}: true                                      ${chalk.dim('│')}
+${chalk.dim('│')}     }                                                             ${chalk.dim('│')}
+${chalk.dim('│')}   }                                                               ${chalk.dim('│')}
+${chalk.dim('│')} }                                                                 ${chalk.dim('│')}
+${chalk.dim('└─────────────────────────────────────────────────────────────────┘')}
+
+${chalk.red.bold('DEPRECATED:')} ${chalk.yellow('"sources"')} - Use ${chalk.green('"references"')} instead
+
+${chalk.bold('Edge Required Fields:')}
+
+  ${chalk.green('pv.edgeType')}  ${chalk.dim('string')}   Edge type (must be defined in pv.edgeTypes)
+
+${chalk.bold('Canvas-Level Required Fields:')}
+
+  ${chalk.green('pv.name')}      ${chalk.dim('string')}   Feature name
+  ${chalk.green('pv.version')}   ${chalk.dim('string')}   Schema version
+  ${chalk.green('pv.markdown')}  ${chalk.dim('string')}   Path to documentation file
 
 ${chalk.bold('Event Schema Best Practices:')}
 
@@ -515,88 +555,140 @@ ${chalk.yellow('.principal-views/data-validator.otel.canvas')}
     {
       "id": "validation-started",
       "type": "text",
-      "text": "# validation.started\\n\\nEmitted when validation begins",
+      "text": "Validation Started",
       "x": 0, "y": 0, "width": 200, "height": 100,
+      ${chalk.green('"color": "#4CAF50"')},
       "pv": {
-        "event": "validation.started",
-        "sources": ["src/validator.ts"],
+        ${chalk.green('"status": "draft"')},
+        ${chalk.green('"event"')}: {
+          ${chalk.green('"name"')}: "validation.started",
+          ${chalk.green('"attributes"')}: {
+            "input.recordCount": {
+              "type": "integer",
+              "description": "Number of records to validate",
+              "required": true
+            },
+            "input.source": {
+              "type": "string",
+              "description": "Source of the data",
+              "required": false
+            }
+          }
+        },
+        ${chalk.green('"references"')}: ["src/validator.ts"],
         "otel": {
           "kind": "event",
           "category": "lifecycle"
-        },
-        "dataSchema": {
-          "input.recordCount": {
-            "type": "number",
-            "required": true
-          },
-          "input.source": {
-            "type": "string",
-            "required": false
-          }
         }
       }
     },
     {
       "id": "validation-complete",
       "type": "text",
-      "text": "# validation.complete\\n\\nEmitted when validation succeeds",
+      "text": "Validation Complete",
       "x": 250, "y": 0, "width": 200, "height": 100,
+      "color": "#2196F3",
       "pv": {
-        "event": "validation.complete",
-        "sources": ["src/validator.ts"],
+        "status": "draft",
+        "event": {
+          "name": "validation.complete",
+          "attributes": {
+            "result.validCount": {
+              "type": "integer",
+              "description": "Number of valid records",
+              "required": true
+            },
+            "result.invalidCount": {
+              "type": "integer",
+              "description": "Number of invalid records",
+              "required": true
+            },
+            "duration.ms": {
+              "type": "number",
+              "description": "Validation duration in milliseconds",
+              "required": false
+            }
+          }
+        },
+        "references": ["src/validator.ts"],
         "otel": {
           "kind": "event",
           "category": "lifecycle"
-        },
-        "dataSchema": {
-          "result.validCount": {
-            "type": "number",
-            "required": true
-          },
-          "result.invalidCount": {
-            "type": "number",
-            "required": true
-          },
-          "duration.ms": {
-            "type": "number",
-            "required": false
-          }
         }
       }
     },
     {
       "id": "validation-error",
       "type": "text",
-      "text": "# validation.error\\n\\nEmitted when validation fails",
+      "text": "Validation Error",
       "x": 500, "y": 0, "width": 200, "height": 100,
+      "color": "#F44336",
       "pv": {
-        "event": "validation.error",
-        "sources": ["src/validator.ts"],
+        "status": "draft",
+        "event": {
+          "name": "validation.error",
+          "attributes": {
+            "error.type": {
+              "type": "string",
+              "description": "Type of error that occurred",
+              "required": true
+            },
+            "error.message": {
+              "type": "string",
+              "description": "Error message",
+              "required": true
+            },
+            "error.stage": {
+              "type": "string",
+              "description": "Stage where error occurred",
+              "required": false
+            }
+          }
+        },
+        "references": ["src/validator.ts"],
         "otel": {
           "kind": "event",
           "category": "error"
-        },
-        "dataSchema": {
-          "error.type": {
-            "type": "string",
-            "required": true
-          },
-          "error.message": {
-            "type": "string",
-            "required": true
-          },
-          "error.stage": {
-            "type": "string",
-            "required": false
-          }
         }
       }
     }
   ],
-  "edges": [],
+  "edges": [
+    {
+      "id": "started-to-complete",
+      "fromNode": "validation-started",
+      "toNode": "validation-complete",
+      "fromSide": "right",
+      "toSide": "left",
+      ${chalk.green('"pv"')}: { ${chalk.green('"edgeType"')}: "sequence" }
+    },
+    {
+      "id": "started-to-error",
+      "fromNode": "validation-started",
+      "toNode": "validation-error",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "pv": { "edgeType": "error-path" }
+    }
+  ],
   "pv": {
     "name": "Data Validator",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    ${chalk.green('"markdown"')}: ".principal-views/data-validator.md",
+    ${chalk.green('"edgeTypes"')}: {
+      "sequence": {
+        "style": "solid",
+        "color": "#666",
+        "width": 2,
+        "directed": true
+      },
+      "error-path": {
+        "style": "dashed",
+        "color": "#F44336",
+        "width": 2,
+        "directed": true
+      }
+    }
   }
 }
 
@@ -604,9 +696,13 @@ ${chalk.bold('Example 2: Workflow Scenarios')}
 ${chalk.dim('─'.repeat(70))}
 ${chalk.yellow('.principal-views/data-validator.workflow.json')}
 
+${chalk.dim('Note: Workflow files reference event names defined in the canvas.')}
+${chalk.dim('The canvas uses pv.event.name (e.g., "validation.started"), and')}
+${chalk.dim('the workflow templates use those same event names.')}
+
 {
   "version": "1.0.0",
-  "canvas": "./data-validator.otel.canvas",
+  "canvas": ".principal-views/data-validator.otel.canvas",
   "name": "Data Validator",
   "description": "Validates data records against defined schemas",
   "spanPattern": "validation.process",
@@ -620,7 +716,7 @@ ${chalk.yellow('.principal-views/data-validator.workflow.json')}
       "template": {
         "events": {
           "validation.started": "Started validation of {{input.recordCount}} records",
-          "validation.complete": "Processed {{result.validCount}} valid, {{result.invalidCount}} invalid (batch: {{@span.batch.id}})"
+          "validation.complete": "Processed {{result.validCount}} valid, {{result.invalidCount}} invalid"
         },
         "summary": "Validated {{result.validCount}} records successfully"
       }
@@ -636,20 +732,13 @@ ${chalk.yellow('.principal-views/data-validator.workflow.json')}
         },
         "summary": "Validation failed: {{error.message}}"
       }
-    },
-    {
-      "id": "fallback",
-      "priority": 999,
-      "description": "Generic validation execution",
-      "template": {
-        "events": {
-          "validation.started": "Validation started"
-        },
-        "summary": "Validation execution captured"
-      }
     }
   ]
 }
+
+${chalk.bold.yellow('Note on Fallback Scenarios:')}
+Avoid creating "fallback" scenarios that are strict subsets of other scenarios.
+Instead, ensure each scenario has a distinct set of events that differentiates it.
 
 ${chalk.bold('Example 3: Execution File')}
 ${chalk.dim('─'.repeat(70))}

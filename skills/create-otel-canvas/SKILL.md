@@ -97,6 +97,18 @@ A canvas is considered an "OTEL canvas" if it contains ANY of:
 - **text**: Display text (markdown supported)
 - **x, y**: Position coordinates
 - **width, height**: Dimensions
+- **color**: **REQUIRED** - Hex color (e.g., "#4CAF50")
+
+### Required PV Fields for OTEL Nodes
+- **pv.status**: **REQUIRED** - Implementation status: `"draft"`, `"approved"`, or `"implemented"`
+- **pv.event**: **REQUIRED** - Event schema as an object (NOT a string):
+  ```json
+  "event": {
+    "name": "event.name",
+    "attributes": { ... }
+  }
+  ```
+- **pv.references**: Source file paths (replaces deprecated `pv.sources`)
 
 ### PrincipalView Extensions (pv)
 
@@ -175,13 +187,14 @@ A canvas is considered an "OTEL canvas" if it contains ANY of:
 {
   "id": "event-function-invocation",
   "type": "text",
-  "text": "Event: forge.function.invocation\n\nSeverity: INFO | ERROR\nWhen: Every button click\n\nKey Attributes:\n• forge.function.name: breakIntoTasks\n• forge.issue.key: SHIP-10\n• duration_ms: 234.5\n• success: true | false\n• error.message: (if failed)",
+  "text": "forge.function.invocation",
   "x": 50,
   "y": 200,
   "width": 150,
   "height": 100,
   "color": "#FFE4B5",
   "pv": {
+    "status": "draft",
     "nodeType": "integration",
     "name": "forge.function.invocation",
     "description": "Tracks Forge function executions with performance and outcome",
@@ -221,7 +234,7 @@ A canvas is considered an "OTEL canvas" if it contains ANY of:
       "category": "integration",
       "isNew": true
     },
-    "sources": [
+    "references": [
       "src/forge-function.ts"
     ]
   }
@@ -329,33 +342,41 @@ A canvas is considered an "OTEL canvas" if it contains ANY of:
 
 ## Canvas-Level Metadata (pv)
 
+**REQUIRED Fields:**
+- **pv.name**: Canvas display name
+- **pv.version**: Schema version (e.g., "1.0.0")
+- **pv.markdown**: Path to documentation file (e.g., ".principal-views/feature.md")
+
+**Optional Fields:**
+- **pv.description**: Description of what this canvas shows
+- **pv.nodeTypes**: Custom node type definitions
+- **pv.edgeTypes**: Custom edge type definitions (required if edges use custom types)
+
 ```json
 "pv": {
   "version": "1.0.0",
   "name": "Canvas Display Name",
+  "markdown": ".principal-views/my-feature.md",
   "description": "Description of what this canvas shows",
   "nodeTypes": {
     "service": {
       "label": "Service",
       "description": "System service component",
       "shape": "hexagon"
-    },
-    "otel-service": {
-      "label": "OTEL Service",
-      "description": "Runtime service for OTEL processing",
-      "shape": "hexagon"
     }
   },
   "edgeTypes": {
-    "http-request": {
+    "sequence": {
       "label": "Flow",
       "style": "solid",
-      "color": "#4A90E2",
+      "color": "#666",
       "directed": true
     }
   }
 }
 ```
+
+**IMPORTANT:** Edges must have `pv.edgeType` that references a type defined in `pv.edgeTypes`.
 
 ## Event Schema Best Practices
 

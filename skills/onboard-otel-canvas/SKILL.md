@@ -206,17 +206,47 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
    - Edges: Connect `fromSide: "right"` -> `toSide: "left"` for horizontal flow
    - Best for: Parallel processes, service architectures
 
-   **REQUIRED: Sources Field**
-   - **All OTEL nodes MUST have a `pv.sources` field** with at least one source file path
-   - Sources are exact file paths (relative to repository root) - **NO glob patterns, NO line numbers**
-   - Examples:
-     - Good: `"sources": ["src/commands/validate.ts"]`
-     - Good: `"sources": ["lib/data-validator.ts", "lib/validator-utils.ts"]`
-     - Bad: `"sources": ["src/**/*.ts"]` (glob pattern not supported)
-     - Bad: `"sources": ["src/validator.ts:123"]` (line numbers not supported)
-   - This tells the system which source files emit the events for this node
+   **REQUIRED NODE FIELDS:**
 
-   **Format reference**: Canvas files use JSON Canvas format with `pv` (Principal View) extensions. Run `npx @principal-ai/principal-view-cli schema examples` to see example canvas files, or look at existing `.otel.canvas` files in `.principal-views/` directory.
+   Each node in an OTEL canvas requires:
+
+   1. **`color`** - Hex color for the node (e.g., `"#4CAF50"`)
+
+   2. **`pv.status`** - Implementation status: `"draft"`, `"approved"`, or `"implemented"`
+
+   3. **`pv.event`** - Event schema as an **object** (NOT a string!):
+      ```json
+      "event": {
+        "name": "validation.started",
+        "attributes": {
+          "input.recordCount": {
+            "type": "integer",
+            "description": "Number of records to validate",
+            "required": true
+          }
+        }
+      }
+      ```
+
+   4. **`pv.references`** - Source file paths (exact paths, no globs):
+      - Good: `"references": ["src/commands/validate.ts"]`
+      - Bad: `"references": ["src/**/*.ts"]` (glob pattern not supported)
+
+   **REQUIRED CANVAS-LEVEL FIELDS:**
+
+   The canvas `pv` extension requires:
+   - `pv.name` - Feature name
+   - `pv.version` - Schema version
+   - `pv.markdown` - Path to documentation file (e.g., `".principal-views/feature.md"`)
+
+   **REQUIRED EDGE FIELDS:**
+
+   Each edge requires:
+   - `pv.edgeType` - Must reference an edge type defined in `pv.edgeTypes`
+
+   **DEPRECATED:** `pv.sources` - Use `pv.references` instead
+
+   **Format reference**: Run `npx @principal-ai/principal-view-cli formats canvas` to see full format documentation, or look at existing `.otel.canvas` files in `.principal-views/` directory.
 
 4. **Validate immediately**:
    ```bash
@@ -422,14 +452,15 @@ A: Only the essential ones:
 
 Don't add attributes "just in case" - add them when you need them.
 
-**Q: "What is the sources field and why is it required?"**
-A: The `pv.sources` field is **required for all OTEL nodes**. It tells the system which source files emit the events for this node:
+**Q: "What is the references field?"**
+A: The `pv.references` field documents which source files emit events for this node:
 - **Must be exact file paths** (relative to repository root)
 - **No glob patterns allowed** (e.g., `src/**/*.ts` is invalid)
 - **No line numbers allowed** (e.g., `src/file.ts:123` is invalid)
-- Example: `"sources": ["src/commands/validate.ts"]`
-- For features spanning multiple files, list all relevant files: `"sources": ["src/validator.ts", "src/validator-helpers.ts"]`
-- Validation will fail if OTEL nodes don't have sources defined
+- Example: `"references": ["src/commands/validate.ts"]`
+- For features spanning multiple files, list all relevant files: `"references": ["src/validator.ts", "src/validator-helpers.ts"]`
+
+**Note:** `pv.sources` is deprecated - use `pv.references` instead.
 
 **Q: "How do I actually emit these events from my code?"**
 A: That's covered in the `setup-otel-testing` skill. This skill focuses on defining *what* events should be emitted. The testing skill covers *how* to instrument your code to emit them and validate against your canvas.
@@ -440,7 +471,9 @@ After completing onboarding, user should have:
 
 **One working canvas** (.otel.canvas)
 - 2-4 event schemas defined
-- All OTEL nodes have required `pv.sources` field with exact file paths
+- All nodes have required fields: `color`, `pv.status`, `pv.event` (object format)
+- Canvas has required `pv.markdown` field
+- Edges have `pv.edgeType` referencing defined edge types
 - Validates with CLI
 - Documents real feature
 
@@ -517,7 +550,12 @@ I'll define these events:
 - import.complete (rows.imported, duration.ms)
 - import.error (error.type, error.message, stage)
 
-Each node will include the required sources field pointing to src/commands/import.ts.
+Each node will have the required fields:
+- color (hex color for visual display)
+- pv.status: 'draft' (since this is new)
+- pv.event: object with name and attributes
+- pv.references pointing to src/commands/import.ts
+
 Sound good?"
 
 User: "Yes, let's do it"
