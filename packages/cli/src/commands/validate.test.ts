@@ -326,3 +326,62 @@ describe('validate command - color validation', () => {
     expect(issues).toHaveLength(0);
   });
 });
+
+/**
+ * Test helper to validate otel.canvas library requirement
+ */
+function validateOtelCanvasLibraryRequirement(
+  filePath: string,
+  library: { raw: Record<string, unknown>; path: string } | null
+): Array<{ type: 'error' | 'warning'; message: string; suggestion?: string }> {
+  const issues: Array<{ type: 'error' | 'warning'; message: string; suggestion?: string }> = [];
+
+  // For .otel.canvas files: warn if library.yaml is missing
+  if (filePath.endsWith('.otel.canvas') && !library) {
+    issues.push({
+      type: 'warning',
+      message: 'Found otel.canvas file but no library.yaml',
+      suggestion:
+        'Create .principal-views/library.yaml to register your instrumentation library.\nThis ensures traces are properly attributed to your library.',
+    });
+  }
+
+  return issues;
+}
+
+describe('validate command - otel.canvas library requirement', () => {
+  test('should warn when .otel.canvas exists without library.yaml', () => {
+    const issues = validateOtelCanvasLibraryRequirement(
+      '.principal-views/feature/feature.otel.canvas',
+      null
+    );
+
+    expect(issues).toHaveLength(1);
+    expect(issues[0].type).toBe('warning');
+    expect(issues[0].message).toBe('Found otel.canvas file but no library.yaml');
+    expect(issues[0].suggestion).toContain('Create .principal-views/library.yaml');
+  });
+
+  test('should not warn when .otel.canvas exists with library.yaml', () => {
+    const library = {
+      raw: { name: 'test-lib' },
+      path: '.principal-views/library.yaml',
+    };
+
+    const issues = validateOtelCanvasLibraryRequirement(
+      '.principal-views/feature/feature.otel.canvas',
+      library
+    );
+
+    expect(issues).toHaveLength(0);
+  });
+
+  test('should not warn for regular .canvas files without library.yaml', () => {
+    const issues = validateOtelCanvasLibraryRequirement(
+      '.principal-views/feature/feature.canvas',
+      null
+    );
+
+    expect(issues).toHaveLength(0);
+  });
+});

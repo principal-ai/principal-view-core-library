@@ -1427,6 +1427,17 @@ The display name will be shown large on the node, and the event name will appear
     });
   }
 
+  // For .otel.canvas files: warn if library.yaml is missing
+  if (filePath.endsWith('.otel.canvas') && !library) {
+    issues.push({
+      type: 'warning',
+      message: 'Found otel.canvas file but no library.yaml',
+      path: 'library.yaml',
+      suggestion:
+        'Create .principal-views/library.yaml to register your instrumentation library.\nThis ensures traces are properly attributed to your library.',
+    });
+  }
+
   // For .otel.canvas files with implemented nodes: validate library has resources with owned-scopes
   if (filePath.endsWith('.otel.canvas') && hasImplementedNodes) {
     const resources = library?.raw?.resources as Record<string, Record<string, unknown>> | undefined;
