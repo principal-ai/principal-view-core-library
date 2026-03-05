@@ -135,11 +135,11 @@ ${chalk.cyan('2. Event naming convention:')}
    - validation.error
    - import.parsing.complete
 
-${chalk.cyan('3. Start simple (2-4 events):')}
-   - ${chalk.green('started')}  - When feature begins
-   - ${chalk.green('complete')} - When feature succeeds
-   - ${chalk.green('error')}    - When feature fails
-   - (optional) progress events for clear intermediate steps
+${chalk.cyan('3. Capture the shape of the code:')}
+   - Events should reflect actual decision points and state transitions
+   - If the code branches, those branches likely need distinct events
+   - If the code has phases/stages, those are natural event boundaries
+   - Don't limit yourself artificially - match the code structure
 
 ${chalk.cyan('4. Attribute naming conventions:')}
    ${chalk.yellow('<category>.<name>')}

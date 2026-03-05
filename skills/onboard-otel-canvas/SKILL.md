@@ -253,7 +253,7 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
    npx @principal-ai/principal-view-cli validate
    ```
 
-**Goal**: Working .otel.canvas file with 2-4 event schemas (start, complete, error).
+**Goal**: Working .otel.canvas file with event schemas that capture the shape of the code.
 
 ### Phase 3: Create Workflow Scenarios
 
@@ -371,11 +371,11 @@ Walk through verification and explain next steps:
 
 ## Guidelines for Success
 
-### Keep It Minimal
+### Capture the Shape of the Code
 - **One feature**: Don't try to document everything
-- **Basic events**: Start event, end event, error event (2-4 total)
+- **Match the code structure**: Events should reflect the actual flow and decision points in the code
 - **One node per event**: Each event type gets its own canvas node
-- **Simple scenarios**: Success, failure, fallback
+- **Scenarios reflect outcomes**: Each distinct execution path becomes a scenario
 
 ### Make It Real
 - Use actual code from their project as reference
@@ -417,11 +417,12 @@ I avoid recommending:
 After exploring, I present you with 3-5 curated options to choose from.
 
 **Q: "How many events should I define?"**
-A: Start with 2-4:
-- 1 start event (feature.started)
-- 1 completion event (feature.complete)
-- 1 error event (feature.error)
-- Optional: 1 progress event if feature has clear steps
+A: Let the code guide you - events should capture the **shape of the code**:
+- Events mark key decision points and state transitions in the actual implementation
+- If the code has branching logic, those branches likely need distinct events
+- If the code has phases or stages, those are natural event boundaries
+- Don't invent events that don't map to real code paths
+- Don't artificially limit yourself - if the code has 7 distinct stages, create 7 events
 
 **Q: "How do I match workflows to spans?"**
 A: Use the `spanPattern` field in your workflow.json:
@@ -470,7 +471,7 @@ A: That's covered in the `setup-otel-testing` skill. This skill focuses on defin
 After completing onboarding, user should have:
 
 **One working canvas** (.otel.canvas)
-- 2-4 event schemas defined
+- Event schemas that capture the shape of the code (as many as needed)
 - All nodes have required fields: `color`, `pv.status`, `pv.event` (object format)
 - Canvas has required `pv.markdown` field
 - Edges have `pv.edgeType` referencing defined edge types
