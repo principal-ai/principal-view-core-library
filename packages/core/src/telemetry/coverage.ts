@@ -218,9 +218,22 @@ function validateNodes(
         continue; // Skip further validation for this node
       }
 
+      // Get references for grounding validation
+      const references = node.pv?.references || [];
+      const hasReferences = references.length > 0;
+
       // Count by status
       if (status === 'draft') {
         statusBreakdown.draftCount++;
+        // Drafts must be grounded: require either files (if implementation location is known) or references
+        if (!hasFiles && !hasReferences) {
+          errors.push({
+            nodeId: node.id,
+            canvasPath: canvas.path,
+            status,
+            error: `Node with status="draft" must have either pv.otel.files (if implementation location is known) or pv.references (to ground the event in something)`,
+          });
+        }
       } else if (status === 'approved') {
         statusBreakdown.approvedCount++;
         if (hasFiles) {

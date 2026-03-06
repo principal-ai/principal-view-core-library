@@ -421,7 +421,7 @@ export interface PVNodeExtension {
   /**
    * Implementation status of this node
    *
-   * - `draft`: Design/proposal phase, no requirements (default if not specified)
+   * - `draft`: Design/proposal phase (requires pv.otel.files if known, otherwise pv.references)
    * - `approved`: Design finalized, ready for implementation (requires pv.otel.files)
    * - `implemented`: Code exists with instrumentation (requires pv.otel.files and events in code)
    *
