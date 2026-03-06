@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { useTheme } from '@principal-ade/industry-theme';
 import { IndustryMarkdownSlide } from 'themed-markdown';
+import { TooltipPortalContext } from './GraphRenderer';
 
 export interface OtelInfo {
   kind: 'type' | 'service' | 'instance';
@@ -30,20 +31,30 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
   nodeRef,
 }) => {
   const { theme } = useTheme();
+  const portalTarget = useContext(TooltipPortalContext);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
-    if (visible && nodeRef?.current) {
+    if (visible && nodeRef?.current && portalTarget) {
+      const nodeRect = nodeRef.current.getBoundingClientRect();
+      const containerRect = portalTarget.getBoundingClientRect();
+      // Position relative to the container, not the viewport
+      setPosition({
+        top: nodeRect.bottom - containerRect.top + 8, // 8px below the node
+        left: nodeRect.left - containerRect.left + nodeRect.width / 2, // centered horizontally
+      });
+    } else if (visible && nodeRef?.current && !portalTarget) {
+      // Fallback to viewport positioning if no portal target
       const rect = nodeRef.current.getBoundingClientRect();
       setPosition({
-        top: rect.bottom + 8, // 8px below the node
-        left: rect.left + rect.width / 2, // centered horizontally
+        top: rect.bottom + 8,
+        left: rect.left + rect.width / 2,
       });
     } else if (!nodeRef) {
       // No ref provided - will use relative positioning (for storybook demos)
       setPosition({ top: 0, left: 0 });
     }
-  }, [visible, nodeRef]);
+  }, [visible, nodeRef, portalTarget]);
 
   if (!visible) return null;
 
@@ -79,7 +90,8 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
   const renderTooltipContent = (): React.JSX.Element => (
     <div
       style={{
-        position: usePortal ? 'fixed' : 'absolute',
+        // Use absolute positioning relative to portal target container
+        position: usePortal ? 'absolute' : 'absolute',
         top: usePortal ? position?.top ?? 0 : '100%',
         left: usePortal ? position?.left ?? 0 : '50%',
         transform: 'translateX(-50%)',
@@ -219,9 +231,11 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
     </div>
   );
 
-  // Use portal to render at body level when nodeRef is provided, otherwise render inline
+  // Use portal to render in the graph container when available, otherwise render inline
   if (usePortal) {
-    return createPortal(renderTooltipContent(), document.body);
+    // Portal to graph container (hides with tab) or fallback to body
+    const target = portalTarget || document.body;
+    return createPortal(renderTooltipContent(), target);
   }
   return renderTooltipContent();
 };

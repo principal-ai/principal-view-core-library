@@ -86,8 +86,11 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
   // Inactive nodes (scenario filtering) are dimmed to 0.1
   const nodeOpacity = isHidden ? 0.4 : isActive ? 1 : 0.1;
 
-  // Only show tooltip when hovering, not dragging, and shift key is pressed
-  const showTooltip = isHovered && !dragging && shiftKeyPressed;
+  // Show tooltip when:
+  // 1. Hovering + not dragging + shift key pressed (always works), OR
+  // 2. Node is selected AND not in edit mode (read-only selection shows tooltip)
+  const showTooltip =
+    (isHovered && !dragging && shiftKeyPressed) || (!editable && !!selected);
 
   // Extract OTEL info, description, and sources for tooltip
   const otelInfo = nodeData?.otel as OtelInfo | undefined;

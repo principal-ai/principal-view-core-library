@@ -7,6 +7,7 @@ import React, {
   useRef,
   useImperativeHandle,
   forwardRef,
+  createContext,
 } from 'react';
 import {
   ReactFlow,
@@ -51,6 +52,13 @@ import {
   convertToXYFlowNodes,
   convertToXYFlowEdges,
 } from '../utils/graphConverter';
+
+/**
+ * Context for providing a portal target for tooltips.
+ * This allows tooltips to be rendered within the graph container
+ * instead of document.body, so they hide properly when tabs switch.
+ */
+export const TooltipPortalContext = createContext<HTMLElement | null>(null);
 
 /** Position change event for tracking node movements */
 export interface NodePositionChange {
@@ -225,6 +233,13 @@ interface GraphRendererBaseProps {
    * Receives the node ID and its new position.
    */
   onNodeDragStop?: (nodeId: string, position: { x: number; y: number }) => void;
+
+  /**
+   * Callback fired when user presses Cmd+C (Mac) or Ctrl+C (Windows/Linux)
+   * with nodes selected. Receives the array of selected node IDs.
+   * Use this to implement custom copy behavior.
+   */
+  onCopy?: (selectedNodeIds: string[]) => void;
 
 }
 
@@ -455,6 +470,7 @@ interface GraphRendererInnerProps {
   fitViewPadding?: number;
   draggableNodeIds?: Set<string>;
   onNodeDragStop?: (nodeId: string, position: { x: number; y: number }) => void;
+  onCopy?: (selectedNodeIds: string[]) => void;
 }
 
 /**
@@ -487,6 +503,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   fitViewPadding = 0.2,
   draggableNodeIds,
   onNodeDragStop: onNodeDragStopProp,
+  onCopy,
 }) => {
   const { fitView, fitBounds, getNodes } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
@@ -535,6 +552,26 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   // Track selected nodes for info panel (supports multi-select)
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
+
+  // Setup keyboard event listener for copy (Cmd+C / Ctrl+C)
+  useEffect(() => {
+    if (!onCopy) return;
+
+    const handleCopy = (e: KeyboardEvent) => {
+      // Check for Cmd+C (Mac) or Ctrl+C (Windows/Linux)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+        if (selectedNodeIds.size > 0) {
+          e.preventDefault();
+          onCopy(Array.from(selectedNodeIds));
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleCopy);
+    return () => {
+      window.removeEventListener('keydown', handleCopy);
+    };
+  }, [onCopy, selectedNodeIds]);
 
   // Track hidden nodes (shift-click to toggle)
   const [hiddenNodeIds, setHiddenNodeIds] = useState<Set<string>>(new Set());
@@ -2122,6 +2159,13 @@ function useCanvasToLegacy(
 export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>((props, ref) => {
   const { canvas, library, className, width = '100%', height = '100%' } = props;
   const { theme } = useTheme();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+  // Set portal target after mount (ref is null during first render)
+  useEffect(() => {
+    setPortalTarget(containerRef.current);
+  }, []);
 
   // Convert canvas to internal format (merging library types if provided)
   const canvasData = useCanvasToLegacy(canvas, library);
@@ -2245,39 +2289,43 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     fitViewPadding,
     draggableNodeIds,
     onNodeDragStop,
+    onCopy,
   } = props;
 
   return (
-    <div className={className} style={{ width, height, position: 'relative' }}>
-      <ReactFlowProvider>
-        <GraphRendererInner
-          configuration={configuration}
-          nodes={nodes}
-          edges={edges}
-          violations={violations}
-          configName={configName}
-          showMinimap={showMinimap}
-          showControls={showControls}
-          showBackground={showBackground}
-          backgroundVariant={backgroundVariant}
-          backgroundGap={backgroundGap}
-          showCenterIndicator={showCenterIndicator}
-          showTooltips={showTooltips}
-          fitViewDuration={fitViewDuration}
-          highlightedNodeId={highlightedNodeId}
-          activeNodeIds={activeNodeIds}
-          events={events}
-          onEventProcessed={onEventProcessed}
-          editable={editable}
-          onPendingChangesChange={onPendingChangesChange}
-          editStateRef={editStateRef}
-          onNodeClick={onNodeClick}
-          fitViewToNodeIds={fitViewToNodeIds}
-          fitViewPadding={fitViewPadding}
-          draggableNodeIds={draggableNodeIds}
-          onNodeDragStop={onNodeDragStop}
-        />
-      </ReactFlowProvider>
+    <div ref={containerRef} className={className} style={{ width, height, position: 'relative' }}>
+      <TooltipPortalContext.Provider value={portalTarget}>
+        <ReactFlowProvider>
+          <GraphRendererInner
+            configuration={configuration}
+            nodes={nodes}
+            edges={edges}
+            violations={violations}
+            configName={configName}
+            showMinimap={showMinimap}
+            showControls={showControls}
+            showBackground={showBackground}
+            backgroundVariant={backgroundVariant}
+            backgroundGap={backgroundGap}
+            showCenterIndicator={showCenterIndicator}
+            showTooltips={showTooltips}
+            fitViewDuration={fitViewDuration}
+            highlightedNodeId={highlightedNodeId}
+            activeNodeIds={activeNodeIds}
+            events={events}
+            onEventProcessed={onEventProcessed}
+            editable={editable}
+            onPendingChangesChange={onPendingChangesChange}
+            editStateRef={editStateRef}
+            onNodeClick={onNodeClick}
+            fitViewToNodeIds={fitViewToNodeIds}
+            fitViewPadding={fitViewPadding}
+            draggableNodeIds={draggableNodeIds}
+            onNodeDragStop={onNodeDragStop}
+            onCopy={onCopy}
+          />
+        </ReactFlowProvider>
+      </TooltipPortalContext.Provider>
     </div>
   );
 });
