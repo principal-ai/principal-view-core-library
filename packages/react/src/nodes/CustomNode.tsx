@@ -86,6 +86,13 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
   // Inactive nodes (scenario filtering) are dimmed to 0.1
   const nodeOpacity = isHidden ? 0.4 : isActive ? 1 : 0.1;
 
+  // DEBUG: Log ALL node data to understand structure
+  console.log('[CustomNode] Node data:', {
+    name: nodeProps.name,
+    nodeDataKeys: nodeData ? Object.keys(nodeData).join(', ') : 'undefined',
+    fullNodeData: nodeData,
+  });
+
   // Show tooltip when:
   // 1. Hovering + not dragging + shift key pressed (always works), OR
   // 2. Node is selected AND not in edit mode (read-only selection shows tooltip)
@@ -183,7 +190,8 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
         style={{
           position: 'absolute',
           top: -6,
-          right: -6,
+          // Inbound badge on left, outbound badge on right
+          ...(isOutbound ? { right: -6 } : { left: -6 }),
           width: 18,
           height: 18,
           borderRadius: '50%', // Always circular for boundary badge

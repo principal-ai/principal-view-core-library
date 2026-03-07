@@ -28,20 +28,16 @@ const config: StorybookConfig = {
       };
     }
 
-    // Exclude local monorepo packages from Vite's dependency pre-bundling
+    // Include packages that need to be pre-bundled by Vite
     if (config.optimizeDeps) {
-      config.optimizeDeps.exclude = [
-        ...(config.optimizeDeps.exclude || []),
-        '@principal-ai/principal-view-core',
-      ];
       config.optimizeDeps.include = [
         ...(config.optimizeDeps.include || []),
+        '@principal-ai/principal-view-core',
         'handlebars',
       ];
     } else {
       config.optimizeDeps = {
-        exclude: ['@principal-ai/principal-view-core'],
-        include: ['handlebars'],
+        include: ['@principal-ai/principal-view-core', 'handlebars'],
       };
     }
 
