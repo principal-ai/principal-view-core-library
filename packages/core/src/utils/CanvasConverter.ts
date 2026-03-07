@@ -17,6 +17,7 @@ import type {
   PVNodeState,
   PVOtelExtension,
   PVEventSchema,
+  PVBoundaryExtension,
 } from '../types/canvas';
 import type { JsonValue } from '../types';
 import { resolveCanvasColor } from '../types/canvas';
@@ -52,6 +53,7 @@ export interface ReactFlowNode {
     event?: PVEventSchema;
     eventRef?: string;
     events?: Record<string, PVEventSchema>;
+    boundary?: PVBoundaryExtension;
     dataSchema?: Record<string, {
       type: 'string' | 'number' | 'boolean' | 'object' | 'array';
       required?: boolean;
@@ -207,6 +209,7 @@ export class CanvasConverter {
       if (pv.dataSchema) data.dataSchema = pv.dataSchema;
       if (pv.event) (data as Record<string, unknown>).event = pv.event;
       if (pv.eventRef) (data as Record<string, unknown>).eventRef = pv.eventRef;
+      if (pv.boundary) (data as Record<string, unknown>).boundary = pv.boundary;
     }
 
     return {
@@ -331,6 +334,9 @@ export class CanvasConverter {
         if (pv?.resourceMatch) nodeData.resourceMatch = pv.resourceMatch as JsonValue;
         if (pv?.event) nodeData.event = pv.event as unknown as JsonValue;
         if (pv?.eventRef) nodeData.eventRef = pv.eventRef;
+        if (pv?.boundary) nodeData.boundary = pv.boundary as unknown as JsonValue;
+        // Include nodeType in data for component access
+        if (pv?.nodeType) nodeData.nodeType = pv.nodeType;
 
         // Add type-specific data
         if (node.type === 'text' && node.text) nodeData.text = node.text;
