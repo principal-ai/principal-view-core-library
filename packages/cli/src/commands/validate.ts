@@ -471,8 +471,10 @@ const ALLOWED_CANVAS_FIELDS = {
     'actions',
     'dataSchema',
     'layout',
+    'boundary', // For boundary nodes representing external system interfaces
   ],
   nodePvOtel: ['kind', 'category', 'isNew', 'files'],
+  nodePvBoundary: ['direction', 'node'],
   nodePvState: ['color', 'icon', 'label'],
   nodePvAction: ['pattern', 'event', 'state', 'metadata', 'triggerEdges'],
   nodePvDataSchemaField: ['type', 'required', 'displayInLabel'],
@@ -1125,6 +1127,38 @@ function validateCanvas(
           );
         }
 
+        // Validate boundary extension if present
+        if (nodePv.boundary && typeof nodePv.boundary === 'object') {
+          checkUnknownFields(
+            nodePv.boundary as Record<string, unknown>,
+            ALLOWED_CANVAS_FIELDS.nodePvBoundary,
+            `${nodePath}.pv.boundary`,
+            issues
+          );
+
+          // Validate boundary direction (required)
+          const boundary = nodePv.boundary as Record<string, unknown>;
+          const validDirections = ['outbound', 'inbound'];
+          if (!boundary.direction || !validDirections.includes(boundary.direction as string)) {
+            issues.push({
+              type: 'error',
+              message: `Node "${nodeLabel}" has invalid or missing boundary.direction`,
+              path: `${nodePath}.pv.boundary.direction`,
+              suggestion: 'Use "outbound" for calls to external systems, "inbound" for callbacks from external systems',
+            });
+          }
+
+          // Validate boundary node query (required)
+          if (!boundary.node || typeof boundary.node !== 'object') {
+            issues.push({
+              type: 'error',
+              message: `Node "${nodeLabel}" has boundary but is missing required "node" field`,
+              path: `${nodePath}.pv.boundary.node`,
+              suggestion: 'Add node query for resolution, e.g.: "node": { "pv.event.name": "host.event-name" }',
+            });
+          }
+        }
+
         // Check for conflict: node cannot have both event and eventRef
         if (nodePv.event !== undefined && nodePv.eventRef !== undefined) {
           issues.push({
@@ -1145,15 +1179,29 @@ function validateCanvas(
           });
         }
 
-        // For .otel.canvas files: require event or eventRef field on nodes with pv extension (except groups)
+        // For .otel.canvas files: require event or eventRef field on nodes with pv extension (except groups and boundary nodes)
+        const isBoundaryNode = nodePv.nodeType === 'boundary';
         if (filePath.endsWith('.otel.canvas') && nodeType !== 'group') {
-          if (nodePv.event === undefined && nodePv.eventRef === undefined) {
-            issues.push({
-              type: 'error',
-              message: `Node "${nodeLabel}" in .otel.canvas file must have either "pv.event" or "pv.eventRef" field`,
-              path: `${nodePath}.pv`,
-              suggestion: 'Add inline event schema with "event": {...} or reference library event with "eventRef": "event.name"',
-            });
+          if (isBoundaryNode) {
+            // Boundary nodes require boundary field instead of event/eventRef
+            if (!nodePv.boundary || typeof nodePv.boundary !== 'object') {
+              issues.push({
+                type: 'error',
+                message: `Node "${nodeLabel}" has nodeType "boundary" but is missing required "pv.boundary" field`,
+                path: `${nodePath}.pv.boundary`,
+                suggestion: 'Add boundary details, e.g.: "boundary": { "direction": "outbound", "node": { "pv.event.name": "host.event-name" } }',
+              });
+            }
+          } else {
+            // Regular nodes require event or eventRef
+            if (nodePv.event === undefined && nodePv.eventRef === undefined) {
+              issues.push({
+                type: 'error',
+                message: `Node "${nodeLabel}" in .otel.canvas file must have either "pv.event" or "pv.eventRef" field`,
+                path: `${nodePath}.pv`,
+                suggestion: 'Add inline event schema with "event": {...} or reference library event with "eventRef": "event.name". For boundary nodes (external callbacks, APIs), use "nodeType": "boundary" with "boundary": {...} instead.',
+              });
+            }
           }
         }
 
@@ -1238,9 +1286,9 @@ The display name will be shown large on the node, and the event name will appear
           }
         }
 
-        // Validate source file references for OTEL event nodes
+        // Validate source file references for OTEL event nodes (skip boundary nodes)
         const hasOtelFeatures = nodePv.otel !== undefined || nodePv.event !== undefined || nodePv.eventRef !== undefined;
-        if (hasOtelFeatures) {
+        if (hasOtelFeatures && !isBoundaryNode) {
 
           // For .otel.canvas files: nodes with event or eventRef must have pv.otel for UI rendering
           if (filePath.endsWith('.otel.canvas') && (nodePv.event !== undefined || nodePv.eventRef !== undefined) && nodePv.otel === undefined) {

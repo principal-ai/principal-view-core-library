@@ -398,6 +398,73 @@ export interface PVEventSchema {
 export type PVNodeStatus = 'draft' | 'approved' | 'implemented';
 
 /**
+ * Direction of boundary interaction
+ */
+export type PVBoundaryDirection = 'outbound' | 'inbound';
+
+/**
+ * Node query criteria for boundary resolution
+ *
+ * Defines what the corresponding node looks like in the external system's traces.
+ * Used for cross-repo resolution and live trace correlation.
+ */
+export interface PVBoundaryNodeQuery {
+  /** Event name to match in external system */
+  'pv.event.name'?: string;
+  /** Event namespace to match */
+  'pv.event.namespace'?: string;
+  /** Additional attribute matches */
+  [key: string]: string | undefined;
+}
+
+/**
+ * Boundary extension for nodes representing external system interfaces
+ *
+ * Boundaries define interaction points where control crosses system edges.
+ * The `node` field specifies what the corresponding node looks like in the
+ * external system, enabling cross-repo resolution and trace correlation.
+ *
+ * @example Outbound host callback
+ * ```typescript
+ * boundary: {
+ *   direction: 'outbound',
+ *   node: {
+ *     'pv.event.name': 'host.batch-layout-initialized',
+ *     'pv.event.namespace': 'collection-host'
+ *   }
+ * }
+ * ```
+ *
+ * @example Inbound webhook
+ * ```typescript
+ * boundary: {
+ *   direction: 'inbound',
+ *   node: {
+ *     'pv.event.name': 'webhook.repository-created',
+ *     'pv.event.namespace': 'github'
+ *   }
+ * }
+ * ```
+ */
+export interface PVBoundaryExtension {
+  /**
+   * Direction of the boundary interaction
+   *
+   * - `outbound`: This system calls out to external system
+   * - `inbound`: External system calls into this system
+   */
+  direction: PVBoundaryDirection;
+
+  /**
+   * Node query for resolving the corresponding node in external system
+   *
+   * Specifies the expected shape of the matching node for registry lookup
+   * and live trace correlation.
+   */
+  node: PVBoundaryNodeQuery;
+}
+
+/**
  * Principal View node extensions
  */
 export interface PVNodeExtension {
@@ -555,6 +622,33 @@ export interface PVNodeExtension {
     layer?: number;
     cluster?: string;
   };
+
+  /**
+   * Boundary extension for nodes representing external system interfaces
+   *
+   * When `nodeType` is `"boundary"`, this field defines the boundary details.
+   * Boundary nodes represent interface points where control crosses system edges.
+   * The `node` field specifies what the corresponding node looks like in the
+   * external system, enabling cross-repo resolution and trace correlation.
+   *
+   * When a node has `nodeType: "boundary"`, it does NOT require `event` or `eventRef`
+   * fields since the boundary is external and doesn't emit telemetry from our code.
+   *
+   * @example
+   * ```typescript
+   * {
+   *   nodeType: "boundary",
+   *   boundary: {
+   *     direction: "outbound",
+   *     node: {
+   *       "pv.event.name": "host.batch-layout-initialized",
+   *       "pv.event.namespace": "collection-host"
+   *     }
+   *   }
+   * }
+   * ```
+   */
+  boundary?: PVBoundaryExtension;
 }
 
 /**

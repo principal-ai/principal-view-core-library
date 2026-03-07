@@ -100,6 +100,30 @@ ${chalk.bold('Valid Shapes:')}
   ${chalk.cyan('diamond')}     Diamond/rhombus node
   ${chalk.cyan('custom')}      Custom SVG shape
 
+${chalk.bold('Boundary Nodes (for external interfaces):')}
+  Use ${chalk.yellow('nodeType: "boundary"')} for nodes representing external system interfaces.
+  Boundaries define interaction points where control crosses system edges.
+
+  ${chalk.dim('{')}
+    ${chalk.green('"id"')}: "host-callback",
+    ${chalk.green('"type"')}: "text",
+    ${chalk.green('"text"')}: "# Host: onBatchLayoutInitialized\\nPersists layout",
+    ${chalk.green('"pv"')}: {
+      ${chalk.yellow('"nodeType"')}: "boundary",
+      ${chalk.yellow('"boundary"')}: {
+        ${chalk.cyan('"direction"')}: "outbound",   ${chalk.dim('// outbound or inbound')}
+        ${chalk.cyan('"node"')}: {                  ${chalk.dim('// Node query for cross-repo resolution')}
+          ${chalk.cyan('"pv.event.name"')}: "host.batch-layout-initialized",
+          ${chalk.cyan('"pv.event.namespace"')}: "collection-host"
+        }
+      }
+    }
+  ${chalk.dim('}')}
+
+${chalk.bold('Boundary Direction:')}
+  ${chalk.cyan('outbound')}    This system calls out to external system
+  ${chalk.cyan('inbound')}     External system calls into this system
+
 ${chalk.bold('Color Presets:')}
   ${chalk.red('1')} = red    ${chalk.hex('#f97316')('2')} = orange    ${chalk.yellow('3')} = yellow
   ${chalk.green('4')} = green  ${chalk.cyan('5')} = cyan      ${chalk.hex('#8b5cf6')('6')} = purple
@@ -153,6 +177,12 @@ ${chalk.bold('Defining Edge Types (in canvas vv):')}
         "event": {
           "style": "dashed",
           "color": "#f59e0b"
+        },
+        "host-call": {           ${chalk.dim('// For boundary node connections')}
+          "style": "solid",
+          "color": "#06b6d4",    ${chalk.dim('// Cyan for host/external calls')}
+          "width": 2,
+          "label": "calls host"
         }
       }
     }
