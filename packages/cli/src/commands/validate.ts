@@ -91,6 +91,25 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
   // Check root level fields
   checkUnknownFields(lib, ALLOWED_LIBRARY_FIELDS.root, '', issues);
 
+  // Check required fields
+  if (!lib.nodeComponents || typeof lib.nodeComponents !== 'object') {
+    issues.push({
+      type: 'error',
+      message: 'Missing or invalid "nodeComponents" field',
+      path: 'nodeComponents',
+      suggestion: 'Add: nodeComponents: {} (can be empty but must be present)',
+    });
+  }
+
+  if (!lib.edgeComponents || typeof lib.edgeComponents !== 'object') {
+    issues.push({
+      type: 'error',
+      message: 'Missing or invalid "edgeComponents" field',
+      path: 'edgeComponents',
+      suggestion: 'Add: edgeComponents: {} (can be empty but must be present)',
+    });
+  }
+
   // Validate nodeComponents
   if (lib.nodeComponents && typeof lib.nodeComponents === 'object') {
     for (const [compId, compDef] of Object.entries(lib.nodeComponents as Record<string, unknown>)) {
