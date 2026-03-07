@@ -166,6 +166,49 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
     );
   };
 
+  // Render Boundary badge (top-right) - shown instead of sources badge for boundary nodes
+  const renderBoundaryBadge = () => {
+    const boundary = nodeData?.boundary as { direction?: 'outbound' | 'inbound'; node?: Record<string, string> } | undefined;
+    if (!boundary) return null;
+
+    const direction = boundary.direction || 'outbound';
+    const isOutbound = direction === 'outbound';
+
+    // Direction indicators
+    const directionIcon = isOutbound ? '↗' : '↙';
+    const directionTitle = isOutbound ? 'Outbound boundary (calls external system)' : 'Inbound boundary (called by external system)';
+
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          top: -6,
+          right: -6,
+          width: 18,
+          height: 18,
+          borderRadius: '50%', // Always circular for boundary badge
+          backgroundColor: '#06b6d4', // Cyan for boundaries
+          color: 'white',
+          fontSize: 12,
+          fontWeight: theme.fontWeights.bold,
+          fontFamily: theme.fonts.body,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+          zIndex: 10,
+          opacity: nodeOpacity,
+        }}
+        title={directionTitle}
+      >
+        {directionIcon}
+      </div>
+    );
+  };
+
+  // Check if this is a boundary node
+  const isBoundaryNode = nodeData?.nodeType === 'boundary';
+
   // Render Status badge (top-left)
   const renderStatusBadge = () => {
     const status = nodeData?.status as 'draft' | 'approved' | 'implemented' | undefined;
@@ -380,7 +423,8 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
       default:
         return {
           ...baseStyles,
-          borderRadius: '0',
+          // Boundary nodes get rounded corners, regular rectangles get sharp corners
+          borderRadius: isBoundaryNode ? '8px' : '0',
         };
     }
   };
@@ -571,7 +615,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
           onMouseLeave={() => setIsHovered(false)}
         >
           {renderStatusBadge()}
-          {renderSourcesBadge()}
+          {isBoundaryNode ? renderBoundaryBadge() : renderSourcesBadge()}
           <div style={hexagonBorderStyle} className={animationClass}>
             <div style={hexagonInnerStyle}>
               {icon && (
@@ -637,7 +681,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
           onMouseLeave={() => setIsHovered(false)}
         >
           {renderStatusBadge()}
-          {renderSourcesBadge()}
+          {isBoundaryNode ? renderBoundaryBadge() : renderSourcesBadge()}
           <div style={diamondBorderStyle} className={animationClass}>
             <div style={diamondInnerStyle}>
               {icon && (
@@ -693,7 +737,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
           onMouseLeave={() => setIsHovered(false)}
         >
           {renderStatusBadge()}
-          {renderSourcesBadge()}
+          {isBoundaryNode ? renderBoundaryBadge() : renderSourcesBadge()}
           <div style={getShapeStyles()} className={animationClass}>
             {/* Inner content */}
             <div
