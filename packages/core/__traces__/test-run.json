@@ -1,21 +1,21 @@
 {
-  "exportedAt": "2026-03-04T16:24:11.328Z",
+  "exportedAt": "2026-03-07T00:31:20.851Z",
   "serviceName": "principal-view-core-tests",
   "spanCount": 6,
   "spans": [
     {
-      "traceId": "a8b4e38691923d3829308fb4498d949e",
-      "spanId": "961a16ba9c2c0c31",
+      "traceId": "0462867f51589065e74e6016d335a59a",
+      "spanId": "f83bb0a7a60973f9",
       "name": "test:basic-traced",
       "kind": "INTERNAL",
-      "startTime": 1772641451299,
-      "endTime": 1772641451311.18,
-      "duration": 12.179959,
+      "startTime": 1772843480822,
+      "endTime": 1772843480833.8618,
+      "duration": 11.861833,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1772641451296-i076l3b"
+        "test.run.id": "1772843480820-d8tyso3"
       },
       "attributes": {
         "test.type": "demo"
@@ -26,18 +26,18 @@
       "events": []
     },
     {
-      "traceId": "dc8514d8d23032ab59699b60b1b9b80c",
-      "spanId": "54e41fed3857f61a",
+      "traceId": "a1c9b1461a977c334a778c9018b41aaa",
+      "spanId": "bdea406f17eef026",
       "name": "operation:validate",
       "kind": "INTERNAL",
-      "startTime": 1772641451311,
-      "endTime": 1772641451316.048,
-      "duration": 5.048083,
+      "startTime": 1772843480834,
+      "endTime": 1772843480839.1328,
+      "duration": 5.13275,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1772641451296-i076l3b"
+        "test.run.id": "1772843480820-d8tyso3"
       },
       "attributes": {
         "operation.type": "validation"
@@ -48,18 +48,18 @@
       "events": []
     },
     {
-      "traceId": "40e559f8148f7231adc8212036192002",
-      "spanId": "4a0cfcd470699e87",
+      "traceId": "57c96886f00fa8c5564b7eaac75e4729",
+      "spanId": "9768c747caed0338",
       "name": "operation:process",
       "kind": "INTERNAL",
-      "startTime": 1772641451316,
-      "endTime": 1772641451321.7854,
-      "duration": 5.785292,
+      "startTime": 1772843480839,
+      "endTime": 1772843480844.6404,
+      "duration": 5.640375,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1772641451296-i076l3b"
+        "test.run.id": "1772843480820-d8tyso3"
       },
       "attributes": {
         "operation.type": "processing",
@@ -71,18 +71,18 @@
       "events": []
     },
     {
-      "traceId": "3f896f15d640df81602d0258770df50e",
-      "spanId": "909794b56aa56d03",
+      "traceId": "44fd56bff30df8049ba07e75a4c1399a",
+      "spanId": "d2ffc61633a1a812",
       "name": "test:nested-spans",
       "kind": "INTERNAL",
-      "startTime": 1772641451311,
-      "endTime": 1772641451322.0054,
-      "duration": 11.005333,
+      "startTime": 1772843480834,
+      "endTime": 1772843480845.029,
+      "duration": 11.029,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1772641451296-i076l3b"
+        "test.run.id": "1772843480820-d8tyso3"
       },
       "attributes": {
         "test.type": "nested"
@@ -93,18 +93,18 @@
       "events": []
     },
     {
-      "traceId": "b67ce3933f661990175d55e01e097edf",
-      "spanId": "edd37bca0916f0e1",
+      "traceId": "2d5aa9f2a1b2b8bf71f2f7c3763d03e0",
+      "spanId": "3bdb46903074f770",
       "name": "child:computation",
       "kind": "INTERNAL",
-      "startTime": 1772641451322,
-      "endTime": 1772641451327.5557,
-      "duration": 5.555625,
+      "startTime": 1772843480845,
+      "endTime": 1772843480850.5608,
+      "duration": 5.560833,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1772641451296-i076l3b"
+        "test.run.id": "1772843480820-d8tyso3"
       },
       "attributes": {
         "computation.type": "example"
@@ -115,18 +115,18 @@
       "events": []
     },
     {
-      "traceId": "5b67b5f6efeb58b78dddb52fb3799ca1",
-      "spanId": "f770d21dc3bfbe0e",
+      "traceId": "2059a0cc9d00144c7a0df955214c44e4",
+      "spanId": "aa8cad593fc27482",
       "name": "test:manual-span",
       "kind": "INTERNAL",
-      "startTime": 1772641451322,
-      "endTime": 1772641451327.6409,
-      "duration": 5.640833,
+      "startTime": 1772843480845,
+      "endTime": 1772843480850.6606,
+      "duration": 5.660708,
       "resource": {
         "service.name": "principal-view-core-tests",
         "service.version": "0.0.0",
         "test.framework": "bun:test",
-        "test.run.id": "1772641451296-i076l3b"
+        "test.run.id": "1772843480820-d8tyso3"
       },
       "attributes": {
         "manual": true
