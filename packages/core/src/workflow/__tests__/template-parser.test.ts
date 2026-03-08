@@ -43,6 +43,17 @@ describe('parseTemplate', () => {
       expect(parseTemplate('Value: {{missing.property}}', context).toString()).toBe('Value: {{missing.property}}');
     });
 
+    it('should treat empty string values as unresolved', () => {
+      const contextWithEmpty = {
+        ...context,
+        context: { projectRoot: '', taskCount: 0 },
+      };
+      // Empty string should show as unresolved placeholder
+      expect(parseTemplate('Path: {{context.projectRoot}}', contextWithEmpty).toString()).toBe('Path: {{context.projectRoot}}');
+      // Zero should still resolve (it's a valid value)
+      expect(parseTemplate('Count: {{context.taskCount}}', contextWithEmpty).toString()).toBe('Count: 0');
+    });
+
     it('should format multiline workflow', () => {
       const template = `✅ Conversion Complete
 
@@ -125,6 +136,20 @@ Found 3 violations`;
         type: 'variable',
         value: '{{missing.property}}',
         variableName: 'missing.property',
+        resolved: false,
+      });
+    });
+
+    it('should mark empty string values as unresolved segments', () => {
+      const contextWithEmpty = { path: '' };
+      const result = parseTemplate('Path: {{path}}', contextWithEmpty);
+
+      expect(result.segments).toHaveLength(2);
+      expect(result.segments[0]).toEqual({ type: 'text', value: 'Path: ' });
+      expect(result.segments[1]).toEqual({
+        type: 'variable',
+        value: '{{path}}',
+        variableName: 'path',
         resolved: false,
       });
     });

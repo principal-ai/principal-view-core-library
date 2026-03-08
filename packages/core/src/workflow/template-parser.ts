@@ -253,7 +253,11 @@ function buildSegmentsWithResolvedVariables(
     // Resolve the variable to get its rendered value
     const [value, resolved] = resolveVariable(varName, context as TemplateContext);
 
-    if (resolved && value !== undefined) {
+    // Treat empty strings as unresolved - they provide no useful display value
+    // and indicate missing/unset data that should be visible to the user
+    const hasValue = resolved && value !== undefined && value !== '';
+
+    if (hasValue) {
       const valueStr = String(value);
       segments.push({
         type: 'variable',
