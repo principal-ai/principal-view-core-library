@@ -2145,6 +2145,110 @@ describe('WorkflowValidator', () => {
       expect(violation.suggestion).toContain('mutually exclusive');
       expect(violation.suggestion).toContain('distinguishing events');
     });
+
+    it('should error when two scenarios have identical event sets', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        spanPattern: 'test.*',
+        scenarios: [
+          {
+            id: 'scenario-a',
+            priority: 1,
+            description: 'First scenario',
+            template: {
+              summary: 'Test A',
+              events: {
+                'event.start': 'Started',
+                'event.complete': 'Completed'
+              }
+            }
+          },
+          {
+            id: 'scenario-b',
+            priority: 2,
+            description: 'Second scenario with same events',
+            template: {
+              summary: 'Test B',
+              events: {
+                'event.start': 'Started',
+                'event.complete': 'Completed'
+              }
+            }
+          }
+        ]
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const identicalViolations = result.violations.filter(v => v.ruleId === 'workflow-scenario-identical');
+
+      expect(identicalViolations).toHaveLength(1);
+      expect(identicalViolations[0].severity).toBe('error');
+      expect(identicalViolations[0].message).toContain('scenario-a');
+      expect(identicalViolations[0].message).toContain('scenario-b');
+      expect(identicalViolations[0].message).toContain('identical event sets');
+      expect(identicalViolations[0].impact).toContain('arbitrary');
+      expect(identicalViolations[0].suggestion).toContain('Merge into a single scenario');
+    });
+
+    it('should pass when scenarios have same size but different events', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        spanPattern: 'test.*',
+        scenarios: [
+          {
+            id: 'oauth-flow',
+            priority: 1,
+            description: 'OAuth login',
+            template: {
+              summary: 'OAuth',
+              events: {
+                'oauth.start': 'Started',
+                'oauth.complete': 'Completed'
+              }
+            }
+          },
+          {
+            id: 'password-flow',
+            priority: 2,
+            description: 'Password login',
+            template: {
+              summary: 'Password',
+              events: {
+                'password.start': 'Started',
+                'password.complete': 'Completed'
+              }
+            }
+          }
+        ]
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const identicalViolations = result.violations.filter(v => v.ruleId === 'workflow-scenario-identical');
+      const subsetViolations = result.violations.filter(v => v.ruleId === 'workflow-scenario-subset');
+
+      expect(identicalViolations).toHaveLength(0);
+      expect(subsetViolations).toHaveLength(0);
+    });
   });
 
   // ============================================================================

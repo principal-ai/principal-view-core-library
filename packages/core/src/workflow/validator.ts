@@ -967,6 +967,20 @@ export class WorkflowValidator {
             fixable: false,
           });
         }
+
+        // Check if A and B have identical event sets
+        if (this.areIdenticalSets(eventsA, eventsB)) {
+          violations.push({
+            ruleId: 'workflow-scenario-identical',
+            severity: 'error',
+            file: workflowPath,
+            path: `scenarios[${i}], scenarios[${j}]`,
+            message: `Scenarios "${scenarios[i].id}" and "${scenarios[j].id}" have identical event sets`,
+            impact: 'Both scenarios will match the same traces, making scenario selection arbitrary based on priority alone',
+            suggestion: this.generateIdenticalFixSuggestion(scenarios[i], scenarios[j]),
+            fixable: false,
+          });
+        }
       }
     }
 
@@ -994,6 +1008,48 @@ export class WorkflowValidator {
     }
 
     return true;
+  }
+
+  /**
+   * Check if two sets have identical elements
+   *
+   * Two sets are identical if they have the same size and all elements match.
+   */
+  private areIdenticalSets(A: Set<string>, B: Set<string>): boolean {
+    if (A.size !== B.size) {
+      return false;
+    }
+
+    for (const item of A) {
+      if (!B.has(item)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Generate helpful suggestion for fixing identical event sets
+   */
+  private generateIdenticalFixSuggestion(
+    scenarioA: WorkflowScenario,
+    scenarioB: WorkflowScenario
+  ): string {
+    const events = Object.keys(scenarioA.template?.events || {});
+
+    return (
+      `Both scenarios have events: [${events.join(', ')}]\n\n` +
+      `Recommended fixes:\n\n` +
+      `1. Merge into a single scenario with template conditionals for any differences:\n` +
+      `   Scenarios with identical events represent the same execution path.\n` +
+      `   Use template conditionals or attribute-based logic to handle variations.\n\n` +
+      `2. If they represent genuinely different paths, add distinguishing events:\n` +
+      `   - Add an event unique to "${scenarioA.id}" (e.g., "${scenarioA.id}.marker")\n` +
+      `   - Add an event unique to "${scenarioB.id}" (e.g., "${scenarioB.id}.marker")\n\n` +
+      `3. If the difference is attribute-based, use template variables:\n` +
+      `   Instead of separate scenarios, use {{attribute}} in templates to show variations.`
+    );
   }
 
   /**
