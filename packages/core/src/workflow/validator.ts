@@ -149,6 +149,7 @@ export class WorkflowValidator {
       violations.push(...this.checkAttributeReferences(context));
       violations.push(...this.checkEventConnectivity(context));
       violations.push(...this.checkEventAttributeRequirements(context));
+      violations.push(...this.checkTemplateAttributesDefinedInSchema(context));
     }
 
     violations.push(...this.checkTemplateSyntax(context));
@@ -1755,6 +1756,112 @@ export class WorkflowValidator {
             suggestion: `Either use {{${attr}}} in a template for event "${eventName}" or mark it as display: false if it's for telemetry only`,
             fixable: false,
           });
+        }
+      }
+    }
+
+    return violations;
+  }
+
+  /**
+   * Check that template attributes are defined in the canvas event schema.
+   *
+   * This validates the reverse of checkEventAttributeRequirements:
+   * - checkEventAttributeRequirements: schema defines attr not used in template → error
+   * - checkTemplateAttributesDefinedInSchema: template uses attr not in schema → error
+   *
+   * This catches cases where:
+   * - Template references {{context.projectRoot}} but schema doesn't define it
+   * - Typos in attribute names (e.g., {{contex.projectRoot}})
+   * - Attributes emitted by instrumentation but not documented in schema
+   */
+  private checkTemplateAttributesDefinedInSchema(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { workflow, workflowPath, canvas, canvasPath } = context;
+
+    if (!canvas?.nodes) {
+      return violations;
+    }
+
+    // Build a map of event name -> schema attributes (including nested paths)
+    const eventSchemaAttributes = new Map<string, Set<string>>();
+
+    for (const node of canvas.nodes) {
+      if (!node.pv) continue;
+
+      let eventName: string | undefined;
+      let eventSchema: { attributes?: Record<string, unknown> } | undefined;
+
+      // Get event schema - either inline or from registry
+      if (node.pv.event && typeof node.pv.event === 'object' && node.pv.event.name) {
+        eventName = node.pv.event.name;
+        eventSchema = node.pv.event;
+      } else if (node.pv.eventRef && typeof node.pv.eventRef === 'string') {
+        eventName = node.pv.eventRef;
+        // Try to get schema from registry
+        const sources = context.eventRegistry?.findEvent(eventName) ?? [];
+        const librarySource = sources.find((s) => s.type === 'library' && s.eventSchema);
+        if (librarySource?.eventSchema) {
+          eventSchema = librarySource.eventSchema;
+        }
+      }
+
+      if (!eventName) continue;
+
+      // Collect all attribute paths from schema (exact paths only, not parents)
+      const schemaAttrs = new Set<string>();
+      if (eventSchema?.attributes) {
+        for (const attrName of Object.keys(eventSchema.attributes)) {
+          schemaAttrs.add(attrName);
+        }
+      }
+
+      eventSchemaAttributes.set(eventName, schemaAttrs);
+    }
+
+    // Check each scenario's event templates
+    for (let scenarioIdx = 0; scenarioIdx < workflow.scenarios.length; scenarioIdx++) {
+      const scenario = workflow.scenarios[scenarioIdx];
+      if (!scenario.template?.events) continue;
+
+      for (const [eventName, eventTemplate] of Object.entries(scenario.template.events)) {
+        // Skip wildcard patterns
+        if (eventName.includes('*')) continue;
+
+        const schemaAttrs = eventSchemaAttributes.get(eventName);
+
+        // If event has no schema, we can't validate (already flagged by checkEventReferences)
+        if (!schemaAttrs) continue;
+
+        // Extract attribute references from this template
+        const templateAttrs = this.extractAttributeReferences(eventTemplate);
+
+        for (const attr of templateAttrs) {
+          // Check if attribute is defined in schema:
+          // 1. Exact match: {{input.taskId}} with schema "input.taskId"
+          // 2. Parent access: {{input}} with schema "input.taskId" (accessing parent object)
+          // 3. NOT: {{input.takId}} with schema "input.taskId" (typo - different leaf)
+          const isDefinedInSchema =
+            schemaAttrs.has(attr) || // Exact match
+            Array.from(schemaAttrs).some(schemaAttr => schemaAttr.startsWith(attr + '.')); // attr is parent of schema attr
+
+          if (!isDefinedInSchema) {
+            // Find similar attributes for suggestions
+            const similar = this.findSimilarAttributes(attr, Array.from(schemaAttrs));
+
+            violations.push({
+              ruleId: 'workflow-template-attribute-not-in-schema',
+              severity: 'error',
+              file: workflowPath,
+              path: `scenarios[${scenarioIdx}].template.events["${eventName}"]`,
+              message: `Template references "{{${attr}}}" but it is not defined in the event schema for "${eventName}"`,
+              impact: 'This attribute may render as empty or cause unexpected behavior. The schema should document all attributes used in templates.',
+              suggestion: similar.length > 0
+                ? `Did you mean: ${similar.map(s => `{{${s}}}`).join(', ')}? Or add "${attr}" to the event schema in ${canvasPath || 'the canvas file'}.`
+                : `Add "${attr}" to the event schema for "${eventName}" in ${canvasPath || 'the canvas file'}, or remove it from the template if not needed.`,
+              fixable: false,
+            });
+          }
         }
       }
     }

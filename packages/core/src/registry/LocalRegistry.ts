@@ -79,7 +79,7 @@ export class LocalRegistry implements StoryboardRegistryInterface {
       const existing = this.workspaces.get(workspaceId)!;
       // Update the fileTree reference to the latest version
       existing.fileTree = fileTree;
-      return [...existing.serviceNames, ...existing.ownedScopes];
+      return [...new Set([...existing.serviceNames, ...existing.ownedScopes])];
     }
 
     // Auto-discover service names and owned scopes from library.yaml
@@ -110,7 +110,7 @@ export class LocalRegistry implements StoryboardRegistryInterface {
       fileTreeSha: fileTree.sha,
     });
 
-    return [...serviceNames, ...ownedScopes];
+    return [...new Set([...serviceNames, ...ownedScopes])];
   }
 
   /**
@@ -214,13 +214,16 @@ export class LocalRegistry implements StoryboardRegistryInterface {
         console.warn('[LocalRegistry] Errors during library discovery:', result.errors);
       }
 
-      // Collect all owned scopes across all services
-      const ownedScopes: string[] = [];
+      // Collect all owned scopes across all services (deduplicated)
+      const ownedScopesSet = new Set<string>();
       for (const lib of result.libraries) {
         for (const service of lib.servicesWithScopes) {
-          ownedScopes.push(...service.ownedScopes);
+          for (const scope of service.ownedScopes) {
+            ownedScopesSet.add(scope);
+          }
         }
       }
+      const ownedScopes = [...ownedScopesSet];
 
       console.log('[LocalRegistry] Discovered services and scopes:', {
         serviceNames: result.allServiceNames,

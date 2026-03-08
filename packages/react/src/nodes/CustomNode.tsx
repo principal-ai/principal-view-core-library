@@ -140,20 +140,57 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
     }
   };
 
-  // Render Sources badge (top-right)
+  // Get badge position based on shape - diamonds need badges at their points, not bounding box corners
+  const getBadgePosition = (position: 'top-left' | 'top-right' | 'left' | 'right'): React.CSSProperties => {
+    const isDiamondShape = typeDefinition.shape === 'diamond';
+
+    if (isDiamondShape) {
+      // Diamond points are at the middle of each edge of the bounding box
+      switch (position) {
+        case 'top-left':
+          // Position at the LEFT point of the diamond (center-left)
+          return { top: '50%', left: 0, transform: 'translate(-50%, -50%)' };
+        case 'top-right':
+          // Position at the RIGHT point of the diamond (center-right)
+          return { top: '50%', right: 0, transform: 'translate(50%, -50%)' };
+        case 'left':
+          // Position at the LEFT point of the diamond (center-left)
+          return { top: '50%', left: 0, transform: 'translate(-50%, -50%)' };
+        case 'right':
+          // Position at the RIGHT point of the diamond (center-right)
+          return { top: '50%', right: 0, transform: 'translate(50%, -50%)' };
+      }
+    }
+
+    // Default positioning for rectangles, circles, hexagons (bounding box corners)
+    switch (position) {
+      case 'top-left':
+        return { top: -6, left: -6 };
+      case 'top-right':
+        return { top: -6, right: -6 };
+      case 'left':
+        return { top: -6, left: -6 };
+      case 'right':
+        return { top: -6, right: -6 };
+    }
+  };
+
+  // Render Sources badge (top-right, or right point for diamonds)
   const renderSourcesBadge = () => {
     const sources = nodeData?.sources as string[] | undefined;
     if (!sources || sources.length === 0) return null;
 
     const shapeStyles = getBadgeShapeStyles();
+    const positionStyles = getBadgePosition('top-right');
 
     return (
       <div
         style={{
           position: 'absolute',
-          top: -6,
-          right: -6,
+          ...positionStyles,
           ...shapeStyles,
+          // Override transform if shape has rotation but we already have a position transform
+          ...(typeDefinition.shape === 'diamond' ? { transform: `${positionStyles.transform} rotate(45deg)` } : {}),
           backgroundColor: '#10b981', // Green for sources
           color: 'white',
           fontSize: theme.fontSizes[0],
@@ -173,7 +210,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
     );
   };
 
-  // Render Boundary badge (top-right) - shown instead of sources badge for boundary nodes
+  // Render Boundary badge (right/left points) - shown instead of sources badge for boundary nodes
   const renderBoundaryBadge = () => {
     const boundary = nodeData?.boundary as { direction?: 'outbound' | 'inbound'; node?: Record<string, string> } | undefined;
     if (!boundary) return null;
@@ -185,13 +222,13 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
     const directionIcon = isOutbound ? '↗' : '↙';
     const directionTitle = isOutbound ? 'Outbound boundary (calls external system)' : 'Inbound boundary (called by external system)';
 
+    const positionStyles = getBadgePosition(isOutbound ? 'right' : 'left');
+
     return (
       <div
         style={{
           position: 'absolute',
-          top: -6,
-          // Inbound badge on left, outbound badge on right
-          ...(isOutbound ? { right: -6 } : { left: -6 }),
+          ...positionStyles,
           width: 18,
           height: 18,
           borderRadius: '50%', // Always circular for boundary badge
@@ -217,7 +254,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
   // Check if this is a boundary node
   const isBoundaryNode = nodeData?.nodeType === 'boundary';
 
-  // Render Status badge (top-left)
+  // Render Status badge (top-left, or top point for diamonds)
   const renderStatusBadge = () => {
     const status = nodeData?.status as 'draft' | 'approved' | 'implemented' | undefined;
     if (!status) return null;
@@ -242,14 +279,16 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
     };
 
     const shapeStyles = getBadgeShapeStyles();
+    const positionStyles = getBadgePosition('top-left');
 
     return (
       <div
         style={{
           position: 'absolute',
-          top: -6,
-          left: -6,
+          ...positionStyles,
           ...shapeStyles,
+          // Override transform if shape has rotation but we already have a position transform
+          ...(typeDefinition.shape === 'diamond' ? { transform: `${positionStyles.transform} rotate(45deg)` } : {}),
           backgroundColor: statusColors[status],
           color: 'white',
           fontSize: theme.fontSizes[0],

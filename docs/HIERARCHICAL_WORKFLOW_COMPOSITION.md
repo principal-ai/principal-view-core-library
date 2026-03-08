@@ -683,6 +683,156 @@ Trace: def456
 }
 ```
 
+### Example 3: Panel Initialization with Child Workflows
+
+This real-world example from `@industry-theme/backlogmd-kanban-panel` demonstrates a panel initialization flow with parent-child span relationships.
+
+**Trace Structure:**
+```
+Trace: abc123
+└─ Span: board.session (span-1)
+   ├─ Event: board.session.started
+   ├─ Event: panel.initialized
+   ├─ Child Span: backlog.core.init (span-2, parent: span-1)
+   │  ├─ Event: backlog.core.init.started
+   │  └─ Event: backlog.core.init.complete (or .skipped/.error)
+   ├─ Child Span: kanban.load (span-3, parent: span-1)
+   │  ├─ Event: kanban.loading
+   │  └─ Event: kanban.loaded
+   └─ Event: board.session.complete
+```
+
+**File Structure:**
+```
+.principal-views/
+└─ task-workflow-lifecycle/
+   ├─ task-workflow-lifecycle.otel.canvas
+   ├─ board-session/
+   │  └─ board-session.workflow.json      (spanPattern: "board.session")
+   ├─ backlog-core-init/
+   │  └─ backlog-core-init.workflow.json  (spanPattern: "backlog.core.init")
+   └─ board-load/
+      └─ board-load.workflow.json         (spanPattern: "kanban.load")
+```
+
+**board-session.workflow.json (parent span):**
+```json
+{
+  "version": "1.0.0",
+  "name": "Board Session",
+  "spanPattern": "board.session",
+  "mode": "span-tree",
+  "scenarios": [
+    {
+      "id": "success-with-tasks",
+      "priority": 1,
+      "template": {
+        "events": {
+          "board.session.started": "Board session started",
+          "panel.initialized": "Panel {{panel.id}} initialized",
+          "backlog.core.init.started": "Initializing Core library",
+          "backlog.core.init.complete": "Core initialized ({{fileCount}} files)",
+          "kanban.loading": "Loading tasks from backlog",
+          "kanban.loaded": "Loaded {{tasks.count}} tasks",
+          "board.session.complete": "Session complete"
+        },
+        "summary": "Board ready: {{tasks.count}} tasks loaded"
+      }
+    }
+  ]
+}
+```
+
+> **Note:** The parent workflow lists events from child spans (`backlog.core.init.*`, `kanban.*`) for scenario matching purposes. This allows the parent to understand the full lifecycle even though the events are emitted in child spans.
+
+**backlog-core-init.workflow.json (child span):**
+```json
+{
+  "version": "1.0.0",
+  "name": "Backlog Core Init",
+  "spanPattern": "backlog.core.init",
+  "mode": "span-tree",
+  "scenarios": [
+    {
+      "id": "success",
+      "priority": 1,
+      "template": {
+        "events": {
+          "backlog.core.init.started": "Initializing Core library",
+          "backlog.core.init.complete": "Core initialized ({{fileCount}} files, {{duration.ms}}ms)"
+        },
+        "summary": "Core ready: {{fileCount}} files"
+      }
+    },
+    {
+      "id": "skipped-already-initialized",
+      "priority": 2,
+      "template": {
+        "events": {
+          "backlog.core.init.started": "Checking Core status",
+          "backlog.core.init.skipped": "Skipped: {{reason}}"
+        },
+        "summary": "Already initialized"
+      }
+    }
+  ]
+}
+```
+
+**board-load.workflow.json (child span):**
+```json
+{
+  "version": "1.0.0",
+  "name": "Board Load",
+  "spanPattern": "kanban.load",
+  "mode": "span-tree",
+  "scenarios": [
+    {
+      "id": "success-with-tasks",
+      "priority": 1,
+      "template": {
+        "events": {
+          "kanban.loading": "Loading backlog (is backlog: {{is.backlog.project}})",
+          "kanban.loaded": "Loaded {{tasks.count}} tasks (has more: {{has.more}})"
+        },
+        "summary": "Board loaded: {{tasks.count}} tasks"
+      }
+    }
+  ]
+}
+```
+
+**Key Implementation Details:**
+
+1. **Parent span creates context:** The `board.session` span is created first and passed to child hooks via `parentSpan` prop
+2. **Child spans link via context:** Child spans use `otelContext.with(parentContext, ...)` to establish parent-child relationship
+3. **Each span validates independently:** The workflow system matches each span by `spanPattern` and validates its events
+4. **Warning for missing workflows:** Without a workflow file, the system shows `(No workflow spanPattern matched span "X")` - this is the signal to create a workflow file for that span
+
+**Code Pattern for Child Span Creation:**
+```typescript
+// In parent component
+const boardSessionSpanRef = useRef<Span | null>(null);
+boardSessionSpanRef.current = tracer.startSpan('board.session');
+
+// Pass to child hook
+useKanbanData({ parentSpan: boardSessionSpanRef.current });
+
+// In child hook
+const parentContext = parentSpan
+  ? trace.setSpan(otelContext.active(), parentSpan)
+  : otelContext.active();
+
+return otelContext.with(parentContext, () =>
+  tracer.startActiveSpan('kanban.load', async (span) => {
+    span.addEvent('kanban.loading', { 'is.backlog.project': true });
+    // ... load data ...
+    span.addEvent('kanban.loaded', { 'tasks.count': tasks.length });
+    span.end();
+  })
+);
+```
+
 ---
 
 ## Migration Path

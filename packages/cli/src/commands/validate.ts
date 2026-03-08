@@ -706,6 +706,80 @@ function findMatchingCanvas(executionPath: string, repositoryPath: string): { ca
 }
 
 /**
+ * Find workflow files that reference a given canvas
+ *
+ * Searches the canvas directory and parent storyboard directory for .workflow.json files
+ * that have a 'canvas' field referencing the given canvas path.
+ */
+function findWorkflowsForCanvas(
+  canvasPath: string,
+  repositoryPath: string
+): string[] {
+  const canvasDir = dirname(canvasPath);
+  const canvasRelPath = relative(repositoryPath, canvasPath);
+  const workflows: string[] = [];
+
+  // Helper to check if a workflow references this canvas
+  const checkWorkflowFile = (workflowPath: string): boolean => {
+    try {
+      const content = readFileSync(workflowPath, 'utf8');
+      const workflow = JSON.parse(content);
+      if (workflow.canvas) {
+        // Normalize both paths for comparison
+        const workflowCanvasPath = resolve(repositoryPath, workflow.canvas);
+        const normalizedCanvasPath = resolve(repositoryPath, canvasRelPath);
+        return workflowCanvasPath === normalizedCanvasPath;
+      }
+    } catch {
+      // Failed to parse, skip
+    }
+    return false;
+  };
+
+  // Check direct directory for workflow files
+  try {
+    const filesInDir = readdirSync(canvasDir);
+    for (const file of filesInDir) {
+      if (file.endsWith('.workflow.json')) {
+        const workflowPath = resolve(canvasDir, file);
+        if (checkWorkflowFile(workflowPath)) {
+          workflows.push(workflowPath);
+        }
+      }
+    }
+  } catch {
+    // Directory not readable
+  }
+
+  // Also check subdirectories (storyboard pattern: canvas at storyboard root, workflows in subdirs)
+  try {
+    const entries = readdirSync(canvasDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const subDir = resolve(canvasDir, entry.name);
+        try {
+          const subFiles = readdirSync(subDir);
+          for (const file of subFiles) {
+            if (file.endsWith('.workflow.json')) {
+              const workflowPath = resolve(subDir, file);
+              if (checkWorkflowFile(workflowPath)) {
+                workflows.push(workflowPath);
+              }
+            }
+          }
+        } catch {
+          // Subdirectory not readable
+        }
+      }
+    }
+  } catch {
+    // Directory not readable
+  }
+
+  return workflows;
+}
+
+/**
  * Check if a canvas has OTEL-related features
  * Returns true if the canvas contains any of:
  * 1. Nodes with pv.otel extension (kind, category)
@@ -2259,6 +2333,27 @@ export function createValidateCommand(): Command {
 
           for (const file of canvasFiles) {
             const validationResult = validateFile(file, library, repositoryPath);
+
+            // Check if this canvas has any associated workflow files
+            // Only check when the canvas is valid (no errors)
+            const hasErrors = validationResult.issues.some((i) => i.type === 'error');
+            if (!hasErrors) {
+              const absoluteCanvasPath = resolve(repositoryPath, file);
+              const associatedWorkflows = findWorkflowsForCanvas(absoluteCanvasPath, repositoryPath);
+
+              // Also check if any workflows were passed to validation that reference this canvas
+              const canvasRelPath = relative(repositoryPath, absoluteCanvasPath);
+              const passedWorkflowsForCanvas = workflowsByCanvas.has(canvasRelPath);
+
+              if (associatedWorkflows.length === 0 && !passedWorkflowsForCanvas) {
+                validationResult.issues.push({
+                  type: 'warning',
+                  message: 'No workflow files found for this canvas',
+                  suggestion: 'Create a .workflow.json file to define scenarios and templates for this canvas',
+                });
+              }
+            }
+
             results.push(validationResult);
 
             // Collect parsed canvas for EventRegistry

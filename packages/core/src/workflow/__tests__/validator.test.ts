@@ -2938,4 +2938,303 @@ describe('WorkflowValidator', () => {
       expect(connectivityViolations).toHaveLength(0);
     });
   });
+
+  describe('workflow-template-attribute-not-in-schema', () => {
+    it('should error when template references attribute not in event schema', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          template: {
+            events: {
+              // Template references context.projectRoot which is NOT in the schema
+              'task.delete.error': 'Task {{input.taskId}} not found in {{context.projectRoot}}'
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          {
+            id: 'n1',
+            type: 'text',
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+            pv: {
+              event: {
+                name: 'task.delete.error',
+                description: 'Task deletion error',
+                attributes: {
+                  'error.type': { type: 'string' },
+                  'error.message': { type: 'string' },
+                  'input.taskId': { type: 'string' }
+                  // Note: context.projectRoot is NOT defined here
+                }
+              }
+            }
+          }
+        ],
+        edges: [],
+        pv: { version: '1.0.0', name: 'Test Canvas', markdown: 'test.md' }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const violations = result.violations.filter(v => v.ruleId === 'workflow-template-attribute-not-in-schema');
+
+      expect(violations).toHaveLength(1);
+      expect(violations[0].message).toContain('context.projectRoot');
+      expect(violations[0].message).toContain('not defined in the event schema');
+      expect(violations[0].message).toContain('task.delete.error');
+    });
+
+    it('should pass when all template attributes are in event schema', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          template: {
+            events: {
+              'task.create.complete': 'Created task {{output.taskId}} in {{duration.ms}}ms'
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          {
+            id: 'n1',
+            type: 'text',
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+            pv: {
+              event: {
+                name: 'task.create.complete',
+                description: 'Task creation complete',
+                attributes: {
+                  'output.taskId': { type: 'string' },
+                  'duration.ms': { type: 'number' }
+                }
+              }
+            }
+          }
+        ],
+        edges: [],
+        pv: { version: '1.0.0', name: 'Test Canvas', markdown: 'test.md' }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const violations = result.violations.filter(v => v.ruleId === 'workflow-template-attribute-not-in-schema');
+
+      expect(violations).toHaveLength(0);
+    });
+
+    it('should error for multiple undefined attributes', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          template: {
+            events: {
+              'task.delete.error': 'Task {{input.taskId}} not found in {{context.projectRoot}} ({{context.taskCount}} tasks)'
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          {
+            id: 'n1',
+            type: 'text',
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+            pv: {
+              event: {
+                name: 'task.delete.error',
+                description: 'Task deletion error',
+                attributes: {
+                  'input.taskId': { type: 'string' }
+                  // context.projectRoot and context.taskCount are NOT defined
+                }
+              }
+            }
+          }
+        ],
+        edges: [],
+        pv: { version: '1.0.0', name: 'Test Canvas', markdown: 'test.md' }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const violations = result.violations.filter(v => v.ruleId === 'workflow-template-attribute-not-in-schema');
+
+      expect(violations).toHaveLength(2);
+      expect(violations.some(v => v.message.includes('context.projectRoot'))).toBe(true);
+      expect(violations.some(v => v.message.includes('context.taskCount'))).toBe(true);
+    });
+
+    it('should handle nested attribute access when parent is defined', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          template: {
+            events: {
+              // Accessing nested path input.taskId when input.taskId is defined
+              'task.update.started': 'Updating task {{input.taskId}}'
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          {
+            id: 'n1',
+            type: 'text',
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+            pv: {
+              event: {
+                name: 'task.update.started',
+                description: 'Task update started',
+                attributes: {
+                  'input.taskId': { type: 'string' },
+                  'input.hasTitle': { type: 'boolean' }
+                }
+              }
+            }
+          }
+        ],
+        edges: [],
+        pv: { version: '1.0.0', name: 'Test Canvas', markdown: 'test.md' }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const violations = result.violations.filter(v => v.ruleId === 'workflow-template-attribute-not-in-schema');
+
+      expect(violations).toHaveLength(0);
+    });
+
+    it('should suggest similar attributes when typo detected', async () => {
+      const workflow: WorkflowTemplate = {
+        version: '1.0.0',
+        name: 'Test',
+        description: 'Test workflow',
+        mode: 'span-tree',
+        canvas: 'test.otel.canvas',
+        scenarios: [{
+          id: 'test',
+          priority: 1,
+          description: 'Test scenario',
+          template: {
+            events: {
+              // Typo: input.takId instead of input.taskId
+              'task.delete.started': 'Deleting task {{input.takId}}'
+            }
+          }
+        }]
+      };
+
+      const canvas: ExtendedCanvas = {
+        nodes: [
+          {
+            id: 'n1',
+            type: 'text',
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 50,
+            pv: {
+              event: {
+                name: 'task.delete.started',
+                description: 'Task deletion started',
+                attributes: {
+                  'input.taskId': { type: 'string' }
+                }
+              }
+            }
+          }
+        ],
+        edges: [],
+        pv: { version: '1.0.0', name: 'Test Canvas', markdown: 'test.md' }
+      };
+
+      const context: WorkflowValidationContext = {
+        workflow,
+        workflowPath: 'test.workflow.json',
+        canvas,
+        basePath: tempDir
+      };
+
+      const result = await validator.validate(context);
+      const violations = result.violations.filter(v => v.ruleId === 'workflow-template-attribute-not-in-schema');
+
+      expect(violations).toHaveLength(1);
+      expect(violations[0].message).toContain('input.takId');
+      // Should suggest the similar attribute
+      expect(violations[0].suggestion).toContain('input.taskId');
+    });
+  });
 });
