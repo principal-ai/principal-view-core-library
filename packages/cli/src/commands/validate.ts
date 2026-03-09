@@ -492,7 +492,7 @@ const ALLOWED_CANVAS_FIELDS = {
     'layout',
     'boundary', // For boundary nodes representing external system interfaces
   ],
-  nodePvOtel: ['kind', 'category', 'isNew', 'files'],
+  nodePvOtel: ['kind', 'category', 'files'],
   nodePvBoundary: ['direction', 'node'],
   nodePvState: ['color', 'icon', 'label'],
   nodePvAction: ['pattern', 'event', 'state', 'metadata', 'triggerEdges'],
@@ -1389,7 +1389,7 @@ The display name will be shown large on the node, and the event name will appear
               type: 'error',
               message: `Node "${nodeLabel}" in .otel.canvas file has event schema but is missing "pv.otel" field required for UI badges`,
               path: `${nodePath}.pv.otel`,
-              suggestion: 'Add OTEL metadata for UI rendering, e.g.: "otel": { "kind": "event", "category": "lifecycle", "isNew": true }',
+              suggestion: 'Add OTEL metadata for UI rendering, e.g.: "otel": { "kind": "event", "category": "lifecycle" }',
             });
           }
 
@@ -2485,6 +2485,36 @@ export function createValidateCommand(): Command {
             }
           }
 
+          // Check for multiple .otel.canvas files in the same directory
+          const otelCanvasesByDir = new Map<string, string[]>();
+          for (const result of results) {
+            if (result.fileType !== 'canvas') continue;
+            if (!result.file.endsWith('.otel.canvas')) continue;
+
+            const dir = dirname(result.file);
+            if (!otelCanvasesByDir.has(dir)) {
+              otelCanvasesByDir.set(dir, []);
+            }
+            otelCanvasesByDir.get(dir)!.push(result.file);
+          }
+
+          for (const [dir, files] of otelCanvasesByDir.entries()) {
+            if (files.length > 1) {
+              for (const filePath of files) {
+                const result = results.find(r => r.file === filePath);
+                if (result) {
+                  result.isValid = false;
+                  result.issues.push({
+                    type: 'error',
+                    message: `Multiple .otel.canvas files in the same directory: ${files.map(f => basename(f)).join(', ')}`,
+                    path: filePath,
+                    suggestion: `A storyboard folder should contain only one .otel.canvas file. Move additional canvases to separate storyboard folders.`,
+                  });
+                }
+              }
+            }
+          }
+
           return outputResults(results, null, options, true);
         }
 
@@ -2649,6 +2679,43 @@ export function createValidateCommand(): Command {
                 message: `Duplicate canvas files detected: both "${basename}.canvas" and "${basename}.otel.canvas" exist`,
                 path: filePath,
                 suggestion: `Remove the .canvas file and use only .otel.canvas. The .otel.canvas format supports both architectural nodes (without telemetry) and instrumented nodes (with telemetry). Use "status: draft" for planned instrumentation.`,
+              });
+            }
+          }
+        }
+
+        // Check for multiple .otel.canvas files in the same directory
+        const otelCanvasesByDir = new Map<string, string[]>();
+        for (const canvas of discoveryResult.canvases) {
+          if (canvas.type !== 'otel') continue;
+
+          const dir = dirname(canvas.path);
+          if (!otelCanvasesByDir.has(dir)) {
+            otelCanvasesByDir.set(dir, []);
+          }
+          otelCanvasesByDir.get(dir)!.push(canvas.path);
+        }
+
+        for (const [dir, files] of otelCanvasesByDir.entries()) {
+          if (files.length > 1) {
+            for (const filePath of files) {
+              let result = results.find(r => r.file === filePath);
+              if (!result) {
+                result = {
+                  file: filePath,
+                  fileType: 'canvas',
+                  isValid: false,
+                  issues: [],
+                };
+                results.push(result);
+              }
+
+              result.isValid = false;
+              result.issues.push({
+                type: 'error',
+                message: `Multiple .otel.canvas files in the same directory: ${files.map(f => basename(f)).join(', ')}`,
+                path: filePath,
+                suggestion: `A storyboard folder should contain only one .otel.canvas file. Move additional canvases to separate storyboard folders.`,
               });
             }
           }
