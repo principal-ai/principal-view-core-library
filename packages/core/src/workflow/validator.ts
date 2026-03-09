@@ -787,7 +787,8 @@ export class WorkflowValidator {
     const priorities = new Set<number>();
 
     // Valid fields for scenario objects
-    const validScenarioFields = ['id', 'priority', 'description', 'template'];
+    const validScenarioFields = ['id', 'priority', 'description', 'template', 'outcomeType', 'filterDefault'];
+    const validOutcomeTypes = ['expected', 'expected-issue', 'unknown-issue'];
 
     workflow.scenarios.forEach((scenario, idx) => {
       // Check for unknown fields at scenario level
@@ -894,6 +895,34 @@ export class WorkflowValidator {
           message: 'Scenario is missing required "description" field',
           impact: 'Cannot understand what this scenario represents',
           suggestion: 'Add a description explaining what this scenario represents',
+          fixable: false,
+        });
+      }
+
+      // Check outcomeType if present
+      if (scenario.outcomeType !== undefined && !validOutcomeTypes.includes(scenario.outcomeType)) {
+        violations.push({
+          ruleId: 'workflow-scenario-valid',
+          severity: 'error',
+          file: workflowPath,
+          path: `scenarios[${idx}].outcomeType`,
+          message: `Invalid outcomeType: "${scenario.outcomeType}"`,
+          impact: 'The scenario outcome type will not be recognized',
+          suggestion: `Valid outcomeType values are: ${validOutcomeTypes.join(', ')}`,
+          fixable: false,
+        });
+      }
+
+      // Check filterDefault if present (should be boolean)
+      if (scenario.filterDefault !== undefined && typeof scenario.filterDefault !== 'boolean') {
+        violations.push({
+          ruleId: 'workflow-scenario-valid',
+          severity: 'error',
+          file: workflowPath,
+          path: `scenarios[${idx}].filterDefault`,
+          message: `filterDefault must be a boolean, got: ${typeof scenario.filterDefault}`,
+          impact: 'The filter default state will not be applied correctly',
+          suggestion: 'Set filterDefault to true or false',
           fixable: false,
         });
       }

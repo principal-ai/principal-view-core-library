@@ -151,6 +151,14 @@ export type WorkflowMode =
  * Scenarios are mutually exclusive workflow templates.
  * Required events are automatically derived from template.events keys.
  */
+/**
+ * Scenario outcome type for display differentiation
+ * - 'expected': Normal/healthy scenario (default)
+ * - 'expected-issue': Known issue that is anticipated
+ * - 'unknown-issue': Unexpected issue that needs attention
+ */
+export type ScenarioOutcomeType = 'expected' | 'expected-issue' | 'unknown-issue';
+
 export interface WorkflowScenario {
   // Identification
   /** Unique scenario identifier (kebab-case) */
@@ -161,6 +169,12 @@ export interface WorkflowScenario {
 
   /** What this scenario represents */
   description: string;
+
+  /** Outcome type for icon/display differentiation. Defaults to 'expected' */
+  outcomeType?: ScenarioOutcomeType;
+
+  /** Default filter state. True = filtered out (hidden), false/undefined = visible */
+  filterDefault?: boolean;
 
   // Template content
   /** Workflow template content */

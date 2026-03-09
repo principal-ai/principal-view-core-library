@@ -138,6 +138,7 @@ export {
 export type {
   WorkflowTemplate,
   WorkflowScenario,
+  ScenarioOutcomeType,
   WorkflowMode,
   ScenarioTemplate,
   FlowDirective,
