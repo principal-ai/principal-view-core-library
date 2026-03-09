@@ -37,7 +37,6 @@ interface OtelLog {
         otel: {
           kind: 'type',
           category: 'log',
-          isNew: true,
         },
         shape: 'rectangle',
         icon: 'FileText',
@@ -69,7 +68,6 @@ Routes incoming OTEL logs to canvas nodes based on matching criteria.
         otel: {
           kind: 'service',
           category: 'router',
-          isNew: true,
         },
         shape: 'hexagon',
         icon: 'GitBranch',
@@ -92,7 +90,6 @@ Routes incoming OTEL logs to canvas nodes based on matching criteria.
         otel: {
           kind: 'type',
           category: 'audit',
-          isNew: true,
         },
         shape: 'rectangle',
         icon: 'AlertTriangle',
@@ -210,7 +207,7 @@ export const TooltipVariants: StoryObj = {
           </div>
           <NodeTooltip
             description="OpenTelemetry log record with timestamp, severity, body"
-            otel={{ kind: 'type', category: 'log', isNew: true }}
+            otel={{ kind: 'type', category: 'log' }}
             visible={true}
           />
         </div>

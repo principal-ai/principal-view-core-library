@@ -17,8 +17,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "lifecycle",
-          "isNew": true
+          "category": "lifecycle"
         },
         "event": {
           "name": "analysis.started",
@@ -58,8 +57,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "operation",
-          "isNew": false
+          "category": "operation"
         },
         "event": {
           "name": "filetree.built",
@@ -96,8 +94,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "operation",
-          "isNew": false
+          "category": "operation"
         },
         "event": {
           "name": "packages.discovered",
@@ -139,8 +136,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "operation",
-          "isNew": false
+          "category": "operation"
         },
         "event": {
           "name": "canvases.discovered",
@@ -187,8 +183,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "operation",
-          "isNew": false
+          "category": "operation"
         },
         "event": {
           "name": "executions.discovered",
@@ -225,8 +220,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "operation",
-          "isNew": false
+          "category": "operation"
         },
         "event": {
           "name": "library.loaded",
@@ -273,8 +267,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "operation",
-          "isNew": false
+          "category": "operation"
         },
         "event": {
           "name": "discovery.complete",
@@ -311,8 +304,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "lifecycle",
-          "isNew": false
+          "category": "lifecycle"
         },
         "event": {
           "name": "validation.started",
@@ -352,8 +344,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "operation",
-          "isNew": false
+          "category": "operation"
         },
         "event": {
           "name": "file.parsed",
@@ -398,8 +389,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "operation",
-          "isNew": false
+          "category": "operation"
         },
         "event": {
           "name": "type.detected",
@@ -439,8 +429,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "operation",
-          "isNew": false
+          "category": "operation"
         },
         "event": {
           "name": "canvas.validated",
@@ -497,8 +486,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "operation",
-          "isNew": false
+          "category": "operation"
         },
         "event": {
           "name": "workflow.validated",
@@ -548,8 +536,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "operation",
-          "isNew": false
+          "category": "operation"
         },
         "event": {
           "name": "execution.validated",
@@ -599,8 +586,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "operation",
-          "isNew": false
+          "category": "operation"
         },
         "event": {
           "name": "library.validated",
@@ -642,8 +628,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "operation",
-          "isNew": false
+          "category": "operation"
         },
         "event": {
           "name": "rules.executed",
@@ -698,8 +683,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "operation",
-          "isNew": false
+          "category": "operation"
         },
         "event": {
           "name": "results.aggregated",
@@ -749,8 +733,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "lifecycle",
-          "isNew": false
+          "category": "lifecycle"
         },
         "event": {
           "name": "validation.complete",
@@ -801,8 +784,7 @@
         "status": "draft",
         "otel": {
           "kind": "event",
-          "category": "error",
-          "isNew": false
+          "category": "error"
         },
         "event": {
           "name": "validation.error",

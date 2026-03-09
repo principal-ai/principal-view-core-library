@@ -326,11 +326,6 @@ export interface PVOtelExtension {
   category?: PVOtelCategory;
 
   /**
-   * Whether this is part of the new OTEL integration (vs legacy path-based)
-   */
-  isNew?: boolean;
-
-  /**
    * Resource matching criteria
    *
    * When specified, this node will highlight when spans are received

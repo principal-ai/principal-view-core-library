@@ -58,7 +58,7 @@ During OTEL canvas onboarding, we encountered several inconsistencies between th
      resourceMatch, actions, dataSchema, layout
 
 ✗ Unknown field "attributes" in nodes[0].pv.otel
-  → Allowed fields: kind, category, isNew
+  → Allowed fields: kind, category
 
 ✗ Unknown field "0" in nodes[0].pv.dataSchema.required
   → Allowed fields: type, required, displayInLabel
@@ -270,7 +270,7 @@ We'll continue with test instrumentation to see if the workflow actually works a
     'sources',
     // ... other fields
   ],
-  nodePvOtel: ['kind', 'category', 'isNew'],
+  nodePvOtel: ['kind', 'category'],
   nodePvDataSchemaField: ['type', 'required', 'displayInLabel'],
   ```
 

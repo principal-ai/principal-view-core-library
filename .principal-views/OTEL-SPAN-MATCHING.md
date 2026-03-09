@@ -178,7 +178,6 @@ export interface PVOtelExtension {
   // Existing fields for architectural diagrams
   kind?: PVOtelKind;
   category?: PVOtelCategory;
-  isNew?: boolean;
 
   // NEW: Runtime matching criteria
   /**

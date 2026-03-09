@@ -7,7 +7,6 @@ import { TooltipPortalContext } from './GraphRenderer';
 export interface OtelInfo {
   kind: 'type' | 'service' | 'instance';
   category?: string;
-  isNew?: boolean;
 }
 
 export interface NodeTooltipProps {
@@ -154,21 +153,6 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
           {otel.category && (
             <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: theme.fontSizes[0], fontFamily: theme.fonts.body }}>
               {otel.category}
-            </span>
-          )}
-          {otel.isNew && (
-            <span
-              style={{
-                backgroundColor: '#F5A623',
-                color: 'white',
-                padding: '1px 4px',
-                borderRadius: '3px',
-                fontSize: theme.fontSizes[0],
-                fontWeight: theme.fontWeights.semibold,
-                fontFamily: theme.fonts.body,
-              }}
-            >
-              NEW
             </span>
           )}
         </div>

@@ -676,7 +676,6 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
         otel: {
           kind: 'type',
           category: 'log',
-          isNew: true,
         },
         shape: 'rectangle',
         icon: 'FileText',
@@ -737,7 +736,6 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
         otel: {
           kind: 'service',
           category: 'router',
-          isNew: true,
         },
         shape: 'hexagon',
         icon: 'GitBranch',
@@ -861,7 +859,6 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
         otel: {
           kind: 'service',
           category: 'collector',
-          isNew: true,
         },
         shape: 'hexagon',
         icon: 'BarChart2',
@@ -884,7 +881,6 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
         otel: {
           kind: 'type',
           category: 'audit',
-          isNew: true,
         },
         shape: 'rectangle',
         icon: 'AlertTriangle',

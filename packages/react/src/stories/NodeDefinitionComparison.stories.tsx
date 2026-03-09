@@ -149,8 +149,7 @@ export const BasicOtelEventNode: Story = {
         icon: "Play",
         otel: {
           kind: "event",
-          category: "lifecycle",
-          isNew: true
+          category: "lifecycle"
         },
         event: {
           name: "analysis.started",
@@ -343,8 +342,7 @@ export const NodeWithStateAndViolations: Story = {
         icon: "XCircle",
         otel: {
           kind: "event",
-          category: "error",
-          isNew: false
+          category: "error"
         },
         event: {
           name: "validation.error",

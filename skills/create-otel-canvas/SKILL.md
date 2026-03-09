@@ -67,7 +67,7 @@ The CLI validates this naming convention. Canvas files with OTEL features that d
 ### OTEL Features
 
 A canvas is considered an "OTEL canvas" if it contains ANY of:
-- **pv.otel**: Node-level OTEL metadata (kind, category, isNew)
+- **pv.otel**: Node-level OTEL metadata (kind, category)
 - **pv.event**: Event schema with attributes and validation rules
 - **pv.scope**: Canvas-level scope for log routing
 - **pv.audit**: Canvas-level audit configuration
@@ -129,8 +129,7 @@ A canvas is considered an "OTEL canvas" if it contains ANY of:
 "pv": {
   "otel": {
     "kind": "service",      // "type", "service", "function", etc.
-    "category": "router",   // "router", "collector", "validator", etc.
-    "isNew": true          // true if this is a new OTEL concept
+    "category": "router"    // "router", "collector", "validator", etc.
   }
 }
 ```
@@ -231,8 +230,7 @@ A canvas is considered an "OTEL canvas" if it contains ANY of:
     },
     "otel": {
       "kind": "event",
-      "category": "integration",
-      "isNew": true
+      "category": "integration"
     },
     "references": [
       "src/forge-function.ts"
