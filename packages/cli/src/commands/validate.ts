@@ -2109,7 +2109,8 @@ function validateFile(
 function outputResults(
   results: ValidationResult[],
   libraryResult: ValidationResult | null,
-  options: { json?: boolean; quiet?: boolean }
+  options: { json?: boolean; quiet?: boolean },
+  targetedValidation: boolean = false
 ) {
   const allResults = libraryResult ? [libraryResult, ...results] : results;
   const validCount = allResults.filter((r) => r.isValid).length;
@@ -2198,6 +2199,9 @@ function outputResults(
     // Summary
     if (invalidCount === 0) {
       console.log(chalk.green(`✓ All ${validCount} file(s) are valid`));
+      if (targetedValidation) {
+        console.log(chalk.dim(`\nTip: Run the validate command without arguments for comprehensive validation of all artifacts.`));
+      }
     } else {
       console.log(
         chalk.red(`✗ ${invalidCount} of ${allResults.length} file(s) failed validation`)
@@ -2335,9 +2339,10 @@ export function createValidateCommand(): Command {
             const validationResult = validateFile(file, library, repositoryPath);
 
             // Check if this canvas has any associated workflow files
-            // Only check when the canvas is valid (no errors)
+            // Only check for .otel.canvas files (workflows are for telemetry scenarios)
+            const isOtelCanvas = file.endsWith('.otel.canvas');
             const hasErrors = validationResult.issues.some((i) => i.type === 'error');
-            if (!hasErrors) {
+            if (isOtelCanvas && !hasErrors) {
               const absoluteCanvasPath = resolve(repositoryPath, file);
               const associatedWorkflows = findWorkflowsForCanvas(absoluteCanvasPath, repositoryPath);
 
@@ -2349,7 +2354,7 @@ export function createValidateCommand(): Command {
                 validationResult.issues.push({
                   type: 'warning',
                   message: 'No workflow files found for this canvas',
-                  suggestion: 'Create a .workflow.json file to define scenarios and templates for this canvas',
+                  suggestion: 'Create a .workflow.json file to define telemetry scenarios for this canvas',
                 });
               }
             }
@@ -2480,7 +2485,7 @@ export function createValidateCommand(): Command {
             }
           }
 
-          return outputResults(results, null, options);
+          return outputResults(results, null, options, true);
         }
 
         // Determine which file types to validate
@@ -2868,7 +2873,7 @@ export function createValidateCommand(): Command {
         }
 
         // Output results using helper function
-        outputResults(results, libraryResult, options);
+        outputResults(results, libraryResult, options, false);
       } catch (error) {
         console.error(chalk.red('Error:'), (error as Error).message);
         process.exit(1);
