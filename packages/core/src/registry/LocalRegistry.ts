@@ -29,6 +29,7 @@ export type FileReader = (path: string) => Promise<string>;
 interface WorkspaceRegistration {
   workspaceId: string;
   fileTree: FileTree;
+  fileTreeSha: string; // SHA of the fileTree when scopes were discovered
   serviceNames: string[]; // Service names (from service.name attribute)
   ownedScopes: string[]; // All owned instrumentation scopes
 }
@@ -75,8 +76,47 @@ export class LocalRegistry implements StoryboardRegistryInterface {
 
     // Check if already registered
     if (this.workspaces.has(workspaceId)) {
-      console.log('[LocalRegistry] Workspace already registered:', workspaceId);
       const existing = this.workspaces.get(workspaceId)!;
+      const currentSha = fileTree.sha || '';
+
+      // Check if fileTree content changed (different SHA)
+      if (existing.fileTreeSha !== currentSha) {
+        console.log('[LocalRegistry] Workspace content changed, re-discovering scopes:', {
+          workspaceId,
+          oldSha: existing.fileTreeSha,
+          newSha: currentSha,
+        });
+
+        // Re-discover scope names from updated library.yaml
+        const { serviceNames, ownedScopes, scopeToServiceMap } = await this.discoverScopesInfo(fileTree);
+
+        // Clear old scope mappings
+        for (const scopeName of [...existing.serviceNames, ...existing.ownedScopes]) {
+          this.scopeToWorkspaceId.delete(scopeName);
+        }
+
+        // Update registration with new scope info
+        existing.fileTree = fileTree;
+        existing.fileTreeSha = currentSha;
+        existing.serviceNames = serviceNames;
+        existing.ownedScopes = ownedScopes;
+
+        // Update scope-to-workspace mapping with new scopes
+        for (const [scopeName] of scopeToServiceMap) {
+          this.scopeToWorkspaceId.set(scopeName, workspaceId);
+        }
+
+        console.log('[LocalRegistry] Updated workspace registration:', {
+          workspaceId,
+          serviceNames,
+          ownedScopes,
+          fileTreeSha: currentSha,
+        });
+
+        return [...new Set([...serviceNames, ...ownedScopes])];
+      }
+
+      console.log('[LocalRegistry] Workspace already registered (no changes):', workspaceId);
       // Update the fileTree reference to the latest version
       existing.fileTree = fileTree;
       return [...new Set([...existing.serviceNames, ...existing.ownedScopes])];
@@ -94,6 +134,7 @@ export class LocalRegistry implements StoryboardRegistryInterface {
     this.workspaces.set(workspaceId, {
       workspaceId,
       fileTree,
+      fileTreeSha: fileTree.sha || '',
       serviceNames,
       ownedScopes,
     });
