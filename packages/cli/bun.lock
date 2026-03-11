@@ -5,7 +5,7 @@
       "name": "@principal-ai/principal-view-cli",
       "dependencies": {
         "@principal-ai/codebase-composition": "^0.2.43",
-        "@principal-ai/principal-view-core": "^0.24.59",
+        "@principal-ai/principal-view-core": "^0.24.61",
         "chalk": "5.6.2",
         "commander": "14.0.2",
         "glob": "^13.0.0",
@@ -106,7 +106,7 @@
 
     "@principal-ai/codebase-quality-lenses": ["@principal-ai/codebase-quality-lenses@0.1.65", "", { "peerDependencies": { "@a24z/alexandria-cli": ">=0.2.0" }, "optionalPeers": ["@a24z/alexandria-cli"] }, "sha512-7l3x0836uWhaH5b9nurTxbCuF8TiRqVLA8ZG5DffSalWkQdbTVbj/I+fAhDNoDXbbMKTEa1eJUIw5+y3vg3xOg=="],
 
-    "@principal-ai/principal-view-core": ["@principal-ai/principal-view-core@0.24.59", "", { "dependencies": { "@opentelemetry/api": "1.9.0", "@opentelemetry/exporter-trace-otlp-http": "0.208.0", "@opentelemetry/otlp-transformer": "^0.211.0", "@opentelemetry/resources": "2.2.0", "@opentelemetry/sdk-trace-base": "2.2.0", "@opentelemetry/semantic-conventions": "1.38.0", "@principal-ai/repository-abstraction": "^0.5.7", "date-fns": "3.0.0", "handlebars": "^4.7.8", "js-yaml": "4.1.0", "zod": "3.22.0" }, "peerDependencies": { "@principal-ai/codebase-composition": "^0.2.43" } }, "sha512-qqVUVtgnoaqR2ZOvU+THvd/xztmG89jk9/raGqHw3yu9ECrA74RFhJIjwTBZYT0oAzonQ6S3EeilOxyyhR6Riw=="],
+    "@principal-ai/principal-view-core": ["@principal-ai/principal-view-core@0.24.61", "", { "dependencies": { "@opentelemetry/api": "1.9.0", "@opentelemetry/exporter-trace-otlp-http": "0.208.0", "@opentelemetry/otlp-transformer": "^0.211.0", "@opentelemetry/resources": "2.2.0", "@opentelemetry/sdk-trace-base": "2.2.0", "@opentelemetry/semantic-conventions": "1.38.0", "@principal-ai/repository-abstraction": "^0.5.7", "date-fns": "3.0.0", "handlebars": "^4.7.8", "js-yaml": "4.1.0", "zod": "3.22.0" }, "peerDependencies": { "@principal-ai/codebase-composition": "^0.2.43" } }, "sha512-xtA41N7Q4XjvVf0O6a3zcugmPfBpC4YqwsynScdFwD8db1I4z9/348MtoBiBXhiEm/SlPLeJv1IaQqXr5Pb8VA=="],
 
     "@principal-ai/quality-lens-registry": ["@principal-ai/quality-lens-registry@0.3.3", "", {}, "sha512-+ln796H5BvVTEgiot9GIsTbEnZWF2aDNqYEG4AfBi0jmEJpHO68Gk2+fa6E4LvQ1da0Pa52JmQvnKptbeoEmaw=="],
 
