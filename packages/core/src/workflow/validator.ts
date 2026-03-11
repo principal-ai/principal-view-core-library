@@ -1122,7 +1122,7 @@ export class WorkflowValidator {
     scenarioIdx: number
   ): WorkflowViolation[] {
     const violations: WorkflowViolation[] = [];
-    const validFields = ['introduction', 'events', 'logs', 'flow', 'summary', 'span', 'children'];
+    const validFields = ['introduction', 'events', 'logs', 'summary', 'span', 'children'];
 
     // Type guard: ensure template is an object
     if (typeof template !== 'object' || template === null) {
