@@ -1,11 +1,12 @@
-import React, { useState, useRef } from 'react';
-import { Handle, Position, NodeResizer } from '@xyflow/react';
+import React, { useState, useRef, useCallback } from 'react';
+import { Handle, Position, NodeResizer, useNodeId } from '@xyflow/react';
 import type { NodeProps, Node } from '@xyflow/react';
 import type { NodeTypeDefinition } from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
 import { resolveIcon } from '../utils/iconResolver';
 import { NodeTooltip } from '../components/NodeTooltip';
 import type { OtelInfo } from '../components/NodeTooltip';
+import { useGraphEdit } from '../contexts/GraphEditContext';
 
 /**
  * Converts a hex color to a lighter/tinted version (opaque, not transparent)
@@ -63,6 +64,8 @@ export interface CustomNodeData extends Record<string, unknown> {
  */
 export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, selected, dragging }) => {
   const { theme } = useTheme();
+  const { onNodeResizeEnd } = useGraphEdit();
+  const nodeId = useNodeId();
   const [isHovered, setIsHovered] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
   const nodeProps = data;
@@ -85,6 +88,19 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
   // Hidden nodes (shift-clicked) are dimmed to 0.4
   // Inactive nodes (scenario filtering) are dimmed to 0.1
   const nodeOpacity = isHidden ? 0.4 : isActive ? 1 : 0.1;
+
+  // Handle resize end - notify parent to track the dimension change
+  const handleResizeEnd = useCallback(
+    (_event: unknown, params: { width: number; height: number }) => {
+      if (nodeId && onNodeResizeEnd && params.width && params.height) {
+        onNodeResizeEnd(nodeId, {
+          width: Math.round(params.width),
+          height: Math.round(params.height),
+        });
+      }
+    },
+    [nodeId, onNodeResizeEnd]
+  );
 
   // DEBUG: Log ALL node data to understand structure
   console.log('[CustomNode] Node data:', {
@@ -673,6 +689,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
           minWidth={minWidth}
           minHeight={minHeight}
           keepAspectRatio={keepAspectRatio}
+          onResizeEnd={handleResizeEnd}
           handleStyle={{
             width: 8,
             height: 8,

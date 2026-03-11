@@ -52,6 +52,7 @@ import {
   convertToXYFlowNodes,
   convertToXYFlowEdges,
 } from '../utils/graphConverter';
+import { GraphEditProvider } from '../contexts/GraphEditContext';
 
 /**
  * Context for providing a portal target for tooltips.
@@ -465,6 +466,7 @@ interface GraphRendererInnerProps {
   onPendingChangesChange?: (hasChanges: boolean) => void;
   onEditStateChange?: (editState: EditState) => void;
   editStateRef: React.MutableRefObject<EditState>;
+  resetVisualStateRef: React.MutableRefObject<(() => void) | null>;
   onNodeClick?: (nodeId: string, event: React.MouseEvent) => void;
   fitViewToNodeIds?: string[] | null;
   fitViewPadding?: number;
@@ -498,6 +500,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   onPendingChangesChange,
   onEditStateChange,
   editStateRef,
+  resetVisualStateRef,
   onNodeClick: onNodeClickProp,
   fitViewToNodeIds,
   fitViewPadding = 0.2,
@@ -702,6 +705,27 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       onPendingChangesChange?.(hasChanges);
     },
     [editStateRef, onEditStateChange, onPendingChangesChange, checkHasChanges]
+  );
+
+  // Handler for node resize end - called from CustomNode via context
+  const handleNodeResizeEnd = useCallback(
+    (nodeId: string, dimensions: { width: number; height: number }) => {
+      if (!editable) return;
+      updateEditState((prev) => {
+        const newDimensions = new Map(prev.dimensionChanges);
+        newDimensions.set(nodeId, dimensions);
+        return { ...prev, dimensionChanges: newDimensions };
+      });
+    },
+    [editable, updateEditState]
+  );
+
+  // Memoize the context value to prevent unnecessary re-renders
+  const graphEditContextValue = useMemo(
+    () => ({
+      onNodeResizeEnd: handleNodeResizeEnd,
+    }),
+    [handleNodeResizeEnd]
   );
 
   // ============================================
@@ -1505,6 +1529,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     }
   }, [hasDraggableNodes, xyflowNodesBase, draggableNodeIds, updateNodeInternals]);
 
+
   // Handle node drag to show alignment guides
   const handleNodeDrag = useCallback(
     (_event: React.MouseEvent, node: Node) => {
@@ -1629,36 +1654,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           change.dragging === false
       );
 
-      // Track dimension changes (from NodeResizer)
-      const dimensionChanges = changes.filter(
-        (
-          change
-        ): change is NodeChange & {
-          type: 'dimensions';
-          dimensions: { width: number; height: number };
-          resizing: boolean;
-        } =>
-          change.type === 'dimensions' &&
-          'dimensions' in change &&
-          change.dimensions !== undefined &&
-          'resizing' in change &&
-          change.resizing === false
-      );
-
-      if (dimensionChanges.length > 0) {
-        updateEditState((prev) => {
-          const newDimensions = new Map(prev.dimensionChanges);
-          for (const change of dimensionChanges) {
-            if (change.dimensions) {
-              newDimensions.set(change.id, {
-                width: Math.round(change.dimensions.width),
-                height: Math.round(change.dimensions.height),
-              });
-            }
-          }
-          return { ...prev, dimensionChanges: newDimensions };
-        });
-      }
+      // Note: Dimension changes are tracked via onResizeEnd callback in GraphEditContext,
+      // not through onNodesChange (which only fires with resizing=true during drag).
 
       if (positionChanges.length > 0) {
         updateEditState((prev) => {
@@ -1741,6 +1738,17 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       setXyflowLocalEdges(xyflowEdgesBase);
     }
   }, [baseEdgesKey, xyflowEdgesBase]);
+
+  // Set the reset visual state function for use by resetEditState
+  // This resets both nodes and edges to their original state
+  useEffect(() => {
+    resetVisualStateRef.current = () => {
+      setXyflowLocalNodes(xyflowNodesBase);
+      setXyflowLocalEdges(xyflowEdgesBase);
+      // Notify parent that changes have been cleared
+      onPendingChangesChange?.(false);
+    };
+  }, [xyflowNodesBase, xyflowEdgesBase, onPendingChangesChange]);
 
   // Use local edges in edit mode, base edges otherwise
   const xyflowEdges = editable ? xyflowLocalEdges : xyflowEdgesBase;
@@ -1830,7 +1838,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   // ============================================
 
   return (
-    <>
+    <GraphEditProvider value={graphEditContextValue}>
       <ReactFlow
         key={`${baseNodesKey}-${baseEdgesKey}`}
         nodes={xyflowNodes}
@@ -1971,7 +1979,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           </button>
         </div>
       )}
-    </>
+    </GraphEditProvider>
   );
 };
 
@@ -2184,6 +2192,9 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
   // Internal edit state ref - must be before any conditional returns
   const editStateRef = useRef<EditState>(createEmptyEditState());
 
+  // Ref to hold the reset visual state function - will be set after xyflowLocalNodes is defined
+  const resetVisualStateRef = useRef<(() => void) | null>(null);
+
   // Expose imperative handle - must be before any conditional returns
   useImperativeHandle(
     ref,
@@ -2227,6 +2238,8 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
       },
       resetEditState: () => {
         editStateRef.current = createEmptyEditState();
+        // Also reset visual state (node positions/dimensions) if available
+        resetVisualStateRef.current?.();
       },
       hasUnsavedChanges: (): boolean => {
         const state = editStateRef.current;
@@ -2317,6 +2330,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
             editable={editable}
             onPendingChangesChange={onPendingChangesChange}
             editStateRef={editStateRef}
+            resetVisualStateRef={resetVisualStateRef}
             onNodeClick={onNodeClick}
             fitViewToNodeIds={fitViewToNodeIds}
             fitViewPadding={fitViewPadding}
