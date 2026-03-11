@@ -90,6 +90,9 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
   console.log('[CustomNode] Node data:', {
     name: nodeProps.name,
     nodeDataKeys: nodeData ? Object.keys(nodeData).join(', ') : 'undefined',
+    references: nodeData?.references,
+    otelFiles: (nodeData?.otel as { files?: string[] })?.files,
+    sources: nodeData?.sources,
     fullNodeData: nodeData,
   });
 
@@ -99,10 +102,13 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
   const showTooltip =
     (isHovered && !dragging && shiftKeyPressed) || (!editable && !!selected);
 
-  // Extract OTEL info, description, and sources for tooltip
-  const otelInfo = nodeData?.otel as OtelInfo | undefined;
+  // Extract OTEL info, description, sources/files, and references for tooltip
+  const otelInfo = nodeData?.otel as (OtelInfo & { files?: string[] }) | undefined;
   const description = nodeData?.description as string | undefined;
-  const sources = nodeData?.sources as string[] | undefined;
+  const sources = nodeData?.sources as string[] | undefined; // deprecated
+  const references = nodeData?.references as string[] | undefined;
+  // Files from otel.files - these are source code files where the event is instrumented
+  const files = otelInfo?.files;
 
   // Get badge shape styles based on node shape
   const getBadgeShapeStyles = (): React.CSSProperties => {
@@ -141,24 +147,28 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
   };
 
   // Get badge position based on shape - diamonds need badges at their points, not bounding box corners
-  const getBadgePosition = (position: 'top-left' | 'top-right' | 'left' | 'right'): React.CSSProperties => {
+  const getBadgePosition = (position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'left' | 'right' | 'top' | 'bottom'): React.CSSProperties => {
     const isDiamondShape = typeDefinition.shape === 'diamond';
 
     if (isDiamondShape) {
       // Diamond points are at the middle of each edge of the bounding box
       switch (position) {
         case 'top-left':
-          // Position at the LEFT point of the diamond (center-left)
-          return { top: '50%', left: 0, transform: 'translate(-50%, -50%)' };
-        case 'top-right':
-          // Position at the RIGHT point of the diamond (center-right)
-          return { top: '50%', right: 0, transform: 'translate(50%, -50%)' };
         case 'left':
           // Position at the LEFT point of the diamond (center-left)
           return { top: '50%', left: 0, transform: 'translate(-50%, -50%)' };
+        case 'top-right':
         case 'right':
           // Position at the RIGHT point of the diamond (center-right)
           return { top: '50%', right: 0, transform: 'translate(50%, -50%)' };
+        case 'top':
+          // Position at the TOP point of the diamond
+          return { top: 0, left: '50%', transform: 'translate(-50%, -50%)' };
+        case 'bottom':
+        case 'bottom-left':
+        case 'bottom-right':
+          // Position at the BOTTOM point of the diamond
+          return { bottom: 0, left: '50%', transform: 'translate(-50%, 50%)' };
       }
     }
 
@@ -168,17 +178,27 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
         return { top: -6, left: -6 };
       case 'top-right':
         return { top: -6, right: -6 };
+      case 'bottom-left':
+        return { bottom: -6, left: -6 };
+      case 'bottom-right':
+        return { bottom: -6, right: -6 };
       case 'left':
         return { top: -6, left: -6 };
       case 'right':
         return { top: -6, right: -6 };
+      case 'top':
+        return { top: -6, left: '50%', transform: 'translateX(-50%)' };
+      case 'bottom':
+        return { bottom: -6, left: '50%', transform: 'translateX(-50%)' };
     }
   };
 
-  // Render Sources badge (top-right, or right point for diamonds)
+  // Render Sources badge (top-right) - shows "S" for files where event is instrumented
   const renderSourcesBadge = () => {
-    const sources = nodeData?.sources as string[] | undefined;
-    if (!sources || sources.length === 0) return null;
+    // Use otel.files (source code files where event is instrumented)
+    // Fall back to deprecated sources field for backwards compatibility
+    const sourceFiles = files || sources;
+    if (!sourceFiles || sourceFiles.length === 0) return null;
 
     const shapeStyles = getBadgeShapeStyles();
     const positionStyles = getBadgePosition('top-right');
@@ -203,9 +223,43 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
           zIndex: 10,
           opacity: nodeOpacity,
         }}
-        title={`Sources: ${sources.join(', ')}`}
+        title={`Source files: ${sourceFiles.join(', ')}`}
       >
         <span style={{ transform: shapeStyles.transform ? 'rotate(-45deg)' : undefined }}>S</span>
+      </div>
+    );
+  };
+
+  // Render References badge (bottom-left for rectangles, bottom for diamonds) - shows "R" for external references
+  const renderReferencesBadge = () => {
+    if (!references || references.length === 0) return null;
+
+    const shapeStyles = getBadgeShapeStyles();
+    const positionStyles = getBadgePosition('bottom-left');
+
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          ...positionStyles,
+          ...shapeStyles,
+          // Override transform if shape has rotation but we already have a position transform
+          ...(typeDefinition.shape === 'diamond' ? { transform: `${positionStyles.transform} rotate(45deg)` } : {}),
+          backgroundColor: '#8b5cf6', // Purple for references
+          color: 'white',
+          fontSize: theme.fontSizes[0],
+          fontWeight: theme.fontWeights.bold,
+          fontFamily: theme.fonts.body,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+          zIndex: 10,
+          opacity: nodeOpacity,
+        }}
+        title={`References: ${references.join(', ')}`}
+      >
+        <span style={{ transform: shapeStyles.transform ? 'rotate(-45deg)' : undefined }}>R</span>
       </div>
     );
   };
@@ -662,7 +716,12 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
           onMouseLeave={() => setIsHovered(false)}
         >
           {renderStatusBadge()}
-          {isBoundaryNode ? renderBoundaryBadge() : renderSourcesBadge()}
+          {isBoundaryNode ? renderBoundaryBadge() : (
+            <>
+              {renderSourcesBadge()}
+              {renderReferencesBadge()}
+            </>
+          )}
           <div style={hexagonBorderStyle} className={animationClass}>
             <div style={hexagonInnerStyle}>
               {icon && (
@@ -705,6 +764,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
               description={description}
               otel={otelInfo}
               sources={sources}
+              references={references}
               visible={showTooltip}
               nodeRef={nodeRef}
             />
@@ -728,7 +788,12 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
           onMouseLeave={() => setIsHovered(false)}
         >
           {renderStatusBadge()}
-          {isBoundaryNode ? renderBoundaryBadge() : renderSourcesBadge()}
+          {isBoundaryNode ? renderBoundaryBadge() : (
+            <>
+              {renderSourcesBadge()}
+              {renderReferencesBadge()}
+            </>
+          )}
           <div style={diamondBorderStyle} className={animationClass}>
             <div style={diamondInnerStyle}>
               {icon && (
@@ -771,6 +836,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
               description={description}
               otel={otelInfo}
               sources={sources}
+              references={references}
               visible={showTooltip}
               nodeRef={nodeRef}
             />
@@ -784,7 +850,12 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
           onMouseLeave={() => setIsHovered(false)}
         >
           {renderStatusBadge()}
-          {isBoundaryNode ? renderBoundaryBadge() : renderSourcesBadge()}
+          {isBoundaryNode ? renderBoundaryBadge() : (
+            <>
+              {renderSourcesBadge()}
+              {renderReferencesBadge()}
+            </>
+          )}
           <div style={getShapeStyles()} className={animationClass}>
             {/* Inner content */}
             <div
@@ -852,6 +923,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
               description={description}
               otel={otelInfo}
               sources={sources}
+              references={references}
               visible={showTooltip}
               nodeRef={nodeRef}
             />

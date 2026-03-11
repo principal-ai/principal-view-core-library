@@ -40,7 +40,8 @@ export interface ReactFlowNode {
     width?: number;
     height?: number;
     states?: Record<string, { color?: string; icon?: string; label?: string }>;
-    sources?: string[];
+    sources?: string[]; // deprecated, use references
+    references?: string[];
     status?: 'draft' | 'approved' | 'implemented';
     // actions removed - legacy path-based patterns
     canvasType?: 'text' | 'file' | 'link' | 'group';
@@ -203,7 +204,8 @@ export class CanvasConverter {
     // Add PV extensions if present
     if (pv) {
       if (pv.states) data.states = pv.states;
-      if (pv.sources) data.sources = pv.sources;
+      if (pv.sources) data.sources = pv.sources; // deprecated, use references
+      if (pv.references) data.references = pv.references;
       if (pv.status) data.status = pv.status;
       // actions removed - legacy path-based
       if (pv.dataSchema) data.dataSchema = pv.dataSchema;
@@ -320,7 +322,8 @@ export class CanvasConverter {
           color: pv?.fill || resolveCanvasColor(node.color) || '',
           width: node.width,
           height: node.height,
-          sources: pv?.sources || [],
+          sources: pv?.sources || [], // deprecated, use references
+          references: pv?.references || [],
           // actions removed - legacy path-based
           canvasType: node.type,
         };
@@ -438,13 +441,14 @@ export class CanvasConverter {
       }
 
       // Add PV extension if there's custom data
-      if (node.data.nodeType || node.data.shape || node.data.sources?.length) {
+      if (node.data.nodeType || node.data.shape || node.data.sources?.length || node.data.references?.length) {
         canvasNode.pv = {
           nodeType: (node.data.nodeType as string) || node.id,
           shape: node.data.shape as PVNodeShape | undefined,
           icon: node.data.icon as string | undefined,
           states: node.data.states as Record<string, PVNodeState> | undefined,
-          sources: node.data.sources as string[] | undefined,
+          sources: node.data.sources as string[] | undefined, // deprecated, use references
+          references: node.data.references as string[] | undefined,
           // actions removed - legacy path-based
           dataSchema: node.data.dataSchema as Record<string, { type: 'string' | 'number' | 'boolean' | 'object' | 'array'; required?: boolean; displayInLabel?: boolean }> | undefined,
         };

@@ -443,3 +443,187 @@ The badges on diamond nodes are positioned at the actual points of the diamond s
     },
   },
 };
+
+/**
+ * Canvas demonstrating the new files (S) and references (R) badges
+ */
+const filesAndReferencesCanvas: ExtendedCanvas = {
+  nodes: [
+    // Node with otel.files only (S badge)
+    {
+      id: 'files-only',
+      type: 'text',
+      x: 100,
+      y: 100,
+      width: 140,
+      height: 80,
+      text: 'Files Only',
+      color: 4, // green
+      pv: {
+        nodeType: 'event',
+        shape: 'rectangle',
+        icon: 'FileCode',
+        otel: {
+          kind: 'type',
+          files: ['src/auth/login.ts', 'src/auth/logout.ts'],
+        },
+      },
+    },
+    // Node with references only (R badge)
+    {
+      id: 'refs-only',
+      type: 'text',
+      x: 300,
+      y: 100,
+      width: 140,
+      height: 80,
+      text: 'Refs Only',
+      color: 6, // purple
+      pv: {
+        nodeType: 'event',
+        shape: 'rectangle',
+        icon: 'ExternalLink',
+        references: ['@opentelemetry/api', 'https://opentelemetry.io/docs'],
+      },
+    },
+    // Node with both files and references (S + R badges)
+    {
+      id: 'both-badges',
+      type: 'text',
+      x: 500,
+      y: 100,
+      width: 140,
+      height: 80,
+      text: 'Both Badges',
+      color: 2, // orange
+      pv: {
+        nodeType: 'event',
+        shape: 'rectangle',
+        icon: 'Layers',
+        otel: {
+          kind: 'service',
+          files: ['src/api/handler.ts'],
+        },
+        references: ['@principal-ai/core'],
+      },
+    },
+    // Diamond with files
+    {
+      id: 'diamond-files',
+      type: 'text',
+      x: 100,
+      y: 250,
+      width: 100,
+      height: 100,
+      text: 'Files',
+      color: 4,
+      pv: {
+        nodeType: 'decision',
+        shape: 'diamond',
+        icon: 'FileCode',
+        otel: {
+          kind: 'type',
+          files: ['src/router.ts'],
+        },
+      },
+    },
+    // Diamond with references
+    {
+      id: 'diamond-refs',
+      type: 'text',
+      x: 280,
+      y: 250,
+      width: 100,
+      height: 100,
+      text: 'Refs',
+      color: 6,
+      pv: {
+        nodeType: 'decision',
+        shape: 'diamond',
+        icon: 'ExternalLink',
+        references: ['https://docs.example.com'],
+      },
+    },
+    // Diamond with both
+    {
+      id: 'diamond-both',
+      type: 'text',
+      x: 460,
+      y: 250,
+      width: 100,
+      height: 100,
+      text: 'Both',
+      color: 2,
+      pv: {
+        nodeType: 'decision',
+        shape: 'diamond',
+        icon: 'Layers',
+        otel: {
+          kind: 'instance',
+          files: ['src/decision.ts'],
+        },
+        references: ['@some/package'],
+      },
+    },
+    // Circle with both badges
+    {
+      id: 'circle-both',
+      type: 'text',
+      x: 640,
+      y: 250,
+      width: 100,
+      height: 100,
+      text: 'Circle',
+      color: 5,
+      pv: {
+        nodeType: 'event',
+        shape: 'circle',
+        icon: 'Circle',
+        otel: {
+          kind: 'service',
+          files: ['src/service.ts'],
+        },
+        references: ['https://api.docs.com'],
+      },
+    },
+  ],
+  edges: [],
+  pv: {
+    version: '1.0.0',
+    name: 'Files and References Badges',
+    description: 'Demonstrates otel.files (S) and references (R) badges',
+    edgeTypes: {},
+  },
+};
+
+export const FilesAndReferences: Story = {
+  args: {
+    canvas: filesAndReferencesCanvas,
+    width: 850,
+    height: 450,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Files (S) and References (R) Badges**
+
+Two types of badges indicate different metadata:
+
+- **S badge** (green): Shows source files where the event is instrumented (\`pv.otel.files\`)
+- **R badge** (purple): Shows external references like packages or documentation (\`pv.references\`)
+
+**Row 1 - Rectangles:**
+- Files Only: Has \`otel.files\` → shows S badge
+- Refs Only: Has \`references\` → shows R badge
+- Both Badges: Has both → shows S and R badges side by side
+
+**Row 2 - Other Shapes:**
+- Diamond, Circle shapes with various badge combinations
+
+Hover over nodes to see the full file paths and reference URLs in the tooltip.
+        `,
+      },
+    },
+  },
+};

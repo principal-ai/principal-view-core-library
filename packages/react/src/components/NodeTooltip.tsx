@@ -7,12 +7,16 @@ import { TooltipPortalContext } from './GraphRenderer';
 export interface OtelInfo {
   kind: 'type' | 'service' | 'instance';
   category?: string;
+  files?: string[];
 }
 
 export interface NodeTooltipProps {
   description?: string;
   otel?: OtelInfo;
+  /** @deprecated Use otel.files instead */
   sources?: string[];
+  /** External references (packages, documentation links) */
+  references?: string[];
   visible: boolean;
   /** Reference to the node element for positioning */
   nodeRef?: React.RefObject<HTMLDivElement>;
@@ -26,6 +30,7 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
   description,
   otel,
   sources,
+  references,
   visible,
   nodeRef,
 }) => {
@@ -187,8 +192,38 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
         </div>
       )}
 
-      {/* Sources */}
-      {sources && sources.length > 0 && (
+      {/* Source Files - from otel.files or deprecated sources */}
+      {(() => {
+        const sourceFiles = otel?.files || sources;
+        if (!sourceFiles || sourceFiles.length === 0) return null;
+        return (
+          <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '6px' }}>
+            <div style={{
+              fontSize: theme.fontSizes[0],
+              fontWeight: theme.fontWeights.semibold,
+              color: 'rgba(255,255,255,0.7)',
+              marginBottom: '4px'
+            }}>
+              Source Files:
+            </div>
+            <div style={{ fontSize: theme.fontSizes[0], color: 'rgba(255,255,255,0.8)' }}>
+              {sourceFiles.map((file, index) => (
+                <div key={index} style={{
+                  fontFamily: 'monospace',
+                  fontSize: theme.fontSizes[0],
+                  marginTop: index > 0 ? '2px' : 0,
+                  wordBreak: 'break-all'
+                }}>
+                  {file}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* References - external packages/documentation */}
+      {references && references.length > 0 && (
         <div style={{ marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '6px' }}>
           <div style={{
             fontSize: theme.fontSizes[0],
@@ -196,17 +231,17 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
             color: 'rgba(255,255,255,0.7)',
             marginBottom: '4px'
           }}>
-            Sources:
+            References:
           </div>
           <div style={{ fontSize: theme.fontSizes[0], color: 'rgba(255,255,255,0.8)' }}>
-            {sources.map((source, index) => (
+            {references.map((ref, index) => (
               <div key={index} style={{
                 fontFamily: 'monospace',
                 fontSize: theme.fontSizes[0],
                 marginTop: index > 0 ? '2px' : 0,
                 wordBreak: 'break-all'
               }}>
-                {source}
+                {ref}
               </div>
             ))}
           </div>
