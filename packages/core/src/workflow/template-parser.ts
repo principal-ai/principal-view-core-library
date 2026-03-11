@@ -80,8 +80,9 @@ function extractVariables(node: hbs.AST.Node, variables: Set<string> = new Set()
     const mustache = node as hbs.AST.MustacheStatement | hbs.AST.SubExpression;
     if (mustache.path.type === 'PathExpression') {
       const pathExpr = mustache.path as hbs.AST.PathExpression;
-      // Only track simple variable references, not helpers
-      if (pathExpr.data === false && !mustache.params?.length) {
+      // Track simple variable references (not helpers)
+      // Include both regular variables and @data variables (e.g., @span)
+      if (!mustache.params?.length) {
         variables.add(pathExpr.original);
       }
     }
@@ -91,9 +92,8 @@ function extractVariables(node: hbs.AST.Node, variables: Set<string> = new Set()
     }
   } else if (node.type === 'PathExpression') {
     const pathExpr = node as hbs.AST.PathExpression;
-    if (pathExpr.data === false) {
-      variables.add(pathExpr.original);
-    }
+    // Include both regular variables and @data variables (e.g., @span)
+    variables.add(pathExpr.original);
   } else if (node.type === 'BlockStatement') {
     const block = node as hbs.AST.BlockStatement;
     if (block.program) {
@@ -122,10 +122,23 @@ function extractVariables(node: hbs.AST.Node, variables: Set<string> = new Set()
 /**
  * Resolve a variable path in a context object
  * Returns [value, resolved] where resolved indicates if the path exists
+ *
+ * @param path - Variable path (e.g., "user.name" or "@span.output.status")
+ * @param context - Data context for regular variables
+ * @param data - Data context for @-prefixed variables (e.g., @span)
  */
-function resolveVariable(path: string, context: TemplateContext): [TemplateValue, boolean] {
-  const parts = path.split('.');
-  let current: TemplateValue = context;
+function resolveVariable(path: string, context: TemplateContext, data?: TemplateData): [TemplateValue, boolean] {
+  let parts = path.split('.');
+  let current: TemplateValue;
+
+  // Handle @data variables (e.g., @span.output.status)
+  if (path.startsWith('@') && data) {
+    // Remove @ prefix from first part
+    parts[0] = parts[0].substring(1);
+    current = data as unknown as TemplateContext;
+  } else {
+    current = context;
+  }
 
   for (const part of parts) {
     if (current == null || typeof current !== 'object' || Array.isArray(current)) {
@@ -146,7 +159,8 @@ function resolveVariable(path: string, context: TemplateContext): [TemplateValue
 function buildSegments(
   template: string,
   rendered: string,
-  context: Record<string, unknown>
+  context: Record<string, unknown>,
+  data?: TemplateData
 ): TemplateSegment[] {
   const segments: TemplateSegment[] = [];
 
@@ -168,7 +182,7 @@ function buildSegments(
       // All variables resolved - need to parse more carefully
       // This is complex, so for MVP we'll use a simpler heuristic:
       // Split by variable positions in the template and match to rendered output
-      return buildSegmentsWithResolvedVariables(template, rendered, context, variables);
+      return buildSegmentsWithResolvedVariables(template, rendered, context, variables, data);
     } catch {
       // If parsing fails, return as text
       return [{ type: 'text', value: rendered }];
@@ -213,7 +227,8 @@ function buildSegmentsWithResolvedVariables(
   template: string,
   rendered: string,
   context: Record<string, unknown>,
-  variables: Set<string>
+  variables: Set<string>,
+  data?: TemplateData
 ): TemplateSegment[] {
   const segments: TemplateSegment[] = [];
 
@@ -251,7 +266,7 @@ function buildSegmentsWithResolvedVariables(
     }
 
     // Resolve the variable to get its rendered value
-    const [value, resolved] = resolveVariable(varName, context as TemplateContext);
+    const [value, resolved] = resolveVariable(varName, context as TemplateContext, data);
 
     // Treat empty strings as unresolved - they provide no useful display value
     // and indicate missing/unset data that should be visible to the user
@@ -320,7 +335,7 @@ export function parseTemplate(template: string, context: TemplateContext, data?:
     const rendered = handlebarTemplate(context, { data });
 
     // Build structured segments
-    const segments = buildSegments(template, rendered, context);
+    const segments = buildSegments(template, rendered, context, data);
 
     return new ParsedTemplate(segments);
   } catch (error) {

@@ -1297,25 +1297,6 @@ export class WorkflowValidator {
           }
         });
       }
-
-      // Check flow templates
-      if (template.flow && Array.isArray(template.flow)) {
-        template.flow.forEach((item, flowIdx) => {
-          if (typeof item === 'string') {
-            violations.push(...this.validateTemplateString(
-              item,
-              workflowPath,
-              `scenarios[${scenarioIdx}].template.flow[${flowIdx}]`
-            ));
-          } else if (typeof item === 'object' && item.template) {
-            violations.push(...this.validateTemplateString(
-              item.template,
-              workflowPath,
-              `scenarios[${scenarioIdx}].template.flow[${flowIdx}].template`
-            ));
-          }
-        });
-      }
     });
 
     return violations;
@@ -1541,17 +1522,6 @@ export class WorkflowValidator {
       if (scenario.template.events) {
         Object.values(scenario.template.events).forEach(templateStr => {
           this.extractAttributeReferences(templateStr).forEach(p => allPaths.add(p));
-        });
-      }
-
-      // From flow templates
-      if (scenario.template.flow && Array.isArray(scenario.template.flow)) {
-        scenario.template.flow.forEach((item) => {
-          if (typeof item === 'string') {
-            this.extractAttributeReferences(item).forEach(p => allPaths.add(p));
-          } else if (typeof item === 'object' && item.template) {
-            this.extractAttributeReferences(item.template).forEach(p => allPaths.add(p));
-          }
         });
       }
 

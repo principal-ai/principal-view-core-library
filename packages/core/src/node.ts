@@ -143,7 +143,6 @@ export type {
   WorkflowScenario,
   WorkflowMode,
   ScenarioTemplate,
-  FlowDirective,
   LogTemplates,
   FormattingOptions,
   OtelEvent,

@@ -12,7 +12,6 @@ import type {
   WorkflowResult,
   WorkflowContext,
   SpanTreeNode,
-  FlowDirective,
   FormattingOptions,
 } from './types';
 import { parseTemplate, ParsedTemplate, type TemplateContext, type TemplateData } from './template-parser';
@@ -226,11 +225,6 @@ function renderScenario(context: WorkflowContext): string {
     case 'timeline':
       parts.push(renderTimeline(events, scenario, evalContext, formatting));
       break;
-  }
-
-  // Flow directives
-  if (scenario.template.flow) {
-    parts.push(renderFlow(scenario.template.flow, evalContext));
   }
 
   // Summary
@@ -450,55 +444,6 @@ function getSeverityLevel(severityNumber?: number): keyof NonNullable<WorkflowSc
   if (severityNumber >= 9) return 'info';
   if (severityNumber >= 5) return 'debug';
   return 'trace';
-}
-
-/**
- * Render flow directives
- *
- * @param flow - Flow directives
- * @param context - Evaluation context
- * @returns Rendered flow text
- */
-function renderFlow(flow: Array<string | FlowDirective>, context: Record<string, unknown>): string {
-  const parts: string[] = [];
-
-  for (const item of flow) {
-    if (typeof item === 'string') {
-      // Simple string template
-      parts.push(parseTemplate(item, context as TemplateContext).toString());
-    } else {
-      // Flow directive
-      if (item.forEach && item.template) {
-        // Iteration
-        const collection = context[item.forEach] as unknown[];
-        if (Array.isArray(collection)) {
-          for (let i = 0; i < collection.length; i++) {
-            const collectionItem = collection[i];
-            const itemContext = {
-              ...context,
-              ...(typeof collectionItem === 'object' && collectionItem !== null ? (collectionItem as Record<string, unknown>) : {}),
-              index: i,
-            };
-            parts.push(parseTemplate(item.template, itemContext as TemplateContext).toString());
-          }
-        }
-      } else if (item.if) {
-        // Conditional
-        const condition = parseTemplate(item.if, context as TemplateContext).toString();
-        if (condition === 'true' || condition === '1') {
-          if (item.then) {
-            parts.push(parseTemplate(item.then, context as TemplateContext).toString());
-          }
-        } else {
-          if (item.else) {
-            parts.push(parseTemplate(item.else, context as TemplateContext).toString());
-          }
-        }
-      }
-    }
-  }
-
-  return parts.join('\n');
 }
 
 /**

@@ -683,35 +683,6 @@ describe('WorkflowValidator', () => {
       );
     });
 
-    it('should validate flow templates', async () => {
-      const context = createContext({
-        scenarios: [
-          {
-            id: 'test',
-            priority: 1,
-            description: 'Test',
-            template: {
-              flow: [
-                'Valid string',
-                'Invalid {expression',
-                {
-                  forEach: 'items',
-                  template: 'Valid {item}',
-                },
-              ],
-            },
-          },
-        ],
-      });
-      const result = await validator.validate(context);
-
-      expect(result.errorCount).toBeGreaterThan(0);
-      const flowViolations = result.violations.filter(
-        (v) => v.path && v.path.includes('flow')
-      );
-      expect(flowViolations.length).toBeGreaterThan(0);
-    });
-
     it('should flag Handlebars {{#if}} conditionals', async () => {
       const context = createContext({
         scenarios: [

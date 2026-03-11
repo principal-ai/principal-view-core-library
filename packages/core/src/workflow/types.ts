@@ -194,9 +194,6 @@ export interface ScenarioTemplate {
   /** Optional: separate log templates by severity */
   logs?: LogTemplates;
 
-  /** Workflow flow steps */
-  flow?: Array<string | FlowDirective>;
-
   /** Closing text */
   summary?: string;
 
@@ -231,26 +228,6 @@ export interface LogTemplates {
 
   /** Fallback for any log */
   default?: string;
-}
-
-/**
- * Flow directive for workflow generation
- */
-export interface FlowDirective {
-  /** Iterate over collection (e.g., "violations", "logs.filter(l => l.severityNumber >= 17)") */
-  forEach?: string;
-
-  /** Template for each item in iteration */
-  template?: string;
-
-  /** Conditional expression */
-  if?: string;
-
-  /** Template if condition true */
-  then?: string;
-
-  /** Template if condition false */
-  else?: string;
 }
 
 /**
