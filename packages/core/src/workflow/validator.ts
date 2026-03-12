@@ -531,7 +531,7 @@ export class WorkflowValidator {
         path: 'canvas',
         message: `Referenced canvas file does not exist: ${workflow.canvas}`,
         impact: 'Cannot validate event references without the canvas',
-        suggestion: 'Ensure the canvas field points to a valid .otel.canvas file',
+        suggestion: `Canvas paths must be relative to the repository root, not the workflow file. Use a path like ".principal-views/your-storyboard/canvas.otel.canvas" instead of relative paths like "../canvas.otel.canvas"`,
         fixable: false,
       });
     }
