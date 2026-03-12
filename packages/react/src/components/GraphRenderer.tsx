@@ -53,6 +53,7 @@ import {
   convertToXYFlowEdges,
 } from '../utils/graphConverter';
 import { GraphEditProvider } from '../contexts/GraphEditContext';
+import { useUndoRedo, type HistoryEntry } from '../hooks/useUndoRedo';
 
 /**
  * Context for providing a portal target for tooltips.
@@ -108,6 +109,14 @@ export interface GraphRendererHandle {
   resetEditState: () => void;
   /** Check if there are unsaved changes */
   hasUnsavedChanges: () => boolean;
+  /** Whether there are changes that can be undone */
+  canUndo: () => boolean;
+  /** Whether there are changes that can be redone */
+  canRedo: () => boolean;
+  /** Undo the last change */
+  undo: () => void;
+  /** Redo the last undone change */
+  redo: () => void;
 }
 
 /** Base props shared by all render modes */
@@ -444,6 +453,12 @@ const CenterIndicator: React.FC<{ color: string }> = ({ color }) => {
 };
 
 /** Inner component receives normalized legacy format */
+/** Ref for undo/redo functions that inner component will populate */
+interface UndoRedoFunctionsRef {
+  applyUndo: () => void;
+  applyRedo: () => void;
+}
+
 interface GraphRendererInnerProps {
   configuration: GraphConfiguration;
   nodes: NodeState[];
@@ -467,6 +482,11 @@ interface GraphRendererInnerProps {
   onEditStateChange?: (editState: EditState) => void;
   editStateRef: React.MutableRefObject<EditState>;
   resetVisualStateRef: React.MutableRefObject<(() => void) | null>;
+  undoRedoFunctionsRef: React.MutableRefObject<UndoRedoFunctionsRef | null>;
+  pushHistory: (entries: HistoryEntry[]) => void;
+  clearHistory: () => void;
+  undoFromStack: () => HistoryEntry[] | null;
+  redoFromStack: () => HistoryEntry[] | null;
   onNodeClick?: (nodeId: string, event: React.MouseEvent) => void;
   fitViewToNodeIds?: string[] | null;
   fitViewPadding?: number;
@@ -501,6 +521,11 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   onEditStateChange,
   editStateRef,
   resetVisualStateRef,
+  undoRedoFunctionsRef,
+  pushHistory,
+  clearHistory,
+  undoFromStack,
+  redoFromStack,
   onNodeClick: onNodeClickProp,
   fitViewToNodeIds,
   fitViewPadding = 0.2,
@@ -653,6 +678,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       onPendingChangesChange?.(false);
       // Clear animation state to prevent stale animations from affecting new edges
       setAnimationState({ nodeAnimations: {}, edgeAnimations: {} });
+      // Clear undo/redo history when props change
+      clearHistory();
     }
   }, [propNodes, propEdges, editStateRef, onEditStateChange, onPendingChangesChange]);
 
@@ -671,6 +698,12 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   // and receives state_changed event updates. localEdges only used in edit mode.
   const nodes = localNodes;
   const edges = editable ? localEdges : propEdges;
+
+  // Ref to track current xyflow nodes for undo/redo (set later via useEffect)
+  const xyflowNodesRef = useRef<Node<CustomNodeData>[]>([]);
+
+  // Ref to capture node positions at drag start (for accurate undo "before" values)
+  const dragStartPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   // Helper to check if there are pending changes
   const checkHasChanges = useCallback((state: EditState): boolean => {
@@ -711,13 +744,30 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   const handleNodeResizeEnd = useCallback(
     (nodeId: string, dimensions: { width: number; height: number }) => {
       if (!editable) return;
+
+      // Capture before dimensions for undo
+      const currentNode = xyflowNodesRef.current.find((n) => n.id === nodeId);
+      const beforeDimensions = currentNode
+        ? { width: currentNode.width ?? 0, height: currentNode.height ?? 0 }
+        : { width: 0, height: 0 };
+
+      // Push to history
+      pushHistory([
+        {
+          type: 'dimension',
+          nodeId,
+          before: beforeDimensions,
+          after: dimensions,
+        },
+      ]);
+
       updateEditState((prev) => {
         const newDimensions = new Map(prev.dimensionChanges);
         newDimensions.set(nodeId, dimensions);
         return { ...prev, dimensionChanges: newDimensions };
       });
     },
-    [editable, updateEditState]
+    [editable, updateEditState, pushHistory]
   );
 
   // Memoize the context value to prevent unnecessary re-renders
@@ -1032,6 +1082,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   const createEdge = useCallback(
     (from: string, to: string, type: string, sourceHandle?: string, targetHandle?: string) => {
       const edgeId = `${from}-${to}-${type}-${Date.now()}`;
+      const now = Date.now();
 
       // Add to local state with handle information
       const newEdge: EdgeState & { sourceHandle?: string; targetHandle?: string } = {
@@ -1040,12 +1091,20 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         from,
         to,
         data: {},
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
         sourceHandle,
         targetHandle,
       };
       setLocalEdges((prev) => [...prev, newEdge]);
+
+      // Push to history for undo
+      pushHistory([
+        {
+          type: 'edgeCreate',
+          edge: newEdge,
+        },
+      ]);
 
       // Track the change
       updateEditState((prev) => ({
@@ -1056,7 +1115,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         ],
       }));
     },
-    [updateEditState]
+    [updateEditState, pushHistory]
   );
 
   // Handle new connection from drag
@@ -1462,6 +1521,11 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   // Local xyflow nodes state for dragging
   const [xyflowLocalNodes, setXyflowLocalNodes] = useState<Node<CustomNodeData>[]>(xyflowNodesBase);
 
+  // Keep xyflowNodesRef in sync for undo/redo access to current node state
+  useEffect(() => {
+    xyflowNodesRef.current = xyflowLocalNodes;
+  }, [xyflowLocalNodes]);
+
   // Sync when base node IDs change
   const prevBaseNodesKeyRef = useRef(baseNodesKey);
   useEffect(() => {
@@ -1559,6 +1623,192 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     [onNodeDragStopProp]
   );
 
+  // ============================================
+  // UNDO/REDO APPLY FUNCTIONS
+  // ============================================
+
+  // Apply undo - reverse the effects of history entries
+  const applyUndo = useCallback(() => {
+    const batch = undoFromStack();
+    if (!batch) return;
+
+    // Process entries in reverse order for undo
+    for (const entry of batch.slice().reverse()) {
+      switch (entry.type) {
+        case 'position':
+          // Restore previous position
+          setXyflowLocalNodes((nodes) =>
+            nodes.map((n) =>
+              n.id === entry.nodeId
+                ? { ...n, position: entry.before }
+                : n
+            )
+          );
+          // Update edit state
+          updateEditState((prev) => {
+            const newPositions = new Map(prev.positionChanges);
+            newPositions.set(entry.nodeId, entry.before);
+            return { ...prev, positionChanges: newPositions };
+          });
+          break;
+
+        case 'dimension':
+          // Restore previous dimensions
+          setXyflowLocalNodes((nodes) =>
+            nodes.map((n) =>
+              n.id === entry.nodeId
+                ? { ...n, width: entry.before.width, height: entry.before.height }
+                : n
+            )
+          );
+          // Update edit state
+          updateEditState((prev) => {
+            const newDimensions = new Map(prev.dimensionChanges);
+            newDimensions.set(entry.nodeId, entry.before);
+            return { ...prev, dimensionChanges: newDimensions };
+          });
+          break;
+
+        case 'edgeCreate':
+          // Remove the created edge
+          setLocalEdges((edges) => edges.filter((e) => e.id !== entry.edge.id));
+          // Update edit state
+          updateEditState((prev) => ({
+            ...prev,
+            createdEdges: prev.createdEdges.filter((e) => e.id !== entry.edge.id),
+          }));
+          break;
+
+        case 'edgeDelete':
+          // Restore the deleted edge
+          setLocalEdges((edges) => [...edges, entry.edge]);
+          // Update edit state
+          updateEditState((prev) => ({
+            ...prev,
+            deletedEdges: prev.deletedEdges.filter((e) => e.id !== entry.edge.id),
+          }));
+          break;
+      }
+    }
+  }, [undoFromStack, updateEditState]);
+
+  // Apply redo - re-apply the effects of history entries
+  const applyRedo = useCallback(() => {
+    const batch = redoFromStack();
+    if (!batch) return;
+
+    // Process entries in original order for redo
+    for (const entry of batch) {
+      switch (entry.type) {
+        case 'position':
+          // Apply new position
+          setXyflowLocalNodes((nodes) =>
+            nodes.map((n) =>
+              n.id === entry.nodeId
+                ? { ...n, position: entry.after }
+                : n
+            )
+          );
+          // Update edit state
+          updateEditState((prev) => {
+            const newPositions = new Map(prev.positionChanges);
+            newPositions.set(entry.nodeId, entry.after);
+            return { ...prev, positionChanges: newPositions };
+          });
+          break;
+
+        case 'dimension':
+          // Apply new dimensions
+          setXyflowLocalNodes((nodes) =>
+            nodes.map((n) =>
+              n.id === entry.nodeId
+                ? { ...n, width: entry.after.width, height: entry.after.height }
+                : n
+            )
+          );
+          // Update edit state
+          updateEditState((prev) => {
+            const newDimensions = new Map(prev.dimensionChanges);
+            newDimensions.set(entry.nodeId, entry.after);
+            return { ...prev, dimensionChanges: newDimensions };
+          });
+          break;
+
+        case 'edgeCreate':
+          // Re-create the edge
+          setLocalEdges((edges) => [...edges, entry.edge]);
+          // Update edit state
+          updateEditState((prev) => ({
+            ...prev,
+            createdEdges: [
+              ...prev.createdEdges,
+              {
+                id: entry.edge.id,
+                from: entry.edge.from,
+                to: entry.edge.to,
+                type: entry.edge.type,
+                sourceHandle: entry.edge.sourceHandle,
+                targetHandle: entry.edge.targetHandle,
+              },
+            ],
+          }));
+          break;
+
+        case 'edgeDelete':
+          // Re-delete the edge
+          setLocalEdges((edges) => edges.filter((e) => e.id !== entry.edge.id));
+          // Update edit state
+          updateEditState((prev) => ({
+            ...prev,
+            deletedEdges: [
+              ...prev.deletedEdges,
+              {
+                id: entry.edge.id,
+                from: entry.edge.from,
+                to: entry.edge.to,
+                type: entry.edge.type,
+              },
+            ],
+          }));
+          break;
+      }
+    }
+  }, [redoFromStack, updateEditState]);
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    if (!editable) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+Z (Mac) or Ctrl+Z (Windows/Linux) for undo
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          // Cmd+Shift+Z for redo
+          applyRedo();
+        } else {
+          applyUndo();
+        }
+      }
+      // Ctrl+Y for redo (Windows)
+      if (e.ctrlKey && e.key === 'y') {
+        e.preventDefault();
+        applyRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editable, applyUndo, applyRedo]);
+
+  // Set undo/redo functions in ref for outer component access
+  useEffect(() => {
+    undoRedoFunctionsRef.current = {
+      applyUndo,
+      applyRedo,
+    };
+  }, [applyUndo, applyRedo, undoRedoFunctionsRef]);
+
   // Handle node changes (drag and resize events)
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -1638,16 +1888,44 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         });
       }
 
-      // Track position changes on drag end
+      // Capture positions at drag START for accurate undo "before" values
+      const dragStartChanges = changes.filter(
+        (change): change is NodeChange & {
+          type: 'position';
+          id: string;
+          dragging: boolean;
+        } =>
+          change.type === 'position' &&
+          'id' in change &&
+          'dragging' in change &&
+          change.dragging === true
+      );
+
+      // For each node that just started dragging, capture its current position
+      for (const change of dragStartChanges) {
+        if (!dragStartPositionsRef.current.has(change.id)) {
+          const currentNode = xyflowNodesRef.current.find((n) => n.id === change.id);
+          if (currentNode) {
+            dragStartPositionsRef.current.set(change.id, {
+              x: currentNode.position.x,
+              y: currentNode.position.y,
+            });
+          }
+        }
+      }
+
+      // Track position changes on drag END
       const positionChanges = changes.filter(
         (
           change
         ): change is NodeChange & {
           type: 'position';
+          id: string;
           position: { x: number; y: number };
           dragging: boolean;
         } =>
           change.type === 'position' &&
+          'id' in change &&
           'position' in change &&
           change.position !== undefined &&
           'dragging' in change &&
@@ -1658,6 +1936,24 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       // not through onNodesChange (which only fires with resizing=true during drag).
 
       if (positionChanges.length > 0) {
+        // Use positions captured at drag start for accurate undo
+        const historyEntries: HistoryEntry[] = [];
+        for (const change of positionChanges) {
+          const beforePos = dragStartPositionsRef.current.get(change.id) ?? { x: 0, y: 0 };
+          historyEntries.push({
+            type: 'position',
+            nodeId: change.id,
+            before: beforePos,
+            after: {
+              x: Math.round(change.position.x),
+              y: Math.round(change.position.y),
+            },
+          });
+          // Clear the drag start position for this node
+          dragStartPositionsRef.current.delete(change.id);
+        }
+        pushHistory(historyEntries);
+
         updateEditState((prev) => {
           const newPositions = new Map(prev.positionChanges);
           for (const change of positionChanges) {
@@ -1670,7 +1966,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         });
       }
     },
-    [editable, updateEditState, selectedNodeIds, draggableNodeIds]
+    [editable, updateEditState, selectedNodeIds, draggableNodeIds, pushHistory]
   );
 
   const xyflowEdgesBase = useMemo(() => {
@@ -2195,6 +2491,19 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
   // Ref to hold the reset visual state function - will be set after xyflowLocalNodes is defined
   const resetVisualStateRef = useRef<(() => void) | null>(null);
 
+  // Undo/redo management
+  const {
+    canUndo: canUndoState,
+    canRedo: canRedoState,
+    undo: undoFromStack,
+    redo: redoFromStack,
+    pushHistory,
+    clearHistory,
+  } = useUndoRedo();
+
+  // Ref to hold undo/redo apply functions - will be set by inner component
+  const undoRedoFunctionsRef = useRef<UndoRedoFunctionsRef | null>(null);
+
   // Expose imperative handle - must be before any conditional returns
   useImperativeHandle(
     ref,
@@ -2240,6 +2549,8 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
         editStateRef.current = createEmptyEditState();
         // Also reset visual state (node positions/dimensions) if available
         resetVisualStateRef.current?.();
+        // Clear undo/redo history
+        clearHistory();
       },
       hasUnsavedChanges: (): boolean => {
         const state = editStateRef.current;
@@ -2252,8 +2563,12 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           state.deletedEdges.length > 0
         );
       },
+      canUndo: () => canUndoState,
+      canRedo: () => canRedoState,
+      undo: () => undoRedoFunctionsRef.current?.applyUndo(),
+      redo: () => undoRedoFunctionsRef.current?.applyRedo(),
     }),
-    []
+    [canUndoState, canRedoState, clearHistory]
   );
 
   // Validate we have required data
@@ -2331,6 +2646,11 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
             onPendingChangesChange={onPendingChangesChange}
             editStateRef={editStateRef}
             resetVisualStateRef={resetVisualStateRef}
+            undoRedoFunctionsRef={undoRedoFunctionsRef}
+            pushHistory={pushHistory}
+            clearHistory={clearHistory}
+            undoFromStack={undoFromStack}
+            redoFromStack={redoFromStack}
             onNodeClick={onNodeClick}
             fitViewToNodeIds={fitViewToNodeIds}
             fitViewPadding={fitViewPadding}

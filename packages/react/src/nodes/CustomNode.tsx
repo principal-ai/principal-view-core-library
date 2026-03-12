@@ -422,6 +422,21 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
   // Show event name if it differs from display name
   const showEventName = eventName && eventName !== displayName;
 
+  // Helper to render text with word break opportunities after dots
+  const renderWithDotBreaks = (text: string) => {
+    const parts = text.split('.');
+    return parts.map((part, i) => (
+      <span key={i}>
+        {part}
+        {i < parts.length - 1 && (
+          <>
+            .<wbr />
+          </>
+        )}
+      </span>
+    ));
+  };
+
   // Helper component for rendering name with optional event name
   const renderNameWithEvent = (centered: boolean = true) => (
     <div style={{ textAlign: centered ? 'center' : 'left', wordBreak: 'break-word' }}>
@@ -435,7 +450,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
             fontFamily: theme.fonts.monospace,
           }}
         >
-          {eventName}
+          {renderWithDotBreaks(eventName)}
         </div>
       )}
     </div>
