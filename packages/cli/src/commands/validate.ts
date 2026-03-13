@@ -2351,10 +2351,11 @@ export function createValidateCommand(): Command {
               const passedWorkflowsForCanvas = workflowsByCanvas.has(canvasRelPath);
 
               if (associatedWorkflows.length === 0 && !passedWorkflowsForCanvas) {
+                validationResult.isValid = false;
                 validationResult.issues.push({
-                  type: 'warning',
-                  message: 'No workflow files found for this canvas',
-                  suggestion: 'Create a .workflow.json file to define telemetry scenarios for this canvas',
+                  type: 'error',
+                  message: 'No workflow files found for this .otel.canvas',
+                  suggestion: 'Create a .workflow.json file to define telemetry scenarios for this canvas. Workflows are required for .otel.canvas files.',
                 });
               }
             }
