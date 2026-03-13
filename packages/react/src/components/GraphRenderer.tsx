@@ -2008,8 +2008,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
               }
             : {}),
         } as CustomEdgeData,
-        // Add z-index to help with stacking (selected edges get higher values)
-        zIndex: isSelected ? 1000 : 0,
+        // Preserve edge zIndex from converter (50 = above groups, below nodes)
+        // Selected edges get elevated to 1000
+        zIndex: isSelected ? 1000 : edge.zIndex,
       };
     });
 

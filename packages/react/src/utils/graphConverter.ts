@@ -119,6 +119,8 @@ export function convertToXYFlowEdges(
       sourceHandle,
       targetHandle,
       type: 'custom',
+      // Edges should render above groups (zIndex: 1) but below regular nodes (zIndex: 100)
+      zIndex: 50,
       animated: typeDefinition?.style === 'animated',
       markerEnd,
       data: {

@@ -741,6 +741,156 @@ This demonstrates a typical feature development context where you'd reference:
 };
 
 /**
+ * Canvas demonstrating edges rendering above group nodes
+ */
+const edgesOverGroupCanvas: ExtendedCanvas = {
+  nodes: [
+    // Group node (should render behind edges)
+    {
+      id: 'group-1',
+      type: 'group',
+      x: 150,
+      y: 80,
+      width: 300,
+      height: 200,
+      label: 'Processing Group',
+      color: 3, // yellow
+      pv: {
+        nodeType: 'group',
+        shape: 'rectangle',
+      },
+    },
+    // Node before group
+    {
+      id: 'start',
+      type: 'text',
+      x: 20,
+      y: 150,
+      width: 100,
+      height: 60,
+      text: 'Start',
+      color: 4,
+      pv: {
+        nodeType: 'process',
+        shape: 'rectangle',
+        icon: 'Play',
+      },
+    },
+    // Node inside group
+    {
+      id: 'process-1',
+      type: 'text',
+      x: 200,
+      y: 120,
+      width: 100,
+      height: 60,
+      text: 'Process A',
+      color: 5,
+      pv: {
+        nodeType: 'process',
+        shape: 'rectangle',
+        icon: 'Settings',
+      },
+    },
+    // Another node inside group
+    {
+      id: 'process-2',
+      type: 'text',
+      x: 200,
+      y: 200,
+      width: 100,
+      height: 60,
+      text: 'Process B',
+      color: 5,
+      pv: {
+        nodeType: 'process',
+        shape: 'rectangle',
+        icon: 'Cog',
+      },
+    },
+    // Node after group
+    {
+      id: 'end',
+      type: 'text',
+      x: 500,
+      y: 150,
+      width: 100,
+      height: 60,
+      text: 'End',
+      color: 4,
+      pv: {
+        nodeType: 'process',
+        shape: 'rectangle',
+        icon: 'CheckCircle',
+      },
+    },
+  ],
+  edges: [
+    // Edge crossing over the group
+    {
+      id: 'start-to-process1',
+      fromNode: 'start',
+      toNode: 'process-1',
+      fromSide: 'right',
+      toSide: 'left',
+      pv: { edgeType: 'flow' },
+    },
+    // Edge within group
+    {
+      id: 'process1-to-process2',
+      fromNode: 'process-1',
+      toNode: 'process-2',
+      fromSide: 'bottom',
+      toSide: 'top',
+      pv: { edgeType: 'flow' },
+    },
+    // Edge crossing out of group
+    {
+      id: 'process2-to-end',
+      fromNode: 'process-2',
+      toNode: 'end',
+      fromSide: 'right',
+      toSide: 'left',
+      pv: { edgeType: 'flow' },
+    },
+  ],
+  pv: {
+    version: '1.0.0',
+    name: 'Edges Over Groups',
+    description: 'Test that edges render above group nodes',
+    edgeTypes: {
+      flow: {
+        style: 'solid',
+        color: '#3b82f6',
+        directed: true,
+      },
+    },
+  },
+};
+
+export const EdgesOverGroups: Story = {
+  args: {
+    canvas: edgesOverGroupCanvas,
+    width: 650,
+    height: 350,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Edges Rendering Above Groups**
+
+This story tests that edges properly render above group nodes.
+- The yellow group container should be behind all edges
+- Edges connecting to nodes inside the group should be visible
+- Edges crossing over the group should not be hidden
+        `,
+      },
+    },
+  },
+};
+
+/**
  * Interactive comparison template
  */
 const NodeTypeComparisonTemplate = () => {
