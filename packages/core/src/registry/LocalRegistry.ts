@@ -201,7 +201,6 @@ export class LocalRegistry implements StoryboardRegistryInterface {
     // Check cache first (cache by scope name for granularity)
     const cacheKey = scope.name;
     if (this.cache.has(cacheKey)) {
-      console.log('[LocalRegistry] Cache hit:', cacheKey);
       const cachedSnapshot = this.cache.get(cacheKey)!;
       if (cachedSnapshot.storyboards.length === 0) {
         return { found: false, reason: 'no_storyboards', scopeName: scope.name };

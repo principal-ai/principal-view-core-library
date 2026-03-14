@@ -364,11 +364,6 @@ export class TraceOrchestrator {
       }
 
       // spanPattern matched! Now run scenario matching
-      console.log('[TraceOrchestrator] spanPattern matched:', {
-        spanName: span.spanName,
-        spanPattern,
-        workflowId: wfWithContent.id,
-      });
 
       // Convert span events to OtelEvent format for scenario matcher
       // Include span attributes so templates can access them via @span namespace

@@ -233,7 +233,6 @@ export class RemoteRegistry implements StoryboardRegistryInterface {
     const cacheKey = `${repositoryUrl}@${commitSha}`;
     const cached = this.cache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
-      console.log('[RemoteRegistry] Cache hit:', cacheKey);
       return cached.snapshot;
     }
 
