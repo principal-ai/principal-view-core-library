@@ -522,9 +522,12 @@ export class CanvasDiscovery {
       const packageInfo = this.findPackageForPath(path, packageMap);
 
       // Generate unique ID
+      // Include canvas type suffix for non-regular types to avoid collisions
+      // e.g., "architecture" vs "architecture.scopes"
+      const idSuffix = metadata.type !== 'regular' ? `.${metadata.type}` : '';
       const id = packageInfo
-        ? `${packageInfo.packageData.name}/${metadata.basename}`
-        : metadata.basename;
+        ? `${packageInfo.packageData.name}/${metadata.basename}${idSuffix}`
+        : `${metadata.basename}${idSuffix}`;
 
       // Create discovered canvas
       const canvas: DiscoveredCanvas = {
