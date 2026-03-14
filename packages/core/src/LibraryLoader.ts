@@ -266,15 +266,30 @@ export class LibraryLoader {
 
         // Validate attribute values
         for (const [attrName, attrValue] of Object.entries(resourceAttrs)) {
-          // owned-scopes is allowed to be an array of strings
+          // owned-scopes can be either:
+          // - Legacy format: array of strings ["scope1", "scope2"]
+          // - New format: Record<string, ScopeDefinition> { "scope1": { color: "#fff" } }
           if (attrName === 'owned-scopes') {
-            if (!Array.isArray(attrValue)) {
-              return `Resource '${serviceId}' attribute 'owned-scopes' must be an array in ${filePath}`;
-            }
-            for (const scope of attrValue) {
-              if (typeof scope !== 'string') {
-                return `Resource '${serviceId}' attribute 'owned-scopes' must contain only strings in ${filePath}`;
+            if (Array.isArray(attrValue)) {
+              // Legacy format - array of strings
+              for (const scope of attrValue) {
+                if (typeof scope !== 'string') {
+                  return `Resource '${serviceId}' attribute 'owned-scopes' array must contain only strings in ${filePath}`;
+                }
               }
+            } else if (typeof attrValue === 'object' && attrValue !== null) {
+              // New format - Record<string, ScopeDefinition>
+              for (const [scopeName, scopeDef] of Object.entries(attrValue)) {
+                if (typeof scopeDef !== 'object' || scopeDef === null) {
+                  return `Resource '${serviceId}' scope '${scopeName}' must be an object with color property in ${filePath}`;
+                }
+                const def = scopeDef as unknown as Record<string, unknown>;
+                if (typeof def.color !== 'string') {
+                  return `Resource '${serviceId}' scope '${scopeName}' is missing required 'color' property in ${filePath}`;
+                }
+              }
+            } else {
+              return `Resource '${serviceId}' attribute 'owned-scopes' must be an array or object in ${filePath}`;
             }
           } else if (typeof attrValue !== 'string') {
             return `Resource '${serviceId}' attribute '${attrName}' must have a string value in ${filePath}`;
