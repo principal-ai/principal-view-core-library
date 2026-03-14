@@ -11,6 +11,7 @@
 import type { StoryboardRegistryInterface, ScopeLookupResult } from '../types/registered-trace';
 import type { VersionSnapshot } from '../types/version-registry';
 import type { ResourceAttributes } from '../types/library';
+import { getScopeNames } from '../scopes/utils';
 
 /**
  * Version lookup response from web-ade API
@@ -418,16 +419,14 @@ export class RemoteRegistry implements StoryboardRegistryInterface {
       expiresAt: Date.now() + this.cacheTTL,
     });
 
-    // Register owned scopes
+    // Register owned scopes (supports both legacy array and new record format)
     const registeredScopes: string[] = [];
     if (snapshot.resources) {
       for (const [_resourceName, attrs] of Object.entries(snapshot.resources)) {
-        const ownedScopes = attrs['owned-scopes'];
-        if (ownedScopes && Array.isArray(ownedScopes)) {
-          for (const scope of ownedScopes) {
-            this.scopeToSnapshotKey.set(scope, cacheKey);
-            registeredScopes.push(scope);
-          }
+        const scopeNames = getScopeNames(attrs['owned-scopes']);
+        for (const scope of scopeNames) {
+          this.scopeToSnapshotKey.set(scope, cacheKey);
+          registeredScopes.push(scope);
         }
       }
     }
@@ -454,15 +453,13 @@ export class RemoteRegistry implements StoryboardRegistryInterface {
     resources: Record<string, ResourceAttributes>
   ): void {
     for (const [_resourceName, attrs] of Object.entries(resources)) {
-      const ownedScopes = attrs['owned-scopes'];
-      if (ownedScopes && Array.isArray(ownedScopes)) {
-        for (const scope of ownedScopes) {
-          this.scopeToSnapshotKey.set(scope, cacheKey);
-          console.log('[RemoteRegistry] Registered owned scope:', {
-            scope,
-            cacheKey,
-          });
-        }
+      const scopeNames = getScopeNames(attrs['owned-scopes']);
+      for (const scope of scopeNames) {
+        this.scopeToSnapshotKey.set(scope, cacheKey);
+        console.log('[RemoteRegistry] Registered owned scope:', {
+          scope,
+          cacheKey,
+        });
       }
     }
   }
@@ -476,10 +473,7 @@ export class RemoteRegistry implements StoryboardRegistryInterface {
     if (!resources) return [];
     const scopes: string[] = [];
     for (const attrs of Object.values(resources)) {
-      const ownedScopes = attrs['owned-scopes'];
-      if (ownedScopes && Array.isArray(ownedScopes)) {
-        scopes.push(...ownedScopes);
-      }
+      scopes.push(...getScopeNames(attrs['owned-scopes']));
     }
     return scopes;
   }

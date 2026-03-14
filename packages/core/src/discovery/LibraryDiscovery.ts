@@ -9,6 +9,7 @@ import type { FileTree, FileSystemAdapter } from '@principal-ai/repository-abstr
 import { PackageLayerModule, type PackageLayer } from '@principal-ai/codebase-composition';
 import { LibraryLoader } from '../LibraryLoader';
 import type { ComponentLibrary } from '../types/library';
+import { getScopeNames } from '../scopes/utils';
 
 /**
  * Service with its owned scopes
@@ -251,12 +252,13 @@ export class LibraryDiscovery {
 
       serviceNames.push(serviceName);
 
-      // Extract owned-scopes (defaults to empty array)
-      const ownedScopes = attrs['owned-scopes'] || [];
+      // Extract owned-scopes (supports both legacy array and new record format)
+      const ownedScopes = attrs['owned-scopes'];
+      const scopeNames = getScopeNames(ownedScopes);
 
       servicesWithScopes.push({
         serviceName,
-        ownedScopes: Array.isArray(ownedScopes) ? ownedScopes : [],
+        ownedScopes: scopeNames,
       });
     }
 
