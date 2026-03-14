@@ -1,6 +1,6 @@
 {
   "name": "@principal-ai/principal-view-react",
-  "version": "0.13.24",
+  "version": "0.13.25",
   "description": "React components for graph-based principal view framework",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -31,13 +31,13 @@
   },
   "peerDependencies": {
     "@principal-ade/industry-theme": "^0.1.7",
-    "@principal-ai/principal-view-core": "^0.24.50",
+    "@principal-ai/principal-view-core": "^0.24.70",
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0"
   },
   "devDependencies": {
     "@principal-ade/industry-theme": "0.1.7",
-    "@principal-ai/principal-view-core": "0.24.60",
+    "@principal-ai/principal-view-core": "0.24.70",
     "@storybook/addon-docs": "10.1.2",
     "@storybook/addon-links": "10.1.2",
     "@storybook/addon-onboarding": "10.1.2",

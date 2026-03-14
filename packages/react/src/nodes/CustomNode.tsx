@@ -102,16 +102,6 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
     [nodeId, onNodeResizeEnd]
   );
 
-  // DEBUG: Log ALL node data to understand structure
-  console.log('[CustomNode] Node data:', {
-    name: nodeProps.name,
-    nodeDataKeys: nodeData ? Object.keys(nodeData).join(', ') : 'undefined',
-    references: nodeData?.references,
-    otelFiles: (nodeData?.otel as { files?: string[] })?.files,
-    sources: nodeData?.sources,
-    fullNodeData: nodeData,
-  });
-
   // Show tooltip when:
   // 1. Hovering + not dragging + shift key pressed (always works), OR
   // 2. Node is selected AND not in edit mode (read-only selection shows tooltip)
@@ -390,9 +380,11 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
   }
 
   // Get fill color based on state or default
-  // Priority: state color > node data color > type definition color > default
+  // Priority: state color > scope color > node data color > type definition color > default
+  // Scope colors come from library.yaml owned-scopes and are injected by GraphRenderer
   const nodeDataColor = nodeData.color as string | undefined;
-  const baseColor = nodeDataColor || typeDefinition.color || '#888';
+  const scopeColor = nodeData.scopeColor as string | undefined;
+  const baseColor = scopeColor || nodeDataColor || typeDefinition.color || '#888';
   // Check node's own states first (from pv.states), then fall back to type definition states
   const nodeDataStates = nodeData.states as
     | Record<string, { color?: string; label?: string; icon?: string }>

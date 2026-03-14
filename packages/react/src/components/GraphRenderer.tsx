@@ -42,7 +42,11 @@ import type {
   ExtendedCanvas,
   ComponentLibrary,
 } from '@principal-ai/principal-view-core';
-import { CanvasConverter } from '@principal-ai/principal-view-core';
+import {
+  CanvasConverter,
+  buildScopeColorMap,
+  DRAFT_NODE_COLOR,
+} from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
 import { CustomNode } from '../nodes/CustomNode';
 import type { CustomNodeData } from '../nodes/CustomNode';
@@ -2295,6 +2299,31 @@ function useCanvasToLegacy(
     if (!canvas) return null;
 
     const { nodes, edges } = CanvasConverter.canvasToGraph(canvas);
+
+    // Build scope color map from library resources
+    const scopeColorMap = buildScopeColorMap(library?.resources);
+
+    // Inject scope colors into nodes
+    // Priority: scope color overrides other colors (except explicit node colors set by user)
+    for (const node of nodes) {
+      const otel = node.data?.otel as { scope?: string } | undefined;
+      const scope = otel?.scope;
+      const status = node.data?.status as string | undefined;
+
+      if (scope && scopeColorMap[scope]) {
+        // Node has a scope with a defined color - use it
+        node.data = {
+          ...node.data,
+          scopeColor: scopeColorMap[scope],
+        };
+      } else if (status === 'draft' || !scope) {
+        // Draft nodes or nodes without scope get the draft color
+        node.data = {
+          ...node.data,
+          scopeColor: DRAFT_NODE_COLOR,
+        };
+      }
+    }
 
     // Build GraphConfiguration from canvas
     const nodeTypes: GraphConfiguration['nodeTypes'] = {};
