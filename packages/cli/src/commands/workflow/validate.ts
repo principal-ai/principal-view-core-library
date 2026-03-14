@@ -8,12 +8,13 @@ import {
   WorkflowValidator,
   CanvasDiscovery,
   EventRegistry,
+  getScopeNames,
 } from '@principal-ai/principal-view-core/node';
 import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
 import yaml from 'js-yaml';
 // Browser-safe imports
 import { computeAggregates } from '@principal-ai/principal-view-core';
-import type { ExtendedCanvas, ComponentLibrary } from '@principal-ai/principal-view-core';
+import type { ExtendedCanvas, ComponentLibrary, OwnedScopes } from '@principal-ai/principal-view-core';
 import { loadWorkflow, resolvePath, loadExecution, executionToEvents } from './utils.js';
 
 interface ValidateOptions {
@@ -220,12 +221,12 @@ export function createValidateCommand(): Command {
               const lib = yaml.load(libraryContent) as ComponentLibrary;
               if (lib?.resources) {
                 ownedScopes = [];
-                for (const [resourceKey, attrs] of Object.entries(lib.resources)) {
-                  // Each resource can have owned-scopes
-                  const scopes = (attrs as Record<string, unknown>)['owned-scopes'];
-                  if (Array.isArray(scopes)) {
-                    ownedScopes.push(...scopes);
-                  }
+                for (const [_resourceKey, attrs] of Object.entries(lib.resources)) {
+                  // Handle both legacy (string[]) and new (Record<string, ScopeDefinition>) formats
+                  const scopes = (attrs as Record<string, unknown>)['owned-scopes'] as OwnedScopes | undefined;
+                  const scopeNames = getScopeNames(scopes);
+                  ownedScopes.push(...scopeNames);
+
                   // Also add the service name itself as a valid scope
                   const serviceName = (attrs as Record<string, unknown>)['service.name'];
                   if (typeof serviceName === 'string') {

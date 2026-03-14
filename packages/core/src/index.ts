@@ -277,12 +277,24 @@ export type {
   CanvasDiscoveryResultWithContent,
 } from './discovery/types';
 
-// Export scopes canvas validation (browser-safe)
-export { ScopesCanvasValidator } from './scopes';
+// Export scopes module (canvas validation + scope utilities)
+export {
+  ScopesCanvasValidator,
+  DEFAULT_SCOPE_COLOR,
+  DRAFT_NODE_COLOR,
+  isRecordFormat,
+  getScopeNames,
+  getScopeDefinition,
+  getScopeColor,
+  normalizeScopes,
+  extractScopesFromResources,
+  buildScopeColorMap,
+} from './scopes';
 export type {
   ScopesCanvasValidationContext,
   ScopesCanvasValidationResult,
   ScopesCanvasViolation,
+  NormalizedScope,
 } from './scopes';
 
 // Export execution validation (browser-safe - no Node.js dependencies)
@@ -344,7 +356,7 @@ export type {
 export { LibraryLoader } from './LibraryLoader';
 export { LibraryConverter } from './utils/LibraryConverter';
 export type { CreateNodeOptions, CreateEdgeOptions } from './utils/LibraryConverter';
-export type { ResourceAttributes } from './types/library';
+export type { ResourceAttributes, ScopeDefinition, OwnedScopes } from './types/library';
 
 // Export library discovery (browser-safe - uses FileSystemAdapter abstraction)
 export { LibraryDiscovery } from './discovery/LibraryDiscovery';

@@ -184,10 +184,22 @@ export type {
   ExecutionLoadResult,
 } from './execution/ExecutionLoader';
 
-// Export scopes canvas validation (browser-safe, re-exported for convenience)
-export { ScopesCanvasValidator } from './scopes';
+// Export scopes module (canvas validation + scope utilities)
+export {
+  ScopesCanvasValidator,
+  DEFAULT_SCOPE_COLOR,
+  DRAFT_NODE_COLOR,
+  isRecordFormat,
+  getScopeNames,
+  getScopeDefinition,
+  getScopeColor,
+  normalizeScopes,
+  extractScopesFromResources,
+  buildScopeColorMap,
+} from './scopes';
 export type {
   ScopesCanvasValidationContext,
   ScopesCanvasValidationResult,
   ScopesCanvasViolation,
+  NormalizedScope,
 } from './scopes';

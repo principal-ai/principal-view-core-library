@@ -6,12 +6,14 @@ import yaml from 'js-yaml';
 import {
   ScopesCanvasValidator,
   CanvasDiscovery,
+  getScopeNames,
 } from '@principal-ai/principal-view-core/node';
 import type {
   ExtendedCanvas,
   ComponentLibrary,
   DiscoveredCanvasWithContent,
   ScopesCanvasViolation,
+  OwnedScopes,
 } from '@principal-ai/principal-view-core';
 import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
 
@@ -42,10 +44,11 @@ export function createValidateCommand(): Command {
 
             if (library?.resources) {
               for (const [_resourceKey, attrs] of Object.entries(library.resources)) {
-                const scopes = (attrs as Record<string, unknown>)['owned-scopes'];
-                if (Array.isArray(scopes)) {
-                  ownedScopes.push(...scopes);
-                }
+                // Handle both legacy (string[]) and new (Record<string, ScopeDefinition>) formats
+                const scopes = (attrs as Record<string, unknown>)['owned-scopes'] as OwnedScopes | undefined;
+                const scopeNames = getScopeNames(scopes);
+                ownedScopes.push(...scopeNames);
+
                 // Also add service name as a valid scope
                 const serviceName = (attrs as Record<string, unknown>)['service.name'];
                 if (typeof serviceName === 'string') {

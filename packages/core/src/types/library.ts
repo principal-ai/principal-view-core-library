@@ -26,6 +26,27 @@ import type {
 // ============================================================================
 
 /**
+ * Definition for an instrumentation scope
+ *
+ * Describes a scope with its color and optional metadata.
+ * Used for consistent visual representation across canvases.
+ */
+export interface ScopeDefinition {
+  /** Color for nodes belonging to this scope (hex format) */
+  color: string;
+
+  /** Human-readable description of what this scope covers */
+  description?: string;
+}
+
+/**
+ * Owned scopes can be either:
+ * - Simple string array (legacy format): ["scope1", "scope2"]
+ * - Record with definitions (new format): { "scope1": { color: "#fff", description: "..." } }
+ */
+export type OwnedScopes = string[] | Record<string, ScopeDefinition>;
+
+/**
  * OTEL resource attributes for a service/component
  *
  * Represents the actual resource attribute values (not match patterns).
@@ -95,20 +116,30 @@ export interface ResourceAttributes {
    * Spans from these scopes will be matched against this service's storyboards
    * rather than looking up external registries.
    *
-   * @example
+   * Can be either a simple array (legacy) or a record with scope definitions:
+   *
+   * @example Simple array (legacy):
    * ```yaml
-   * resources:
-   *   web-ade:
-   *     service.name: "web-ade"
-   *     owned-scopes:
-   *       - "auth-me"
-   *       - "checkout"
+   * owned-scopes:
+   *   - "auth-me"
+   *   - "checkout"
+   * ```
+   *
+   * @example Record with definitions (recommended):
+   * ```yaml
+   * owned-scopes:
+   *   auth-me:
+   *     color: "#DC2626"
+   *     description: "Authentication flow instrumentation"
+   *   checkout:
+   *     color: "#059669"
+   *     description: "Checkout process instrumentation"
    * ```
    */
-  'owned-scopes'?: string[];
+  'owned-scopes'?: OwnedScopes;
 
   /** Allow arbitrary OTEL resource attributes */
-  [key: string]: string | string[] | undefined;
+  [key: string]: string | string[] | OwnedScopes | undefined;
 }
 
 // ============================================================================
