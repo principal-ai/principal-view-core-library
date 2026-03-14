@@ -70,6 +70,9 @@ export function createInspectCommand(): Command {
                 duration: duration,
               },
               status: executionData.metadata?.status || 'UNKNOWN',
+              scope: executionData.metadata?.scopeName || null,
+              scopeVersion: executionData.metadata?.scopeVersion || null,
+              serviceName: executionData.metadata?.serviceName || null,
             },
             eventTypes: Array.from(eventCounts.entries()).map(([name, count]) => ({
               name,
@@ -103,6 +106,19 @@ export function createInspectCommand(): Command {
           const status = executionData.metadata?.status || 'UNKNOWN';
           const statusColor = status === 'OK' ? chalk.green : chalk.red;
           console.log(chalk.gray('  • Status:'), statusColor(status));
+
+          // Show scope information
+          const scopeName = executionData.metadata?.scopeName;
+          const scopeVersion = executionData.metadata?.scopeVersion;
+          const serviceName = executionData.metadata?.serviceName;
+
+          if (serviceName) {
+            console.log(chalk.gray('  • Service:'), serviceName);
+          }
+          if (scopeName) {
+            const scopeDisplay = scopeVersion ? `${scopeName}@${scopeVersion}` : scopeName;
+            console.log(chalk.gray('  • Scope:'), scopeDisplay);
+          }
 
           // Event Types
           console.log(chalk.bold('\nEvent Types:'));

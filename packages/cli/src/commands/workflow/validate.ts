@@ -208,6 +208,39 @@ export function createValidateCommand(): Command {
           // Validation will still work, just without cross-canvas suggestions
         }
 
+        // Extract owned-scopes from library resources
+        let ownedScopes: string[] | undefined;
+        if (eventRegistry) {
+          // Get library from the registry's internal state
+          // The registry was built with the library, so we can extract scopes from resources
+          const libraryPath = resolve(baseDir, '.principal-views/library.yaml');
+          if (existsSync(libraryPath)) {
+            try {
+              const libraryContent = readFileSync(libraryPath, 'utf-8');
+              const lib = yaml.load(libraryContent) as ComponentLibrary;
+              if (lib?.resources) {
+                ownedScopes = [];
+                for (const [resourceKey, attrs] of Object.entries(lib.resources)) {
+                  // Each resource can have owned-scopes
+                  const scopes = (attrs as Record<string, unknown>)['owned-scopes'];
+                  if (Array.isArray(scopes)) {
+                    ownedScopes.push(...scopes);
+                  }
+                  // Also add the service name itself as a valid scope
+                  const serviceName = (attrs as Record<string, unknown>)['service.name'];
+                  if (typeof serviceName === 'string') {
+                    ownedScopes.push(serviceName);
+                  }
+                }
+                // Remove duplicates
+                ownedScopes = [...new Set(ownedScopes)];
+              }
+            } catch {
+              // Failed to extract scopes, continue without
+            }
+          }
+        }
+
         // Create validator
         const validator = new WorkflowValidator();
 
@@ -222,6 +255,7 @@ export function createValidateCommand(): Command {
           executionFiles,
           eventRegistry,
           allWorkflowEvents,
+          ownedScopes,
         };
 
         const result = await validator.validate(context);
@@ -253,6 +287,8 @@ export function createValidateCommand(): Command {
               errors: errors.length,
               warnings: warnings.length,
               scenarioCount: workflow.scenarios.length,
+              scope: workflow.scope || null,
+              status: workflow.status || 'draft',
               attributeValidation: executionData ? 'enabled' : 'skipped',
             },
           };
@@ -323,6 +359,25 @@ export function createValidateCommand(): Command {
           if (canvasPath) {
             console.log(chalk.gray(`  • Canvas: ${workflow.canvas || canvasPath}`));
           }
+
+          // Show scope information
+          if (workflow.scope) {
+            console.log(chalk.gray(`  • Scope: ${workflow.scope}`));
+          } else {
+            const status = workflow.status || 'draft';
+            if (status === 'approved' || status === 'implemented') {
+              console.log(chalk.yellow(`  • Scope: not specified (required for ${status} status)`));
+            } else {
+              console.log(chalk.gray('  • Scope: not specified'));
+            }
+          }
+
+          // Show status
+          const status = workflow.status || 'draft';
+          const statusColor = status === 'implemented' ? chalk.green :
+                              status === 'approved' ? chalk.cyan :
+                              chalk.gray;
+          console.log(chalk.gray('  • Status:'), statusColor(status));
 
           if (executionData) {
             console.log(

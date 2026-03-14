@@ -19,6 +19,7 @@ import { createLintCommand } from './commands/lint.js';
 import { createCoverageCommand } from './commands/coverage.js';
 import { createWorkflowCommand } from './commands/workflow/index.js';
 import { createMigrationCommand } from './commands/migration.js';
+import { createScopesCommand } from './commands/scopes/index.js';
 
 // Version is injected at build time via package.json
 const VERSION = '0.10.0';
@@ -44,6 +45,7 @@ program.addCommand(createMigrationCommand()); // Migration guide
 program.addCommand(createHooksCommand());
 program.addCommand(createCoverageCommand());
 program.addCommand(createWorkflowCommand());
+program.addCommand(createScopesCommand());
 
 // Parse command line arguments
 program.parse(process.argv);

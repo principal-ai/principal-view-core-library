@@ -277,6 +277,14 @@ export type {
   CanvasDiscoveryResultWithContent,
 } from './discovery/types';
 
+// Export scopes canvas validation (browser-safe)
+export { ScopesCanvasValidator } from './scopes';
+export type {
+  ScopesCanvasValidationContext,
+  ScopesCanvasValidationResult,
+  ScopesCanvasViolation,
+} from './scopes';
+
 // Export execution validation (browser-safe - no Node.js dependencies)
 export { ExecutionValidator, createExecutionValidator } from './execution/ExecutionValidator';
 export type {

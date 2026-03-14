@@ -351,6 +351,21 @@ export interface PVOtelExtension {
    */
   files?: string[];
 
+  /**
+   * Instrumentation scope that emits this event
+   *
+   * Identifies which tracer/instrumentation library creates this span or event.
+   * Maps to `getTracer('scope-name')` in the instrumented code.
+   *
+   * Required when the parent node's status is 'approved' or 'implemented'.
+   * Should match an entry in the library.yaml `owned-scopes` list.
+   *
+   * @example "terminal-activity"
+   * @example "auth"
+   * @example "quality-panel"
+   */
+  scope?: string;
+
   /** Allow additional properties */
   [key: string]: JsonValue | PVOtelResourceMatch | PVOtelSpanMatch | string[] | undefined;
 }

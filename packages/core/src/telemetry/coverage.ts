@@ -255,6 +255,17 @@ function validateNodes(
           error: `Node with status="${status}" must have pv.otel.files specified`,
         });
       }
+
+      // Validate approved and implemented nodes have pv.otel.scope
+      const scope = node.pv?.otel?.scope;
+      if ((status === 'approved' || status === 'implemented') && !scope) {
+        errors.push({
+          nodeId: node.id,
+          canvasPath: canvas.path,
+          status,
+          error: `Node with status="${status}" must have pv.otel.scope specified (e.g., "terminal-activity", "auth")`,
+        });
+      }
     }
   }
 

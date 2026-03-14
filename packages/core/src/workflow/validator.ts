@@ -150,6 +150,7 @@ export class WorkflowValidator {
       violations.push(...this.checkEventConnectivity(context));
       violations.push(...this.checkEventAttributeRequirements(context));
       violations.push(...this.checkTemplateAttributesDefinedInSchema(context));
+      violations.push(...this.checkScenarioScopeConsistency(context));
     }
 
     violations.push(...this.checkTemplateSyntax(context));
@@ -435,6 +436,20 @@ export class WorkflowValidator {
           });
         }
       }
+    }
+
+    // Check scope requirement based on status
+    if ((status === 'approved' || status === 'implemented') && !workflow.scope) {
+      violations.push({
+        ruleId: 'workflow-scope-required',
+        severity: 'error',
+        file: workflowPath,
+        path: 'scope',
+        message: `Status "${status}" requires scope to be specified`,
+        impact: 'Cannot validate instrumentation scope without knowing which tracer emits this span',
+        suggestion: 'Add a "scope" field with the instrumentation scope name (e.g., "terminal-activity", "auth")',
+        fixable: false,
+      });
     }
 
     // Check scenarioSelection
@@ -1083,6 +1098,137 @@ export class WorkflowValidator {
       `   - Add an event to "${subsetScenario.id}" that distinguishes it (e.g., "conversion.timeout", "conversion.abandoned")\n` +
       `   - Or ensure "${supersetScenario.id}" has events that never co-occur with "${subsetScenario.id}"`
     );
+  }
+
+  /**
+   * Check that all events in a scenario come from nodes with the same scope
+   *
+   * This ensures scenarios don't accidentally span multiple instrumentation boundaries.
+   * Cross-scope workflows should be explicitly designed and documented.
+   */
+  private checkScenarioScopeConsistency(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { workflow, workflowPath, canvas } = context;
+
+    if (!canvas || !workflow.scenarios) {
+      return violations;
+    }
+
+    // Build a map of event name -> scope from canvas nodes
+    const eventToScope = new Map<string, string | undefined>();
+    const eventToNodeId = new Map<string, string>();
+
+    for (const node of canvas.nodes || []) {
+      let eventName: string | undefined;
+
+      // Get event name from inline event or eventRef
+      if (node.pv?.event && typeof node.pv.event === 'object' && node.pv.event.name) {
+        eventName = node.pv.event.name;
+      } else if (node.pv?.eventRef && typeof node.pv.eventRef === 'string') {
+        eventName = node.pv.eventRef;
+      }
+
+      if (eventName) {
+        const scope = node.pv?.otel?.scope;
+        eventToScope.set(eventName, scope);
+        eventToNodeId.set(eventName, node.id);
+      }
+    }
+
+    // Check each scenario for scope consistency
+    for (let idx = 0; idx < workflow.scenarios.length; idx++) {
+      const scenario = workflow.scenarios[idx];
+      const templateEvents = Object.keys(scenario.template?.events || {});
+
+      if (templateEvents.length === 0) {
+        continue;
+      }
+
+      // Collect scopes for all events in this scenario
+      const scopesInScenario = new Map<string, string[]>(); // scope -> event names
+
+      for (const eventName of templateEvents) {
+        // Skip wildcard events
+        if (eventName === '*') continue;
+
+        const scope = eventToScope.get(eventName);
+        const scopeKey = scope || '__undefined__';
+
+        if (!scopesInScenario.has(scopeKey)) {
+          scopesInScenario.set(scopeKey, []);
+        }
+        scopesInScenario.get(scopeKey)!.push(eventName);
+      }
+
+      // Check if there are multiple scopes
+      const definedScopes = Array.from(scopesInScenario.keys()).filter(s => s !== '__undefined__');
+      const undefinedEvents = scopesInScenario.get('__undefined__') || [];
+
+      if (definedScopes.length > 1) {
+        // Multiple scopes detected - this is a cross-scope scenario
+        const scopeBreakdown = definedScopes
+          .map(scope => `  - ${scope}: ${scopesInScenario.get(scope)!.join(', ')}`)
+          .join('\n');
+
+        violations.push({
+          ruleId: 'workflow-scenario-cross-scope',
+          severity: 'warn',
+          file: workflowPath,
+          path: `scenarios[${idx}]`,
+          message: `Scenario "${scenario.id}" spans multiple instrumentation scopes`,
+          impact: 'This scenario crosses instrumentation boundaries, which may indicate:\n' +
+            '  - A workflow that should be split into separate scope-specific workflows\n' +
+            '  - A legitimate cross-scope operation that needs documentation',
+          suggestion: `Scopes detected:\n${scopeBreakdown}\n\n` +
+            'Consider:\n' +
+            '  1. Split into separate workflows per scope\n' +
+            '  2. If intentional, document the cross-scope nature in the workflow description\n' +
+            '  3. Ensure all nodes have pv.otel.scope defined for accurate tracking',
+          fixable: false,
+        });
+      }
+
+      // Warn about events with undefined scopes (only if some events have scopes)
+      if (undefinedEvents.length > 0 && definedScopes.length > 0) {
+        violations.push({
+          ruleId: 'workflow-scenario-scope-missing',
+          severity: 'warn',
+          file: workflowPath,
+          path: `scenarios[${idx}]`,
+          message: `Scenario "${scenario.id}" has events without scope defined`,
+          impact: 'Cannot determine if these events belong to the same instrumentation boundary',
+          suggestion: `Events missing scope: ${undefinedEvents.join(', ')}\n` +
+            `Add pv.otel.scope to these nodes in the canvas to enable scope consistency checking`,
+          fixable: false,
+        });
+      }
+
+      // Check if node scopes are in owned-scopes list
+      if (context.ownedScopes && context.ownedScopes.length > 0) {
+        const unknownScopes = definedScopes.filter(scope => !context.ownedScopes!.includes(scope));
+        if (unknownScopes.length > 0) {
+          const eventsPerScope = unknownScopes
+            .map(scope => `  - ${scope}: ${scopesInScenario.get(scope)!.join(', ')}`)
+            .join('\n');
+
+          violations.push({
+            ruleId: 'workflow-node-scope-not-owned',
+            severity: 'error',
+            file: workflowPath,
+            path: `scenarios[${idx}]`,
+            message: `Scenario "${scenario.id}" uses scopes not declared in library.yaml owned-scopes`,
+            impact: 'Spans from these scopes will not be matched - scopes must be declared in library.yaml',
+            suggestion: `Unknown scopes:\n${eventsPerScope}\n\n` +
+              `Either:\n` +
+              `  - Add these scopes to owned-scopes in library.yaml\n` +
+              `  - Update the nodes to use a declared scope: ${context.ownedScopes.join(', ')}`,
+            fixable: false,
+          });
+        }
+      }
+    }
+
+    return violations;
   }
 
   /**

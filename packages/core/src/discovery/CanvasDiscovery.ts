@@ -604,7 +604,15 @@ export class CanvasDiscovery {
     const filename = path.split('/').pop();
     if (!filename) return null;
 
-    // Check for .otel.canvas first (must come before .canvas check)
+    // Check for .scopes.canvas first (must come before .canvas check)
+    if (filename.endsWith('.scopes.canvas')) {
+      return {
+        basename: filename.replace(/\.scopes\.canvas$/, ''),
+        type: 'scopes',
+      };
+    }
+
+    // Check for .otel.canvas (must come before .canvas check)
     if (filename.endsWith('.otel.canvas')) {
       return {
         basename: filename.replace(/\.otel\.canvas$/, ''),
@@ -612,7 +620,7 @@ export class CanvasDiscovery {
       };
     }
 
-    // Check for .canvas (but not .otel.canvas)
+    // Check for .canvas (but not .otel.canvas or .scopes.canvas)
     if (filename.endsWith('.canvas')) {
       return {
         basename: filename.replace(/\.canvas$/, ''),
@@ -679,7 +687,7 @@ export class CanvasDiscovery {
 
   /**
    * Detect legacy flat canvas structures and add deprecation errors
-   * Note: Flat .canvas files are supported for static documentation
+   * Note: Flat .canvas and .scopes.canvas files are supported
    * Only .otel.canvas files in flat structure are deprecated
    */
   private detectLegacyStructures(
@@ -691,7 +699,7 @@ export class CanvasDiscovery {
     const storyboardCanvasIds = new Set(storyboards.map(s => s.canvas.id));
 
     // Check for legacy flat .otel.canvas files (not part of any storyboard)
-    // Note: Flat .canvas files are now supported as standalone canvases
+    // Note: Flat .canvas and .scopes.canvas files are supported
     for (const canvas of canvases) {
       if (!storyboardCanvasIds.has(canvas.id)) {
         // This canvas is not part of any storyboard
@@ -700,7 +708,7 @@ export class CanvasDiscovery {
         const pvIndex = parts.indexOf(CanvasDiscovery.CANVAS_DIR);
 
         // Only error if it's a .otel.canvas file in flat structure
-        // Regular .canvas files in flat structure are supported for documentation
+        // Regular .canvas and .scopes.canvas files in flat structure are supported
         if (pvIndex !== -1 && parts.length === pvIndex + 1 && canvas.type === 'otel') {
           errors.push({
             path: canvas.path,

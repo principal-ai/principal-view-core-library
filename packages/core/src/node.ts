@@ -183,3 +183,11 @@ export type {
   ExecutionFile,
   ExecutionLoadResult,
 } from './execution/ExecutionLoader';
+
+// Export scopes canvas validation (browser-safe, re-exported for convenience)
+export { ScopesCanvasValidator } from './scopes';
+export type {
+  ScopesCanvasValidationContext,
+  ScopesCanvasValidationResult,
+  ScopesCanvasViolation,
+} from './scopes';
