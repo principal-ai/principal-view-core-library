@@ -52,7 +52,6 @@ export function createListCommand(): Command {
               canvas: workflow.canvas,
               canvasExists,
               scenarioCount: workflow.scenarios.length,
-              mode: workflow.mode,
               name: workflow.name,
             };
           })
@@ -68,7 +67,6 @@ export function createListCommand(): Command {
               canvas: n.canvas,
               canvasExists: n.canvasExists,
               scenarios: n.scenarioCount,
-              mode: n.mode,
             })),
           };
           console.log(JSON.stringify(output, null, 2));
@@ -100,7 +98,6 @@ export function createListCommand(): Command {
                 `  Scenarios: ${workflow.scenarioCount}`
               )
             );
-            console.log(chalk.gray(`  Mode: ${workflow.mode}`));
           }
 
           console.log(

@@ -3,7 +3,6 @@
   "canvas": "graph-converter-test.otel.canvas",
   "name": "Graph Converter Test Workflow",
   "description": "Human-readable workflow for graph converter test execution",
-  "mode": "span-tree",
   "scenarioSelection": "first-match",
   "showLogsPerSpan": true,
   "scenarios": [

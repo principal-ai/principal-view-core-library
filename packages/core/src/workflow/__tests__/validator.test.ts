@@ -39,7 +39,6 @@ describe('WorkflowValidator', () => {
       name: 'Test Workflow',
       description: 'A test workflow template',
       spanPattern: 'test.execution',
-      mode: 'span-tree',
       scenarioSelection: 'first-match',
       scenarios: [
         {
@@ -239,46 +238,6 @@ describe('WorkflowValidator', () => {
           path: 'description',
         })
       );
-    });
-
-    it('should flag missing mode', async () => {
-      const context = createContext({ mode: undefined as unknown });
-      const result = await validator.validate(context);
-
-      expect(result.errorCount).toBeGreaterThan(0);
-      expect(result.violations).toContainEqual(
-        expect.objectContaining({
-          ruleId: 'workflow-schema-valid',
-          path: 'mode',
-          message: expect.stringContaining('Missing required field "mode"'),
-        })
-      );
-    });
-
-    it('should flag invalid mode', async () => {
-      const context = createContext({ mode: 'invalid-mode' as unknown });
-      const result = await validator.validate(context);
-
-      expect(result.errorCount).toBeGreaterThan(0);
-      expect(result.violations).toContainEqual(
-        expect.objectContaining({
-          ruleId: 'workflow-schema-valid',
-          path: 'mode',
-          message: expect.stringContaining('Invalid mode'),
-        })
-      );
-    });
-
-    it('should accept valid modes', async () => {
-      const modes = ['span-tree', 'timeline'];
-
-      for (const mode of modes) {
-        const context = createContext({ mode: mode as unknown });
-        const result = await validator.validate(context);
-
-        const modeViolations = result.violations.filter((v) => v.path === 'mode');
-        expect(modeViolations).toHaveLength(0);
-      }
     });
 
     it('should flag invalid scenarioSelection', async () => {
@@ -1076,7 +1035,6 @@ describe('WorkflowValidator', () => {
         name: 'Complete Test Workflow',
         description: 'A complete workflow template for testing',
         spanPattern: 'test.integration',
-        mode: 'span-tree',
         scenarioSelection: 'first-match',
         scenarios: [
           {
@@ -1102,11 +1060,6 @@ describe('WorkflowValidator', () => {
                 'test.started': 'Started: {test.name}',
                 'test.complete': 'Completed in {duration}ms',
               },
-              flow: [
-                'Test execution summary:',
-                '  - Status: {test.status}',
-                '  - Duration: {duration}ms',
-              ],
               summary: '[SUCCESS]',
             },
           },
@@ -1139,7 +1092,6 @@ describe('WorkflowValidator', () => {
         version: 'invalid-version',
         canvas: 'nonexistent.canvas',
         name: '',
-        mode: 'invalid-mode',
         scenarios: [
           {
             id: 'test',
@@ -2236,7 +2188,6 @@ describe('WorkflowValidator', () => {
             name: 'Payment Workflow',
             description: 'Payment processing',
             spanPattern: 'payment.authorize',
-            mode: 'span-tree' as const,
             scenarioSelection: 'first-match' as const,
             scenarios: [],
           },
@@ -2249,7 +2200,6 @@ describe('WorkflowValidator', () => {
             name: 'Inventory Workflow',
             description: 'Inventory management',
             spanPattern: 'inventory.reserve',
-            mode: 'span-tree' as const,
             scenarioSelection: 'first-match' as const,
             scenarios: [],
           },
@@ -2270,7 +2220,6 @@ describe('WorkflowValidator', () => {
             name: 'Payment Workflow 1',
             description: 'Payment processing',
             spanPattern: 'payment.authorize',
-            mode: 'span-tree' as const,
             scenarioSelection: 'first-match' as const,
             scenarios: [],
           },
@@ -2283,7 +2232,6 @@ describe('WorkflowValidator', () => {
             name: 'Payment Workflow 2',
             description: 'Payment processing alternative',
             spanPattern: 'payment.authorize',
-            mode: 'span-tree' as const,
             scenarioSelection: 'first-match' as const,
             scenarios: [],
           },
@@ -2310,7 +2258,6 @@ describe('WorkflowValidator', () => {
             name: 'Workflow A1',
             description: 'Test',
             spanPattern: 'span.a',
-            mode: 'span-tree' as const,
             scenarioSelection: 'first-match' as const,
             scenarios: [],
           },
@@ -2323,7 +2270,6 @@ describe('WorkflowValidator', () => {
             name: 'Workflow A2',
             description: 'Test',
             spanPattern: 'span.a',
-            mode: 'span-tree' as const,
             scenarioSelection: 'first-match' as const,
             scenarios: [],
           },
@@ -2336,7 +2282,6 @@ describe('WorkflowValidator', () => {
             name: 'Workflow B',
             description: 'Test',
             spanPattern: 'span.b',
-            mode: 'span-tree' as const,
             scenarioSelection: 'first-match' as const,
             scenarios: [],
           },
@@ -2349,7 +2294,6 @@ describe('WorkflowValidator', () => {
             name: 'Workflow C1',
             description: 'Test',
             spanPattern: 'span.c',
-            mode: 'span-tree' as const,
             scenarioSelection: 'first-match' as const,
             scenarios: [],
           },
@@ -2362,7 +2306,6 @@ describe('WorkflowValidator', () => {
             name: 'Workflow C2',
             description: 'Test',
             spanPattern: 'span.c',
-            mode: 'span-tree' as const,
             scenarioSelection: 'first-match' as const,
             scenarios: [],
           },
@@ -2389,7 +2332,6 @@ describe('WorkflowValidator', () => {
             name: 'Valid Workflow',
             description: 'Test',
             spanPattern: 'payment.authorize',
-            mode: 'span-tree' as const,
             scenarioSelection: 'first-match' as const,
             scenarios: [],
           },
@@ -2402,7 +2344,6 @@ describe('WorkflowValidator', () => {
             name: 'Invalid Workflow',
             description: 'Test',
             // spanPattern missing - will be caught by individual validation
-            mode: 'span-tree' as const,
             scenarioSelection: 'first-match' as const,
             scenarios: [],
           } as Partial<WorkflowTemplate> as WorkflowTemplate,

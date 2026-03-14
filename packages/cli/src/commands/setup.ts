@@ -69,7 +69,6 @@ Each workflow file needs to declare which instrumentation scope it handles:
     ${chalk.green('"version"')}: "1.0.0",
     ${chalk.green('"canvas"')}: ".principal-views/my-feature/my-feature.otel.canvas",
     ${chalk.yellow('"scope"')}: "@my-org/my-library",  ${chalk.dim('← Must match TRACER_NAME')}
-    ${chalk.green('"mode"')}: "span-tree",
     ${chalk.green('"name"')}: "My Feature",
     ${chalk.green('"spanPattern"')}: "my-feature.operation",
     ${chalk.green('"scenarios"')}: [...]

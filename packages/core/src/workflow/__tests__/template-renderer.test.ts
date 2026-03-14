@@ -6,13 +6,12 @@ import { renderWorkflow } from '../template-renderer';
 import type { WorkflowTemplate, OtelEvent } from '../types';
 
 describe('renderWorkflow', () => {
-  describe('span-tree mode', () => {
+  describe('span tree rendering', () => {
     const template: WorkflowTemplate = {
       version: '1.0.0',
       canvas: 'test.otel.canvas',
       name: 'Span Tree Test',
       description: 'Test span tree rendering',
-      mode: 'span-tree',
       scenarioSelection: 'first-match',
       scenarios: [
         {
@@ -124,67 +123,12 @@ describe('renderWorkflow', () => {
     });
   });
 
-  describe('timeline mode', () => {
-    const template: WorkflowTemplate = {
-      version: '1.0.0',
-      canvas: 'test.otel.canvas',
-      name: 'Timeline Test',
-      description: 'Test timeline rendering',
-      mode: 'timeline',
-      scenarioSelection: 'first-match',
-      scenarios: [
-        {
-          id: 'default',
-          priority: 1,
-          description: 'Default scenario',
-          condition: { default: true },
-          template: {
-            introduction: 'Timeline',
-            events: {
-              'test.started': '🔵 Started',
-              'test.complete': '🔵 Completed',
-              'log.info': '📝 {{log.body}}',
-            },
-            summary: 'Done',
-          },
-        },
-      ],
-      formatting: {
-        showTimestamps: true,
-        timestampFormat: 'HH:mm:ss.SSS',
-      },
-    };
-
-    it('should render events in chronological order', () => {
-      const events: OtelEvent[] = [
-        { name: 'test.started', timestamp: '2025-01-15T10:00:00.000Z', type: 'span' },
-        { name: 'log.info', timestamp: '2025-01-15T10:00:00.050Z', type: 'log', body: 'Processing', severityText: 'INFO' },
-        { name: 'test.complete', timestamp: '2025-01-15T10:00:00.100Z', type: 'span' },
-      ];
-
-      const result = renderWorkflow(template, events);
-
-      expect(result.text).toContain('[10:00:00.000] 🔵 Started');
-      expect(result.text).toContain('[10:00:00.050] 📝 Processing');
-      expect(result.text).toContain('[10:00:00.100] 🔵 Completed');
-
-      // Check order
-      const startedIndex = result.text.indexOf('🔵 Started');
-      const processingIndex = result.text.indexOf('📝 Processing');
-      const completedIndex = result.text.indexOf('🔵 Completed');
-      expect(startedIndex).toBeLessThan(processingIndex);
-      expect(processingIndex).toBeLessThan(completedIndex);
-    });
-  });
-
-
   describe('scenario selection', () => {
     const template: WorkflowTemplate = {
       version: '1.0.0',
       canvas: 'test.otel.canvas',
       name: 'Scenario Test',
       description: 'Test scenario selection',
-      mode: 'timeline',
       scenarioSelection: 'first-match',
       scenarios: [
         {
@@ -277,7 +221,6 @@ describe('renderWorkflow', () => {
       canvas: 'skill-installation.otel.canvas',
       name: 'Skill Installation',
       description: 'Test event attribute override',
-      mode: 'timeline',
       scenarioSelection: 'first-match',
       scenarios: [
         {
@@ -306,6 +249,8 @@ describe('renderWorkflow', () => {
           name: 'installation.started',
           timestamp: 1000,
           type: 'span',
+          spanId: 's1',
+          traceId: 't1',
           attributes: {
             'install.scope': 'global',
             'install.mode': 'copy', // Summary event has 'copy'
@@ -315,6 +260,8 @@ describe('renderWorkflow', () => {
           name: 'skill.installing',
           timestamp: 2000,
           type: 'span',
+          spanId: 's2',
+          traceId: 't1',
           attributes: {
             'skill.name': 'demo-skill',
             'agent.name': 'Amp',
@@ -326,6 +273,8 @@ describe('renderWorkflow', () => {
           name: 'skill.installed',
           timestamp: 2500,
           type: 'span',
+          spanId: 's3',
+          traceId: 't1',
           attributes: {
             'skill.name': 'demo-skill',
             'agent.name': 'Amp',
@@ -335,6 +284,8 @@ describe('renderWorkflow', () => {
           name: 'skill.installing',
           timestamp: 3000,
           type: 'span',
+          spanId: 's4',
+          traceId: 't1',
           attributes: {
             'skill.name': 'demo-skill',
             'agent.name': 'Cursor',
@@ -346,6 +297,8 @@ describe('renderWorkflow', () => {
           name: 'skill.installed',
           timestamp: 3500,
           type: 'span',
+          spanId: 's5',
+          traceId: 't1',
           attributes: {
             'skill.name': 'demo-skill',
             'agent.name': 'Cursor',
@@ -355,6 +308,8 @@ describe('renderWorkflow', () => {
           name: 'installation.complete',
           timestamp: 4000,
           type: 'span',
+          spanId: 's6',
+          traceId: 't1',
           attributes: {
             'install.success_count': 2,
             'install.failure_count': 0,
@@ -384,7 +339,6 @@ describe('renderWorkflow', () => {
       canvas: 'test.otel.canvas',
       name: 'Metadata Test',
       description: 'Test metadata generation',
-      mode: 'timeline',
       scenarioSelection: 'first-match',
       scenarios: [
         {
@@ -429,13 +383,12 @@ describe('renderWorkflow', () => {
   });
 
   describe('@span attribute access', () => {
-    it('should render span attributes via @span namespace in timeline mode', () => {
+    it('should render span attributes via @span namespace', () => {
       const template: WorkflowTemplate = {
         version: '1.0.0',
         canvas: 'test.otel.canvas',
         name: 'Span Attributes Test',
         description: 'Test @span attribute access',
-        mode: 'timeline',
         scenarioSelection: 'first-match',
         scenarios: [
           {
@@ -456,6 +409,8 @@ describe('renderWorkflow', () => {
           name: 'kanban.loaded',
           timestamp: 1000,
           type: 'span',
+          spanId: 'span1',
+          traceId: 'trace1',
           attributes: {
             'tasks.count': 42,
             'has.more': true,
@@ -471,13 +426,12 @@ describe('renderWorkflow', () => {
       expect(result.text).toContain('Loaded 42 tasks (backlog: true)');
     });
 
-    it('should render span attributes via @span namespace in span-tree mode', () => {
+    it('should render span attributes via @span namespace with span template', () => {
       const template: WorkflowTemplate = {
         version: '1.0.0',
         canvas: 'test.otel.canvas',
         name: 'Span Tree Attributes Test',
-        description: 'Test @span in span-tree mode',
-        mode: 'span-tree',
+        description: 'Test @span with span template',
         scenarioSelection: 'first-match',
         scenarios: [
           {
@@ -515,7 +469,6 @@ describe('renderWorkflow', () => {
         canvas: 'test.otel.canvas',
         name: 'Mixed Attributes Test',
         description: 'Test event and span attributes together',
-        mode: 'timeline',
         scenarioSelection: 'first-match',
         scenarios: [
           {
@@ -536,6 +489,8 @@ describe('renderWorkflow', () => {
           name: 'task.completed',
           timestamp: 1000,
           type: 'span',
+          spanId: 'span1',
+          traceId: 'trace1',
           attributes: {
             'task.id': 'TASK-123',
             'duration': 150,

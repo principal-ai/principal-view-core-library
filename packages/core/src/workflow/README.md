@@ -10,11 +10,8 @@ The Workflow Template System converts raw OTEL telemetry data (spans, logs, metr
 
 - **Scenario-based Matching**: Automatically selects the appropriate workflow based on which events occurred
 - **Template Expression Language**: Rich templating with property access, conditionals, arithmetic, and string operations
-- **Multiple Rendering Modes**:
-  - `span-tree`: Hierarchical view following span parent-child relationships
-  - `timeline`: Chronological event ordering
-  - `summary-only`: Just introduction and summary
-- **Log Integration**: Attach logs to their parent spans or interleave with events
+- **Hierarchical Rendering**: Renders spans following parent-child relationships
+- **Log Integration**: Attach logs to their parent spans
 - **Flexible Conditions**: Match scenarios based on required/excluded events and attribute assertions
 
 ## Quick Start
@@ -28,7 +25,6 @@ Create a `.workflow.json` file that references your `.otel.canvas` file:
   "version": "1.0.0",
   "canvas": "my-execution.otel.canvas",
   "name": "My Execution Workflow",
-  "mode": "span-tree",
   "scenarioSelection": "first-match",
   "scenarios": [
     {
@@ -181,15 +177,12 @@ Scenarios are evaluated in priority order (lowest number = highest priority). Th
 - `$in`: In array (`{ "$in": ["success", "warning"] }`)
 - `$nin`: Not in array (`{ "$nin": ["error", "failed"] }`)
 
-## Rendering Modes
+## Hierarchical Rendering
 
-### Span Tree Mode
-
-Renders events hierarchically following span parent-child relationships:
+Workflows render spans hierarchically following parent-child relationships:
 
 ```json
 {
-  "mode": "span-tree",
   "template": {
     "introduction": "✅ Execution",
     "span": "→ {span.name}",
@@ -206,39 +199,6 @@ Output:
   → child.span
     → grandchild.span
 Complete
-```
-
-### Timeline Mode
-
-Renders events in chronological order:
-
-```json
-{
-  "mode": "timeline",
-  "formatting": {
-    "showTimestamps": true
-  },
-  "template": {
-    "events": {
-      "execution.started": "🔵 Started",
-      "execution.complete": "✅ Complete"
-    }
-  }
-}
-```
-
-### Summary-Only Mode
-
-Shows only introduction and summary:
-
-```json
-{
-  "mode": "summary-only",
-  "template": {
-    "introduction": "Execution Report",
-    "summary": "Status: {result.status}"
-  }
-}
 ```
 
 ## Log Integration

@@ -231,10 +231,8 @@ export class WorkflowValidator {
       'scope',
       'files',
       'status',
-      'mode',
       'scenarioSelection',
       'showLogsPerSpan',
-      'interleaveSignals',
       'scenarios',
       'formatting',
     ];
@@ -437,32 +435,6 @@ export class WorkflowValidator {
           });
         }
       }
-    }
-
-    // Check mode
-    const validModes = ['span-tree', 'timeline'];
-    if (!workflow.mode) {
-      violations.push({
-        ruleId: 'workflow-schema-valid',
-        severity: 'error',
-        file: workflowPath,
-        path: 'mode',
-        message: 'Missing required field "mode"',
-        impact: 'Cannot determine how to structure the workflow',
-        suggestion: `Set mode to one of: ${validModes.join(', ')}`,
-        fixable: false,
-      });
-    } else if (!validModes.includes(workflow.mode)) {
-      violations.push({
-        ruleId: 'workflow-schema-valid',
-        severity: 'error',
-        file: workflowPath,
-        path: 'mode',
-        message: `Invalid mode: "${workflow.mode}"`,
-        impact: 'Mode must be one of the supported types',
-        suggestion: `Use one of: ${validModes.join(', ')}`,
-        fixable: false,
-      });
     }
 
     // Check scenarioSelection

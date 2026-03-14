@@ -1,7 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { renderWorkflow } from '@principal-ai/principal-view-core';
-import type { WorkflowMode } from '@principal-ai/principal-view-core';
 import {
   loadWorkflow,
   loadExecution,
@@ -10,7 +9,6 @@ import {
 } from './utils.js';
 
 interface RenderOptions {
-  mode?: string;
   scenario?: string;
   json?: boolean;
   format?: string;
@@ -24,7 +22,6 @@ export function createRenderCommand(): Command {
     .description('Render workflow template using execution data')
     .argument('<workflow>', 'Path to .workflow.json file')
     .argument('<execution>', 'Path to .otel.json execution file')
-    .option('--mode <mode>', 'Override rendering mode: span-tree, timeline')
     .option('--scenario <id>', 'Force specific scenario (skip auto-selection)')
     .option('--json', 'Output structured result as JSON')
     .option('--format <format>', 'Output format: text (default), markdown, json', 'text')
@@ -34,17 +31,6 @@ export function createRenderCommand(): Command {
         const workflow = await loadWorkflow(resolvePath(workflowPath));
         const executionData = await loadExecution(resolvePath(executionPath));
         const events = executionToEvents(executionData);
-
-        // Override mode if specified
-        if (options.mode) {
-          const validModes = ['span-tree', 'timeline'];
-          if (!validModes.includes(options.mode)) {
-            throw new Error(
-              `Invalid mode: ${options.mode}. Must be one of: ${validModes.join(', ')}`
-            );
-          }
-          workflow.mode = options.mode as WorkflowMode;
-        }
 
         // Render workflow
         const result = renderWorkflow(workflow, events);
@@ -66,7 +52,6 @@ export function createRenderCommand(): Command {
           const output: Record<string, unknown> = {
             workflow: workflowPath,
             execution: executionPath,
-            mode: workflow.mode,
             scenario: {
               id: selectedScenario?.id,
               priority: selectedScenario?.priority,
@@ -85,7 +70,6 @@ export function createRenderCommand(): Command {
           if (!options.format || options.format === 'text') {
             console.log(chalk.gray(`Rendering: ${workflowPath}`));
             console.log(chalk.gray(`Execution: ${executionPath}`));
-            console.log(chalk.gray(`Mode: ${workflow.mode}`));
             if (selectedScenario) {
               console.log(
                 chalk.gray(

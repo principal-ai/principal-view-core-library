@@ -141,7 +141,6 @@ export type {
   TemplateSegment,
   WorkflowTemplate,
   WorkflowScenario,
-  WorkflowMode,
   ScenarioTemplate,
   LogTemplates,
   FormattingOptions,

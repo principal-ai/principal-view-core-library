@@ -160,10 +160,8 @@ export function renderWorkflow(template: WorkflowTemplate, events: OtelEvent[]):
     },
   };
 
-  // Build span tree if needed
-  if (template.mode === 'span-tree') {
-    context.spanTree = buildSpanTree(events, template.showLogsPerSpan);
-  }
+  // Build span tree for hierarchical rendering
+  context.spanTree = buildSpanTree(events, template.showLogsPerSpan);
 
   // Render workflow
   const text = renderScenario(context);
@@ -214,17 +212,9 @@ function renderScenario(context: WorkflowContext): string {
     parts.push(''); // Blank line
   }
 
-  // Main content based on mode
-  switch (template.mode) {
-    case 'span-tree':
-      if (context.spanTree) {
-        parts.push(renderSpanTree(context.spanTree, scenario, evalContext, formatting));
-      }
-      break;
-
-    case 'timeline':
-      parts.push(renderTimeline(events, scenario, evalContext, formatting));
-      break;
+  // Main content - hierarchical span tree rendering
+  if (context.spanTree) {
+    parts.push(renderSpanTree(context.spanTree, scenario, evalContext, formatting));
   }
 
   // Summary
@@ -316,79 +306,6 @@ function renderSpanTree(
     // Render children
     if (node.children.length > 0 && scenario.template.children !== 'ignore') {
       parts.push(renderSpanTree(node.children, scenario, context, formatting));
-    }
-  }
-
-  return parts.join('\n');
-}
-
-/**
- * Render timeline (chronological view)
- *
- * @param events - Events in chronological order
- * @param scenario - Scenario being rendered
- * @param context - Evaluation context
- * @param formatting - Formatting options
- * @returns Rendered timeline text
- */
-function renderTimeline(
-  events: OtelEvent[],
-  scenario: WorkflowScenario,
-  context: Record<string, unknown>,
-  formatting: FormattingOptions
-): string {
-  const parts: string[] = [];
-
-  // Sort events by timestamp
-  const sorted = [...events].sort((a, b) => {
-    const aTime = normalizeTimestamp(a.timestamp);
-    const bTime = normalizeTimestamp(b.timestamp);
-    return aTime - bTime;
-  });
-
-  for (const event of sorted) {
-    // Build context with event attributes as nested objects for Handlebars
-    const eventContext = { ...context };
-
-    // Convert flat dot-notation keys to nested objects
-    if (event.attributes) {
-      for (const [key, value] of Object.entries(event.attributes)) {
-        if (key.includes('.')) {
-          // Nested key: convert "skill.name" -> { skill: { name: value } }
-          const parts = key.split('.');
-          let current: Record<string, unknown> = eventContext;
-          for (let i = 0; i < parts.length - 1; i++) {
-            if (!current[parts[i]] || typeof current[parts[i]] !== 'object') {
-              current[parts[i]] = {};
-            }
-            current = current[parts[i]] as Record<string, unknown>;
-          }
-          current[parts[parts.length - 1]] = value;
-        } else {
-          // Simple key
-          eventContext[key] = value;
-        }
-      }
-    }
-
-    // Build @span data from span attributes for template access
-    const spanData = buildSpanData(event.spanAttributes);
-
-    let eventText: string | undefined;
-
-    if (event.type === 'log') {
-      eventText = renderLog(event, scenario, { ...eventContext, log: event }, formatting, spanData);
-    } else if (scenario.template.events?.[event.name]) {
-      eventText = parseTemplate(scenario.template.events[event.name], eventContext as TemplateContext, spanData).toString();
-    }
-
-    if (eventText) {
-      if (formatting.showTimestamps) {
-        const timestamp = formatTimestamp(event.timestamp, formatting.timestampFormat || 'HH:mm:ss.SSS');
-        parts.push(`[${timestamp}] ${eventText}`);
-      } else {
-        parts.push(eventText);
-      }
     }
   }
 

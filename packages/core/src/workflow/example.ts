@@ -16,7 +16,6 @@ function exampleSuccess() {
     name: 'Example Execution',
     description: 'Simple execution workflow',
     spanPattern: 'example.execution',
-    mode: 'span-tree',
     scenarioSelection: 'first-match',
     showLogsPerSpan: true,
     scenarios: [
@@ -89,7 +88,6 @@ function exampleWithViolations() {
     name: 'Validation Execution',
     description: 'Validation with multiple scenarios',
     spanPattern: 'validation.run',
-    mode: 'span-tree',
     scenarioSelection: 'first-match',
     scenarios: [
       {
@@ -235,7 +233,6 @@ function exampleSpanTree() {
     name: 'Hierarchical Execution',
     description: 'Demonstrates span tree rendering',
     spanPattern: 'root.operation',
-    mode: 'span-tree',
     scenarioSelection: 'first-match',
     showLogsPerSpan: true,
     scenarios: [

@@ -116,18 +116,12 @@ export interface WorkflowTemplate {
   status?: 'draft' | 'approved' | 'implemented';
 
   // Rendering configuration
-  /** How to structure the workflow */
-  mode: WorkflowMode;
-
   /** Scenario selection strategy */
   scenarioSelection: 'first-match' | 'manual';
 
   // OTEL signal integration
-  /** Show logs associated with each span (span-tree mode) */
+  /** Show logs associated with each span */
   showLogsPerSpan?: boolean;
-
-  /** Mix spans/logs by timestamp (timeline mode) */
-  interleaveSignals?: boolean;
 
   // Scenario definitions
   /** Mutually exclusive workflow scenarios */
@@ -137,13 +131,6 @@ export interface WorkflowTemplate {
   /** Display formatting preferences */
   formatting?: FormattingOptions;
 }
-
-/**
- * Workflow rendering mode
- */
-export type WorkflowMode =
-  | 'span-tree' // Follow OTEL span hierarchy (uses parent-child relationships)
-  | 'timeline'; // Chronological order (sorts all signals by timestamp)
 
 /**
  * Workflow scenario definition
@@ -197,10 +184,10 @@ export interface ScenarioTemplate {
   /** Closing text */
   summary?: string;
 
-  /** For span-tree mode: span rendering template */
+  /** Span rendering template */
   span?: string;
 
-  /** For span-tree mode: how to recurse into children */
+  /** How to recurse into children */
   children?: 'recurse' | 'ignore';
 }
 
@@ -268,7 +255,7 @@ export interface WorkflowContext {
   /** All collected events */
   events: OtelEvent[];
 
-  /** Span tree (for span-tree mode) */
+  /** Span tree for hierarchical rendering */
   spanTree?: SpanTreeNode[];
 
   /** Computed aggregate values */

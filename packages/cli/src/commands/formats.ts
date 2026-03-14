@@ -176,7 +176,6 @@ ${chalk.dim('│')}   ${chalk.green('"canvas"')}: "./feature.otel.canvas",  ${ch
 ${chalk.dim('│')}   ${chalk.green('"name"')}: "Feature Name",      ${chalk.dim('// NOT "Feature Name Workflows"')} ${chalk.dim('│')}
 ${chalk.dim('│')}   ${chalk.green('"description"')}: "What the feature does",                        ${chalk.dim('│')}
 ${chalk.dim('│')}   ${chalk.green('"spanPattern"')}: "feature.operation",  ${chalk.dim('// Exact span name')}     ${chalk.dim('│')}
-${chalk.dim('│')}   ${chalk.green('"mode"')}: "span-tree",         ${chalk.dim('// "span-tree" or "timeline"')}   ${chalk.dim('│')}
 ${chalk.dim('│')}   ${chalk.green('"scenarioSelection"')}: "first-match",  ${chalk.dim('// Optional')}            ${chalk.dim('│')}
 ${chalk.dim('│')}   ${chalk.green('"scenarios"')}: [                                                 ${chalk.dim('│')}
 ${chalk.dim('│')}     {                                                              ${chalk.dim('│')}
@@ -202,7 +201,6 @@ ${chalk.bold('Required Fields:')}
   ${chalk.cyan('name')}               Human-readable name (NOT "...Workflows")
   ${chalk.cyan('description')}        Feature purpose (NOT "Workflows for...")
   ${chalk.cyan('spanPattern')}        Exact span name to match
-  ${chalk.cyan('mode')}               "span-tree" (hierarchy) or "timeline" (chronological)
   ${chalk.cyan('scenarios')}          Array of scenario definitions
 
 ${chalk.bold('Optional Fields:')}
@@ -706,7 +704,6 @@ ${chalk.dim('the workflow templates use those same event names.')}
   "name": "Data Validator",
   "description": "Validates data records against defined schemas",
   "spanPattern": "validation.process",
-  "mode": "span-tree",
   "scenarioSelection": "first-match",
   "scenarios": [
     {

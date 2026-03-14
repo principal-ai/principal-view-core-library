@@ -11,7 +11,6 @@ export type {
   WorkflowTemplate,
   WorkflowScenario,
   ScenarioOutcomeType,
-  WorkflowMode,
   ScenarioTemplate,
   LogTemplates,
   FormattingOptions,

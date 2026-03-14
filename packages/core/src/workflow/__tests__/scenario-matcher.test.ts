@@ -53,7 +53,6 @@ describe('selectScenario', () => {
     canvas: 'test.otel.canvas',
     name: 'Test Template',
     description: 'Test template for scenario selection',
-    mode: 'span-tree',
     scenarioSelection: 'first-match',
     scenarios: [
       {
