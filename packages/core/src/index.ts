@@ -363,6 +363,8 @@ export { LibraryDiscovery } from './discovery/LibraryDiscovery';
 export type {
   DiscoveredLibrary,
   LibraryDiscoveryResult,
+  LibraryValidationError,
+  LibraryValidationErrorType,
 } from './discovery/LibraryDiscovery';
 
 // Export storyboard context types and builder (browser-safe)

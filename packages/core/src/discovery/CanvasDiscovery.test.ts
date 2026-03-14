@@ -21,7 +21,7 @@ describe('CanvasDiscovery', () => {
 
       expect(result.canvases).toHaveLength(2);
       expect(result.canvases[0]).toMatchObject({
-        id: 'api-flow',
+        id: 'api-flow.otel', // non-regular types get suffix to prevent ID collisions
         name: 'Api Flow',
         basename: 'api-flow',
         type: 'otel',
@@ -59,7 +59,7 @@ describe('CanvasDiscovery', () => {
 
       expect(result.canvases).toHaveLength(2);
       expect(result.canvases.map(c => c.id)).toEqual([
-        'api/request-flow',
+        'api/request-flow.otel', // non-regular types get suffix
         'core/auth-flow',
       ]);
       expect(result.canvases[0].packageName).toBe('api');
@@ -99,7 +99,8 @@ describe('CanvasDiscovery', () => {
 
       expect(result.canvases[0].basename).toBe('test');
       expect(result.canvases[0].type).toBe('otel');
-      expect(result.canvases[0].id).toBe('test');
+      // ID includes type suffix to prevent collisions with regular canvas of same name
+      expect(result.canvases[0].id).toBe('test.otel');
     });
 
     test('parses canvas content when fileReader and includeContent provided', async () => {
@@ -145,7 +146,7 @@ describe('CanvasDiscovery', () => {
 
       expect(result.canvases).toHaveLength(2);
       expect(result.canvases[0]).toMatchObject({
-        id: 'checkout-flow',
+        id: 'checkout-flow.otel', // non-regular types get suffix
         name: 'Checkout Flow',
         basename: 'checkout-flow',
         type: 'otel',
@@ -182,7 +183,7 @@ describe('CanvasDiscovery', () => {
 
       expect(result.canvases).toHaveLength(2);
       expect(result.canvases[0]).toMatchObject({
-        id: 'api/request-flow',
+        id: 'api/request-flow.otel', // non-regular types get suffix
         name: 'Request Flow',
         basename: 'request-flow',
         type: 'otel',

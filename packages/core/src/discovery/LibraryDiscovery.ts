@@ -46,6 +46,23 @@ export interface DiscoveredLibrary {
 }
 
 /**
+ * Types of validation errors
+ */
+export type LibraryValidationErrorType =
+  | 'parse-error'
+  | 'validation-error'
+  | 'scopes-canvas-required';
+
+/**
+ * Library validation error with type information
+ */
+export interface LibraryValidationError {
+  path: string;
+  error: string;
+  type?: LibraryValidationErrorType;
+}
+
+/**
  * Result of library discovery
  */
 export interface LibraryDiscoveryResult {
@@ -64,7 +81,7 @@ export interface LibraryDiscoveryResult {
   scopeToServiceMap: Map<string, string>;
 
   /** Errors encountered during discovery */
-  errors: Array<{ path: string; error: string }>;
+  errors: LibraryValidationError[];
 }
 
 /**
@@ -97,16 +114,18 @@ export class LibraryDiscovery {
    * @param fileTree - FileTree from repository-abstraction
    * @param options - Discovery options
    * @param options.fileReader - Optional function to read file contents (for package.json parsing)
+   * @param options.requireScopesCanvas - If true, validates that .scopes.canvas exists when owned-scopes is defined (default: true)
    * @returns Discovery result with libraries, service names, and errors
    */
   async discover(
     fileTree: FileTree,
     options?: {
       fileReader?: (path: string) => Promise<string>;
+      requireScopesCanvas?: boolean;
     }
   ): Promise<LibraryDiscoveryResult> {
-    const { fileReader } = options || {};
-    const errors: Array<{ path: string; error: string }> = [];
+    const { fileReader, requireScopesCanvas = true } = options || {};
+    const errors: LibraryValidationError[] = [];
     const libraries: DiscoveredLibrary[] = [];
 
     // 1. Discover packages (with caching by fileTree.sha)
@@ -147,11 +166,22 @@ export class LibraryDiscovery {
             serviceNames,
             servicesWithScopes,
           });
+
+          // Validate scopes canvas requirement
+          if (requireScopesCanvas) {
+            await this.validateScopesCanvasRequirement(
+              absolutePackagePath,
+              servicesWithScopes,
+              loadResult.path,
+              errors
+            );
+          }
         } else if (loadResult.error && !loadResult.error.includes('No library file found')) {
           // Only report errors that aren't "file not found" (which is normal)
           errors.push({
             path: loadResult.path,
             error: loadResult.error,
+            type: 'parse-error',
           });
         }
       } catch (error) {
@@ -185,11 +215,22 @@ export class LibraryDiscovery {
               serviceNames,
               servicesWithScopes,
             });
+
+            // Validate scopes canvas requirement for root library
+            if (requireScopesCanvas) {
+              await this.validateScopesCanvasRequirement(
+                rootPath,
+                servicesWithScopes,
+                loadResult.path,
+                errors
+              );
+            }
           }
         } else if (loadResult.error) {
           errors.push({
             path: loadResult.path,
             error: loadResult.error,
+            type: 'parse-error',
           });
         }
       }
@@ -263,6 +304,78 @@ export class LibraryDiscovery {
     }
 
     return { serviceNames, servicesWithScopes };
+  }
+
+  /**
+   * Validate that a .scopes.canvas file exists when owned-scopes is defined
+   */
+  private async validateScopesCanvasRequirement(
+    packagePath: string,
+    servicesWithScopes: ServiceWithScopes[],
+    libraryPath: string,
+    errors: LibraryValidationError[]
+  ): Promise<void> {
+    // Check if any service has owned-scopes
+    const hasOwnedScopes = servicesWithScopes.some(s => s.ownedScopes.length > 0);
+    if (!hasOwnedScopes) {
+      return; // No owned-scopes defined, no canvas required
+    }
+
+    // Collect all owned scopes
+    const allOwnedScopes = servicesWithScopes.flatMap(s => s.ownedScopes);
+
+    // Check if a .scopes.canvas file exists
+    // Look for any file matching *.scopes.canvas in .principal-views/
+    const pvDir = this.fsAdapter.join(packagePath, LibraryDiscovery.CANVAS_DIR);
+    const pvDirExists = await this.fsAdapter.exists(pvDir);
+
+    if (!pvDirExists) {
+      errors.push({
+        path: libraryPath,
+        error: `Scopes canvas required: library.yaml defines owned-scopes [${allOwnedScopes.join(', ')}] but no .principal-views/ directory exists. Create a .scopes.canvas file (e.g., architecture.scopes.canvas) documenting scope boundaries.`,
+        type: 'scopes-canvas-required',
+      });
+      return;
+    }
+
+    // Check for any .scopes.canvas file in the directory
+    const scopesCanvasExists = await this.checkScopesCanvasExists(pvDir);
+
+    if (!scopesCanvasExists) {
+      errors.push({
+        path: libraryPath,
+        error: `Scopes canvas required: library.yaml defines owned-scopes [${allOwnedScopes.join(', ')}] but no .scopes.canvas file found. Create a .scopes.canvas file (e.g., .principal-views/architecture.scopes.canvas) with nodes for each scope (set pv.otel.scope to the scope name).`,
+        type: 'scopes-canvas-required',
+      });
+    }
+  }
+
+  /**
+   * Check if any .scopes.canvas file exists in a directory
+   */
+  private async checkScopesCanvasExists(dirPath: string): Promise<boolean> {
+    try {
+      const entries = await this.fsAdapter.readDir(dirPath);
+      for (const entry of entries) {
+        if (entry.endsWith('.scopes.canvas')) {
+          return true;
+        }
+        // Also check subdirectories (for hierarchical structure)
+        const fullPath = this.fsAdapter.join(dirPath, entry);
+        const isDir = await this.fsAdapter.isDirectory(fullPath);
+        if (isDir) {
+          const subEntries = await this.fsAdapter.readDir(fullPath);
+          for (const subEntry of subEntries) {
+            if (subEntry.endsWith('.scopes.canvas')) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    } catch {
+      return false;
+    }
   }
 
   /**
