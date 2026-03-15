@@ -1,16 +1,26 @@
-# Visual Validation CLI
+# Principal View CLI
 
-A command-line tool for validating and managing `.canvas` configuration files for the Visual Validation Framework.
+A command-line tool for validating and managing `.canvas` configuration files for the Principal View Framework.
 
 ## Installation
 
 ```bash
-npm install -g @principal-ai/visual-validation-cli
+npm install -g @principal-ai/principal-view-cli
 ```
 
 ## Usage
 
-The CLI provides two command aliases: `vv` (primary) and `visual-validation`.
+After installation, use the `principal-ai` command:
+
+```bash
+principal-ai --help
+```
+
+Or run without installing via npx:
+
+```bash
+npx @principal-ai/principal-view-cli --help
+```
 
 ### Commands
 
@@ -19,9 +29,9 @@ The CLI provides two command aliases: `vv` (primary) and `visual-validation`.
 Set up a new `.principal-views` folder with template files:
 
 ```bash
-vv init
-vv init --name my-architecture
-vv init --force  # Overwrite existing files
+principal-ai init
+principal-ai init --name my-architecture
+principal-ai init --force  # Overwrite existing files
 ```
 
 #### `validate` - Validate Canvas Files
@@ -29,18 +39,18 @@ vv init --force  # Overwrite existing files
 Strict validation of `.canvas` configuration files:
 
 ```bash
-vv validate                    # Validates all .principal-views/*.canvas files
-vv validate path/to/file.canvas
-vv validate "**/*.canvas"      # Glob pattern
-vv validate --quiet            # Only output errors
-vv validate --json             # Output as JSON
+principal-ai validate                    # Validates all .principal-views/*.canvas files
+principal-ai validate path/to/file.canvas
+principal-ai validate "**/*.canvas"      # Glob pattern
+principal-ai validate --quiet            # Only output errors
+principal-ai validate --json             # Output as JSON
 ```
 
 **Validation checks:**
 
-- Required `vv` extension with name and version
+- Required `pv` extension with name and version
 - All nodes have required fields (id, type, x, y, width, height)
-- Custom node types must have `vv.nodeType` and valid `vv.shape`
+- Custom node types must have `pv.nodeType` and valid `pv.shape`
 - Edge references point to existing nodes
 - Edge types reference defined edge type definitions
 
@@ -49,9 +59,9 @@ vv validate --json             # Output as JSON
 Display all canvas files in the project with metadata:
 
 ```bash
-vv list
-vv ls --all     # Search all directories
-vv ls --json    # Output as JSON
+principal-ai list
+principal-ai ls --all     # Search all directories
+principal-ai ls --json    # Output as JSON
 ```
 
 #### `schema` - Display Format Documentation
@@ -59,11 +69,11 @@ vv ls --json    # Output as JSON
 Show detailed documentation about the canvas format:
 
 ```bash
-vv schema              # Overview
-vv schema nodes        # Node types, shapes, colors
-vv schema edges        # Edge properties and styles
-vv schema vv           # Visual Validation extension fields
-vv schema examples     # Complete examples
+principal-ai schema              # Overview
+principal-ai schema nodes        # Node types, shapes, colors
+principal-ai schema edges        # Edge properties and styles
+principal-ai schema pv           # Principal View extension fields
+principal-ai schema examples     # Complete examples
 ```
 
 #### `doctor` - Configuration Health Check
@@ -71,15 +81,15 @@ vv schema examples     # Complete examples
 Check configuration staleness and validate source patterns:
 
 ```bash
-vv doctor
-vv doctor --quiet        # Only show errors and warnings
-vv doctor --errors-only  # For pre-commit hooks
-vv doctor --json         # Output as JSON
+principal-ai doctor
+principal-ai doctor --quiet        # Only show errors and warnings
+principal-ai doctor --errors-only  # For pre-commit hooks
+principal-ai doctor --json         # Output as JSON
 ```
 
 ## Canvas Format
 
-Canvas files follow the [JSON Canvas](https://jsoncanvas.org/) specification with Visual Validation extensions that maintain compatibility with standard tools like Obsidian.
+Canvas files follow the [JSON Canvas](https://jsoncanvas.org/) specification with Principal View extensions that maintain compatibility with standard tools like Obsidian.
 
 ### Required Structure
 
@@ -87,7 +97,7 @@ Canvas files follow the [JSON Canvas](https://jsoncanvas.org/) specification wit
 {
   "nodes": [...],
   "edges": [...],
-  "vv": {
+  "pv": {
     "name": "my-architecture",
     "version": "1.0.0"
   }
@@ -103,7 +113,7 @@ Canvas files follow the [JSON Canvas](https://jsoncanvas.org/) specification wit
 - `file` - File reference
 - `link` - URL link
 
-**Custom types** require `vv` extension:
+**Custom types** require `pv` extension:
 
 ```json
 {
@@ -113,7 +123,7 @@ Canvas files follow the [JSON Canvas](https://jsoncanvas.org/) specification wit
   "y": 0,
   "width": 200,
   "height": 100,
-  "vv": {
+  "pv": {
     "nodeType": "service",
     "shape": "rectangle"
   }
@@ -128,7 +138,7 @@ Define reusable edge styles at the canvas level:
 
 ```json
 {
-  "vv": {
+  "pv": {
     "edgeTypes": {
       "data-flow": {
         "style": "dashed",
@@ -147,7 +157,7 @@ Use in edges:
   "id": "edge-1",
   "fromNode": "node-1",
   "toNode": "node-2",
-  "vv": {
+  "pv": {
     "edgeType": "data-flow"
   }
 }
@@ -159,4 +169,4 @@ Use in edges:
 
 ## License
 
-MIT
+Apache-2.0

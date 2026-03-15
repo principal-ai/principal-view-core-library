@@ -341,7 +341,7 @@ Available sides: `top`, `right`, `bottom`, `left`
       "height": 120,
       "text": "# Client",
       "color": 5,
-      "vv": {
+      "pv": {
         "nodeType": "client",
         "shape": "circle",
         "icon": "user",
@@ -357,7 +357,7 @@ Available sides: `top`, `right`, `bottom`, `left`
       "height": 100,
       "text": "# Transport",
       "color": 5,
-      "vv": {
+      "pv": {
         "nodeType": "transport",
         "shape": "diamond",
         "icon": "radio"
@@ -372,7 +372,7 @@ Available sides: `top`, `right`, `bottom`, `left`
       "height": 140,
       "text": "# Server",
       "color": 6,
-      "vv": {
+      "pv": {
         "nodeType": "server",
         "shape": "rectangle",
         "icon": "server",
@@ -388,7 +388,7 @@ Available sides: `top`, `right`, `bottom`, `left`
       "height": 80,
       "text": "# Room Manager",
       "color": 4,
-      "vv": {
+      "pv": {
         "nodeType": "room-manager",
         "shape": "hexagon",
         "icon": "users"
@@ -403,7 +403,7 @@ Available sides: `top`, `right`, `bottom`, `left`
       "height": 80,
       "text": "# Lock Manager",
       "color": 2,
-      "vv": {
+      "pv": {
         "nodeType": "lock-manager",
         "shape": "hexagon",
         "icon": "lock"
@@ -418,7 +418,7 @@ Available sides: `top`, `right`, `bottom`, `left`
       "height": 80,
       "text": "# Presence",
       "color": 6,
-      "vv": {
+      "pv": {
         "nodeType": "presence",
         "shape": "hexagon",
         "icon": "activity"
@@ -462,7 +462,7 @@ Available sides: `top`, `right`, `bottom`, `left`
       "toSide": "left"
     }
   ],
-  "vv": {
+  "pv": {
     "version": "1.0.0",
     "name": "Control Tower Core",
     "description": "Client-server messaging architecture",
@@ -523,5 +523,5 @@ console.log(nodes[0].position); // { x: 100, y: 100 }
 
 **Layout looks different in React Flow:**
 
-- Ensure `vv.display.layout` is set to `"manual"`
+- Ensure `pv.display.layout` is set to `"manual"`
 - Verify coordinates are positive numbers

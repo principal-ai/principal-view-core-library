@@ -39,7 +39,7 @@ ${chalk.dim('└─────────────────────�
 Run ${chalk.cyan('npx @principal-ai/principal-view-cli schema <section>')} for details on:
   ${chalk.yellow('nodes')}      Node types and properties
   ${chalk.yellow('edges')}      Edge properties and types
-  ${chalk.yellow('vv')}         Principal View extension fields
+  ${chalk.yellow('pv')}         Principal View extension fields
   ${chalk.yellow('examples')}   Complete example configurations
 `,
 
@@ -152,7 +152,7 @@ ${chalk.bold('PV Edge Extension:')}
     ${chalk.green('"fromNode"')}: "api", ${chalk.green('"toNode"')}: "db",
     ${chalk.green('"fromSide"')}: "right", ${chalk.green('"toSide"')}: "left",
     ${chalk.green('"pv"')}: {
-      ${chalk.yellow('"edgeType"')}: "query"  ${chalk.dim('// Must be defined in vv.edgeTypes')}
+      ${chalk.yellow('"edgeType"')}: "query"  ${chalk.dim('// Must be defined in pv.edgeTypes')}
     }
   ${chalk.dim('}')}
 
@@ -201,11 +201,11 @@ ${chalk.bold('Animation Types:')}
   ${chalk.cyan('glow')}        Static glow effect
 `,
 
-  vv: `
+  pv: `
 ${chalk.bold.cyan('Principal View Extension')}
 ${chalk.dim('═'.repeat(50))}
 
-The ${chalk.yellow('vv')} extension adds rich visualization capabilities while
+The ${chalk.yellow('pv')} extension adds rich visualization capabilities while
 maintaining compatibility with standard JSON Canvas tools.
 
 ${chalk.bold('Canvas-Level pv (Required):')}
@@ -243,17 +243,17 @@ ${chalk.bold('Node-Level pv (for custom types):')}
     }
   ${chalk.dim('}')}
 
-${chalk.bold('Edge-Level vv:')}
+${chalk.bold('Edge-Level pv:')}
   ${chalk.dim('{')}
     ${chalk.green('"pv"')}: {
-      ${chalk.yellow('"edgeType"')}: "query",          ${chalk.dim('// References vv.edgeTypes')}
+      ${chalk.yellow('"edgeType"')}: "query",          ${chalk.dim('// References pv.edgeTypes')}
       ${chalk.cyan('"style"')}: "solid",              ${chalk.dim('// Override: line style')}
       ${chalk.cyan('"width"')}: 2,                    ${chalk.dim('// Override: line width')}
       ${chalk.cyan('"animation"')}: {...}             ${chalk.dim('// Override: animation')}
     }
   ${chalk.dim('}')}
 
-${chalk.bold('Path Configuration (vv.pathConfig):')}
+${chalk.bold('Path Configuration (pv.pathConfig):')}
   ${chalk.cyan('"pathConfig"')}: {
     "projectRoot": "./",          ${chalk.dim('// Project root path')}
     "captureSource": true,        ${chalk.dim('// Capture source locations')}
@@ -262,7 +262,7 @@ ${chalk.bold('Path Configuration (vv.pathConfig):')}
     "ignoreUnsourced": false      ${chalk.dim('// Ignore logs without source')}
   }
 
-${chalk.bold('Display Configuration (vv.display):')}
+${chalk.bold('Display Configuration (pv.display):')}
   ${chalk.cyan('"display"')}: {
     "layout": "manual",           ${chalk.dim('// manual, hierarchical, force-directed')}
     "theme": {
@@ -372,7 +372,7 @@ export function createSchemaCommand(): Command {
 
   command
     .description('Display documentation about the canvas schema')
-    .argument('[section]', 'Section to display: overview, nodes, edges, vv, examples')
+    .argument('[section]', 'Section to display: overview, nodes, edges, pv, examples')
     .action((section?: string) => {
       const validSections = Object.keys(SCHEMA_SECTIONS);
 

@@ -395,7 +395,7 @@ Suggestion: Conditional format: {{#if condition}}true{{else}}false{{/if}}
 
 **Documentation claims:**
 ```typescript
-// From schema vv output
+// From schema pv output
 Node-Level pv (for custom types):
   {
     "pv": {

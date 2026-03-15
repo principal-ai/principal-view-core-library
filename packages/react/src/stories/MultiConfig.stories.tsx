@@ -404,7 +404,7 @@ function MultiConfigDemo() {
             ))}
           </select>
           <span style={{ color: '#666', fontSize: '12px' }}>
-            v{selectedConfig.canvas.vv?.version} - {selectedConfig.canvas.vv?.description}
+            v{selectedConfig.canvas.pv?.version} - {selectedConfig.canvas.pv?.description}
           </span>
         </div>
       </div>

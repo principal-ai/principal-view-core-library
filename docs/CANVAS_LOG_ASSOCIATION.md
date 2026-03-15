@@ -128,8 +128,8 @@ Applications can include custom attributes that directly reference canvas elemen
 ```yaml
 # In the log/span attributes
 attributes:
-  vv.canvas.id: 'checkout-flow' # Which canvas
-  vv.node.id: 'api-gateway' # Which node
+  pv.canvas.id: 'checkout-flow' # Which canvas
+  pv.node.id: 'api-gateway' # Which node
 ```
 
 **Advantages:**

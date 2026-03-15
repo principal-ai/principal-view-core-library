@@ -639,7 +639,7 @@ Resources:
 - **CLI schema command**: `npx @principal-ai/principal-view-cli schema` - Canvas format documentation
   - `schema nodes` - Node types and properties
   - `schema edges` - Edge properties
-  - `schema vv` - Principal View extension fields (the `pv` field in canvas files)
+  - `schema pv` - Principal View extension fields (the `pv` field in canvas files)
   - `schema examples` - Complete example canvas files
 - **CLI workflow commands**: `npx @principal-ai/principal-view-cli workflow` - Workflow tools
   - `workflow validate <file>` - Validate workflow template syntax and schema

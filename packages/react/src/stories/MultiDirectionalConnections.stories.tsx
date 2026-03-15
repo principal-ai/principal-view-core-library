@@ -252,7 +252,7 @@ const multiDirectionalCanvas: ExtendedCanvas = {
 const canvasWithViolations: ExtendedCanvas = {
   ...multiDirectionalCanvas,
   pv: {
-    ...multiDirectionalCanvas.vv!,
+    ...multiDirectionalCanvas.pv!,
     name: 'Connection Demo with Violations',
   },
 };
@@ -262,7 +262,7 @@ const minimalCanvas: ExtendedCanvas = {
   nodes: multiDirectionalCanvas.nodes!.slice(0, 4),
   edges: multiDirectionalCanvas.edges!.slice(0, 4),
   pv: {
-    ...multiDirectionalCanvas.vv!,
+    ...multiDirectionalCanvas.pv!,
     name: 'Minimal View',
   },
 };
@@ -300,7 +300,7 @@ const complexMeshCanvas: ExtendedCanvas = {
     },
   ],
   pv: {
-    ...multiDirectionalCanvas.vv!,
+    ...multiDirectionalCanvas.pv!,
     name: 'Complex Mesh',
   },
 };

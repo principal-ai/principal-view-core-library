@@ -23,13 +23,11 @@ Use `npx` to run commands without installing:
 npx @principal-ai/principal-view-cli --help
 ```
 
-The CLI is available via the `privu` or `principal-view` commands.
-
 **Optional**: Install globally for shorter commands:
 
 ```bash
 npm install -g @principal-ai/principal-view-cli
-# Then use: privu --help
+# Then use: principal-ai --help
 ```
 
 ### Initialize Your Project
@@ -58,14 +56,14 @@ Edit your `.canvas` file in any JSON Canvas compatible editor (like Obsidian) or
       "y": 0,
       "width": 200,
       "height": 100,
-      "vv": {
+      "pv": {
         "nodeType": "service",
         "shape": "hexagon"
       }
     }
   ],
   "edges": [],
-  "vv": {
+  "pv": {
     "name": "my-architecture",
     "version": "1.0.0"
   }
@@ -87,7 +85,7 @@ npx @principal-ai/principal-view-cli list
 
 ## CLI Commands
 
-All commands can be run with `npx @principal-ai/principal-view-cli` (or `privu` if installed globally).
+All commands can be run with `npx @principal-ai/principal-view-cli` (or `principal-ai` if installed globally).
 
 ### `init`
 
@@ -123,9 +121,9 @@ npx @principal-ai/principal-view-cli validate --json               # JSON output
 ```
 
 **Validation checks:**
-- Required `vv` extension with name and version
+- Required `pv` extension with name and version
 - All nodes have required fields (id, type, x, y, width, height)
-- Custom node types have valid `vv.nodeType` and `vv.shape`
+- Custom node types have valid `pv.nodeType` and `pv.shape`
 - Edge references point to existing nodes
 - Edge types reference defined edge type definitions
 
@@ -172,7 +170,7 @@ Display canvas format documentation:
 npx @principal-ai/principal-view-cli schema                  # Overview
 npx @principal-ai/principal-view-cli schema nodes            # Node types and shapes
 npx @principal-ai/principal-view-cli schema edges            # Edge properties
-npx @principal-ai/principal-view-cli schema vv               # Visual Validation extensions
+npx @principal-ai/principal-view-cli schema pv               # Principal View extensions
 npx @principal-ai/principal-view-cli schema examples         # Complete examples
 ```
 
@@ -187,7 +185,7 @@ npx @principal-ai/principal-view-cli hooks uninstall         # Remove pre-commit
 
 ## Canvas File Format
 
-Principal View uses the [JSON Canvas](https://jsoncanvas.org/) format with Visual Validation extensions. This means your architecture diagrams are compatible with tools like Obsidian while adding validation capabilities.
+Principal View uses the [JSON Canvas](https://jsoncanvas.org/) format with Principal View extensions. This means your architecture diagrams are compatible with tools like Obsidian while adding validation capabilities.
 
 ### Basic Structure
 
@@ -195,7 +193,7 @@ Principal View uses the [JSON Canvas](https://jsoncanvas.org/) format with Visua
 {
   "nodes": [...],
   "edges": [...],
-  "vv": {
+  "pv": {
     "name": "my-architecture",
     "version": "1.0.0"
   }
@@ -210,7 +208,7 @@ Principal View uses the [JSON Canvas](https://jsoncanvas.org/) format with Visua
 - `file` - File reference
 - `link` - URL link
 
-**Custom types** require `vv` extension:
+**Custom types** require `pv` extension:
 
 ```json
 {
@@ -220,7 +218,7 @@ Principal View uses the [JSON Canvas](https://jsoncanvas.org/) format with Visua
   "y": 0,
   "width": 200,
   "height": 100,
-  "vv": {
+  "pv": {
     "nodeType": "microservice",
     "shape": "hexagon",
     "color": "#3498db"
@@ -236,7 +234,7 @@ Define reusable edge styles:
 
 ```json
 {
-  "vv": {
+  "pv": {
     "name": "my-architecture",
     "version": "1.0.0",
     "edgeTypes": {
@@ -263,7 +261,7 @@ Use in edges:
   "id": "edge-1",
   "fromNode": "service-1",
   "toNode": "service-2",
-  "vv": {
+  "pv": {
     "edgeType": "api-call"
   }
 }
@@ -290,7 +288,7 @@ edgeComponents:
     animated: false
 ```
 
-Reference components in your canvas files using the `vv.nodeType` or `vv.edgeType` fields.
+Reference components in your canvas files using the `pv.nodeType` or `pv.edgeType` fields.
 
 ## CI/CD Integration
 
@@ -414,7 +412,7 @@ principal-view/
 │   ├── library.yaml           # Optional component library
 │   └── .privurc               # Linting configuration
 ├── packages/
-│   ├── cli/                   # CLI tool (privu)
+│   ├── cli/                   # CLI tool (principal-ai)
 │   ├── core/                  # Core validation engine
 │   ├── react/                 # React visualization components
 │   └── logger/                # Logging utilities

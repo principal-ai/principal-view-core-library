@@ -1,13 +1,13 @@
 # Configuration Reference
 
-The Visual Validation Framework uses **JSON Canvas** (`.canvas`) files as its primary configuration format. This extends the [JSON Canvas spec](https://jsoncanvas.org/spec/1.0/) with visualization extensions.
+The Principal View Framework uses **JSON Canvas** (`.canvas`) files as its primary configuration format. This extends the [JSON Canvas spec](https://jsoncanvas.org/spec/1.0/) with visualization extensions.
 
 ## Table of Contents
 
 - [File Format](#file-format)
 - [Canvas Nodes](#canvas-nodes)
 - [Canvas Edges](#canvas-edges)
-- [Visual Validation Extensions](#visual-validation-extensions)
+- [Principal View Extensions](#principal-view-extensions)
 - [Complete Examples](#complete-examples)
 - [Obsidian Workflow](#obsidian-workflow)
 
@@ -45,7 +45,7 @@ your-project/
     }
   ],
   "edges": [{ "id": "edge-1", "fromNode": "node-1", "toNode": "node-2" }],
-  "vv": {
+  "pv": {
     "version": "1.0.0",
     "name": "My System",
     "edgeTypes": {},
@@ -55,7 +55,7 @@ your-project/
 }
 ```
 
-The `vv` (Visual Validation) field contains all framework-specific extensions. Standard canvas tools like Obsidian ignore this field, allowing seamless visual editing.
+The `pv` (Principal View) field contains all framework-specific extensions. Standard canvas tools like Obsidian ignore this field, allowing seamless visual editing.
 
 ---
 
@@ -187,11 +187,11 @@ Edges connect nodes:
 
 ---
 
-## Visual Validation Extensions
+## Principal View Extensions
 
-### Node Extensions (`vv`)
+### Node Extensions (`pv`)
 
-Add a `vv` object to any node for rich visualization:
+Add a `pv` object to any node for rich visualization:
 
 ```json
 {
@@ -203,7 +203,7 @@ Add a `vv` object to any node for rich visualization:
   "height": 120,
   "text": "# Lock Manager",
   "color": 6,
-  "vv": {
+  "pv": {
     "nodeType": "lock-manager",
     "shape": "hexagon",
     "icon": "lock",
@@ -244,16 +244,16 @@ Add a `vv` object to any node for rich visualization:
 | `dataSchema` | object   | Typed data field definitions                          |
 | `layout`     | object   | Layout hints (`layer`, `cluster`)                     |
 
-### Edge Extensions (`vv`)
+### Edge Extensions (`pv`)
 
-Add a `vv` object to edges for animation and activation:
+Add a `pv` object to edges for animation and activation:
 
 ```json
 {
   "id": "lock-request-edge",
   "fromNode": "api-server",
   "toNode": "lock-manager",
-  "vv": {
+  "pv": {
     "edgeType": "lock-request",
     "style": "dashed",
     "width": 2,
@@ -274,21 +274,21 @@ Add a `vv` object to edges for animation and activation:
 
 | Property      | Type     | Description                                 |
 | ------------- | -------- | ------------------------------------------- |
-| `edgeType`    | string   | Type identifier (references `vv.edgeTypes`) |
+| `edgeType`    | string   | Type identifier (references `pv.edgeTypes`) |
 | `style`       | string   | `solid`, `dashed`, `dotted`, `animated`     |
 | `width`       | number   | Line width in pixels                        |
 | `animation`   | object   | Default animation config                    |
 | `activatedBy` | object[] | Event-triggered animations                  |
 
-### Canvas-Level Extensions (`vv`)
+### Canvas-Level Extensions (`pv`)
 
-The root `vv` object configures the entire canvas:
+The root `pv` object configures the entire canvas:
 
 ```json
 {
   "nodes": [...],
   "edges": [...],
-  "vv": {
+  "pv": {
     "version": "1.0.0",
     "name": "Repository Traffic Controller",
     "description": "GitHub webhook processing with lock management",
@@ -354,7 +354,7 @@ The root `vv` object configures the entire canvas:
       "height": 120,
       "text": "# Client",
       "color": 5,
-      "vv": {
+      "pv": {
         "nodeType": "client",
         "shape": "circle",
         "icon": "user",
@@ -370,7 +370,7 @@ The root `vv` object configures the entire canvas:
       "height": 120,
       "text": "# API Server",
       "color": 6,
-      "vv": {
+      "pv": {
         "nodeType": "api-server",
         "shape": "rectangle",
         "icon": "server",
@@ -391,7 +391,7 @@ The root `vv` object configures the entire canvas:
       "height": 100,
       "text": "# Database",
       "color": 4,
-      "vv": {
+      "pv": {
         "nodeType": "database",
         "shape": "hexagon",
         "icon": "database",
@@ -407,7 +407,7 @@ The root `vv` object configures the entire canvas:
       "fromSide": "right",
       "toSide": "left",
       "label": "HTTP",
-      "vv": { "edgeType": "http-request" }
+      "pv": { "edgeType": "http-request" }
     },
     {
       "id": "api-to-db",
@@ -416,10 +416,10 @@ The root `vv` object configures the entire canvas:
       "fromSide": "right",
       "toSide": "left",
       "label": "SQL",
-      "vv": { "edgeType": "db-query" }
+      "pv": { "edgeType": "db-query" }
     }
   ],
-  "vv": {
+  "pv": {
     "version": "1.0.0",
     "name": "Simple Service",
     "edgeTypes": {
@@ -457,7 +457,7 @@ The root `vv` object configures the entire canvas:
       "height": 100,
       "text": "# Lock Manager",
       "color": 6,
-      "vv": {
+      "pv": {
         "nodeType": "lock-manager",
         "shape": "rectangle",
         "icon": "lock",
@@ -492,7 +492,7 @@ The root `vv` object configures the entire canvas:
     }
   ],
   "edges": [],
-  "vv": {
+  "pv": {
     "version": "1.0.0",
     "name": "Lock Manager Demo",
     "pathConfig": {
@@ -516,9 +516,9 @@ The JSON Canvas format enables a powerful visual editing workflow:
 3. Draw connections between cards
 4. Arrange visually using drag-and-drop
 
-### 2. Add VV Extensions
+### 2. Add PV Extensions
 
-Edit the `.canvas` file in a text editor to add `vv` properties:
+Edit the `.canvas` file in a text editor to add `pv` properties:
 
 ```json
 {
@@ -529,7 +529,7 @@ Edit the `.canvas` file in a text editor to add `vv` properties:
   "width": 150,
   "height": 80,
   "text": "# My Component",
-  "vv": {
+  "pv": {
     "nodeType": "my-component",
     "shape": "rectangle",
     "icon": "server",
