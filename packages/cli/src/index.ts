@@ -12,7 +12,6 @@ import { createListCommand } from './commands/list.js';
 import { createSchemaCommand } from './commands/schema.js';
 import { createFormatsCommand } from './commands/formats.js';
 import { createSetupCommand } from './commands/setup.js';
-import { createDoctorCommand } from './commands/doctor.js';
 import { createHooksCommand } from './commands/hooks.js';
 import { createCreateCommand } from './commands/create.js';
 import { createLintCommand } from './commands/lint.js';
@@ -40,7 +39,6 @@ program.addCommand(createListCommand());
 program.addCommand(createSchemaCommand());
 program.addCommand(createFormatsCommand());
 program.addCommand(createSetupCommand());
-program.addCommand(createDoctorCommand());
 program.addCommand(createMigrationCommand()); // Migration guide
 program.addCommand(createHooksCommand());
 program.addCommand(createCoverageCommand());

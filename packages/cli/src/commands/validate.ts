@@ -18,9 +18,10 @@ import { globby } from 'globby';
 import yaml from 'js-yaml';
 import type { ExtendedCanvas, WorkflowTemplate, ExecutionData } from '@principal-ai/principal-view-core';
 import { createExecutionValidator } from '@principal-ai/principal-view-core';
-import { CanvasDiscovery, createWorkflowValidator, EventRegistry, WorkflowValidator } from '@principal-ai/principal-view-core/node';
+import { CanvasDiscovery, LibraryDiscovery, createWorkflowValidator, EventRegistry, WorkflowValidator } from '@principal-ai/principal-view-core/node';
 import type { ComponentLibrary } from '@principal-ai/principal-view-core';
-import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
+import { FilesystemService, NodeFileSystemAdapter as CompositionFsAdapter } from '@principal-ai/codebase-composition/node';
+import { NodeFileSystemAdapter } from '@principal-ai/repository-abstraction/node';
 
 interface ValidationIssue {
   type: 'error' | 'warning';
@@ -2520,13 +2521,21 @@ export function createValidateCommand(): Command {
         const validateExecutions = !options.canvasOnly && !options.workflowOnly;
 
         // Use CanvasDiscovery to find all canvases (including storyboards)
-        const service = new FilesystemService(new NodeFileSystemAdapter());
+        const compositionFsAdapter = new CompositionFsAdapter();
+        const service = new FilesystemService(compositionFsAdapter);
         const fileTree = await service.buildFileSystemTreeFromPath(repositoryPath);
         const fileReader = async (path: string) => readFile(resolve(repositoryPath, path), 'utf-8');
         const discovery = new CanvasDiscovery();
         const discoveryResult = await discovery.discover(fileTree, {
           fileReader,
           includeContent: true,
+        });
+
+        // Use LibraryDiscovery to validate scopes canvas requirements
+        const repoFsAdapter = new NodeFileSystemAdapter();
+        const libraryDiscovery = new LibraryDiscovery(repoFsAdapter);
+        const libraryDiscoveryResult = await libraryDiscovery.discover(fileTree, {
+          fileReader,
         });
 
         // Workflows and test traces are discovered by CanvasDiscovery
@@ -2570,6 +2579,19 @@ export function createValidateCommand(): Command {
         let libraryResult: ValidationResult | null = null;
         if (library && Object.keys(library.raw).length > 0) {
           const libraryIssues = validateLibrary(library);
+
+          // Add scopes canvas requirement errors from LibraryDiscovery
+          for (const error of libraryDiscoveryResult.errors) {
+            if (error.type === 'scopes-canvas-required') {
+              libraryIssues.push({
+                type: 'error',
+                message: error.error,
+                path: relative(repositoryPath, error.path),
+                suggestion: 'Create a .scopes.canvas file (e.g., architecture.scopes.canvas) with nodes for each scope.',
+              });
+            }
+          }
+
           const libraryHasErrors = libraryIssues.some((i) => i.type === 'error');
           libraryResult = {
             file: relative(repositoryPath, library.path),
