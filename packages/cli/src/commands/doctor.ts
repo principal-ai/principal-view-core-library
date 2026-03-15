@@ -12,8 +12,10 @@ import { resolve, relative } from 'node:path';
 import chalk from 'chalk';
 import { globby } from 'globby';
 import yaml from 'js-yaml';
-import { CanvasDiscovery } from '@principal-ai/principal-view-core/node';
-import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
+import { CanvasDiscovery, LibraryDiscovery } from '@principal-ai/principal-view-core/node';
+import type { LibraryValidationError } from '@principal-ai/principal-view-core/node';
+import { FilesystemService, NodeFileSystemAdapter as CompositionFsAdapter } from '@principal-ai/codebase-composition/node';
+import { NodeFileSystemAdapter } from '@principal-ai/repository-abstraction/node';
 
 interface StalenessIssue {
   type: 'error' | 'warning' | 'info';
@@ -318,12 +320,16 @@ export function createDoctorCommand(): Command {
             }
           }
 
-          // Check for deprecated file structure
+          // Check for deprecated file structure and library validation
           let deprecationWarningCount = 0;
+          let libraryErrors: LibraryValidationError[] = [];
           if (!options.errorsOnly) {
             try {
-              const service = new FilesystemService(new NodeFileSystemAdapter());
+              const compositionFsAdapter = new CompositionFsAdapter();
+              const service = new FilesystemService(compositionFsAdapter);
               const fileTree = await service.buildFileSystemTreeFromPath(projectRoot);
+
+              // Check canvas discovery warnings
               const discovery = new CanvasDiscovery();
               const discoveryResult = await discovery.discover(fileTree);
 
@@ -334,6 +340,35 @@ export function createDoctorCommand(): Command {
                   console.log(chalk.dim(`    ${warning.message}`));
                 }
                 deprecationWarningCount = discoveryResult.warnings.length;
+              }
+
+              // Check library discovery errors (including scopes canvas requirement)
+              const repoFsAdapter = new NodeFileSystemAdapter();
+              const libraryDiscovery = new LibraryDiscovery(repoFsAdapter);
+              const libraryResult = await libraryDiscovery.discover(fileTree, {
+                fileReader: async (path: string) => readFileSync(resolve(projectRoot, path), 'utf-8'),
+              });
+
+              libraryErrors = libraryResult.errors;
+              if (libraryErrors.length > 0) {
+                const scopesErrors = libraryErrors.filter(e => e.type === 'scopes-canvas-required');
+                const otherErrors = libraryErrors.filter(e => e.type !== 'scopes-canvas-required');
+
+                if (scopesErrors.length > 0) {
+                  console.log(chalk.red('\n✗ Scopes Canvas Required:\n'));
+                  for (const error of scopesErrors) {
+                    console.log(chalk.red(`  ✗ ${relative(projectRoot, error.path)}`));
+                    console.log(chalk.dim(`    ${error.error}`));
+                  }
+                }
+
+                if (otherErrors.length > 0) {
+                  console.log(chalk.red('\n✗ Library Errors:\n'));
+                  for (const error of otherErrors) {
+                    console.log(chalk.red(`  ✗ ${relative(projectRoot, error.path)}`));
+                    console.log(chalk.dim(`    ${error.error}`));
+                  }
+                }
               }
             } catch (error) {
               // Silently ignore discovery errors in doctor command
@@ -353,9 +388,10 @@ export function createDoctorCommand(): Command {
           }
 
           const totalWarnings = warningCount + deprecationWarningCount;
+          const totalErrors = errorCount + libraryErrors.length;
 
-          if (errorCount > 0) {
-            console.log(chalk.red(`\n✗ ${errorCount} error(s) found`));
+          if (totalErrors > 0) {
+            console.log(chalk.red(`\n✗ ${totalErrors} error(s) found`));
             process.exit(1);
           } else if (totalWarnings > 0 && options.errorsOnly) {
             // In errors-only mode, don't fail on warnings

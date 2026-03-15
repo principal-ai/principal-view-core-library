@@ -169,6 +169,15 @@ export type {
   CanvasDiscoveryResultWithContent,
 } from './discovery/types';
 
+// Export library discovery
+export { LibraryDiscovery } from './discovery/LibraryDiscovery';
+export type {
+  DiscoveredLibrary,
+  LibraryDiscoveryResult,
+  LibraryValidationError,
+  LibraryValidationErrorType,
+} from './discovery/LibraryDiscovery';
+
 // Export execution validation
 export { ExecutionValidator, createExecutionValidator } from './execution/ExecutionValidator';
 export type {
