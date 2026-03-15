@@ -493,7 +493,7 @@ const ALLOWED_CANVAS_FIELDS = {
     'layout',
     'boundary', // For boundary nodes representing external system interfaces
   ],
-  nodePvOtel: ['kind', 'category', 'files'],
+  nodePvOtel: ['kind', 'category', 'files', 'scope'],
   nodePvBoundary: ['direction', 'node'],
   nodePvState: ['color', 'icon', 'label'],
   nodePvAction: ['pattern', 'event', 'state', 'metadata', 'triggerEdges'],
@@ -986,8 +986,11 @@ function validateCanvas(
     }
   }
 
-  // Combined types from canvas + library
-  const allDefinedNodeTypes = [...new Set([...canvasNodeTypes, ...libraryNodeTypes])];
+  // Built-in node types that are always valid
+  const builtInNodeTypes = ['scope', 'boundary'];
+
+  // Combined types from canvas + library + built-ins
+  const allDefinedNodeTypes = [...new Set([...builtInNodeTypes, ...canvasNodeTypes, ...libraryNodeTypes])];
   const allDefinedEdgeTypes = [...new Set([...canvasEdgeTypes, ...libraryEdgeTypes])];
 
   // Check nodes
@@ -1796,8 +1799,9 @@ The display name will be shown large on the node, and the event name will appear
   // Validate OTEL canvas naming convention
   const hasOtel = hasOtelFeatures(canvas);
   const isOtelCanvas = filePath.endsWith('.otel.canvas');
+  const isScopesCanvas = filePath.endsWith('.scopes.canvas');
 
-  if (hasOtel && !isOtelCanvas) {
+  if (hasOtel && !isOtelCanvas && !isScopesCanvas) {
     issues.push({
       type: 'error',
       message:
