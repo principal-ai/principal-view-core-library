@@ -129,8 +129,10 @@ describe('CanvasDiscovery', () => {
       });
 
       expect(result.canvases).toHaveLength(1);
-      expect(result.errors).toHaveLength(1); // Only parse error (flat .canvas is now supported)
+      // Parse error + required canvas validation error
+      expect(result.errors).toHaveLength(2);
       expect(result.errors.some(e => e.path === '.principal-views/bad.canvas' && e.error.includes('JSON'))).toBe(true);
+      expect(result.errors.some(e => e.error.includes('Missing required resources.canvas'))).toBe(true);
       // Flat .canvas files are now supported, so no deprecation error
       expect(result.storyboards).toHaveLength(1); // Should create a standalone storyboard
       expect(result.storyboards[0].workflows).toHaveLength(0); // No workflows for flat canvas
@@ -503,6 +505,115 @@ describe('CanvasDiscovery', () => {
       expect(filtered!.untrackedFiles).toEqual(['.principal-views/new.canvas']);
       expect(filtered!.stagedFiles).toEqual(['.principal-views/staged.workflow.json']);
       expect(filtered!.deletedFiles).toEqual([]);
+    });
+  });
+
+  describe('validateRequiredCanvases', () => {
+    test('no errors when no canvases exist (no .principal-views)', async () => {
+      const fileTree = createMockFileTree([
+        'src/index.ts',
+      ]);
+
+      const result = await discovery.discover(fileTree);
+
+      // No canvas files means nothing to validate
+      expect(result.errors).toHaveLength(0);
+    });
+
+    test('error when resources.canvas is missing', async () => {
+      const fileTree = createMockFileTree([
+        '.principal-views/docs.canvas',
+      ]);
+
+      const result = await discovery.discover(fileTree);
+
+      const resourcesError = result.errors.find(e => e.error.includes('Missing required resources.canvas'));
+      expect(resourcesError).toBeDefined();
+      expect(resourcesError!.path).toBe('.principal-views');
+    });
+
+    test('no error when resources.canvas exists but spans.canvas is missing', async () => {
+      const fileTree = createMockFileTree([
+        '.principal-views/resources.canvas',
+      ]);
+
+      const result = await discovery.discover(fileTree);
+
+      const resourcesError = result.errors.find(e => e.error.includes('Missing required resources.canvas'));
+      expect(resourcesError).toBeUndefined();
+
+      const spansError = result.errors.find(e => e.error.includes('Missing required spans.canvas'));
+      expect(spansError).toBeDefined();
+    });
+
+    test('no error when resources.canvas and spans.canvas exist but .otel.canvas is missing', async () => {
+      const fileTree = createMockFileTree([
+        '.principal-views/resources.canvas',
+        '.principal-views/architecture.spans.canvas',
+      ]);
+
+      const result = await discovery.discover(fileTree);
+
+      const resourcesError = result.errors.find(e => e.error.includes('Missing required resources.canvas'));
+      expect(resourcesError).toBeUndefined();
+
+      const spansError = result.errors.find(e => e.error.includes('Missing required spans.canvas'));
+      expect(spansError).toBeUndefined();
+
+      const otelError = result.errors.find(e => e.error.includes('Missing required .otel.canvas'));
+      expect(otelError).toBeDefined();
+    });
+
+    test('no errors when all required canvases exist', async () => {
+      const fileTree = createMockFileTree([
+        '.principal-views/resources.canvas',
+        '.principal-views/architecture.spans.canvas',
+        '.principal-views/my-feature/my-feature.otel.canvas',
+      ]);
+
+      const result = await discovery.discover(fileTree);
+
+      const resourcesError = result.errors.find(e => e.error.includes('Missing required resources.canvas'));
+      expect(resourcesError).toBeUndefined();
+
+      const spansError = result.errors.find(e => e.error.includes('Missing required spans.canvas'));
+      expect(spansError).toBeUndefined();
+
+      const otelError = result.errors.find(e => e.error.includes('Missing required .otel.canvas'));
+      expect(otelError).toBeUndefined();
+    });
+
+    test('accepts architecture.resources.canvas naming convention', async () => {
+      const fileTree = createMockFileTree([
+        '.principal-views/architecture.resources.canvas',
+        '.principal-views/architecture.spans.canvas',
+        '.principal-views/feature/feature.otel.canvas',
+      ]);
+
+      const result = await discovery.discover(fileTree);
+
+      const resourcesError = result.errors.find(e => e.error.includes('Missing required resources.canvas'));
+      expect(resourcesError).toBeUndefined();
+    });
+
+    test('only checks dependency chain - stops at first missing level', async () => {
+      // Only resources.canvas is missing - should not report spans or otel errors
+      const fileTree = createMockFileTree([
+        '.principal-views/docs.canvas',
+      ]);
+
+      const result = await discovery.discover(fileTree);
+
+      // Should only have the resources.canvas error
+      const resourcesError = result.errors.find(e => e.error.includes('Missing required resources.canvas'));
+      expect(resourcesError).toBeDefined();
+
+      // Should NOT have spans or otel errors since we stop at first missing level
+      const spansError = result.errors.find(e => e.error.includes('Missing required spans.canvas'));
+      expect(spansError).toBeUndefined();
+
+      const otelError = result.errors.find(e => e.error.includes('Missing required .otel.canvas'));
+      expect(otelError).toBeUndefined();
     });
   });
 });

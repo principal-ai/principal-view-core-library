@@ -89,7 +89,10 @@ export class CanvasDiscovery {
     // 6. Detect legacy flat canvas structures and add deprecation errors
     this.detectLegacyStructures(canvases, storyboards, errors);
 
-    // 7. Sort results
+    // 7. Validate required canvas types
+    this.validateRequiredCanvases(canvases, storyboards, errors);
+
+    // 8. Sort results
     canvases.sort(this.compareByPackageThenName);
     testTraces.sort(this.compareByPackageThenName);
     storyboards.sort(this.compareByPackageThenName);
@@ -641,10 +644,21 @@ export class CanvasDiscovery {
 
     // Check for .canvas (but not .otel.canvas, .scopes.canvas, .resources.canvas, or .spans.canvas)
     if (filename.endsWith('.canvas')) {
-      return {
-        basename: filename.replace(/\.canvas$/, ''),
-        type: 'regular',
-      };
+      const basename = filename.replace(/\.canvas$/, '');
+
+      // Handle special case: files named exactly "resources.canvas" or "spans.canvas"
+      // These are architecture canvases despite using .canvas extension
+      if (basename === 'resources') {
+        return { basename, type: 'resources' };
+      }
+      if (basename === 'spans') {
+        return { basename, type: 'spans' };
+      }
+      if (basename === 'scopes') {
+        return { basename, type: 'scopes' };
+      }
+
+      return { basename, type: 'regular' };
     }
 
     return null;
@@ -702,6 +716,63 @@ export class CanvasDiscovery {
 
     // Within same package/root, sort by name
     return a.name.localeCompare(b.name);
+  }
+
+  /**
+   * Validate required canvas types based on dependency chain:
+   * - resources.canvas is required (foundation)
+   * - spans.canvas is required when resources.canvas exists
+   * - .otel.canvas is required when spans.canvas exists
+   */
+  private validateRequiredCanvases(
+    canvases: DiscoveredCanvas[],
+    storyboards: (DiscoveredStoryboard | DiscoveredStoryboardWithContent)[],
+    errors: Array<{ path: string; error: string }>
+  ): void {
+    // Check canvas types by category
+    const hasResourcesCanvas = canvases.some(c => c.type === 'resources');
+    const hasSpansCanvas = canvases.some(c => c.type === 'spans');
+    // Check for otel canvases specifically (not just any storyboard, since standalone canvases also create storyboards)
+    const hasOtelCanvas = canvases.some(c => c.type === 'otel');
+
+    // If no canvases at all, nothing to validate (no .principal-views directory)
+    if (canvases.length === 0 && storyboards.length === 0) {
+      return;
+    }
+
+    // 1. resources.canvas is required (foundation)
+    if (!hasResourcesCanvas) {
+      errors.push({
+        path: '.principal-views',
+        error:
+          'Missing required resources.canvas: A resources canvas documenting OTEL resources and scopes is required. ' +
+          'Create .principal-views/resources.canvas (or architecture.resources.canvas) with nodes showing service.name and instrumentation scopes.',
+      });
+      // Don't check further dependencies if foundation is missing
+      return;
+    }
+
+    // 2. spans.canvas is required when resources.canvas exists
+    if (!hasSpansCanvas) {
+      errors.push({
+        path: '.principal-views',
+        error:
+          'Missing required spans.canvas: When resources.canvas exists, a spans canvas documenting span conventions is required. ' +
+          'Create .principal-views/architecture.spans.canvas with nodes for each span pattern (e.g., validate.*, http.request) and edges showing valid parent-child relationships.',
+      });
+      // Don't check further dependencies
+      return;
+    }
+
+    // 3. .otel.canvas is required when spans.canvas exists
+    if (!hasOtelCanvas) {
+      errors.push({
+        path: '.principal-views',
+        error:
+          'Missing required .otel.canvas: When spans.canvas exists, at least one feature-level OTEL canvas is required. ' +
+          'Create a storyboard with an .otel.canvas file (e.g., .principal-views/my-feature/my-feature.otel.canvas) documenting events for a specific feature.',
+      });
+    }
   }
 
   /**
