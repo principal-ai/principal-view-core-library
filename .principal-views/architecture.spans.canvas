@@ -1,0 +1,117 @@
+{
+  "pv": {
+    "name": "Principal View CLI Span Conventions",
+    "version": "1.0.0",
+    "markdown": ".principal-views/architecture.spans.md"
+  },
+  "nodes": [
+    {
+      "id": "cli-command",
+      "type": "text",
+      "x": 0,
+      "y": 200,
+      "width": 220,
+      "height": 100,
+      "color": "1",
+      "text": "# cli.command\n\n**Kind:** SERVER\n**Layer:** Entry\n\nCLI invocation entry point"
+    },
+    {
+      "id": "validate",
+      "type": "text",
+      "x": 320,
+      "y": 0,
+      "width": 220,
+      "height": 100,
+      "color": "4",
+      "text": "# validate.*\n\n**Kind:** INTERNAL\n**Layer:** Domain\n\nCanvas, workflow, trace validation"
+    },
+    {
+      "id": "discover",
+      "type": "text",
+      "x": 320,
+      "y": 150,
+      "width": 220,
+      "height": 100,
+      "color": "4",
+      "text": "# discover.*\n\n**Kind:** INTERNAL\n**Layer:** Domain\n\nLibrary, canvas, workflow discovery"
+    },
+    {
+      "id": "parse",
+      "type": "text",
+      "x": 320,
+      "y": 300,
+      "width": 220,
+      "height": 100,
+      "color": "4",
+      "text": "# parse.*\n\n**Kind:** INTERNAL\n**Layer:** Domain\n\nCanvas, YAML, JSON parsing"
+    },
+    {
+      "id": "file",
+      "type": "text",
+      "x": 640,
+      "y": 150,
+      "width": 220,
+      "height": 100,
+      "color": "6",
+      "text": "# file.*\n\n**Kind:** INTERNAL\n**Layer:** Infrastructure\n\nFile system read/write"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "fromNode": "cli-command",
+      "fromSide": "right",
+      "toNode": "validate",
+      "toSide": "left",
+      "pv": { "edgeType": "data-flow" }
+    },
+    {
+      "id": "e2",
+      "fromNode": "cli-command",
+      "fromSide": "right",
+      "toNode": "discover",
+      "toSide": "left",
+      "pv": { "edgeType": "data-flow" }
+    },
+    {
+      "id": "e3",
+      "fromNode": "cli-command",
+      "fromSide": "right",
+      "toNode": "parse",
+      "toSide": "left",
+      "pv": { "edgeType": "data-flow" }
+    },
+    {
+      "id": "e4",
+      "fromNode": "validate",
+      "fromSide": "bottom",
+      "toNode": "discover",
+      "toSide": "top",
+      "pv": { "edgeType": "data-flow" }
+    },
+    {
+      "id": "e5",
+      "fromNode": "validate",
+      "fromSide": "bottom",
+      "toNode": "parse",
+      "toSide": "top",
+      "pv": { "edgeType": "data-flow" }
+    },
+    {
+      "id": "e6",
+      "fromNode": "discover",
+      "fromSide": "right",
+      "toNode": "file",
+      "toSide": "left",
+      "pv": { "edgeType": "data-flow" }
+    },
+    {
+      "id": "e7",
+      "fromNode": "parse",
+      "fromSide": "right",
+      "toNode": "file",
+      "toSide": "left",
+      "pv": { "edgeType": "data-flow" }
+    }
+  ]
+}

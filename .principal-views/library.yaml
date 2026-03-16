@@ -6,6 +6,18 @@ version: "1.0.0"
 name: "Visual Validation Components"
 description: "Standard components for visualizing service architectures"
 
+# ─────────────────────────────────────────────
+# Resources (OTel)
+# Each resource is a separate process that emits telemetry.
+# ─────────────────────────────────────────────
+resources:
+  pv-cli:
+    service.name: "principal-view.cli"
+    service.version: "${VERSION}"
+    owned-scopes:
+      principal-view.cli:
+        description: "CLI tool instrumentation"
+
 nodeComponents:
   # ─────────────────────────────────────────────
   # API Layer

@@ -1,0 +1,39 @@
+{
+  "pv": {
+    "name": "Principal View Resources",
+    "version": "1.0.0",
+    "markdown": ".principal-views/resources.md"
+  },
+  "nodes": [
+    {
+      "id": "pv-cli-resource",
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 300,
+      "height": 100,
+      "color": "5",
+      "text": "# pv-cli\n\n**service.name:** principal-view.cli\n\nCLI validation tool process"
+    },
+    {
+      "id": "pv-cli-scope",
+      "type": "text",
+      "x": 0,
+      "y": 150,
+      "width": 300,
+      "height": 100,
+      "color": "6",
+      "text": "# principal-view.cli\n\n**Scope for:** pv-cli\n\nCLI tool instrumentation"
+    }
+  ],
+  "edges": [
+    {
+      "id": "resource-to-scope",
+      "fromNode": "pv-cli-resource",
+      "fromSide": "bottom",
+      "toNode": "pv-cli-scope",
+      "toSide": "top",
+      "pv": { "edgeType": "data-flow" }
+    }
+  ]
+}
