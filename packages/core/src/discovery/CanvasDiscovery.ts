@@ -615,6 +615,22 @@ export class CanvasDiscovery {
       };
     }
 
+    // Check for .resources.canvas (must come before .canvas check)
+    if (filename.endsWith('.resources.canvas')) {
+      return {
+        basename: filename.replace(/\.resources\.canvas$/, ''),
+        type: 'resources',
+      };
+    }
+
+    // Check for .spans.canvas (must come before .canvas check)
+    if (filename.endsWith('.spans.canvas')) {
+      return {
+        basename: filename.replace(/\.spans\.canvas$/, ''),
+        type: 'spans',
+      };
+    }
+
     // Check for .otel.canvas (must come before .canvas check)
     if (filename.endsWith('.otel.canvas')) {
       return {
@@ -623,7 +639,7 @@ export class CanvasDiscovery {
       };
     }
 
-    // Check for .canvas (but not .otel.canvas or .scopes.canvas)
+    // Check for .canvas (but not .otel.canvas, .scopes.canvas, .resources.canvas, or .spans.canvas)
     if (filename.endsWith('.canvas')) {
       return {
         basename: filename.replace(/\.canvas$/, ''),

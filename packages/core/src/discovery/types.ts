@@ -10,9 +10,11 @@ import type { WorkflowTemplate } from '../workflow/types';
  * Canvas file type discriminator
  * - 'otel': OpenTelemetry canvas (.otel.canvas) for workflow/tracing visualization
  * - 'scopes': Scopes canvas (.scopes.canvas) for documenting instrumentation scopes
+ * - 'resources': Resources canvas (.resources.canvas) for documenting OTel resources
+ * - 'spans': Spans canvas (.spans.canvas) for documenting span conventions
  * - 'regular': Regular canvas (.canvas) for documentation/architecture diagrams
  */
-export type CanvasType = 'otel' | 'scopes' | 'regular';
+export type CanvasType = 'otel' | 'scopes' | 'resources' | 'spans' | 'regular';
 
 /**
  * Test trace file type discriminator based on extension

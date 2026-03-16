@@ -28,11 +28,16 @@ ${chalk.bold('4. Library Files')} ${chalk.yellow('library.yaml')}
    Define service registry and component libraries for the project.
    Documents OTEL resource attributes and service metadata.
 
+${chalk.bold('5. Scopes Canvas')} ${chalk.yellow('.scopes.canvas')}
+   Document instrumentation scope boundaries. Validates that all scopes
+   declared in library.yaml owned-scopes are properly documented.
+
 Run ${chalk.cyan('npx @principal-ai/principal-view-cli formats <section>')} for details on:
   ${chalk.yellow('canvas')}       .otel.canvas format and event schemas
-  ${chalk.yellow('workflow')}    .workflow.json format and scenario structure
+  ${chalk.yellow('workflow')}     .workflow.json format and scenario structure
   ${chalk.yellow('execution')}    .otel.json format for captured spans
   ${chalk.yellow('library')}      library.yaml format and service registry
+  ${chalk.yellow('scopes')}       .scopes.canvas format and scope boundaries
   ${chalk.yellow('examples')}     Complete example files
 `,
 
@@ -540,6 +545,129 @@ ${chalk.bold('More Info:')}
   OpenTelemetry JS: https://github.com/open-telemetry/opentelemetry-js
 `,
 
+  scopes: `
+${chalk.bold.cyan('Scopes Canvas Format (.scopes.canvas)')}
+${chalk.dim('═'.repeat(70))}
+
+Scopes canvas files document instrumentation scope boundaries. They visualize
+which parts of your codebase are instrumented and validate against the
+owned-scopes declared in library.yaml.
+
+${chalk.bold('File Location:')}
+  ${chalk.dim('.principal-views/')}${chalk.yellow('architecture.scopes.canvas')}
+  ${chalk.dim('(or <name>.scopes.canvas)')}
+
+${chalk.bold('Required Structure:')}
+${chalk.dim('┌────────────────────────────────────────────────────────────────────┐')}
+${chalk.dim('│')} {                                                                  ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"nodes"')}: [                                                       ${chalk.dim('│')}
+${chalk.dim('│')}     {                                                              ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.yellow('"id"')}: "scope-node-id",                                        ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.yellow('"type"')}: "text",                                               ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.yellow('"text"')}: "Scope Display Name",                                 ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.yellow('"x"')}: 0, ${chalk.yellow('"y"')}: 0, ${chalk.yellow('"width"')}: 200, ${chalk.yellow('"height"')}: 100,                   ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.yellow('"color"')}: "#4CAF50",                                           ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.green('"pv"')}: {                                                        ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"nodeType"')}: "scope",       ${chalk.dim('// Required: identifies as scope')} ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"description"')}: "What this scope instruments",              ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"otel"')}: {                                                    ${chalk.dim('│')}
+${chalk.dim('│')}           ${chalk.yellow('"scope"')}: "my-scope-name"  ${chalk.dim('// Must match library.yaml')}   ${chalk.dim('│')}
+${chalk.dim('│')}         }                                                          ${chalk.dim('│')}
+${chalk.dim('│')}       }                                                            ${chalk.dim('│')}
+${chalk.dim('│')}     }                                                              ${chalk.dim('│')}
+${chalk.dim('│')}   ],                                                               ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"edges"')}: []                      ${chalk.dim('// Optional: scope relationships')} ${chalk.dim('│')}
+${chalk.dim('│')} }                                                                  ${chalk.dim('│')}
+${chalk.dim('└────────────────────────────────────────────────────────────────────┘')}
+
+${chalk.bold('Node Required Fields:')}
+
+  ${chalk.green('pv.otel.scope')}    ${chalk.dim('string')}   Scope name (must match library.yaml owned-scopes)
+  ${chalk.green('pv.nodeType')}      ${chalk.dim('string')}   Must be "scope"
+  ${chalk.green('pv.description')}   ${chalk.dim('string')}   What this scope instruments
+
+${chalk.bold('Relationship to library.yaml:')}
+
+The scopes canvas validates against the ${chalk.cyan('owned-scopes')} field in library.yaml:
+
+${chalk.dim('┌────────────────────────────────────────────────────────────────────┐')}
+${chalk.dim('│')} ${chalk.yellow('# library.yaml')}                                                     ${chalk.dim('│')}
+${chalk.dim('│')} resources:                                                         ${chalk.dim('│')}
+${chalk.dim('│')}   my-service:                                                      ${chalk.dim('│')}
+${chalk.dim('│')}     service.name: "my-service"                                     ${chalk.dim('│')}
+${chalk.dim('│')}     ${chalk.green('owned-scopes')}:                   ${chalk.dim('// Scopes this service owns')}   ${chalk.dim('│')}
+${chalk.dim('│')}       - validation                   ${chalk.dim('// Simple scope name')}          ${chalk.dim('│')}
+${chalk.dim('│')}       - import-processing            ${chalk.dim('// Another scope')}              ${chalk.dim('│')}
+${chalk.dim('└────────────────────────────────────────────────────────────────────┘')}
+
+${chalk.bold('Validation Rules:')}
+
+${chalk.cyan('1. Scopes canvas required when owned-scopes exist:')}
+   If library.yaml defines owned-scopes, a .scopes.canvas must exist.
+
+${chalk.cyan('2. All owned-scopes must be documented:')}
+   Each scope in owned-scopes must have a corresponding node with
+   pv.otel.scope set to that scope name.
+
+${chalk.cyan('3. Extra scopes trigger warnings:')}
+   Scopes in the canvas but not in owned-scopes are flagged as warnings.
+   Either add them to library.yaml or remove from canvas.
+
+${chalk.cyan('4. Node structure validation:')}
+   - pv.nodeType must be "scope"
+   - pv.description should explain what the scope covers
+
+${chalk.bold('Example Scopes Canvas:')}
+${chalk.dim('─'.repeat(70))}
+${chalk.yellow('.principal-views/architecture.scopes.canvas')}
+
+{
+  "nodes": [
+    {
+      "id": "validation-scope",
+      "type": "text",
+      "text": "Validation",
+      "x": 0, "y": 0, "width": 200, "height": 120,
+      ${chalk.green('"color": "#4CAF50"')},
+      "pv": {
+        ${chalk.green('"nodeType": "scope"')},
+        ${chalk.green('"description"')}: "Validates incoming data against schemas",
+        ${chalk.green('"otel"')}: {
+          ${chalk.green('"scope"')}: "validation"
+        }
+      }
+    },
+    {
+      "id": "import-scope",
+      "type": "text",
+      "text": "Import Processing",
+      "x": 250, "y": 0, "width": 200, "height": 120,
+      "color": "#2196F3",
+      "pv": {
+        "nodeType": "scope",
+        "description": "Handles data import from external sources",
+        "otel": {
+          "scope": "import-processing"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "import-to-validation",
+      "fromNode": "import-scope",
+      "toNode": "validation-scope",
+      "fromSide": "right",
+      "toSide": "left"
+    }
+  ]
+}
+
+${chalk.bold('Validation:')}
+  ${chalk.cyan('npx @principal-ai/principal-view-cli scopes validate')}
+  ${chalk.cyan('npx @principal-ai/principal-view-cli scopes validate --json')}
+`,
+
   examples: `
 ${chalk.bold.cyan('Complete File Examples')}
 ${chalk.dim('═'.repeat(70))}
@@ -811,7 +939,7 @@ export function createFormatsCommand(): Command {
     .description('Display documentation about file formats')
     .argument(
       '[section]',
-      'Section to display: overview, canvas, workflow, execution, examples'
+      'Section to display: overview, canvas, workflow, execution, library, scopes, examples'
     )
     .action((section?: string) => {
       const validSections = Object.keys(FORMAT_SECTIONS);
