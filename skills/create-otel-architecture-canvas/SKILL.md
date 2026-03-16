@@ -28,9 +28,21 @@ Use this skill when the user wants to:
 
 **Prerequisite**: Understanding of basic OTEL concepts (spans, traces, resources).
 
-## Canvas Types
+## Canvas Types & Requirements
 
-### 1. Resources Canvas (`resources.canvas` or `architecture.resources.canvas`)
+| Canvas Type | Required? | Notes |
+|-------------|-----------|-------|
+| `resources.canvas` | **Required** | Foundation - must exist |
+| `spans.canvas` | **Required** | Required when resources.canvas exists |
+| `.otel.canvas` | **Required** | Required when spans.canvas exists |
+| `scopes.canvas` | **Required** | Required when `library.yaml` has owned-scopes |
+| `.canvas` | Optional | General documentation only |
+
+**Dependency chain:** `resources.canvas` → `spans.canvas` → `.otel.canvas`
+
+If you have a resources canvas, you must also define span conventions. If you have span conventions, you must have feature-level OTEL canvases that use them.
+
+### 1. Resources Canvas (`resources.canvas`) - REQUIRED
 
 Documents service resources and their instrumentation scopes.
 
@@ -40,9 +52,9 @@ Documents service resources and their instrumentation scopes.
   └── resources.canvas           # Flat structure (plain canvas)
 ```
 
-**Purpose:** Show the resource → scope relationship for your services.
+**Purpose:** Show the resource → scope relationship for your services. This is the foundation of your telemetry architecture.
 
-### 2. Spans Canvas (`architecture.spans.canvas`)
+### 2. Spans Canvas (`architecture.spans.canvas`) - REQUIRED
 
 Documents span naming conventions and valid parent-child relationships.
 
@@ -52,9 +64,9 @@ Documents span naming conventions and valid parent-child relationships.
   └── architecture.spans.canvas  # Flat structure (plain canvas)
 ```
 
-**Purpose:** Define the vocabulary of operations and which can call which.
+**Purpose:** Define the vocabulary of operations and which can call which. Required when resources.canvas exists.
 
-### 3. Scopes Canvas (`architecture.scopes.canvas`)
+### 3. Scopes Canvas (`architecture.scopes.canvas`) - REQUIRED
 
 Documents instrumentation scope boundaries (validated against `library.yaml`).
 
@@ -64,7 +76,20 @@ Documents instrumentation scope boundaries (validated against `library.yaml`).
   └── architecture.scopes.canvas
 ```
 
-**Purpose:** Enforce that all owned scopes are documented.
+**Purpose:** Enforce that all owned scopes are documented. Required when `library.yaml` defines `owned-scopes`.
+
+### 4. OTEL Canvas (`.otel.canvas`) - REQUIRED
+
+Feature-level telemetry canvases documenting events for specific features.
+
+**Structure:**
+```
+.principal-views/
+  └── <storyboard>/
+      └── <storyboard>.otel.canvas
+```
+
+**Purpose:** Document events for specific features. Required when spans.canvas exists - your span conventions need corresponding feature canvases that use them.
 
 ## OTEL Hierarchy Overview
 
@@ -551,12 +576,21 @@ See these files for working examples:
 ```bash
 # Validate all canvas files
 npx @principal-ai/principal-view-cli validate
-
-# Scopes canvas is validated against library.yaml owned-scopes
-# Missing scopes → error
-# Extra scopes → warning
-# Missing description → warning
 ```
+
+**Validation checks:**
+
+| Canvas | Validation |
+|--------|------------|
+| `resources.canvas` | Required - must exist |
+| `spans.canvas` | Required when resources.canvas exists |
+| `.otel.canvas` | Required when spans.canvas exists |
+| `scopes.canvas` | Required when `library.yaml` has owned-scopes; validates scope coverage |
+
+**Scopes canvas validation:**
+- Missing scopes → error
+- Extra scopes → warning
+- Missing description → warning
 
 ## Integration with Other Skills
 
@@ -564,7 +598,7 @@ npx @principal-ai/principal-view-cli validate
 - None - this is foundational documentation
 
 **Follow-up skills:**
-- `create-otel-canvas` - Create feature-specific canvases that reference these conventions
+- `create-otel-canvas` - Create feature-specific `.otel.canvas` files (required once spans.canvas exists)
 - `setup-otel-testing` - Instrument code following the span conventions defined here
 
 ## References
