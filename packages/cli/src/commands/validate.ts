@@ -1650,6 +1650,28 @@ The display name will be shown large on the node, and the event name will appear
                 suggestion: `spans.canvas nodes must have nodeType: "span-convention". Got: "${nodeTypeValue}"`,
               });
             }
+
+            // Validate that span text doesn't just echo the spanPattern
+            const nodeText = (node as Record<string, unknown>).text as string | undefined;
+            const otelData = nodePv.otel as Record<string, unknown> | undefined;
+            const spanPattern = otelData?.spanPattern as string | undefined;
+
+            if (nodeText && spanPattern) {
+              // Extract the header from markdown text (first line after #)
+              const headerMatch = nodeText.match(/^#\s*(.+?)(?:\n|$)/);
+              if (headerMatch) {
+                const headerText = headerMatch[1].trim();
+                // Check if header matches or contains the spanPattern
+                if (headerText === spanPattern || headerText.toLowerCase() === spanPattern.toLowerCase()) {
+                  issues.push({
+                    type: 'error',
+                    message: `Node "${nodeLabel}" text header echoes the spanPattern "${spanPattern}"`,
+                    path: `${nodePath}.text`,
+                    suggestion: `Use a descriptive name instead. For example, instead of "# ${spanPattern}", use a human-readable title like "# Task Operations" or "# CLI Request Handler". The spanPattern is already stored in pv.otel.spanPattern.`,
+                  });
+                }
+              }
+            }
           } else if (isOtelCanvas) {
             const validOtelTypes = ['event', 'boundary'];
             if (!validOtelTypes.includes(nodeTypeValue)) {

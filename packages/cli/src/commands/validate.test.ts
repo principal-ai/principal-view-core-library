@@ -924,3 +924,41 @@ describe('validate command - spans-workflow cross-validation with wildcards', ()
     expect(issues[1].spanPattern).toBe('search.*');
   });
 });
+
+/**
+ * Helper to check if span text header echoes the spanPattern
+ */
+function spanTextEchoesPattern(text: string, spanPattern: string): boolean {
+  const headerMatch = text.match(/^#\s*(.+?)(?:\n|$)/);
+  if (!headerMatch) return false;
+  const headerText = headerMatch[1].trim();
+  return headerText === spanPattern || headerText.toLowerCase() === spanPattern.toLowerCase();
+}
+
+describe('validate command - span text should not echo spanPattern', () => {
+  test('should detect when header exactly matches spanPattern', () => {
+    expect(spanTextEchoesPattern('# cli.request\n\nDescription', 'cli.request')).toBe(true);
+    expect(spanTextEchoesPattern('# task.*\n\nTask operations', 'task.*')).toBe(true);
+  });
+
+  test('should detect case-insensitive matches', () => {
+    expect(spanTextEchoesPattern('# CLI.Request\n\nDescription', 'cli.request')).toBe(true);
+    expect(spanTextEchoesPattern('# TASK.*\n\nTask operations', 'task.*')).toBe(true);
+  });
+
+  test('should allow descriptive headers that differ from spanPattern', () => {
+    expect(spanTextEchoesPattern('# CLI Request Handler\n\nDescription', 'cli.request')).toBe(false);
+    expect(spanTextEchoesPattern('# Task Operations\n\nTask management', 'task.*')).toBe(false);
+    expect(spanTextEchoesPattern('# Entry Point\n\nMain entry', 'cli.request')).toBe(false);
+  });
+
+  test('should handle headers with extra whitespace', () => {
+    expect(spanTextEchoesPattern('#  cli.request \n\nDescription', 'cli.request')).toBe(true);
+    expect(spanTextEchoesPattern('#   Task Operations  \n\nDescription', 'task.*')).toBe(false);
+  });
+
+  test('should handle text without proper header', () => {
+    expect(spanTextEchoesPattern('No header here', 'cli.request')).toBe(false);
+    expect(spanTextEchoesPattern('cli.request without hash', 'cli.request')).toBe(false);
+  });
+});
