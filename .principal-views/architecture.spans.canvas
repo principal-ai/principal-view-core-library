@@ -2,7 +2,14 @@
   "pv": {
     "name": "Principal View CLI Span Conventions",
     "version": "1.0.0",
-    "markdown": ".principal-views/architecture.spans.md"
+    "markdown": ".principal-views/architecture.spans.md",
+    "nodeTypes": {
+      "span-convention": {
+        "label": "Span Convention",
+        "description": "A span convention defining an operation type",
+        "color": "#3B82F6"
+      }
+    }
   },
   "nodes": [
     {
@@ -12,8 +19,15 @@
       "y": 200,
       "width": 220,
       "height": 100,
-      "color": "1",
-      "text": "# cli.command\n\n**Kind:** SERVER\n**Layer:** Entry\n\nCLI invocation entry point"
+      "text": "# cli.command\n\nCLI invocation entry point",
+      "pv": {
+        "nodeType": "span-convention",
+        "status": "draft",
+        "otel": {
+          "spanPattern": "cli.command",
+          "spanKind": "SERVER"
+        }
+      }
     },
     {
       "id": "validate",
@@ -22,8 +36,15 @@
       "y": 0,
       "width": 220,
       "height": 100,
-      "color": "4",
-      "text": "# validate.*\n\n**Kind:** INTERNAL\n**Layer:** Domain\n\nCanvas, workflow, trace validation"
+      "text": "# validate.*\n\nCanvas, workflow, trace validation",
+      "pv": {
+        "nodeType": "span-convention",
+        "status": "draft",
+        "otel": {
+          "spanPattern": "validate.*",
+          "spanKind": "INTERNAL"
+        }
+      }
     },
     {
       "id": "discover",
@@ -32,8 +53,15 @@
       "y": 150,
       "width": 220,
       "height": 100,
-      "color": "4",
-      "text": "# discover.*\n\n**Kind:** INTERNAL\n**Layer:** Domain\n\nLibrary, canvas, workflow discovery"
+      "text": "# discover.*\n\nLibrary, canvas, workflow discovery",
+      "pv": {
+        "nodeType": "span-convention",
+        "status": "draft",
+        "otel": {
+          "spanPattern": "discover.*",
+          "spanKind": "INTERNAL"
+        }
+      }
     },
     {
       "id": "parse",
@@ -42,8 +70,15 @@
       "y": 300,
       "width": 220,
       "height": 100,
-      "color": "4",
-      "text": "# parse.*\n\n**Kind:** INTERNAL\n**Layer:** Domain\n\nCanvas, YAML, JSON parsing"
+      "text": "# parse.*\n\nCanvas, YAML, JSON parsing",
+      "pv": {
+        "nodeType": "span-convention",
+        "status": "draft",
+        "otel": {
+          "spanPattern": "parse.*",
+          "spanKind": "INTERNAL"
+        }
+      }
     },
     {
       "id": "file",
@@ -52,8 +87,15 @@
       "y": 150,
       "width": 220,
       "height": 100,
-      "color": "6",
-      "text": "# file.*\n\n**Kind:** INTERNAL\n**Layer:** Infrastructure\n\nFile system read/write"
+      "text": "# file.*\n\nFile system read/write",
+      "pv": {
+        "nodeType": "span-convention",
+        "status": "draft",
+        "otel": {
+          "spanPattern": "file.*",
+          "spanKind": "INTERNAL"
+        }
+      }
     }
   ],
   "edges": [

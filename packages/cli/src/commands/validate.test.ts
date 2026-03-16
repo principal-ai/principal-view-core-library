@@ -385,3 +385,542 @@ describe('validate command - otel.canvas library requirement', () => {
     expect(issues).toHaveLength(0);
   });
 });
+
+/**
+ * Test helper to validate deprecation warnings for pv.otel.kind and pv.otel.category
+ */
+function validateDeprecatedOtelFields(
+  nodePv: Record<string, unknown>
+): Array<{ type: 'error' | 'warning'; message: string; suggestion?: string }> {
+  const issues: Array<{ type: 'error' | 'warning'; message: string; suggestion?: string }> = [];
+  const nodeOtel = nodePv.otel as Record<string, unknown> | undefined;
+
+  if (nodeOtel?.kind !== undefined) {
+    issues.push({
+      type: 'warning',
+      message: 'Node uses deprecated "pv.otel.kind" field',
+      suggestion: 'Use "pv.nodeType" instead.',
+    });
+  }
+
+  if (nodeOtel?.category !== undefined) {
+    issues.push({
+      type: 'warning',
+      message: 'Node uses deprecated "pv.otel.category" field',
+      suggestion: 'Use "pv.nodeType" instead.',
+    });
+  }
+
+  return issues;
+}
+
+describe('validate command - deprecation warnings', () => {
+  test('should warn when pv.otel.kind is used', () => {
+    const nodePv = {
+      otel: {
+        kind: 'event',
+      },
+    };
+
+    const issues = validateDeprecatedOtelFields(nodePv);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].type).toBe('warning');
+    expect(issues[0].message).toContain('deprecated "pv.otel.kind"');
+  });
+
+  test('should warn when pv.otel.category is used', () => {
+    const nodePv = {
+      otel: {
+        category: 'discovery',
+      },
+    };
+
+    const issues = validateDeprecatedOtelFields(nodePv);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].type).toBe('warning');
+    expect(issues[0].message).toContain('deprecated "pv.otel.category"');
+  });
+
+  test('should warn for both kind and category when both are used', () => {
+    const nodePv = {
+      otel: {
+        kind: 'event',
+        category: 'discovery',
+      },
+    };
+
+    const issues = validateDeprecatedOtelFields(nodePv);
+    expect(issues).toHaveLength(2);
+    expect(issues[0].message).toContain('pv.otel.kind');
+    expect(issues[1].message).toContain('pv.otel.category');
+  });
+
+  test('should not warn when neither kind nor category is used', () => {
+    const nodePv = {
+      otel: {
+        files: ['src/app.ts'],
+      },
+    };
+
+    const issues = validateDeprecatedOtelFields(nodePv);
+    expect(issues).toHaveLength(0);
+  });
+
+  test('should not warn when pv.otel is not present', () => {
+    const nodePv = {
+      nodeType: 'event',
+    };
+
+    const issues = validateDeprecatedOtelFields(nodePv);
+    expect(issues).toHaveLength(0);
+  });
+});
+
+/**
+ * Test helper to validate nodeType enforcement per canvas type
+ */
+function validateNodeTypeForCanvasType(
+  filePath: string,
+  nodeType: string
+): Array<{ type: 'error' | 'warning'; message: string; suggestion?: string }> {
+  const issues: Array<{ type: 'error' | 'warning'; message: string; suggestion?: string }> = [];
+
+  const isResourcesCanvas = filePath.endsWith('resources.canvas');
+  const isSpansCanvas = filePath.endsWith('.spans.canvas');
+  const isOtelCanvas = filePath.endsWith('.otel.canvas');
+
+  if (isResourcesCanvas) {
+    const validResourceTypes = ['resource', 'scope'];
+    if (!validResourceTypes.includes(nodeType)) {
+      issues.push({
+        type: 'error',
+        message: `Node in resources.canvas has invalid nodeType "${nodeType}"`,
+        suggestion: `resources.canvas nodes must have nodeType: "resource" or "scope"`,
+      });
+    }
+  } else if (isSpansCanvas) {
+    const validSpanTypes = ['span-convention'];
+    if (!validSpanTypes.includes(nodeType)) {
+      issues.push({
+        type: 'error',
+        message: `Node in .spans.canvas has invalid nodeType "${nodeType}"`,
+        suggestion: `spans.canvas nodes must have nodeType: "span-convention"`,
+      });
+    }
+  } else if (isOtelCanvas) {
+    const validOtelTypes = ['event', 'boundary'];
+    if (!validOtelTypes.includes(nodeType)) {
+      issues.push({
+        type: 'error',
+        message: `Node in .otel.canvas has invalid nodeType "${nodeType}"`,
+        suggestion: `otel.canvas nodes must have nodeType: "event" or "boundary"`,
+      });
+    }
+  }
+
+  return issues;
+}
+
+describe('validate command - nodeType enforcement per canvas type', () => {
+  describe('resources.canvas', () => {
+    test('should accept nodeType "resource"', () => {
+      const issues = validateNodeTypeForCanvasType(
+        '.principal-views/resources.canvas',
+        'resource'
+      );
+      expect(issues).toHaveLength(0);
+    });
+
+    test('should accept nodeType "scope"', () => {
+      const issues = validateNodeTypeForCanvasType(
+        '.principal-views/resources.canvas',
+        'scope'
+      );
+      expect(issues).toHaveLength(0);
+    });
+
+    test('should reject nodeType "event"', () => {
+      const issues = validateNodeTypeForCanvasType(
+        '.principal-views/resources.canvas',
+        'event'
+      );
+      expect(issues).toHaveLength(1);
+      expect(issues[0].type).toBe('error');
+      expect(issues[0].message).toContain('invalid nodeType "event"');
+    });
+
+    test('should reject nodeType "span-convention"', () => {
+      const issues = validateNodeTypeForCanvasType(
+        '.principal-views/resources.canvas',
+        'span-convention'
+      );
+      expect(issues).toHaveLength(1);
+      expect(issues[0].type).toBe('error');
+    });
+  });
+
+  describe('.spans.canvas', () => {
+    test('should accept nodeType "span-convention"', () => {
+      const issues = validateNodeTypeForCanvasType(
+        '.principal-views/architecture.spans.canvas',
+        'span-convention'
+      );
+      expect(issues).toHaveLength(0);
+    });
+
+    test('should reject nodeType "event"', () => {
+      const issues = validateNodeTypeForCanvasType(
+        '.principal-views/architecture.spans.canvas',
+        'event'
+      );
+      expect(issues).toHaveLength(1);
+      expect(issues[0].type).toBe('error');
+      expect(issues[0].message).toContain('invalid nodeType "event"');
+    });
+
+    test('should reject nodeType "resource"', () => {
+      const issues = validateNodeTypeForCanvasType(
+        '.principal-views/architecture.spans.canvas',
+        'resource'
+      );
+      expect(issues).toHaveLength(1);
+      expect(issues[0].type).toBe('error');
+    });
+  });
+
+  describe('.otel.canvas', () => {
+    test('should accept nodeType "event"', () => {
+      const issues = validateNodeTypeForCanvasType(
+        '.principal-views/feature/feature.otel.canvas',
+        'event'
+      );
+      expect(issues).toHaveLength(0);
+    });
+
+    test('should accept nodeType "boundary"', () => {
+      const issues = validateNodeTypeForCanvasType(
+        '.principal-views/feature/feature.otel.canvas',
+        'boundary'
+      );
+      expect(issues).toHaveLength(0);
+    });
+
+    test('should reject nodeType "resource"', () => {
+      const issues = validateNodeTypeForCanvasType(
+        '.principal-views/feature/feature.otel.canvas',
+        'resource'
+      );
+      expect(issues).toHaveLength(1);
+      expect(issues[0].type).toBe('error');
+      expect(issues[0].message).toContain('invalid nodeType "resource"');
+    });
+
+    test('should reject nodeType "span-convention"', () => {
+      const issues = validateNodeTypeForCanvasType(
+        '.principal-views/feature/feature.otel.canvas',
+        'span-convention'
+      );
+      expect(issues).toHaveLength(1);
+      expect(issues[0].type).toBe('error');
+    });
+  });
+
+  describe('regular .canvas files', () => {
+    test('should accept any nodeType', () => {
+      // Regular .canvas files have no nodeType restrictions
+      const issues = validateNodeTypeForCanvasType(
+        '.principal-views/architecture.canvas',
+        'custom-type'
+      );
+      expect(issues).toHaveLength(0);
+    });
+  });
+});
+
+/**
+ * Test helper to validate spans.canvas ↔ workflow.json cross-validation
+ */
+function validateSpansWorkflowCrossRef(
+  spanConventions: Array<{ spanPattern: string; status: 'draft' | 'implemented' }>,
+  workflowSpanPatterns: string[]
+): Array<{ type: 'error' | 'warning'; message: string; spanPattern: string }> {
+  const issues: Array<{ type: 'error' | 'warning'; message: string; spanPattern: string }> = [];
+
+  const workflowPatternSet = new Set(workflowSpanPatterns);
+
+  for (const span of spanConventions) {
+    const hasWorkflow = workflowPatternSet.has(span.spanPattern);
+
+    if (span.status === 'implemented' && !hasWorkflow) {
+      issues.push({
+        type: 'error',
+        message: `Span convention "${span.spanPattern}" is implemented but has no workflow.json`,
+        spanPattern: span.spanPattern,
+      });
+    } else if (span.status === 'draft' && hasWorkflow) {
+      issues.push({
+        type: 'error',
+        message: `Span convention "${span.spanPattern}" has a workflow.json but is marked as draft`,
+        spanPattern: span.spanPattern,
+      });
+    }
+  }
+
+  return issues;
+}
+
+describe('validate command - spans.canvas ↔ workflow.json cross-validation', () => {
+  test('should pass when draft span conventions have no workflow', () => {
+    const issues = validateSpansWorkflowCrossRef(
+      [
+        { spanPattern: 'cli.command', status: 'draft' },
+        { spanPattern: 'validate.*', status: 'draft' },
+      ],
+      []
+    );
+    expect(issues).toHaveLength(0);
+  });
+
+  test('should pass when implemented span conventions have a workflow', () => {
+    const issues = validateSpansWorkflowCrossRef(
+      [
+        { spanPattern: 'cli.command', status: 'implemented' },
+        { spanPattern: 'validate.*', status: 'implemented' },
+      ],
+      ['cli.command', 'validate.*']
+    );
+    expect(issues).toHaveLength(0);
+  });
+
+  test('should error when implemented span convention has no workflow', () => {
+    const issues = validateSpansWorkflowCrossRef(
+      [
+        { spanPattern: 'cli.command', status: 'implemented' },
+        { spanPattern: 'validate.*', status: 'draft' },
+      ],
+      []
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].type).toBe('error');
+    expect(issues[0].message).toContain('cli.command');
+    expect(issues[0].message).toContain('implemented but has no workflow');
+  });
+
+  test('should error when draft span convention has a workflow', () => {
+    const issues = validateSpansWorkflowCrossRef(
+      [
+        { spanPattern: 'cli.command', status: 'draft' },
+      ],
+      ['cli.command']
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].type).toBe('error');
+    expect(issues[0].message).toContain('cli.command');
+    expect(issues[0].message).toContain('has a workflow.json but is marked as draft');
+  });
+
+  test('should handle mixed scenarios correctly', () => {
+    const issues = validateSpansWorkflowCrossRef(
+      [
+        { spanPattern: 'cli.command', status: 'implemented' },  // has workflow - OK
+        { spanPattern: 'validate.*', status: 'implemented' },   // no workflow - ERROR
+        { spanPattern: 'discover.*', status: 'draft' },         // no workflow - OK
+        { spanPattern: 'parse.*', status: 'draft' },            // has workflow - ERROR
+      ],
+      ['cli.command', 'parse.*']
+    );
+    expect(issues).toHaveLength(2);
+    expect(issues[0].spanPattern).toBe('validate.*');
+    expect(issues[1].spanPattern).toBe('parse.*');
+  });
+});
+
+/**
+ * Test helper to validate that workflows with spanPattern require spans.canvas
+ */
+function validateWorkflowsRequireSpansCanvas(
+  workflowSpanPatterns: string[],
+  hasSpansCanvas: boolean
+): Array<{ type: 'error' | 'warning'; message: string; spanPattern: string }> {
+  const issues: Array<{ type: 'error' | 'warning'; message: string; spanPattern: string }> = [];
+
+  if (workflowSpanPatterns.length > 0 && !hasSpansCanvas) {
+    for (const spanPattern of workflowSpanPatterns) {
+      issues.push({
+        type: 'error',
+        message: `Workflow defines spanPattern "${spanPattern}" but no spans.canvas file exists`,
+        spanPattern,
+      });
+    }
+  }
+
+  return issues;
+}
+
+describe('validate command - workflows require spans.canvas', () => {
+  test('should pass when no workflows have spanPattern', () => {
+    const issues = validateWorkflowsRequireSpansCanvas([], false);
+    expect(issues).toHaveLength(0);
+  });
+
+  test('should pass when workflows have spanPattern and spans.canvas exists', () => {
+    const issues = validateWorkflowsRequireSpansCanvas(
+      ['cli.command', 'validate.*'],
+      true
+    );
+    expect(issues).toHaveLength(0);
+  });
+
+  test('should error when workflow has spanPattern but no spans.canvas', () => {
+    const issues = validateWorkflowsRequireSpansCanvas(
+      ['cli.command'],
+      false
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].type).toBe('error');
+    expect(issues[0].message).toContain('cli.command');
+    expect(issues[0].message).toContain('no spans.canvas file exists');
+  });
+
+  test('should error for each workflow with spanPattern when no spans.canvas', () => {
+    const issues = validateWorkflowsRequireSpansCanvas(
+      ['cli.command', 'validate.*', 'discover.*'],
+      false
+    );
+    expect(issues).toHaveLength(3);
+    expect(issues[0].spanPattern).toBe('cli.command');
+    expect(issues[1].spanPattern).toBe('validate.*');
+    expect(issues[2].spanPattern).toBe('discover.*');
+  });
+});
+
+/**
+ * Test helper for span pattern matching with wildcard support
+ */
+function spanPatternMatches(conventionPattern: string, workflowPattern: string): boolean {
+  if (conventionPattern === workflowPattern) {
+    return true;
+  }
+  if (conventionPattern.endsWith('.*')) {
+    const prefix = conventionPattern.slice(0, -1);
+    return workflowPattern.startsWith(prefix);
+  }
+  return false;
+}
+
+/**
+ * Test helper to find matching workflows with wildcard support
+ */
+function findMatchingWorkflows(
+  conventionPattern: string,
+  workflowPatterns: string[]
+): string[] {
+  return workflowPatterns.filter(wp => spanPatternMatches(conventionPattern, wp));
+}
+
+/**
+ * Updated cross-validation helper with wildcard support
+ */
+function validateSpansWorkflowCrossRefWithWildcards(
+  spanConventions: Array<{ spanPattern: string; status: 'draft' | 'implemented' }>,
+  workflowSpanPatterns: string[]
+): Array<{ type: 'error' | 'warning'; message: string; spanPattern: string }> {
+  const issues: Array<{ type: 'error' | 'warning'; message: string; spanPattern: string }> = [];
+
+  for (const span of spanConventions) {
+    const matchingWorkflows = findMatchingWorkflows(span.spanPattern, workflowSpanPatterns);
+    const hasWorkflow = matchingWorkflows.length > 0;
+
+    if (span.status === 'implemented' && !hasWorkflow) {
+      issues.push({
+        type: 'error',
+        message: `Span convention "${span.spanPattern}" is implemented but has no workflow.json`,
+        spanPattern: span.spanPattern,
+      });
+    } else if (span.status === 'draft' && hasWorkflow) {
+      issues.push({
+        type: 'error',
+        message: `Span convention "${span.spanPattern}" has matching workflow(s) but is marked as draft`,
+        spanPattern: span.spanPattern,
+      });
+    }
+  }
+
+  return issues;
+}
+
+describe('validate command - span pattern wildcard matching', () => {
+  test('should match exact patterns', () => {
+    expect(spanPatternMatches('cli.request', 'cli.request')).toBe(true);
+    expect(spanPatternMatches('cli.request', 'cli.command')).toBe(false);
+  });
+
+  test('should match wildcard patterns', () => {
+    expect(spanPatternMatches('task.*', 'task.create')).toBe(true);
+    expect(spanPatternMatches('task.*', 'task.edit')).toBe(true);
+    expect(spanPatternMatches('task.*', 'task.view')).toBe(true);
+    expect(spanPatternMatches('task.*', 'task')).toBe(false); // No dot after prefix
+    expect(spanPatternMatches('task.*', 'taskify')).toBe(false); // Wrong prefix
+  });
+
+  test('should match nested wildcard patterns', () => {
+    expect(spanPatternMatches('filesystem.draft.*', 'filesystem.draft.list')).toBe(true);
+    expect(spanPatternMatches('filesystem.draft.*', 'filesystem.draft.view')).toBe(true);
+    expect(spanPatternMatches('filesystem.draft.*', 'filesystem.other')).toBe(false);
+  });
+
+  test('should find multiple matching workflows', () => {
+    const workflows = ['task.create', 'task.edit', 'task.view', 'milestone.create'];
+    const matches = findMatchingWorkflows('task.*', workflows);
+    expect(matches).toHaveLength(3);
+    expect(matches).toContain('task.create');
+    expect(matches).toContain('task.edit');
+    expect(matches).toContain('task.view');
+  });
+});
+
+describe('validate command - spans-workflow cross-validation with wildcards', () => {
+  test('should pass when wildcard pattern has matching workflows and is implemented', () => {
+    const issues = validateSpansWorkflowCrossRefWithWildcards(
+      [{ spanPattern: 'task.*', status: 'implemented' }],
+      ['task.create', 'task.edit']
+    );
+    expect(issues).toHaveLength(0);
+  });
+
+  test('should error when wildcard pattern has matching workflows but is draft', () => {
+    const issues = validateSpansWorkflowCrossRefWithWildcards(
+      [{ spanPattern: 'task.*', status: 'draft' }],
+      ['task.create', 'task.edit']
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].type).toBe('error');
+    expect(issues[0].message).toContain('task.*');
+    expect(issues[0].message).toContain('marked as draft');
+  });
+
+  test('should error when implemented pattern has no matching workflows', () => {
+    const issues = validateSpansWorkflowCrossRefWithWildcards(
+      [{ spanPattern: 'task.*', status: 'implemented' }],
+      ['milestone.create']
+    );
+    expect(issues).toHaveLength(1);
+    expect(issues[0].type).toBe('error');
+    expect(issues[0].message).toContain('has no workflow.json');
+  });
+
+  test('should handle mixed exact and wildcard patterns', () => {
+    const issues = validateSpansWorkflowCrossRefWithWildcards(
+      [
+        { spanPattern: 'cli.request', status: 'implemented' },  // exact match - OK
+        { spanPattern: 'task.*', status: 'implemented' },       // wildcard match - OK
+        { spanPattern: 'milestone.*', status: 'draft' },        // draft with matches - ERROR
+        { spanPattern: 'search.*', status: 'implemented' },     // no matches - ERROR
+      ],
+      ['cli.request', 'task.create', 'task.edit', 'milestone.create']
+    );
+    expect(issues).toHaveLength(2);
+    expect(issues[0].spanPattern).toBe('milestone.*');
+    expect(issues[1].spanPattern).toBe('search.*');
+  });
+});

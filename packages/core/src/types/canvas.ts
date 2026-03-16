@@ -195,12 +195,16 @@ export interface PVNodeState {
 /**
  * OTEL node classification
  *
- * Used to categorize nodes in architectural diagrams showing OTEL concepts.
+ * @deprecated Use `pv.nodeType` instead. Will be removed in a future version.
+ * For example, use `nodeType: "scope"` instead of `otel.kind: "type"`.
  */
 export type PVOtelKind = 'type' | 'service' | 'instance';
 
 /**
  * OTEL category for type nodes
+ *
+ * @deprecated Use `pv.nodeType` instead. Will be removed in a future version.
+ * For example, use `nodeType: "span-convention"` instead of `otel.category: "span"`.
  */
 export type PVOtelCategory =
   | 'log'
@@ -212,6 +216,16 @@ export type PVOtelCategory =
   | 'config'
   | 'router'
   | 'collector';
+
+/**
+ * OTel SpanKind values for span conventions
+ *
+ * Describes the relationship between a span and its remote parent/children.
+ * Standard OTel concept - these values are fixed by the OTel spec.
+ *
+ * @see https://opentelemetry.io/docs/specs/otel/trace/api/#spankind
+ */
+export type PVOtelSpanKind = 'UNSPECIFIED' | 'INTERNAL' | 'SERVER' | 'CLIENT' | 'PRODUCER' | 'CONSUMER';
 
 import type { OtelSpanKind } from './otel';
 
@@ -317,13 +331,43 @@ export interface PVOtelExtension {
    * - `type`: Represents a TypeScript type/interface (e.g., OtelLog, ResourceMatch)
    * - `service`: Represents a runtime service (e.g., LogRouter, AuditCollector)
    * - `instance`: Represents an actual runtime instance (e.g., a specific pod)
+   *
+   * @deprecated Use `pv.nodeType` instead. Will be removed in a future version.
    */
   kind?: PVOtelKind;
 
   /**
    * Category within OTEL domain
+   *
+   * @deprecated Use `pv.nodeType` instead. Will be removed in a future version.
    */
   category?: PVOtelCategory;
+
+  /**
+   * Span pattern for span convention nodes
+   *
+   * Defines the naming pattern for spans that match this convention.
+   * Supports wildcards (e.g., "validate.*", "task.create").
+   *
+   * Used in architecture.spans.canvas to define the vocabulary of operations.
+   *
+   * @example "validate.*"
+   * @example "task.create"
+   * @example "http.request"
+   */
+  spanPattern?: string;
+
+  /**
+   * OTel SpanKind for span convention nodes
+   *
+   * Specifies what kind of span this convention represents.
+   * Implementers should use this when creating spans.
+   *
+   * @example "SERVER" - for entry points handling incoming requests
+   * @example "INTERNAL" - for internal operations
+   * @example "CLIENT" - for outgoing calls to external services
+   */
+  spanKind?: PVOtelSpanKind;
 
   /**
    * Resource matching criteria

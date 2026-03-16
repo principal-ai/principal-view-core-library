@@ -493,7 +493,7 @@ const ALLOWED_CANVAS_FIELDS = {
     'layout',
     'boundary', // For boundary nodes representing external system interfaces
   ],
-  nodePvOtel: ['kind', 'category', 'files', 'scope'],
+  nodePvOtel: ['kind', 'category', 'files', 'scope', 'spanPattern', 'spanKind'],
   nodePvBoundary: ['direction', 'node'],
   nodePvState: ['color', 'icon', 'label'],
   nodePvAction: ['pattern', 'event', 'state', 'metadata', 'triggerEdges'],
@@ -606,6 +606,43 @@ function findSimilarField(field: string, allowedFields: string[]): string | null
     }
   }
   return null;
+}
+
+/**
+ * Check if a span pattern matches a workflow span pattern
+ * Supports wildcards: "task.*" matches "task.create", "task.edit", etc.
+ */
+function spanPatternMatches(conventionPattern: string, workflowPattern: string): boolean {
+  // Exact match
+  if (conventionPattern === workflowPattern) {
+    return true;
+  }
+
+  // Wildcard match: "task.*" matches "task.create"
+  if (conventionPattern.endsWith('.*')) {
+    const prefix = conventionPattern.slice(0, -1); // Remove the '*', keep the '.'
+    return workflowPattern.startsWith(prefix);
+  }
+
+  return false;
+}
+
+/**
+ * Find workflows that match a span convention pattern (with wildcard support)
+ */
+function findMatchingWorkflows(
+  conventionPattern: string,
+  workflowSpanPatterns: Map<string, string>
+): Array<{ pattern: string; path: string }> {
+  const matches: Array<{ pattern: string; path: string }> = [];
+
+  for (const [workflowPattern, workflowPath] of workflowSpanPatterns) {
+    if (spanPatternMatches(conventionPattern, workflowPattern)) {
+      matches.push({ pattern: workflowPattern, path: workflowPath });
+    }
+  }
+
+  return matches;
 }
 
 /**
@@ -1371,6 +1408,25 @@ The display name will be shown large on the node, and the event name will appear
           });
         }
 
+        // Deprecation warnings for pv.otel.kind and pv.otel.category
+        const nodeOtel = nodePv.otel as Record<string, unknown> | undefined;
+        if (nodeOtel?.kind !== undefined) {
+          issues.push({
+            type: 'warning',
+            message: `Node "${nodeLabel}" uses deprecated "pv.otel.kind" field`,
+            path: `${nodePath}.pv.otel.kind`,
+            suggestion: 'Use "pv.nodeType" instead. For example, use nodeType: "event" instead of otel.kind: "event". The "otel.kind" field will be removed in a future version.',
+          });
+        }
+        if (nodeOtel?.category !== undefined) {
+          issues.push({
+            type: 'warning',
+            message: `Node "${nodeLabel}" uses deprecated "pv.otel.category" field`,
+            path: `${nodePath}.pv.otel.category`,
+            suggestion: 'Use "pv.nodeType" instead. The "otel.category" field will be removed in a future version.',
+          });
+        }
+
         // When origin is external, references is required
         if (isExternal) {
           if (!Array.isArray(nodePv.references) || nodePv.references.length === 0) {
@@ -1387,13 +1443,13 @@ The display name will be shown large on the node, and the event name will appear
         const hasOtelFeatures = nodePv.otel !== undefined || nodePv.event !== undefined || nodePv.eventRef !== undefined;
         if (hasOtelFeatures && !isBoundaryNode) {
 
-          // For .otel.canvas files: nodes with event or eventRef must have pv.otel for UI rendering
-          if (filePath.endsWith('.otel.canvas') && (nodePv.event !== undefined || nodePv.eventRef !== undefined) && nodePv.otel === undefined) {
+          // For .otel.canvas files: nodes with event or eventRef must have pv.nodeType for UI rendering
+          if (filePath.endsWith('.otel.canvas') && (nodePv.event !== undefined || nodePv.eventRef !== undefined) && nodePv.nodeType === undefined) {
             issues.push({
-              type: 'error',
-              message: `Node "${nodeLabel}" in .otel.canvas file has event schema but is missing "pv.otel" field required for UI badges`,
-              path: `${nodePath}.pv.otel`,
-              suggestion: 'Add OTEL metadata for UI rendering, e.g.: "otel": { "kind": "event", "category": "lifecycle" }',
+              type: 'warning',
+              message: `Node "${nodeLabel}" in .otel.canvas file has event schema but is missing "pv.nodeType" field`,
+              path: `${nodePath}.pv.nodeType`,
+              suggestion: 'Add nodeType for clarity, e.g.: "nodeType": "event"',
             });
           }
 
@@ -1566,6 +1622,44 @@ The display name will be shown large on the node, and the event name will appear
               path: `${nodePath}.pv.nodeType`,
               suggestion,
             });
+          }
+
+          // Validate nodeType is appropriate for the canvas type
+          const nodeTypeValue = nodePv.nodeType as string;
+          const isResourcesCanvas = filePath.endsWith('resources.canvas');
+          const isSpansCanvas = filePath.endsWith('.spans.canvas');
+          const isOtelCanvas = filePath.endsWith('.otel.canvas');
+
+          if (isResourcesCanvas) {
+            const validResourceTypes = ['resource', 'scope'];
+            if (!validResourceTypes.includes(nodeTypeValue)) {
+              issues.push({
+                type: 'error',
+                message: `Node "${nodeLabel}" in resources.canvas has invalid nodeType "${nodeTypeValue}"`,
+                path: `${nodePath}.pv.nodeType`,
+                suggestion: `resources.canvas nodes must have nodeType: "resource" or "scope". Got: "${nodeTypeValue}"`,
+              });
+            }
+          } else if (isSpansCanvas) {
+            const validSpanTypes = ['span-convention'];
+            if (!validSpanTypes.includes(nodeTypeValue)) {
+              issues.push({
+                type: 'error',
+                message: `Node "${nodeLabel}" in .spans.canvas has invalid nodeType "${nodeTypeValue}"`,
+                path: `${nodePath}.pv.nodeType`,
+                suggestion: `spans.canvas nodes must have nodeType: "span-convention". Got: "${nodeTypeValue}"`,
+              });
+            }
+          } else if (isOtelCanvas) {
+            const validOtelTypes = ['event', 'boundary'];
+            if (!validOtelTypes.includes(nodeTypeValue)) {
+              issues.push({
+                type: 'error',
+                message: `Node "${nodeLabel}" in .otel.canvas has invalid nodeType "${nodeTypeValue}"`,
+                path: `${nodePath}.pv.nodeType`,
+                suggestion: `otel.canvas nodes must have nodeType: "event" or "boundary". Got: "${nodeTypeValue}"`,
+              });
+            }
           }
         }
       }
@@ -1800,8 +1894,9 @@ The display name will be shown large on the node, and the event name will appear
   const hasOtel = hasOtelFeatures(canvas);
   const isOtelCanvas = filePath.endsWith('.otel.canvas');
   const isScopesCanvas = filePath.endsWith('.scopes.canvas');
+  const isSpansCanvas = filePath.endsWith('.spans.canvas');
 
-  if (hasOtel && !isOtelCanvas && !isScopesCanvas) {
+  if (hasOtel && !isOtelCanvas && !isScopesCanvas && !isSpansCanvas) {
     issues.push({
       type: 'error',
       message:
@@ -2923,6 +3018,110 @@ export function createValidateCommand(): Command {
             // Mark as invalid if it's an error
             if (violation.severity === 'error') {
               result.isValid = false;
+            }
+          }
+        }
+
+        // PHASE 2.5c: Cross-validate spans.canvas ↔ workflow.json
+        // - implemented span conventions must have a workflow.json
+        // - draft span conventions with a workflow.json should be changed to implemented
+        if (validateCanvases && validateWorkflows) {
+          // Find spans.canvas files and extract span conventions
+          const spansCanvases = discoveryResult.canvases.filter(c => c.path.endsWith('.spans.canvas'));
+
+          // Collect all workflow spanPatterns
+          const workflowSpanPatterns = new Map<string, string>(); // spanPattern -> workflow path
+          for (const discoveredWorkflow of workflows) {
+            const absolutePath = resolve(repositoryPath, discoveredWorkflow.path);
+            const workflow = loadWorkflowTemplate(absolutePath);
+            if (workflow?.spanPattern) {
+              workflowSpanPatterns.set(workflow.spanPattern, discoveredWorkflow.path);
+            }
+          }
+
+          // If workflows with spanPatterns exist but no spans.canvas, error on each workflow
+          if (workflowSpanPatterns.size > 0 && spansCanvases.length === 0) {
+            for (const [spanPattern, workflowPath] of workflowSpanPatterns) {
+              let result = results.find(r => r.file === workflowPath);
+              if (!result) {
+                result = {
+                  file: workflowPath,
+                  fileType: 'workflow',
+                  isValid: false,
+                  issues: [],
+                };
+                results.push(result);
+              }
+              result.issues.push({
+                type: 'error',
+                message: `Workflow defines spanPattern "${spanPattern}" but no spans.canvas file exists`,
+                path: 'spanPattern',
+                suggestion: 'Create a .spans.canvas file (e.g., ".principal-views/architecture.spans.canvas") to define span conventions for your project',
+              });
+              result.isValid = false;
+            }
+          }
+
+          for (const spansCanvas of spansCanvases) {
+            const absolutePath = resolve(repositoryPath, spansCanvas.path);
+            let canvas: ExtendedCanvas | null = null;
+            try {
+              const content = readFileSync(absolutePath, 'utf-8');
+              canvas = JSON.parse(content) as ExtendedCanvas;
+            } catch {
+              // Skip - parse errors handled elsewhere
+              continue;
+            }
+
+            if (!canvas?.nodes) continue;
+
+            // Extract span conventions from nodes
+            for (const node of canvas.nodes) {
+              if (!node.pv) continue;
+              const nodePv = node.pv as unknown as Record<string, unknown>;
+              const nodeOtel = nodePv.otel as Record<string, unknown> | undefined;
+              const spanPattern = nodeOtel?.spanPattern as string | undefined;
+              const status = nodePv.status as string | undefined;
+              const nodeLabel = node.id || 'unknown';
+
+              if (!spanPattern) continue; // Skip nodes without spanPattern
+
+              // Find workflows that match this span convention (with wildcard support)
+              const matchingWorkflows = findMatchingWorkflows(spanPattern, workflowSpanPatterns);
+              const hasWorkflow = matchingWorkflows.length > 0;
+
+              // Find or create result for spans.canvas
+              let result = results.find(r => r.file === spansCanvas.path);
+              if (!result) {
+                result = {
+                  file: spansCanvas.path,
+                  fileType: 'canvas',
+                  isValid: true,
+                  issues: [],
+                };
+                results.push(result);
+              }
+
+              if (status === 'implemented' && !hasWorkflow) {
+                // implemented span conventions must have a workflow.json
+                result.issues.push({
+                  type: 'error',
+                  message: `Span convention "${spanPattern}" is implemented but has no workflow.json`,
+                  path: `nodes.${nodeLabel}.pv.otel.spanPattern`,
+                  suggestion: `Create a workflow.json with spanPattern: "${spanPattern}" or change status to "draft"`,
+                });
+                result.isValid = false;
+              } else if (status === 'draft' && hasWorkflow) {
+                // draft span conventions with a workflow.json should be changed to implemented
+                const workflowPaths = matchingWorkflows.map(w => w.path).join(', ');
+                result.issues.push({
+                  type: 'error',
+                  message: `Span convention "${spanPattern}" has matching workflow(s) (${workflowPaths}) but is marked as draft`,
+                  path: `nodes.${nodeLabel}.pv.status`,
+                  suggestion: `Change status to "implemented" since workflow(s) already exist`,
+                });
+                result.isValid = false;
+              }
             }
           }
         }
