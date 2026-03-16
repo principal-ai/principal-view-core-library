@@ -64,7 +64,7 @@ export interface CustomNodeData extends Record<string, unknown> {
  */
 export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, selected, dragging }) => {
   const { theme } = useTheme();
-  const { onNodeResizeEnd } = useGraphEdit();
+  const { onNodeResizeEnd, onToggleNodeHidden, onHideUnconnectedNodes } = useGraphEdit();
   const nodeId = useNodeId();
   const [isHovered, setIsHovered] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
@@ -100,6 +100,29 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
       }
     },
     [nodeId, onNodeResizeEnd]
+  );
+
+  // Handle Cmd/Ctrl+mousedown to toggle hidden state
+  // We use mousedown instead of click because in edit mode with draggable nodes,
+  // ReactFlow's drag system intercepts Cmd+click before it becomes a click event
+  // - Cmd/Ctrl+Shift+click: hide all nodes not directly connected to this node
+  // - Cmd/Ctrl+click: toggle this single node's hidden state
+  const handleMouseDown = useCallback(
+    (event: React.MouseEvent) => {
+      if ((event.metaKey || event.ctrlKey) && nodeId) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (event.shiftKey && onHideUnconnectedNodes) {
+          // Cmd/Ctrl+Shift+click: hide unconnected nodes
+          onHideUnconnectedNodes(nodeId);
+        } else if (onToggleNodeHidden) {
+          // Cmd/Ctrl+click: toggle single node
+          onToggleNodeHidden(nodeId);
+        }
+      }
+    },
+    [nodeId, onToggleNodeHidden, onHideUnconnectedNodes]
   );
 
   // Show tooltip when:
@@ -736,6 +759,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
               : 'none',
             transition: 'box-shadow 0.2s ease',
           }}
+          onMouseDown={handleMouseDown}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
@@ -808,6 +832,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
               : 'none',
             transition: 'box-shadow 0.2s ease',
           }}
+          onMouseDown={handleMouseDown}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
@@ -870,6 +895,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
         <div
           ref={nodeRef}
           style={{ position: 'relative', width: '100%', height: '100%' }}
+          onMouseDown={handleMouseDown}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >

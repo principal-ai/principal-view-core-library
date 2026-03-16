@@ -3,6 +3,10 @@ import React, { createContext, useContext } from 'react';
 export interface GraphEditContextValue {
   /** Called when a node resize operation completes */
   onNodeResizeEnd?: (nodeId: string, dimensions: { width: number; height: number }) => void;
+  /** Called to toggle node hidden state (Cmd/Ctrl+click) */
+  onToggleNodeHidden?: (nodeId: string) => void;
+  /** Called to hide all nodes not directly connected to the given node (Cmd/Ctrl+Shift+click) */
+  onHideUnconnectedNodes?: (nodeId: string) => void;
 }
 
 const GraphEditContext = createContext<GraphEditContextValue>({});

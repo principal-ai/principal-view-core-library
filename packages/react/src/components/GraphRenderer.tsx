@@ -774,12 +774,89 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     [editable, updateEditState, pushHistory]
   );
 
+  // Handle toggling node hidden state (Cmd/Ctrl+click)
+  // This is exposed via context so CustomNode can call it on mousedown
+  // (mousedown works in edit mode where click is intercepted by drag handling)
+  const handleToggleNodeHidden = useCallback(
+    (nodeId: string) => {
+      hidingNodeRef.current = true;
+
+      setHiddenNodeIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(nodeId)) {
+          next.delete(nodeId);
+        } else {
+          next.add(nodeId);
+        }
+        return next;
+      });
+
+      // Reset the flag after state update completes
+      setTimeout(() => {
+        hidingNodeRef.current = false;
+      }, 0);
+    },
+    []
+  );
+
+  // Handle hiding all nodes not directly connected to the given node (Cmd/Ctrl+Shift+click)
+  // If all unconnected nodes are already hidden, this will unhide them (toggle behavior)
+  const handleHideUnconnectedNodes = useCallback(
+    (nodeId: string) => {
+      hidingNodeRef.current = true;
+
+      // Find all nodes directly connected to this node
+      const connectedNodeIds = new Set<string>([nodeId]);
+      for (const edge of localEdges) {
+        if (edge.from === nodeId) {
+          connectedNodeIds.add(edge.to);
+        } else if (edge.to === nodeId) {
+          connectedNodeIds.add(edge.from);
+        }
+      }
+
+      // Get all unconnected node IDs
+      const unconnectedNodeIds = localNodes
+        .map((n) => n.id)
+        .filter((id) => !connectedNodeIds.has(id));
+
+      setHiddenNodeIds((prev) => {
+        // Check if all unconnected nodes are already hidden
+        const allUnconnectedHidden = unconnectedNodeIds.every((id) => prev.has(id));
+
+        if (allUnconnectedHidden) {
+          // Toggle off - unhide all unconnected nodes
+          const next = new Set(prev);
+          for (const id of unconnectedNodeIds) {
+            next.delete(id);
+          }
+          return next;
+        } else {
+          // Hide all unconnected nodes
+          const next = new Set(prev);
+          for (const id of unconnectedNodeIds) {
+            next.add(id);
+          }
+          return next;
+        }
+      });
+
+      // Reset the flag after state update completes
+      setTimeout(() => {
+        hidingNodeRef.current = false;
+      }, 0);
+    },
+    [localEdges, localNodes]
+  );
+
   // Memoize the context value to prevent unnecessary re-renders
   const graphEditContextValue = useMemo(
     () => ({
       onNodeResizeEnd: handleNodeResizeEnd,
+      onToggleNodeHidden: handleToggleNodeHidden,
+      onHideUnconnectedNodes: handleHideUnconnectedNodes,
     }),
-    [handleNodeResizeEnd]
+    [handleNodeResizeEnd, handleToggleNodeHidden, handleHideUnconnectedNodes]
   );
 
   // ============================================
@@ -885,27 +962,18 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   const onNodeClick = useCallback(
     (event: React.MouseEvent, node: Node) => {
       // Cmd+click (Mac) or Ctrl+click (Windows/Linux): toggle node visibility (hide edges and dim node)
+      // Cmd+Shift+click: hide all nodes not directly connected to this node
       if (event.metaKey || event.ctrlKey) {
         event.preventDefault();
         event.stopPropagation();
 
-        // Mark that we're hiding a node to prevent ReactFlow's selection change
-        hidingNodeRef.current = true;
-
-        setHiddenNodeIds((prev) => {
-          const next = new Set(prev);
-          if (next.has(node.id)) {
-            next.delete(node.id);
-          } else {
-            next.add(node.id);
-          }
-          return next;
-        });
-
-        // Reset the flag after state update completes
-        setTimeout(() => {
-          hidingNodeRef.current = false;
-        }, 0);
+        if (event.shiftKey) {
+          // Cmd/Ctrl+Shift+click: hide unconnected nodes
+          handleHideUnconnectedNodes(node.id);
+        } else {
+          // Cmd/Ctrl+click: toggle single node
+          handleToggleNodeHidden(node.id);
+        }
 
         return;
       }
@@ -975,7 +1043,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         onNodeClickProp(node.id, event);
       }
     },
-    [selectedNodeIds, onNodeClickProp, editable]
+    [selectedNodeIds, onNodeClickProp, editable, handleToggleNodeHidden, handleHideUnconnectedNodes]
   );
 
 
@@ -1554,6 +1622,22 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       }))
     );
   }, [editable, selectedNodeIds]);
+
+  // Sync hidden state to local nodes when hiddenNodeIds changes (edit mode only)
+  // This ensures isHidden is in sync when we switch back to xyflowNodesBase on exit
+  const prevHiddenNodeIdsRef = useRef(hiddenNodeIds);
+  useEffect(() => {
+    if (!editable) return;
+    if (prevHiddenNodeIdsRef.current === hiddenNodeIds) return;
+    prevHiddenNodeIdsRef.current = hiddenNodeIds;
+
+    setXyflowLocalNodes((nodes) =>
+      nodes.map((n) => ({
+        ...n,
+        data: { ...n.data, isHidden: hiddenNodeIds.has(n.id) },
+      }))
+    );
+  }, [editable, hiddenNodeIds]);
 
   // Also sync when entering edit mode or when base nodes change content
   const prevEditableRef = useRef(editable);
