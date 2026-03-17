@@ -669,6 +669,16 @@ export interface PVNodeExtension {
       type: 'string' | 'number' | 'boolean' | 'object' | 'array';
       required?: boolean;
       displayInLabel?: boolean;
+      /**
+       * Human-readable description of what this field represents.
+       * Required in .otel.canvas files (enforced by validator).
+       */
+      description?: string;
+      /**
+       * Example value for UI previews, mock traces, and testing.
+       * Required in .otel.canvas files (enforced by validator).
+       */
+      placeholder?: unknown;
     }
   >;
   /** Layout hints */

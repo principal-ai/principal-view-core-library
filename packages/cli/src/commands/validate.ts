@@ -163,12 +163,26 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
             comp.dataSchema as Record<string, unknown>
           )) {
             if (fieldDef && typeof fieldDef === 'object') {
+              const field = fieldDef as Record<string, unknown>;
               checkUnknownFields(
-                fieldDef as Record<string, unknown>,
+                field,
                 ALLOWED_LIBRARY_FIELDS.nodeComponentDataSchemaField,
                 `nodeComponents.${compId}.dataSchema.${fieldName}`,
                 issues
               );
+              // Check required fields
+              if (field.description === undefined) {
+                issues.push({
+                  type: 'error',
+                  message: `Missing required field "description" in nodeComponents.${compId}.dataSchema.${fieldName}`,
+                });
+              }
+              if (field.placeholder === undefined) {
+                issues.push({
+                  type: 'error',
+                  message: `Missing required field "placeholder" in nodeComponents.${compId}.dataSchema.${fieldName}`,
+                });
+              }
             }
           }
         }
@@ -497,7 +511,7 @@ const ALLOWED_CANVAS_FIELDS = {
   nodePvBoundary: ['direction', 'node'],
   nodePvState: ['color', 'icon', 'label'],
   nodePvAction: ['pattern', 'event', 'state', 'metadata', 'triggerEdges'],
-  nodePvDataSchemaField: ['type', 'required', 'displayInLabel'],
+  nodePvDataSchemaField: ['type', 'required', 'displayInLabel', 'description', 'placeholder'],
   nodePvLayout: ['layer', 'cluster'],
   // Edge fields
   edge: [
@@ -541,7 +555,7 @@ const ALLOWED_LIBRARY_FIELDS = {
   nodeComponentSize: ['width', 'height'],
   nodeComponentState: ['color', 'icon', 'label'],
   nodeComponentAction: ['pattern', 'event', 'state', 'metadata', 'triggerEdges'],
-  nodeComponentDataSchemaField: ['type', 'required', 'displayInLabel', 'label', 'displayInInfo'],
+  nodeComponentDataSchemaField: ['type', 'required', 'displayInLabel', 'label', 'displayInInfo', 'description', 'placeholder'],
   nodeComponentLayout: ['layer', 'cluster'],
   edgeComponent: [
     'description',
@@ -1233,12 +1247,26 @@ function validateCanvas(
             nodePv.dataSchema as Record<string, unknown>
           )) {
             if (fieldDef && typeof fieldDef === 'object') {
+              const field = fieldDef as Record<string, unknown>;
               checkUnknownFields(
-                fieldDef as Record<string, unknown>,
+                field,
                 ALLOWED_CANVAS_FIELDS.nodePvDataSchemaField,
                 `${nodePath}.pv.dataSchema.${fieldName}`,
                 issues
               );
+              // Check required fields
+              if (field.description === undefined) {
+                issues.push({
+                  type: 'error',
+                  message: `Missing required field "description" in ${nodePath}.pv.dataSchema.${fieldName}`,
+                });
+              }
+              if (field.placeholder === undefined) {
+                issues.push({
+                  type: 'error',
+                  message: `Missing required field "placeholder" in ${nodePath}.pv.dataSchema.${fieldName}`,
+                });
+              }
             }
           }
         }

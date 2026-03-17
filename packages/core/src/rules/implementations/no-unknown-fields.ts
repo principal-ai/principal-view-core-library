@@ -41,7 +41,7 @@ const ALLOWED_FIELDS = {
   display: ['layout', 'theme', 'animations'],
   displayTheme: ['primary', 'success', 'warning', 'danger', 'info'],
   displayAnimations: ['enabled', 'speed'],
-  dataSchemaField: ['type', 'required', 'displayInLabel', 'label', 'displayInInfo'],
+  dataSchemaField: ['type', 'required', 'displayInLabel', 'label', 'displayInInfo', 'description', 'placeholder'],
   stateDefinition: ['color', 'icon', 'label'],
   layoutHints: ['layer', 'cluster'],
   edgeLabel: ['field', 'position'],
