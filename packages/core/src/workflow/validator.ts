@@ -4,6 +4,7 @@
  */
 
 import type { WorkflowTemplate, WorkflowScenario, ScenarioTemplate } from './types';
+import { getEventTemplateString } from './types';
 import type { ExtendedCanvas } from '../types/canvas';
 import { existsSync, readFileSync } from 'fs';
 import { resolve, basename } from 'path';
@@ -1394,7 +1395,8 @@ export class WorkflowValidator {
 
       // Check event templates
       if (template.events) {
-        Object.entries(template.events).forEach(([eventName, templateStr]) => {
+        Object.entries(template.events).forEach(([eventName, templateEntry]) => {
+          const templateStr = getEventTemplateString(templateEntry);
           violations.push(...this.validateTemplateString(
             templateStr,
             workflowPath,
@@ -1638,7 +1640,8 @@ export class WorkflowValidator {
 
       // From event templates
       if (scenario.template.events) {
-        Object.values(scenario.template.events).forEach(templateStr => {
+        Object.values(scenario.template.events).forEach(templateEntry => {
+          const templateStr = getEventTemplateString(templateEntry);
           this.extractAttributeReferences(templateStr).forEach(p => allPaths.add(p));
         });
       }
@@ -1706,7 +1709,8 @@ export class WorkflowValidator {
 
       // Check event templates
       if (scenario.template.events) {
-        for (const [eventName, eventTemplate] of Object.entries(scenario.template.events)) {
+        for (const [eventName, eventTemplateEntry] of Object.entries(scenario.template.events)) {
+          const eventTemplate = getEventTemplateString(eventTemplateEntry);
           const attrs = this.extractAttributeReferences(eventTemplate);
           const eventAttrs = eventAttributes.get(eventName);
 
@@ -1845,7 +1849,8 @@ export class WorkflowValidator {
     for (const scenario of workflow.scenarios) {
       if (!scenario.template?.events) continue;
 
-      for (const [eventName, eventTemplate] of Object.entries(scenario.template.events)) {
+      for (const [eventName, eventTemplateEntry] of Object.entries(scenario.template.events)) {
+        const eventTemplate = getEventTemplateString(eventTemplateEntry);
         const attrs = this.extractAttributeReferences(eventTemplate);
         if (!templateAttributesByEvent.has(eventName)) {
           templateAttributesByEvent.set(eventName, new Set());
@@ -1997,7 +2002,7 @@ export class WorkflowValidator {
       const scenario = workflow.scenarios[scenarioIdx];
       if (!scenario.template?.events) continue;
 
-      for (const [eventName, eventTemplate] of Object.entries(scenario.template.events)) {
+      for (const [eventName, eventTemplateEntry] of Object.entries(scenario.template.events)) {
         // Skip wildcard patterns
         if (eventName.includes('*')) continue;
 
@@ -2007,6 +2012,7 @@ export class WorkflowValidator {
         if (!schemaAttrs) continue;
 
         // Extract attribute references from this template
+        const eventTemplate = getEventTemplateString(eventTemplateEntry);
         const templateAttrs = this.extractAttributeReferences(eventTemplate);
 
         for (const attr of templateAttrs) {
@@ -2329,7 +2335,8 @@ export class WorkflowValidator {
 
       // Extract variables from event templates
       if (scenario.template.events) {
-        Object.entries(scenario.template.events).forEach(([eventName, template]) => {
+        Object.entries(scenario.template.events).forEach(([eventName, templateEntry]) => {
+          const template = getEventTemplateString(templateEntry);
           const vars = this.extractTemplateVariables(template);
           if (!eventTemplates.has(eventName)) {
             eventTemplates.set(eventName, new Set());

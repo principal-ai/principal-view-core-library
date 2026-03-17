@@ -14,6 +14,7 @@ import type {
   SpanTreeNode,
   FormattingOptions,
 } from './types';
+import { getEventTemplateString } from './types';
 import { parseTemplate, ParsedTemplate, type TemplateContext, type TemplateData } from './template-parser';
 import { selectScenario, computeAggregates } from './scenario-matcher';
 
@@ -282,8 +283,9 @@ function renderSpanTree(
       const spanText = parseTemplate(scenario.template.span, eventContext as TemplateContext, spanData).toString();
       parts.push(indent + spanText);
     } else if (scenario.template.events?.[node.span.name]) {
-      const eventTemplate = scenario.template.events[node.span.name];
-      const eventText = parseTemplate(eventTemplate, eventContext as TemplateContext, spanData).toString();
+      const eventTemplateEntry = scenario.template.events[node.span.name];
+      const eventTemplateStr = getEventTemplateString(eventTemplateEntry);
+      const eventText = parseTemplate(eventTemplateStr, eventContext as TemplateContext, spanData).toString();
       parts.push(indent + eventText);
     } else {
       // Default span rendering
@@ -339,8 +341,10 @@ function renderLog(
   }
 
   // Check for event-specific template
-  if (scenario.template.events?.[`log.${log.severityText?.toLowerCase()}`]) {
-    return parseTemplate(scenario.template.events[`log.${log.severityText?.toLowerCase()}`], context as TemplateContext, spanData).toString();
+  const logEventKey = `log.${log.severityText?.toLowerCase()}`;
+  if (scenario.template.events?.[logEventKey]) {
+    const logEventTemplate = getEventTemplateString(scenario.template.events[logEventKey]);
+    return parseTemplate(logEventTemplate, context as TemplateContext, spanData).toString();
   }
 
   // Default log rendering

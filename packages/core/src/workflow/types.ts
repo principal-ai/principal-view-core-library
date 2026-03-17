@@ -78,8 +78,21 @@ export interface WorkflowTemplate {
   description: string;
 
   // Span matching
-  /** Exact span name this workflow applies to */
-  spanPattern: string;
+  /**
+   * Root span name this workflow applies to
+   *
+   * This is the entry point span that anchors the workflow.
+   * Events in the workflow are matched within this span's context.
+   *
+   * @example "cli.command"
+   * @example "http.request"
+   */
+  rootSpan?: string;
+
+  /**
+   * @deprecated Use `rootSpan` instead. Will be removed in a future version.
+   */
+  spanPattern?: string;
 
   /**
    * Instrumentation scope this workflow expects spans from
@@ -169,14 +182,70 @@ export interface WorkflowScenario {
 }
 
 /**
+ * Event template definition
+ *
+ * Extended form for events that includes span context.
+ */
+export interface EventTemplate {
+  /**
+   * Exact span name this event occurs in.
+   * If omitted, defaults to the workflow's rootSpan.
+   *
+   * @example "validate.canvas"
+   * @example "file.read"
+   */
+  span?: string;
+
+  /**
+   * Template string for rendering this event.
+   * Supports Handlebars-style variables: {{attribute.name}}
+   */
+  template: string;
+}
+
+/**
+ * Type guard to check if an event entry is an EventTemplate object
+ */
+export function isEventTemplate(value: string | EventTemplate): value is EventTemplate {
+  return typeof value === 'object' && value !== null && 'template' in value;
+}
+
+/**
+ * Extract the template string from an event entry (handles both string and object forms)
+ */
+export function getEventTemplateString(value: string | EventTemplate): string {
+  return isEventTemplate(value) ? value.template : value;
+}
+
+/**
+ * Extract the span name from an event entry (returns undefined if not specified)
+ */
+export function getEventSpan(value: string | EventTemplate): string | undefined {
+  return isEventTemplate(value) ? value.span : undefined;
+}
+
+/**
+ * Get the effective root span from a workflow (handles rootSpan and deprecated spanPattern)
+ */
+export function getWorkflowRootSpan(workflow: WorkflowTemplate): string | undefined {
+  return workflow.rootSpan ?? workflow.spanPattern;
+}
+
+/**
  * Scenario template content
  */
 export interface ScenarioTemplate {
   /** Opening text */
   introduction?: string;
 
-  /** Event/log name -> template mapping */
-  events?: Record<string, string>;
+  /**
+   * Event/log name -> template mapping
+   *
+   * Supports two forms:
+   * - String: `"event.name": "Template text"` (assumes rootSpan)
+   * - Object: `"event.name": { "span": "exact.span", "template": "Template text" }`
+   */
+  events?: Record<string, string | EventTemplate>;
 
   /** Optional: separate log templates by severity */
   logs?: LogTemplates;
