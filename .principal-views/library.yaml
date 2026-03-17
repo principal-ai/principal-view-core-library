@@ -38,8 +38,17 @@ nodeComponents:
       - "src/api/**/*.ts"
       - "src/routes/**/*.ts"
     dataSchema:
-      name: { type: string, required: true, displayInLabel: true }
-      port: { type: number, required: false }
+      name:
+        type: string
+        required: true
+        displayInLabel: true
+        description: "Name of the REST API endpoint"
+        placeholder: "e.g., Users API"
+      port:
+        type: number
+        required: false
+        description: "Port number the API listens on"
+        placeholder: "e.g., 3000"
 
   graphql-api:
     description: "GraphQL API resolver"

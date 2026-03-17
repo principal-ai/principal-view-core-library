@@ -19,7 +19,7 @@
       "y": 200,
       "width": 220,
       "height": 100,
-      "text": "# cli.command\n\nCLI invocation entry point",
+      "text": "# CLI Entry Point\n\nCLI invocation entry point",
       "pv": {
         "nodeType": "span-convention",
         "status": "draft",
@@ -36,7 +36,7 @@
       "y": 0,
       "width": 220,
       "height": 100,
-      "text": "# validate.*\n\nCanvas, workflow, trace validation",
+      "text": "# Validation Operations\n\nCanvas, workflow, trace validation",
       "pv": {
         "nodeType": "span-convention",
         "status": "draft",
@@ -53,7 +53,7 @@
       "y": 150,
       "width": 220,
       "height": 100,
-      "text": "# discover.*\n\nLibrary, canvas, workflow discovery",
+      "text": "# Discovery Operations\n\nLibrary, canvas, workflow discovery",
       "pv": {
         "nodeType": "span-convention",
         "status": "draft",
@@ -70,7 +70,7 @@
       "y": 300,
       "width": 220,
       "height": 100,
-      "text": "# parse.*\n\nCanvas, YAML, JSON parsing",
+      "text": "# Parsing Operations\n\nCanvas, YAML, JSON parsing",
       "pv": {
         "nodeType": "span-convention",
         "status": "draft",
@@ -87,7 +87,7 @@
       "y": 150,
       "width": 220,
       "height": 100,
-      "text": "# file.*\n\nFile system read/write",
+      "text": "# File Operations\n\nFile system read/write",
       "pv": {
         "nodeType": "span-convention",
         "status": "draft",

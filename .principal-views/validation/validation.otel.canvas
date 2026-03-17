@@ -10,15 +10,12 @@
       "height": 100,
       "color": "#4CAF50",
       "pv": {
+        "nodeType": "event",
         "name": "Analysis Started",
         "description": "Codebase composition analysis begins",
         "shape": "roundedRect",
         "icon": "Play",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "lifecycle"
-        },
         "event": {
           "name": "analysis.started",
           "attributes": {
@@ -34,7 +31,7 @@
             }
           }
         },
-        "sources": [
+        "references": [
           "packages/core/src/discovery/CanvasDiscovery.ts",
           "packages/cli/src/commands/validate.ts"
         ]
@@ -50,15 +47,12 @@
       "height": 100,
       "color": "#2196F3",
       "pv": {
+        "nodeType": "event",
         "name": "FileTree Built",
         "description": "Repository file tree constructed",
         "shape": "roundedRect",
         "icon": "FolderTree",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "operation"
-        },
         "event": {
           "name": "filetree.built",
           "attributes": {
@@ -74,7 +68,7 @@
             }
           }
         },
-        "sources": ["packages/core/src/discovery/CanvasDiscovery.ts"]
+        "references": ["packages/core/src/discovery/CanvasDiscovery.ts"]
       }
     },
     {
@@ -87,15 +81,12 @@
       "height": 100,
       "color": "#FF9800",
       "pv": {
+        "nodeType": "event",
         "name": "Packages Discovered",
         "description": "Monorepo packages identified",
         "shape": "roundedRect",
         "icon": "Package",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "operation"
-        },
         "event": {
           "name": "packages.discovered",
           "attributes": {
@@ -116,7 +107,7 @@
             }
           }
         },
-        "sources": ["packages/core/src/discovery/CanvasDiscovery.ts"]
+        "references": ["packages/core/src/discovery/CanvasDiscovery.ts"]
       }
     },
     {
@@ -129,15 +120,12 @@
       "height": 100,
       "color": "#9C27B0",
       "pv": {
+        "nodeType": "event",
         "name": "Canvases Discovered",
         "description": "Canvas files found in packages",
         "shape": "roundedRect",
         "icon": "FileJson",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "operation"
-        },
         "event": {
           "name": "canvases.discovered",
           "attributes": {
@@ -163,7 +151,7 @@
             }
           }
         },
-        "sources": ["packages/core/src/discovery/CanvasDiscovery.ts"]
+        "references": ["packages/core/src/discovery/CanvasDiscovery.ts"]
       }
     },
     {
@@ -176,15 +164,12 @@
       "height": 100,
       "color": "#9C27B0",
       "pv": {
+        "nodeType": "event",
         "name": "Executions Discovered",
         "description": "Execution files found in __executions__",
         "shape": "roundedRect",
         "icon": "Activity",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "operation"
-        },
         "event": {
           "name": "executions.discovered",
           "attributes": {
@@ -200,7 +185,7 @@
             }
           }
         },
-        "sources": ["packages/core/src/discovery/CanvasDiscovery.ts"]
+        "references": ["packages/core/src/discovery/CanvasDiscovery.ts"]
       }
     },
     {
@@ -213,15 +198,12 @@
       "height": 100,
       "color": "#9C27B0",
       "pv": {
+        "nodeType": "event",
         "name": "Library Loaded",
         "description": "Component library definitions loaded",
         "shape": "roundedRect",
         "icon": "Library",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "operation"
-        },
         "event": {
           "name": "library.loaded",
           "attributes": {
@@ -247,7 +229,7 @@
             }
           }
         },
-        "sources": ["packages/core/src/LibraryLoader.ts"]
+        "references": ["packages/core/src/LibraryLoader.ts"]
       }
     },
     {
@@ -260,15 +242,12 @@
       "height": 100,
       "color": "#FF9800",
       "pv": {
+        "nodeType": "event",
         "name": "Discovery Complete",
         "description": "All discovery operations completed",
         "shape": "roundedRect",
         "icon": "CheckSquare",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "operation"
-        },
         "event": {
           "name": "discovery.complete",
           "attributes": {
@@ -284,7 +263,7 @@
             }
           }
         },
-        "sources": ["packages/core/src/discovery/CanvasDiscovery.ts"]
+        "references": ["packages/core/src/discovery/CanvasDiscovery.ts"]
       }
     },
     {
@@ -297,15 +276,12 @@
       "height": 100,
       "color": "#4CAF50",
       "pv": {
+        "nodeType": "event",
         "name": "Validation Started",
         "description": "Validation process begins on discovered items",
         "shape": "roundedRect",
         "icon": "PlayCircle",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "lifecycle"
-        },
         "event": {
           "name": "validation.started",
           "attributes": {
@@ -321,7 +297,7 @@
             }
           }
         },
-        "sources": [
+        "references": [
           "packages/cli/src/commands/validate.ts",
           "packages/cli/src/commands/lint.ts"
         ]
@@ -337,15 +313,12 @@
       "height": 100,
       "color": "#2196F3",
       "pv": {
+        "nodeType": "event",
         "name": "File Parsed",
         "description": "File successfully parsed (JSON/YAML)",
         "shape": "roundedRect",
         "icon": "FileJson",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "operation"
-        },
         "event": {
           "name": "file.parsed",
           "attributes": {
@@ -366,7 +339,7 @@
             }
           }
         },
-        "sources": [
+        "references": [
           "packages/cli/src/commands/validate.ts",
           "packages/core/src/ConfigurationLoader.ts"
         ]
@@ -382,15 +355,12 @@
       "height": 100,
       "color": "#FF9800",
       "pv": {
+        "nodeType": "event",
         "name": "Validation Type Detected",
         "description": "Determined which validation to perform",
         "shape": "roundedRect",
         "icon": "GitBranch",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "operation"
-        },
         "event": {
           "name": "type.detected",
           "attributes": {
@@ -406,7 +376,7 @@
             }
           }
         },
-        "sources": [
+        "references": [
           "packages/cli/src/commands/validate.ts",
           "packages/cli/src/commands/lint.ts"
         ]
@@ -422,15 +392,12 @@
       "height": 100,
       "color": "#9C27B0",
       "pv": {
+        "nodeType": "event",
         "name": "Canvas Validated",
         "description": "Canvas file validation completed",
         "shape": "roundedRect",
         "icon": "CheckSquare",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "operation"
-        },
         "event": {
           "name": "canvas.validated",
           "attributes": {
@@ -466,7 +433,7 @@
             }
           }
         },
-        "sources": ["packages/cli/src/commands/validate.ts"]
+        "references": ["packages/cli/src/commands/validate.ts"]
       }
     },
     {
@@ -479,15 +446,12 @@
       "height": 100,
       "color": "#9C27B0",
       "pv": {
+        "nodeType": "event",
         "name": "Workflow Validated",
         "description": "Workflow template validation completed",
         "shape": "roundedRect",
         "icon": "FileText",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "operation"
-        },
         "event": {
           "name": "workflow.validated",
           "attributes": {
@@ -513,7 +477,7 @@
             }
           }
         },
-        "sources": [
+        "references": [
           "packages/cli/src/commands/workflow/validate.ts",
           "packages/core/src/workflow/validator.ts"
         ]
@@ -529,15 +493,12 @@
       "height": 100,
       "color": "#9C27B0",
       "pv": {
+        "nodeType": "event",
         "name": "Execution Validated",
         "description": "Execution file (OTLP) validation completed",
         "shape": "roundedRect",
         "icon": "Activity",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "operation"
-        },
         "event": {
           "name": "execution.validated",
           "attributes": {
@@ -563,7 +524,7 @@
             }
           }
         },
-        "sources": [
+        "references": [
           "packages/cli/src/commands/validate.ts",
           "packages/core/src/execution/ExecutionValidator.ts"
         ]
@@ -579,15 +540,12 @@
       "height": 100,
       "color": "#9C27B0",
       "pv": {
+        "nodeType": "event",
         "name": "Library Validated",
         "description": "Library file validation completed",
         "shape": "roundedRect",
         "icon": "Library",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "operation"
-        },
         "event": {
           "name": "library.validated",
           "attributes": {
@@ -608,7 +566,7 @@
             }
           }
         },
-        "sources": ["packages/cli/src/commands/validate.ts"]
+        "references": ["packages/cli/src/commands/validate.ts"]
       }
     },
     {
@@ -621,15 +579,12 @@
       "height": 100,
       "color": "#9C27B0",
       "pv": {
+        "nodeType": "event",
         "name": "Rules Executed",
         "description": "Linting rules execution completed",
         "shape": "roundedRect",
         "icon": "ListChecks",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "operation"
-        },
         "event": {
           "name": "rules.executed",
           "attributes": {
@@ -660,7 +615,7 @@
             }
           }
         },
-        "sources": [
+        "references": [
           "packages/cli/src/commands/lint.ts",
           "packages/core/src/rules/engine.ts"
         ]
@@ -676,15 +631,12 @@
       "height": 100,
       "color": "#FF9800",
       "pv": {
+        "nodeType": "event",
         "name": "Results Aggregated",
         "description": "All validation results combined",
         "shape": "roundedRect",
         "icon": "Layers",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "operation"
-        },
         "event": {
           "name": "results.aggregated",
           "attributes": {
@@ -710,7 +662,7 @@
             }
           }
         },
-        "sources": [
+        "references": [
           "packages/cli/src/commands/validate.ts",
           "packages/cli/src/commands/lint.ts"
         ]
@@ -726,15 +678,12 @@
       "height": 100,
       "color": "#4CAF50",
       "pv": {
+        "nodeType": "event",
         "name": "Validation Complete",
         "description": "All validations completed successfully",
         "shape": "roundedRect",
         "icon": "CheckCircle2",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "lifecycle"
-        },
         "event": {
           "name": "validation.complete",
           "attributes": {
@@ -760,7 +709,7 @@
             }
           }
         },
-        "sources": [
+        "references": [
           "packages/cli/src/commands/validate.ts",
           "packages/cli/src/commands/lint.ts",
           "packages/cli/src/commands/workflow/validate.ts"
@@ -777,15 +726,12 @@
       "height": 100,
       "color": "#F44336",
       "pv": {
+        "nodeType": "event",
         "name": "Validation Error",
         "description": "Validation failed with errors",
         "shape": "roundedRect",
         "icon": "XCircle",
         "status": "draft",
-        "otel": {
-          "kind": "event",
-          "category": "error"
-        },
         "event": {
           "name": "validation.error",
           "attributes": {
@@ -816,7 +762,7 @@
             }
           }
         },
-        "sources": [
+        "references": [
           "packages/cli/src/commands/validate.ts",
           "packages/core/src/ConfigurationValidator.ts",
           "packages/core/src/execution/ExecutionValidator.ts",
@@ -1123,6 +1069,13 @@
     "name": "Validation Pipeline",
     "description": "Complete validation workflow from codebase composition analysis through validation to results",
     "markdown": ".principal-views/validation.md",
+    "nodeTypes": {
+      "event": {
+        "label": "Event",
+        "description": "An OpenTelemetry event emitted during validation",
+        "color": "#9C27B0"
+      }
+    },
     "edgeTypes": {
       "sequence": {
         "label": "Then",
