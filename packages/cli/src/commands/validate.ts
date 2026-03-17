@@ -1125,50 +1125,69 @@ function validateCanvas(
         });
       }
 
-      // Validate color - all nodes must have a color either directly or via nodeType
-      const hasDirectColor = typeof n.color === 'string' && n.color;
-      let hasNodeTypeColor = false;
+      // Validate color requirements based on canvas type
+      // - .otel.canvas (events): colors NOT required - derived from scope (border) + span (fill) at render time
+      // - .spans.canvas: colors required on span convention nodes (used as fill color for events in that span)
+      // - Other canvases: colors required either directly or via nodeType
+      const isOtelCanvasForColor = filePath.endsWith('.otel.canvas');
+      const isSpansCanvasForColor = filePath.endsWith('.spans.canvas');
 
-      if (!hasDirectColor && n.pv && typeof n.pv === 'object') {
-        const nodePv = n.pv as Record<string, unknown>;
-        const nodeTypeName = nodePv.nodeType as string;
+      if (!isOtelCanvasForColor) {
+        const hasDirectColor = typeof n.color === 'string' && n.color;
+        let hasNodeTypeColor = false;
 
-        if (typeof nodeTypeName === 'string' && nodeTypeName) {
-          // Check if nodeType has a color defined in canvas pv.nodeTypes
-          if (c.pv && typeof c.pv === 'object') {
-            const canvasPv = c.pv as Record<string, unknown>;
-            if (canvasPv.nodeTypes && typeof canvasPv.nodeTypes === 'object') {
-              const nodeTypes = canvasPv.nodeTypes as Record<string, unknown>;
-              const nodeTypeDef = nodeTypes[nodeTypeName];
-              if (nodeTypeDef && typeof nodeTypeDef === 'object') {
-                const typeDef = nodeTypeDef as Record<string, unknown>;
-                if (typeof typeDef.color === 'string' && typeDef.color) {
+        if (!hasDirectColor && n.pv && typeof n.pv === 'object') {
+          const nodePv = n.pv as Record<string, unknown>;
+          const nodeTypeName = nodePv.nodeType as string;
+
+          if (typeof nodeTypeName === 'string' && nodeTypeName) {
+            // Check if nodeType has a color defined in canvas pv.nodeTypes
+            if (c.pv && typeof c.pv === 'object') {
+              const canvasPv = c.pv as Record<string, unknown>;
+              if (canvasPv.nodeTypes && typeof canvasPv.nodeTypes === 'object') {
+                const nodeTypes = canvasPv.nodeTypes as Record<string, unknown>;
+                const nodeTypeDef = nodeTypes[nodeTypeName];
+                if (nodeTypeDef && typeof nodeTypeDef === 'object') {
+                  const typeDef = nodeTypeDef as Record<string, unknown>;
+                  if (typeof typeDef.color === 'string' && typeDef.color) {
+                    hasNodeTypeColor = true;
+                  }
+                }
+              }
+            }
+
+            // Check if nodeType has a color defined in library.nodeComponents
+            if (!hasNodeTypeColor && library) {
+              const nodeComponent = library.nodeComponents[nodeTypeName];
+              if (nodeComponent && typeof nodeComponent === 'object') {
+                const component = nodeComponent as Record<string, unknown>;
+                if (typeof component.color === 'string' && component.color) {
                   hasNodeTypeColor = true;
                 }
               }
             }
           }
-
-          // Check if nodeType has a color defined in library.nodeComponents
-          if (!hasNodeTypeColor && library) {
-            const nodeComponent = library.nodeComponents[nodeTypeName];
-            if (nodeComponent && typeof nodeComponent === 'object') {
-              const component = nodeComponent as Record<string, unknown>;
-              if (typeof component.color === 'string' && component.color) {
-                hasNodeTypeColor = true;
-              }
-            }
-          }
         }
-      }
 
-      if (!hasDirectColor && !hasNodeTypeColor) {
-        issues.push({
-          type: 'error',
-          message: `Node "${nodeLabel}" must have a color`,
-          path: `${nodePath}`,
-          suggestion: 'Add a "color" field (e.g., "color": "#64748B") or use a pv.nodeType that defines a color',
-        });
+        // For spans.canvas, require direct color on the node (not via nodeType)
+        // This color will be used as the fill color for events emitted within this span
+        if (isSpansCanvasForColor) {
+          if (!hasDirectColor) {
+            issues.push({
+              type: 'error',
+              message: `Span convention "${nodeLabel}" must have a color`,
+              path: `${nodePath}.color`,
+              suggestion: 'Add a "color" field (e.g., "color": "#3B82F6"). This color is used as the fill color for events emitted within this span.',
+            });
+          }
+        } else if (!hasDirectColor && !hasNodeTypeColor) {
+          issues.push({
+            type: 'error',
+            message: `Node "${nodeLabel}" must have a color`,
+            path: `${nodePath}`,
+            suggestion: 'Add a "color" field (e.g., "color": "#64748B") or use a pv.nodeType that defines a color',
+          });
+        }
       }
 
       // Validate required fields for standard canvas types

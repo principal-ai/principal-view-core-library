@@ -32,12 +32,18 @@ ${chalk.bold('5. Scopes Canvas')} ${chalk.yellow('.scopes.canvas')}
    Document instrumentation scope boundaries. Validates that all scopes
    declared in library.yaml owned-scopes are properly documented.
 
+${chalk.bold('6. Spans Canvas')} ${chalk.yellow('.spans.canvas')}
+   Define span conventions (operation types) and their colors for visualization.
+   Span colors are used as fill colors for events emitted within that span.
+
 Run ${chalk.cyan('npx @principal-ai/principal-view-cli formats <section>')} for details on:
   ${chalk.yellow('canvas')}       .otel.canvas format and event schemas
   ${chalk.yellow('workflow')}     .workflow.json format and scenario structure
   ${chalk.yellow('execution')}    .otel.json format for captured spans
   ${chalk.yellow('library')}      library.yaml format and service registry
   ${chalk.yellow('scopes')}       .scopes.canvas format and scope boundaries
+  ${chalk.yellow('spans')}        .spans.canvas format and span conventions
+  ${chalk.yellow('colors')}       Color contract for renderers (scope→border, span→fill)
   ${chalk.yellow('examples')}     Complete example files
 `,
 
@@ -60,7 +66,7 @@ ${chalk.dim('│')}       ${chalk.yellow('"id"')}: "event-id",      ${chalk.dim(
 ${chalk.dim('│')}       ${chalk.yellow('"type"')}: "text",                                              ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"text"')}: "Event Name",  ${chalk.dim('// Display text')}              ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"x"')}: 0, ${chalk.yellow('"y"')}: 0, ${chalk.yellow('"width"')}: 200, ${chalk.yellow('"height"')}: 100,                   ${chalk.dim('│')}
-${chalk.dim('│')}       ${chalk.yellow('"color"')}: "#4CAF50",    ${chalk.dim('// Required: hex color')}       ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.dim('// color: NOT required - derived from scope + span at render time')}   ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.green('"pv"')}: {                                                        ${chalk.dim('│')}
 ${chalk.dim('│')}         ${chalk.cyan('"status"')}: "draft",     ${chalk.dim('// Required: draft|approved|implemented')} ${chalk.dim('│')}
 ${chalk.dim('│')}         ${chalk.cyan('"event"')}: {             ${chalk.dim('// Event schema (object, NOT string)')} ${chalk.dim('│')}
@@ -92,9 +98,14 @@ ${chalk.dim('└─────────────────────�
 
 ${chalk.bold('Node Required Fields:')}
 
-  ${chalk.green('color')}      ${chalk.dim('string')}   Hex color (e.g., "#4CAF50")
   ${chalk.green('pv.status')}  ${chalk.dim('string')}   "draft" | "approved" | "implemented"
   ${chalk.green('pv.event')}   ${chalk.dim('object')}   Event schema with name and attributes
+
+${chalk.bold('Note on Colors:')} Event nodes do ${chalk.bold('NOT')} require a color field.
+Colors are derived at render time from:
+  - ${chalk.cyan('Border color')}: from scope (defined in library.yaml owned-scopes)
+  - ${chalk.cyan('Fill color')}: from span (defined in .spans.canvas)
+See ${chalk.yellow('formats colors')} for the complete color contract.
 
 ${chalk.bold('Event Schema Format:')}
 ${chalk.red.bold('IMPORTANT:')} The "event" field must be an ${chalk.bold('object')}, not a string!
@@ -666,6 +677,174 @@ ${chalk.yellow('.principal-views/architecture.scopes.canvas')}
 ${chalk.bold('Validation:')}
   ${chalk.cyan('npx @principal-ai/principal-view-cli scopes validate')}
   ${chalk.cyan('npx @principal-ai/principal-view-cli scopes validate --json')}
+`,
+
+  spans: `
+${chalk.bold.cyan('Spans Canvas Format (.spans.canvas)')}
+${chalk.dim('═'.repeat(70))}
+
+Spans canvas files define span conventions (operation types) for your project.
+Each span convention defines a pattern for matching spans and a color that is
+used as the fill color for events emitted within that span.
+
+${chalk.bold('File Location:')}
+  ${chalk.dim('.principal-views/')}${chalk.yellow('architecture.spans.canvas')}
+  ${chalk.dim('(or <name>.spans.canvas)')}
+
+${chalk.bold('Required Structure:')}
+${chalk.dim('┌────────────────────────────────────────────────────────────────────┐')}
+${chalk.dim('│')} {                                                                  ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"pv"')}: {                                                          ${chalk.dim('│')}
+${chalk.dim('│')}     ${chalk.yellow('"name"')}: "Project Span Conventions",                             ${chalk.dim('│')}
+${chalk.dim('│')}     ${chalk.yellow('"version"')}: "1.0.0"                                              ${chalk.dim('│')}
+${chalk.dim('│')}   },                                                                 ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"nodes"')}: [                                                       ${chalk.dim('│')}
+${chalk.dim('│')}     {                                                              ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.yellow('"id"')}: "validation",                                            ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.yellow('"type"')}: "text",                                               ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.yellow('"text"')}: "# Validation Operations\\n\\nValidate input data",    ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.yellow('"x"')}: 0, ${chalk.yellow('"y"')}: 0, ${chalk.yellow('"width"')}: 220, ${chalk.yellow('"height"')}: 100,                   ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.green('"color"')}: "#22C55E",        ${chalk.dim('// Required: span fill color')}   ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.green('"pv"')}: {                                                        ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"nodeType"')}: "span-convention",  ${chalk.dim('// Required')}             ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"status"')}: "implemented",        ${chalk.dim('// draft|approved|implemented')} ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"otel"')}: {                                                    ${chalk.dim('│')}
+${chalk.dim('│')}           ${chalk.yellow('"spanPattern"')}: "validate.*"   ${chalk.dim('// Matches span names')}  ${chalk.dim('│')}
+${chalk.dim('│')}         }                                                          ${chalk.dim('│')}
+${chalk.dim('│')}       }                                                            ${chalk.dim('│')}
+${chalk.dim('│')}     }                                                              ${chalk.dim('│')}
+${chalk.dim('│')}   ],                                                               ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"edges"')}: []                      ${chalk.dim('// Optional: span relationships')} ${chalk.dim('│')}
+${chalk.dim('│')} }                                                                  ${chalk.dim('│')}
+${chalk.dim('└────────────────────────────────────────────────────────────────────┘')}
+
+${chalk.bold('Node Required Fields:')}
+
+  ${chalk.green('color')}              ${chalk.dim('string')}   Hex color for this span (used as event fill)
+  ${chalk.green('pv.nodeType')}        ${chalk.dim('string')}   Must be "span-convention"
+  ${chalk.green('pv.status')}          ${chalk.dim('string')}   "draft" | "approved" | "implemented"
+  ${chalk.green('pv.otel.spanPattern')} ${chalk.dim('string')}   Pattern to match span names
+
+${chalk.bold('Relationship to Workflows:')}
+
+Span conventions are linked to workflows via the spanPattern field:
+
+${chalk.dim('┌────────────────────────────────────────────────────────────────────┐')}
+${chalk.dim('│')} ${chalk.yellow('# workflow.json')}                                                     ${chalk.dim('│')}
+${chalk.dim('│')} {                                                                  ${chalk.dim('│')}
+${chalk.dim('│')}   "id": "data-validation",                                         ${chalk.dim('│')}
+${chalk.dim('│')}   ${chalk.green('"spanPattern"')}: "validate.*",  ${chalk.dim('// Matches spans.canvas')}       ${chalk.dim('│')}
+${chalk.dim('│')}   "canvas": ".principal-views/validation.otel.canvas",             ${chalk.dim('│')}
+${chalk.dim('│')}   "scenarios": [...]                                               ${chalk.dim('│')}
+${chalk.dim('│')} }                                                                  ${chalk.dim('│')}
+${chalk.dim('└────────────────────────────────────────────────────────────────────┘')}
+
+${chalk.bold('Color Usage:')}
+
+The span color is used as the ${chalk.cyan('fill color')} for event nodes when
+rendering events that were emitted within that span. This allows visual
+grouping of events by their parent operation.
+
+See ${chalk.yellow('formats colors')} for the complete renderer color contract.
+
+${chalk.bold('Validation Rules:')}
+
+${chalk.cyan('1. Color is required:')}
+   Every span convention node must have a color field.
+
+${chalk.cyan('2. Implemented spans require workflows:')}
+   Spans with status "implemented" must have a matching workflow.json.
+
+${chalk.cyan('3. Draft spans with workflows should be upgraded:')}
+   If a workflow exists for a span, its status should be "implemented".
+
+${chalk.bold('Validation:')}
+  ${chalk.cyan('npx @principal-ai/principal-view-cli validate')}
+`,
+
+  colors: `
+${chalk.bold.cyan('Renderer Color Contract')}
+${chalk.dim('═'.repeat(70))}
+
+This document specifies how renderers (e.g., File City) should apply colors
+to event and span nodes. Colors communicate both scope ownership and
+operational context at a glance.
+
+${chalk.bold('Color Model:')}
+
+  ${chalk.cyan('┌─────────────────────────────────────────────────────────────────┐')}
+  ${chalk.cyan('│')}  ${chalk.bold('EVENT NODE')}                                                    ${chalk.cyan('│')}
+  ${chalk.cyan('│')}  ┌───────────────────────────────────────────────────────────┐  ${chalk.cyan('│')}
+  ${chalk.cyan('│')}  │                                                           │  ${chalk.cyan('│')}
+  ${chalk.cyan('│')}  │   ${chalk.bgGreen.black(' FILL: from span color ')}                              │  ${chalk.cyan('│')}
+  ${chalk.cyan('│')}  │   ${chalk.dim('(defined in .spans.canvas)')}                              │  ${chalk.cyan('│')}
+  ${chalk.cyan('│')}  │                                                           │  ${chalk.cyan('│')}
+  ${chalk.cyan('│')}  └───────────────────────────────────────────────────────────┘  ${chalk.cyan('│')}
+  ${chalk.cyan('│')}    ${chalk.yellow('↑ BORDER: from scope color')}                                   ${chalk.cyan('│')}
+  ${chalk.cyan('│')}    ${chalk.dim('(defined in library.yaml owned-scopes)')}                       ${chalk.cyan('│')}
+  ${chalk.cyan('└─────────────────────────────────────────────────────────────────┘')}
+
+${chalk.bold('Color Sources:')}
+
+${chalk.cyan('1. Scope Color → Border')}
+   Source: ${chalk.yellow('library.yaml')} resources.[service].owned-scopes.[scope].color
+   Purpose: Identifies which instrumentation boundary the event belongs to
+
+   ${chalk.dim('resources:')}
+   ${chalk.dim('  my-service:')}
+   ${chalk.dim('    owned-scopes:')}
+   ${chalk.dim('      validation:')}
+   ${chalk.green('        color: "#22C55E"')}  ${chalk.dim('← This becomes border color')}
+
+${chalk.cyan('2. Span Color → Fill')}
+   Source: ${chalk.yellow('.spans.canvas')} node color field
+   Purpose: Shows which operation type the event was emitted from
+
+   ${chalk.dim('{')}
+   ${chalk.dim('  "id": "validate-operation",')}
+   ${chalk.green('  "color": "#3B82F6",')}  ${chalk.dim('← This becomes fill color')}
+   ${chalk.dim('  "pv": { "otel": { "spanPattern": "validate.*" } }')}
+   ${chalk.dim('}')}
+
+${chalk.bold('Rendering Rules:')}
+
+${chalk.cyan('1. Static Context (canvas authoring):')}
+   Events in .otel.canvas files do NOT have colors defined.
+   Renderers should use a neutral/default color when viewing canvases
+   outside of a workflow/span context.
+
+${chalk.cyan('2. Workflow Context:')}
+   When viewing events within a specific workflow:
+   - Fill = color from the workflow's spanPattern's span convention
+   - Border = color from the event's pv.otel.scope in library.yaml
+
+${chalk.cyan('3. Multi-Span Events:')}
+   An event may be emitted from multiple span types (e.g., same event
+   in different workflows). The renderer should:
+   - Use the span color from the current viewing context
+   - When viewing "all events", use neutral fill or show indicator
+
+${chalk.cyan('4. Missing Colors:')}
+   - Missing scope: Use default gray border (#6B7280)
+   - Missing span: Use default gray fill (#9CA3AF)
+   - Draft nodes: May use a distinct draft indicator color
+
+${chalk.bold('Shape Conventions:')}
+
+  ${chalk.green('Event nodes')}:      Rectangle (default)
+  ${chalk.yellow('Span conventions')}: Hexagon or distinct shape
+
+This shape differentiation helps distinguish span definitions from
+event definitions in mixed visualizations.
+
+${chalk.bold('Implementation Notes:')}
+
+Renderers should:
+1. Load scope colors from library.yaml at startup
+2. Load span colors from .spans.canvas files
+3. Resolve event → scope via pv.otel.scope field
+4. Resolve event → span via workflow.json spanPattern matching
+5. Apply border and fill colors based on current context
 `,
 
   examples: `

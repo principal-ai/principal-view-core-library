@@ -297,6 +297,19 @@ export type {
   NormalizedScope,
 } from './scopes';
 
+// Export spans module (span conventions + span color utilities)
+export {
+  DEFAULT_SPAN_COLOR,
+  extractSpanConvention,
+  extractSpanConventions,
+  buildSpanColorMap,
+  buildSpanColorMapFromCanvases,
+  matchSpanPattern,
+  getSpanColor,
+  resolveEventSpanColor,
+} from './spans';
+export type { NormalizedSpanConvention } from './spans';
+
 // Export execution validation (browser-safe - no Node.js dependencies)
 export { ExecutionValidator, createExecutionValidator } from './execution/ExecutionValidator';
 export type {

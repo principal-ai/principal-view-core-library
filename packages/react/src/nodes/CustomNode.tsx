@@ -402,23 +402,32 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
     );
   }
 
-  // Get fill color based on state or default
-  // Priority: state color > scope color > node data color > type definition color > default
-  // Scope colors come from library.yaml owned-scopes and are injected by GraphRenderer
+  // Color Contract:
+  // - scopeColor: Used as BORDER color (from library.yaml owned-scopes)
+  // - spanColor: Used as FILL color (from .spans.canvas based on workflow context)
+  // - For non-event canvases, falls back to legacy behavior (node color or type color)
+
+  // Get colors from node data (injected by GraphRenderer)
   const nodeDataColor = nodeData.color as string | undefined;
   const scopeColor = nodeData.scopeColor as string | undefined;
-  const baseColor = scopeColor || nodeDataColor || typeDefinition.color || '#888';
+  const spanColor = nodeData.spanColor as string | undefined;
+
   // Check node's own states first (from pv.states), then fall back to type definition states
   const nodeDataStates = nodeData.states as
     | Record<string, { color?: string; label?: string; icon?: string }>
     | undefined;
   const stateColor =
     state && (nodeDataStates?.[state]?.color || typeDefinition.states?.[state]?.color);
-  const fillColor = stateColor || baseColor;
 
-  // Get stroke color - priority: node data stroke > type definition stroke > fill color
+  // Fill color priority: state color > span color > node data color > type definition color > default
+  // spanColor is the new primary source for fill (from .spans.canvas)
+  const baseFillColor = spanColor || nodeDataColor || typeDefinition.color || '#888';
+  const fillColor = stateColor || baseFillColor;
+
+  // Stroke/border color priority: explicit stroke > scope color > fill color
+  // scopeColor is now the primary source for border (from library.yaml owned-scopes)
   const nodeDataStroke = nodeData.stroke as string | undefined;
-  const baseStrokeColor = nodeDataStroke || typeDefinition.stroke || fillColor;
+  const baseStrokeColor = nodeDataStroke || scopeColor || fillColor;
 
   // Apply status-based border styling
   const status = nodeData?.status as 'draft' | 'approved' | 'implemented' | undefined;

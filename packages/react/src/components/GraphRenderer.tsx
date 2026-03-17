@@ -45,7 +45,10 @@ import type {
 import {
   CanvasConverter,
   buildScopeColorMap,
+  buildSpanColorMap,
+  resolveEventSpanColor,
   DRAFT_NODE_COLOR,
+  DEFAULT_SPAN_COLOR,
 } from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
 import { CustomNode } from '../nodes/CustomNode';
@@ -268,6 +271,20 @@ export interface GraphRendererProps extends GraphRendererBaseProps {
    * This allows sharing type definitions across multiple canvas files via a library.yaml file.
    */
   library?: ComponentLibrary;
+
+  /**
+   * Optional spans canvas containing span convention definitions.
+   * Span colors from this canvas are used as fill colors for event nodes.
+   * When provided with workflowSpanPattern, events will be colored based on their span.
+   */
+  spansCanvas?: ExtendedCanvas;
+
+  /**
+   * Optional span pattern for the current workflow context.
+   * When provided, event nodes will use the span color from spansCanvas as their fill.
+   * This should match a spanPattern from a workflow.json file.
+   */
+  workflowSpanPattern?: string;
 }
 
 // Define custom node types
@@ -2370,10 +2387,16 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
 /**
  * Convert canvas to legacy configuration format for internal use
+ *
+ * Color Contract:
+ * - scopeColor: Used as border color (from library.yaml owned-scopes)
+ * - spanColor: Used as fill color (from .spans.canvas based on workflow context)
  */
 function useCanvasToLegacy(
   canvas: ExtendedCanvas | undefined,
-  library?: ComponentLibrary
+  library?: ComponentLibrary,
+  spansCanvas?: ExtendedCanvas,
+  workflowSpanPattern?: string
 ): {
   configuration: GraphConfiguration;
   nodes: NodeState[];
@@ -2384,29 +2407,38 @@ function useCanvasToLegacy(
 
     const { nodes, edges } = CanvasConverter.canvasToGraph(canvas);
 
-    // Build scope color map from library resources
+    // Build scope color map from library resources (for border colors)
     const scopeColorMap = buildScopeColorMap(library?.resources);
 
-    // Inject scope colors into nodes
-    // Priority: scope color overrides other colors (except explicit node colors set by user)
+    // Build span color map from spans canvas (for fill colors)
+    const spanColorMap = buildSpanColorMap(spansCanvas);
+
+    // Resolve span color for current workflow context
+    const spanColor = resolveEventSpanColor(workflowSpanPattern, spanColorMap);
+
+    // Inject scope and span colors into nodes
+    // - scopeColor: border color (from pv.otel.scope → library.yaml)
+    // - spanColor: fill color (from workflow spanPattern → spans.canvas)
     for (const node of nodes) {
       const otel = node.data?.otel as { scope?: string } | undefined;
       const scope = otel?.scope;
-      const status = node.data?.status as string | undefined;
 
+      // Determine scope color (for border)
+      let nodeScopeColor: string;
       if (scope && scopeColorMap[scope]) {
         // Node has a scope with a defined color - use it
-        node.data = {
-          ...node.data,
-          scopeColor: scopeColorMap[scope],
-        };
-      } else if (status === 'draft' || !scope) {
+        nodeScopeColor = scopeColorMap[scope];
+      } else {
         // Draft nodes or nodes without scope get the draft color
-        node.data = {
-          ...node.data,
-          scopeColor: DRAFT_NODE_COLOR,
-        };
+        nodeScopeColor = DRAFT_NODE_COLOR;
       }
+
+      // Inject both scope and span colors
+      node.data = {
+        ...node.data,
+        scopeColor: nodeScopeColor,
+        spanColor: workflowSpanPattern ? spanColor : DEFAULT_SPAN_COLOR,
+      };
     }
 
     // Build GraphConfiguration from canvas
@@ -2550,7 +2582,7 @@ function useCanvasToLegacy(
     };
 
     return { configuration, nodes, edges };
-  }, [canvas, library]);
+  }, [canvas, library, spansCanvas, workflowSpanPattern]);
 }
 
 /**
@@ -2575,7 +2607,15 @@ function useCanvasToLegacy(
  * ```
  */
 export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>((props, ref) => {
-  const { canvas, library, className, width = '100%', height = '100%' } = props;
+  const {
+    canvas,
+    library,
+    spansCanvas,
+    workflowSpanPattern,
+    className,
+    width = '100%',
+    height = '100%',
+  } = props;
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
@@ -2586,7 +2626,8 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
   }, []);
 
   // Convert canvas to internal format (merging library types if provided)
-  const canvasData = useCanvasToLegacy(canvas, library);
+  // Also inject scope colors (for border) and span colors (for fill)
+  const canvasData = useCanvasToLegacy(canvas, library, spansCanvas, workflowSpanPattern);
 
   // Debug: Log canvas data to help diagnose disappearing edges
   if (process.env.NODE_ENV === 'development') {

@@ -17,6 +17,7 @@ resources:
     owned-scopes:
       principal-view.cli:
         description: "CLI tool instrumentation"
+        color: "#6366F1"
 
 nodeComponents:
   # ─────────────────────────────────────────────

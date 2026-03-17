@@ -6,8 +6,7 @@
     "nodeTypes": {
       "span-convention": {
         "label": "Span Convention",
-        "description": "A span convention defining an operation type",
-        "color": "#3B82F6"
+        "description": "A span convention defining an operation type"
       }
     }
   },
@@ -19,6 +18,7 @@
       "y": 200,
       "width": 220,
       "height": 100,
+      "color": "#8B5CF6",
       "text": "# CLI Entry Point\n\nCLI invocation entry point",
       "pv": {
         "nodeType": "span-convention",
@@ -36,6 +36,7 @@
       "y": 0,
       "width": 220,
       "height": 100,
+      "color": "#22C55E",
       "text": "# Validation Operations\n\nCanvas, workflow, trace validation",
       "pv": {
         "nodeType": "span-convention",
@@ -53,6 +54,7 @@
       "y": 150,
       "width": 220,
       "height": 100,
+      "color": "#3B82F6",
       "text": "# Discovery Operations\n\nLibrary, canvas, workflow discovery",
       "pv": {
         "nodeType": "span-convention",
@@ -70,6 +72,7 @@
       "y": 300,
       "width": 220,
       "height": 100,
+      "color": "#F97316",
       "text": "# Parsing Operations\n\nCanvas, YAML, JSON parsing",
       "pv": {
         "nodeType": "span-convention",
@@ -87,6 +90,7 @@
       "y": 150,
       "width": 220,
       "height": 100,
+      "color": "#6B7280",
       "text": "# File Operations\n\nFile system read/write",
       "pv": {
         "nodeType": "span-convention",
