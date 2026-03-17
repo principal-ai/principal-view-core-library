@@ -48,6 +48,7 @@
   },
   "version": "0.0.4",
   "dependencies": {
-    "@principal-ai/codebase-composition": "^0.2.40"
+    "@principal-ai/codebase-composition": "^0.2.40",
+    "minimatch": "^10.2.4"
   }
 }
