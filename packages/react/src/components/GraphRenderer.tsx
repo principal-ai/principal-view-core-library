@@ -2407,8 +2407,8 @@ function useCanvasToLegacy(
 
     const { nodes, edges } = CanvasConverter.canvasToGraph(canvas);
 
-    // Build scope color map from library resources (for border colors)
-    const scopeColorMap = buildScopeColorMap(library?.resources);
+    // Build scope color map from library scopes (for border colors)
+    const scopeColorMap = buildScopeColorMap(library);
 
     // Build span color map from spans canvas (for fill colors)
     const spanColorMap = buildSpanColorMap(spansCanvas);

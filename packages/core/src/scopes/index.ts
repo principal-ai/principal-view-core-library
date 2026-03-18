@@ -2,7 +2,7 @@
  * Scopes module
  *
  * Provides utilities and validation for instrumentation scopes:
- * - Scope utilities for working with owned-scopes in both formats
+ * - Scope utilities for working with top-level scopes and owned-scopes references
  * - Validation for .scopes.canvas files that document scope boundaries
  */
 
@@ -16,12 +16,11 @@ export {
 export {
   DEFAULT_SCOPE_COLOR,
   DRAFT_NODE_COLOR,
-  isRecordFormat,
   getScopeNames,
   getScopeDefinition,
   getScopeColor,
   normalizeScopes,
-  extractScopesFromResources,
   buildScopeColorMap,
+  getAllScopeNames,
   type NormalizedScope,
 } from './utils';

@@ -1,11 +1,11 @@
 /**
  * Scope utility functions
  *
- * Helpers for working with owned-scopes in both legacy (string[])
- * and new (Record<string, ScopeDefinition>) formats.
+ * Helpers for working with scopes defined in the top-level `scopes` section
+ * and referenced by resources via `owned-scopes`.
  */
 
-import type { OwnedScopes, ScopeDefinition, ResourceAttributes } from '../types/library';
+import type { OwnedScopes, ScopeDefinition } from '../types/library';
 
 /** Default color for scopes without a defined color */
 export const DEFAULT_SCOPE_COLOR = '#6B7280'; // gray-500
@@ -20,112 +20,83 @@ export interface NormalizedScope {
   name: string;
   color: string;
   description?: string;
+  /** Whether this scope is defined externally (in another library) */
+  external?: boolean;
 }
 
 /**
- * Check if owned-scopes is in the new record format
- */
-export function isRecordFormat(scopes: OwnedScopes): scopes is Record<string, ScopeDefinition> {
-  return !Array.isArray(scopes) && typeof scopes === 'object';
-}
-
-/**
- * Get all scope names from owned-scopes (works with both formats)
+ * Get all scope names from owned-scopes array
  */
 export function getScopeNames(scopes: OwnedScopes | undefined): string[] {
-  if (!scopes) return [];
-  if (Array.isArray(scopes)) return scopes;
-  return Object.keys(scopes);
+  return scopes ?? [];
 }
 
 /**
- * Get scope definition by name (returns undefined for legacy format)
+ * Get scope definition by name from library scopes
  */
 export function getScopeDefinition(
-  scopes: OwnedScopes | undefined,
+  libraryScopes: Record<string, ScopeDefinition> | undefined,
   scopeName: string
 ): ScopeDefinition | undefined {
-  if (!scopes || Array.isArray(scopes)) return undefined;
-  return scopes[scopeName];
+  return libraryScopes?.[scopeName];
 }
 
 /**
- * Get scope color by name
- * Returns the defined color, or default color for legacy format
+ * Get scope color by name from library scopes
+ * Returns the defined color, or default color if not found
  */
-export function getScopeColor(scopes: OwnedScopes | undefined, scopeName: string): string {
-  const definition = getScopeDefinition(scopes, scopeName);
-  return definition?.color ?? DEFAULT_SCOPE_COLOR;
+export function getScopeColor(
+  libraryScopes: Record<string, ScopeDefinition> | undefined,
+  scopeName: string
+): string {
+  return libraryScopes?.[scopeName]?.color ?? DEFAULT_SCOPE_COLOR;
 }
 
 /**
- * Normalize owned-scopes to a consistent array of scope entries
+ * Normalize scope names to NormalizedScope array using library scope definitions
  */
-export function normalizeScopes(scopes: OwnedScopes | undefined): NormalizedScope[] {
-  if (!scopes) return [];
+export function normalizeScopes(
+  scopeNames: OwnedScopes | undefined,
+  libraryScopes: Record<string, ScopeDefinition> | undefined
+): NormalizedScope[] {
+  if (!scopeNames) return [];
 
-  if (Array.isArray(scopes)) {
-    // Legacy format - assign default color
-    return scopes.map(name => ({
+  return scopeNames.map((name) => {
+    const definition = libraryScopes?.[name];
+    return {
       name,
-      color: DEFAULT_SCOPE_COLOR,
-    }));
-  }
-
-  // New record format
-  return Object.entries(scopes).map(([name, definition]) => ({
-    name,
-    color: definition.color,
-    description: definition.description,
-  }));
+      color: definition?.color ?? DEFAULT_SCOPE_COLOR,
+      description: definition?.description,
+      external: definition?.external,
+    };
+  });
 }
 
 /**
- * Extract all scopes from a library's resources
- * Returns a map of scope name to its definition
- */
-export function extractScopesFromResources(
-  resources: Record<string, ResourceAttributes> | undefined
-): Map<string, NormalizedScope> {
-  const scopeMap = new Map<string, NormalizedScope>();
-
-  if (!resources) return scopeMap;
-
-  for (const [_resourceKey, attrs] of Object.entries(resources)) {
-    const ownedScopes = attrs['owned-scopes'];
-    const normalized = normalizeScopes(ownedScopes);
-
-    for (const scope of normalized) {
-      // Later definitions override earlier ones
-      scopeMap.set(scope.name, scope);
-    }
-
-    // Also add service.name as a scope (with default color if not defined elsewhere)
-    const serviceName = attrs['service.name'];
-    if (serviceName && !scopeMap.has(serviceName)) {
-      scopeMap.set(serviceName, {
-        name: serviceName,
-        color: DEFAULT_SCOPE_COLOR,
-      });
-    }
-  }
-
-  return scopeMap;
-}
-
-/**
- * Build a scope color map from library resources
+ * Build a scope color map from library scopes
  * Returns a simple name -> color mapping for fast lookups
+ * External scopes (without color) use the default color
  */
 export function buildScopeColorMap(
-  resources: Record<string, ResourceAttributes> | undefined
+  library: { scopes?: Record<string, ScopeDefinition> } | undefined
 ): Record<string, string> {
-  const scopes = extractScopesFromResources(resources);
   const colorMap: Record<string, string> = {};
 
-  for (const [name, scope] of scopes) {
-    colorMap[name] = scope.color;
+  if (library?.scopes) {
+    for (const [name, def] of Object.entries(library.scopes)) {
+      colorMap[name] = def.color ?? DEFAULT_SCOPE_COLOR;
+    }
   }
 
   return colorMap;
+}
+
+/**
+ * Get all scope names defined in library
+ */
+export function getAllScopeNames(
+  library: { scopes?: Record<string, ScopeDefinition> } | undefined
+): string[] {
+  if (!library?.scopes) return [];
+  return Object.keys(library.scopes);
 }

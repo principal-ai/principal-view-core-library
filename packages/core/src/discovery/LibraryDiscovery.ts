@@ -10,6 +10,7 @@ import { PackageLayerModule, type PackageLayer } from '@principal-ai/codebase-co
 import { LibraryLoader } from '../LibraryLoader';
 import type { ComponentLibrary } from '../types/library';
 import { getScopeNames } from '../scopes/utils';
+import type { LibraryValidationError, LibraryValidationErrorType } from '../validation';
 
 /**
  * Service with its owned scopes
@@ -45,22 +46,8 @@ export interface DiscoveredLibrary {
   servicesWithScopes: ServiceWithScopes[];
 }
 
-/**
- * Types of validation errors
- */
-export type LibraryValidationErrorType =
-  | 'parse-error'
-  | 'validation-error'
-  | 'scopes-canvas-required';
-
-/**
- * Library validation error with type information
- */
-export interface LibraryValidationError {
-  path: string;
-  error: string;
-  type?: LibraryValidationErrorType;
-}
+// Re-export validation types from shared module
+export type { LibraryValidationError, LibraryValidationErrorType };
 
 /**
  * Result of library discovery
@@ -180,14 +167,14 @@ export class LibraryDiscovery {
           // Only report errors that aren't "file not found" (which is normal)
           errors.push({
             path: loadResult.path,
-            error: loadResult.error,
+            message: loadResult.error,
             type: 'parse-error',
           });
         }
       } catch (error) {
         errors.push({
           path: pkg.packageData.path,
-          error: error instanceof Error ? error.message : String(error),
+          message: error instanceof Error ? error.message : String(error),
         });
       }
     }
@@ -229,7 +216,7 @@ export class LibraryDiscovery {
         } else if (loadResult.error) {
           errors.push({
             path: loadResult.path,
-            error: loadResult.error,
+            message: loadResult.error,
             type: 'parse-error',
           });
         }
@@ -332,7 +319,7 @@ export class LibraryDiscovery {
     if (!pvDirExists) {
       errors.push({
         path: libraryPath,
-        error: `Scopes canvas required: library.yaml defines owned-scopes [${allOwnedScopes.join(', ')}] but no .principal-views/ directory exists. Create a .scopes.canvas file (e.g., architecture.scopes.canvas) documenting scope boundaries.`,
+        message: `Scopes canvas required: library.yaml defines owned-scopes [${allOwnedScopes.join(', ')}] but no .principal-views/ directory exists. Create a .scopes.canvas file (e.g., architecture.scopes.canvas) documenting scope boundaries.`,
         type: 'scopes-canvas-required',
       });
       return;
@@ -344,7 +331,7 @@ export class LibraryDiscovery {
     if (!scopesCanvasExists) {
       errors.push({
         path: libraryPath,
-        error: `Scopes canvas required: library.yaml defines owned-scopes [${allOwnedScopes.join(', ')}] but no .scopes.canvas file found. Create a .scopes.canvas file (e.g., .principal-views/architecture.scopes.canvas) with nodes for each scope (set pv.otel.scope to the scope name).`,
+        message: `Scopes canvas required: library.yaml defines owned-scopes [${allOwnedScopes.join(', ')}] but no .scopes.canvas file found. Create a .scopes.canvas file (e.g., .principal-views/architecture.scopes.canvas) with nodes for each scope (set pv.otel.scope to the scope name).`,
         type: 'scopes-canvas-required',
       });
     }

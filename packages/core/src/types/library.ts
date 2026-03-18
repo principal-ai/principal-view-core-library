@@ -32,19 +32,26 @@ import type {
  * Used for consistent visual representation across canvases.
  */
 export interface ScopeDefinition {
-  /** Color for nodes belonging to this scope (hex format) */
-  color: string;
+  /** Color for nodes belonging to this scope (hex format). Required unless external. */
+  color?: string;
 
   /** Human-readable description of what this scope covers */
   description?: string;
+
+  /**
+   * Mark this scope as external - defined in another library/package.
+   * External scopes don't require color (they inherit from the defining library).
+   */
+  external?: boolean;
 }
 
 /**
- * Owned scopes can be either:
- * - Simple string array (legacy format): ["scope1", "scope2"]
- * - Record with definitions (new format): { "scope1": { color: "#fff", description: "..." } }
+ * Owned scopes: array of scope names that reference top-level scopes
+ *
+ * Scope definitions are declared in the top-level `scopes` section of library.yaml.
+ * Resources reference those scopes by name.
  */
-export type OwnedScopes = string[] | Record<string, ScopeDefinition>;
+export type OwnedScopes = string[];
 
 /**
  * OTEL resource attributes for a service/component
@@ -116,30 +123,26 @@ export interface ResourceAttributes {
    * Spans from these scopes will be matched against this service's storyboards
    * rather than looking up external registries.
    *
-   * Can be either a simple array (legacy) or a record with scope definitions:
+   * Scope names must reference scopes defined in the top-level `scopes` section.
    *
-   * @example Simple array (legacy):
+   * @example
    * ```yaml
-   * owned-scopes:
-   *   - "auth-me"
-   *   - "checkout"
-   * ```
-   *
-   * @example Record with definitions (recommended):
-   * ```yaml
-   * owned-scopes:
-   *   auth-me:
+   * scopes:
+   *   auth-flow:
    *     color: "#DC2626"
    *     description: "Authentication flow instrumentation"
-   *   checkout:
-   *     color: "#059669"
-   *     description: "Checkout process instrumentation"
+   *
+   * resources:
+   *   auth-service:
+   *     service.name: "auth-service"
+   *     owned-scopes:
+   *       - "auth-flow"
    * ```
    */
   'owned-scopes'?: OwnedScopes;
 
   /** Allow arbitrary OTEL resource attributes */
-  [key: string]: string | string[] | OwnedScopes | undefined;
+  [key: string]: string | string[] | undefined;
 }
 
 // ============================================================================
@@ -314,6 +317,25 @@ export interface ComponentLibrary {
 
   /** Library description */
   description?: string;
+
+  /**
+   * Top-level scope definitions
+   *
+   * Defines instrumentation scopes with colors and descriptions.
+   * Resources reference these scopes by name in their `owned-scopes` field.
+   *
+   * @example
+   * ```yaml
+   * scopes:
+   *   authentication:
+   *     color: "#DC2626"
+   *     description: "Authentication flow instrumentation"
+   *   checkout:
+   *     color: "#059669"
+   *     description: "Checkout process instrumentation"
+   * ```
+   */
+  scopes?: Record<string, ScopeDefinition>;
 
   /**
    * Service resource registry

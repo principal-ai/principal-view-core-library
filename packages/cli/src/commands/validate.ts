@@ -16,8 +16,8 @@ import { readFile } from 'node:fs/promises';
 import chalk from 'chalk';
 import { globby } from 'globby';
 import yaml from 'js-yaml';
-import type { ExtendedCanvas, WorkflowTemplate, ExecutionData } from '@principal-ai/principal-view-core';
-import { createExecutionValidator } from '@principal-ai/principal-view-core';
+import type { ExtendedCanvas, WorkflowTemplate, ExecutionData, ComponentLibrary as CoreComponentLibrary } from '@principal-ai/principal-view-core';
+import { createExecutionValidator, validateLibraryStructure } from '@principal-ai/principal-view-core';
 import { CanvasDiscovery, LibraryDiscovery, createWorkflowValidator, EventRegistry, WorkflowValidator } from '@principal-ai/principal-view-core/node';
 import type { ComponentLibrary } from '@principal-ai/principal-view-core';
 import { FilesystemService, NodeFileSystemAdapter as CompositionFsAdapter } from '@principal-ai/codebase-composition/node';
@@ -83,35 +83,30 @@ function loadLibrary(principalViewsDir: string): LoadedLibrary | null {
 }
 
 /**
- * Validate library.yaml file for unknown fields
+ * Validate library.yaml file
+ *
+ * Uses core's validateLibraryStructure for schema validation,
+ * then adds CLI-specific checks (unknown fields, icons, recommended fields).
  */
 function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const lib = library.raw;
 
-  // Check root level fields
+  // 1. Run core schema validation
+  const schemaResult = validateLibraryStructure(lib as unknown as CoreComponentLibrary);
+  for (const error of schemaResult.errors) {
+    issues.push({
+      type: 'error',
+      message: error.message,
+      path: error.path,
+      suggestion: error.suggestion,
+    });
+  }
+
+  // 2. CLI-specific: Check for unknown fields (helpful for typos)
   checkUnknownFields(lib, ALLOWED_LIBRARY_FIELDS.root, '', issues);
 
-  // Check required fields
-  if (!lib.nodeComponents || typeof lib.nodeComponents !== 'object') {
-    issues.push({
-      type: 'error',
-      message: 'Missing or invalid "nodeComponents" field',
-      path: 'nodeComponents',
-      suggestion: 'Add: nodeComponents: {} (can be empty but must be present)',
-    });
-  }
-
-  if (!lib.edgeComponents || typeof lib.edgeComponents !== 'object') {
-    issues.push({
-      type: 'error',
-      message: 'Missing or invalid "edgeComponents" field',
-      path: 'edgeComponents',
-      suggestion: 'Add: edgeComponents: {} (can be empty but must be present)',
-    });
-  }
-
-  // Validate nodeComponents
+  // CLI-specific: Validate nodeComponents for unknown fields and icon names
   if (lib.nodeComponents && typeof lib.nodeComponents === 'object') {
     for (const [compId, compDef] of Object.entries(lib.nodeComponents as Record<string, unknown>)) {
       if (compDef && typeof compDef === 'object') {
@@ -212,7 +207,7 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
     }
   }
 
-  // Validate edgeComponents
+  // CLI-specific: Validate edgeComponents for unknown fields
   if (lib.edgeComponents && typeof lib.edgeComponents === 'object') {
     for (const [compId, compDef] of Object.entries(lib.edgeComponents as Record<string, unknown>)) {
       if (compDef && typeof compDef === 'object') {
@@ -246,7 +241,7 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
     }
   }
 
-  // Validate connectionRules
+  // CLI-specific: Validate connectionRules for unknown fields
   if (Array.isArray(lib.connectionRules)) {
     lib.connectionRules.forEach((rule: unknown, ruleIndex: number) => {
       if (rule && typeof rule === 'object') {
@@ -270,62 +265,44 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
     });
   }
 
-  // Validate resources
-  if (lib.resources !== undefined) {
-    if (typeof lib.resources !== 'object' || lib.resources === null) {
+  // 3. CLI-specific: Recommended field warnings for resources
+  // (Schema validation for resources is handled by core)
+  if (lib.resources && typeof lib.resources === 'object' && !Array.isArray(lib.resources)) {
+    const resources = lib.resources as Record<string, unknown>;
+    const resourceKeys = Object.keys(resources);
+
+    // Warn if resources is defined but empty
+    if (resourceKeys.length === 0) {
       issues.push({
-        type: 'error',
-        message: 'resources must be an object',
+        type: 'warning',
+        message: 'resources section is empty. Consider documenting services that emit OTEL traces.',
         path: 'resources',
-        suggestion: 'Use {} for an empty service registry, or define services like: { my-service: { service.name: "my-service", ... } }',
+        suggestion: 'See: npx @principal-ai/principal-view-cli formats library',
       });
-    } else {
-      const resources = lib.resources as Record<string, unknown>;
-      const resourceKeys = Object.keys(resources);
+    }
 
-      // Warn if resources is defined but empty
-      if (resourceKeys.length === 0) {
-        issues.push({
-          type: 'warning',
-          message: 'resources section is empty. Consider documenting services that emit OTEL traces.',
-          path: 'resources',
-          suggestion: 'See: npx @principal-ai/principal-view-cli formats library',
-        });
-      }
+    // Check for recommended (but not required) fields
+    for (const [serviceId, serviceDef] of Object.entries(resources)) {
+      if (serviceDef && typeof serviceDef === 'object') {
+        const service = serviceDef as Record<string, unknown>;
 
-      // Validate each resource entry
-      for (const [serviceId, serviceDef] of Object.entries(resources)) {
-        if (serviceDef && typeof serviceDef === 'object') {
-          const service = serviceDef as Record<string, unknown>;
+        // Warn about missing recommended fields
+        if (!service['service.version']) {
+          issues.push({
+            type: 'warning',
+            message: `Missing recommended field "service.version" in resource "${serviceId}"`,
+            path: `resources.${serviceId}`,
+            suggestion: 'Consider adding service.version to track which version emitted traces',
+          });
+        }
 
-          // Check for required service.name
-          if (!service['service.name']) {
-            issues.push({
-              type: 'error',
-              message: `Missing required field "service.name" in resource "${serviceId}"`,
-              path: `resources.${serviceId}`,
-              suggestion: 'Add service.name attribute to identify the service in OTEL traces',
-            });
-          }
-
-          // Warn about missing recommended fields
-          if (!service['service.version']) {
-            issues.push({
-              type: 'warning',
-              message: `Missing recommended field "service.version" in resource "${serviceId}"`,
-              path: `resources.${serviceId}`,
-              suggestion: 'Consider adding service.version to track which version emitted traces',
-            });
-          }
-
-          if (!service['deployment.environment']) {
-            issues.push({
-              type: 'warning',
-              message: `Missing recommended field "deployment.environment" in resource "${serviceId}"`,
-              path: `resources.${serviceId}`,
-              suggestion: 'Consider adding deployment.environment (e.g., "development", "production")',
-            });
-          }
+        if (!service['deployment.environment']) {
+          issues.push({
+            type: 'warning',
+            message: `Missing recommended field "deployment.environment" in resource "${serviceId}"`,
+            path: `resources.${serviceId}`,
+            suggestion: 'Consider adding deployment.environment (e.g., "development", "production")',
+          });
         }
       }
     }
@@ -535,7 +512,7 @@ const ALLOWED_CANVAS_FIELDS = {
  * Allowed fields for library validation
  */
 const ALLOWED_LIBRARY_FIELDS = {
-  root: ['version', 'name', 'description', 'nodeComponents', 'edgeComponents', 'connectionRules', 'resources'],
+  root: ['version', 'name', 'description', 'nodeComponents', 'edgeComponents', 'connectionRules', 'resources', 'scopes', 'eventSchemas'],
   nodeComponent: [
     'description',
     'tags',
@@ -2753,7 +2730,7 @@ export function createValidateCommand(): Command {
             if (error.type === 'scopes-canvas-required') {
               libraryIssues.push({
                 type: 'error',
-                message: error.error,
+                message: error.message,
                 path: relative(repositoryPath, error.path),
                 suggestion: 'Create a .scopes.canvas file (e.g., architecture.scopes.canvas) with nodes for each scope.',
               });

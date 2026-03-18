@@ -151,6 +151,13 @@ export type {
   EnhancedScenarioMatchResult,
   WorkflowMatch,
   SpanTreeNode,
+  EventTemplate,
+} from './workflow/types';
+export {
+  isEventTemplate,
+  getEventTemplateString,
+  getEventSpan,
+  getWorkflowRootSpan,
 } from './workflow/types';
 
 // Export OTEL types (OTLP data structures and helpers)
@@ -282,13 +289,12 @@ export {
   ScopesCanvasValidator,
   DEFAULT_SCOPE_COLOR,
   DRAFT_NODE_COLOR,
-  isRecordFormat,
   getScopeNames,
   getScopeDefinition,
   getScopeColor,
   normalizeScopes,
-  extractScopesFromResources,
   buildScopeColorMap,
+  getAllScopeNames,
 } from './scopes';
 export type {
   ScopesCanvasValidationContext,
@@ -371,13 +377,19 @@ export { LibraryConverter } from './utils/LibraryConverter';
 export type { CreateNodeOptions, CreateEdgeOptions } from './utils/LibraryConverter';
 export type { ResourceAttributes, ScopeDefinition, OwnedScopes } from './types/library';
 
+// Export library validation (browser-safe - standalone validation functions)
+export { validateLibraryStructure } from './validation';
+export type {
+  LibraryValidationError,
+  LibraryValidationErrorType,
+  LibraryValidationResult,
+} from './validation';
+
 // Export library discovery (browser-safe - uses FileSystemAdapter abstraction)
 export { LibraryDiscovery } from './discovery/LibraryDiscovery';
 export type {
   DiscoveredLibrary,
   LibraryDiscoveryResult,
-  LibraryValidationError,
-  LibraryValidationErrorType,
 } from './discovery/LibraryDiscovery';
 
 // Export storyboard context types and builder (browser-safe)

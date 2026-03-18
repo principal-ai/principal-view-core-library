@@ -198,13 +198,12 @@ export {
   ScopesCanvasValidator,
   DEFAULT_SCOPE_COLOR,
   DRAFT_NODE_COLOR,
-  isRecordFormat,
   getScopeNames,
   getScopeDefinition,
   getScopeColor,
   normalizeScopes,
-  extractScopesFromResources,
   buildScopeColorMap,
+  getAllScopeNames,
 } from './scopes';
 export type {
   ScopesCanvasValidationContext,

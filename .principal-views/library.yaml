@@ -7,6 +7,16 @@ name: "Visual Validation Components"
 description: "Standard components for visualizing service architectures"
 
 # ─────────────────────────────────────────────
+# Scopes
+# Instrumentation scope definitions with colors and descriptions.
+# Resources reference these by name in owned-scopes.
+# ─────────────────────────────────────────────
+scopes:
+  principal-view.cli:
+    description: "CLI tool instrumentation"
+    color: "#6366F1"
+
+# ─────────────────────────────────────────────
 # Resources (OTel)
 # Each resource is a separate process that emits telemetry.
 # ─────────────────────────────────────────────
@@ -15,9 +25,7 @@ resources:
     service.name: "principal-view.cli"
     service.version: "${VERSION}"
     owned-scopes:
-      principal-view.cli:
-        description: "CLI tool instrumentation"
-        color: "#6366F1"
+      - "principal-view.cli"
 
 nodeComponents:
   # ─────────────────────────────────────────────

@@ -42,9 +42,14 @@ export function createValidateCommand(): Command {
             const libraryContent = readFileSync(libraryPath, 'utf-8');
             const library = yaml.load(libraryContent) as ComponentLibrary;
 
+            // Collect scopes from top-level scopes section
+            if (library?.scopes) {
+              ownedScopes.push(...Object.keys(library.scopes));
+            }
+
+            // Also collect from resources owned-scopes (references)
             if (library?.resources) {
               for (const [_resourceKey, attrs] of Object.entries(library.resources)) {
-                // Handle both legacy (string[]) and new (Record<string, ScopeDefinition>) formats
                 const scopes = (attrs as Record<string, unknown>)['owned-scopes'] as OwnedScopes | undefined;
                 const scopeNames = getScopeNames(scopes);
                 ownedScopes.push(...scopeNames);
@@ -55,9 +60,10 @@ export function createValidateCommand(): Command {
                   ownedScopes.push(serviceName);
                 }
               }
-              // Remove duplicates
-              ownedScopes = [...new Set(ownedScopes)];
             }
+
+            // Remove duplicates
+            ownedScopes = [...new Set(ownedScopes)];
           } catch {
             console.error(chalk.red('Error:'), 'Failed to parse library.yaml');
             process.exit(1);

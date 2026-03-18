@@ -16,6 +16,11 @@ describe('LibraryDiscovery', () => {
       const libraryYaml = `
 version: '1.0'
 name: test-library
+scopes:
+  scope-a:
+    color: "#ff0000"
+  scope-b:
+    color: "#00ff00"
 nodeComponents:
   box: { shape: rectangle }
 edgeComponents:
@@ -24,10 +29,8 @@ resources:
   my-service:
     service.name: my-service
     owned-scopes:
-      scope-a:
-        color: "#ff0000"
-      scope-b:
-        color: "#00ff00"
+      - scope-a
+      - scope-b
 `;
       mockFsAdapter = createMockFsAdapter({
         '/.principal-views': { isDir: true, contents: ['library.yaml'] },
@@ -43,15 +46,18 @@ resources:
 
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0].type).toBe('scopes-canvas-required');
-      expect(result.errors[0].error).toContain('owned-scopes');
-      expect(result.errors[0].error).toContain('scope-a');
-      expect(result.errors[0].error).toContain('scope-b');
+      expect(result.errors[0].message).toContain('owned-scopes');
+      expect(result.errors[0].message).toContain('scope-a');
+      expect(result.errors[0].message).toContain('scope-b');
     });
 
     test('no error when library has owned-scopes and .scopes.canvas exists', async () => {
       const libraryYaml = `
 version: '1.0'
 name: test-library
+scopes:
+  scope-a:
+    color: "#ff0000"
 nodeComponents:
   box: { shape: rectangle }
 edgeComponents:
@@ -60,8 +66,7 @@ resources:
   my-service:
     service.name: my-service
     owned-scopes:
-      scope-a:
-        color: "#ff0000"
+      - scope-a
 `;
       mockFsAdapter = createMockFsAdapter({
         '/.principal-views': { isDir: true, contents: ['library.yaml', 'architecture.scopes.canvas'] },
@@ -110,10 +115,15 @@ resources:
       expect(result.errors).toHaveLength(0);
     });
 
-    test('supports legacy array format for owned-scopes', async () => {
+    test('validates scope references exist in top-level scopes', async () => {
       const libraryYaml = `
 version: '1.0'
 name: test-library
+scopes:
+  scope-a:
+    color: "#ff0000"
+  scope-b:
+    color: "#00ff00"
 nodeComponents:
   box: { shape: rectangle }
 edgeComponents:
@@ -139,14 +149,17 @@ resources:
 
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0].type).toBe('scopes-canvas-required');
-      expect(result.errors[0].error).toContain('scope-a');
-      expect(result.errors[0].error).toContain('scope-b');
+      expect(result.errors[0].message).toContain('scope-a');
+      expect(result.errors[0].message).toContain('scope-b');
     });
 
     test('finds .scopes.canvas in subdirectory', async () => {
       const libraryYaml = `
 version: '1.0'
 name: test-library
+scopes:
+  scope-a:
+    color: "#ff0000"
 nodeComponents:
   box: { shape: rectangle }
 edgeComponents:
@@ -155,8 +168,7 @@ resources:
   my-service:
     service.name: my-service
     owned-scopes:
-      scope-a:
-        color: "#ff0000"
+      - scope-a
 `;
       mockFsAdapter = createMockFsAdapter({
         '/.principal-views': { isDir: true, contents: ['library.yaml', 'architecture'] },
@@ -182,6 +194,9 @@ resources:
       const libraryYaml = `
 version: '1.0'
 name: test-library
+scopes:
+  scope-a:
+    color: "#ff0000"
 nodeComponents:
   box: { shape: rectangle }
 edgeComponents:
@@ -190,8 +205,7 @@ resources:
   my-service:
     service.name: my-service
     owned-scopes:
-      scope-a:
-        color: "#ff0000"
+      - scope-a
 `;
       mockFsAdapter = createMockFsAdapter({
         '/.principal-views': { isDir: true, contents: ['library.yaml'] },

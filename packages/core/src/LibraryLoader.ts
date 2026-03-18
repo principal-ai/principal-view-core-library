@@ -7,6 +7,7 @@
 
 import type { FileSystemAdapter } from '@principal-ai/repository-abstraction';
 import type { ComponentLibrary, LibraryLoadResult } from './types/library';
+import { validateLibraryStructure } from './validation/libraryValidation';
 import * as yaml from 'js-yaml';
 
 /**
@@ -173,129 +174,19 @@ export class LibraryLoader {
   /**
    * Validate the library structure
    *
+   * Uses the shared validateLibraryStructure function from validation module.
+   *
    * @param library - Parsed library object
    * @param filePath - File path for error messages
    * @returns Error message if invalid, undefined if valid
    */
   private validate(library: ComponentLibrary, filePath: string): string | undefined {
-    if (!library.version) {
-      return `Missing required field 'version' in ${filePath}`;
-    }
+    const result = validateLibraryStructure(library);
 
-    if (!library.name) {
-      return `Missing required field 'name' in ${filePath}`;
-    }
-
-    if (!library.nodeComponents || typeof library.nodeComponents !== 'object') {
-      return `Missing or invalid 'nodeComponents' in ${filePath}`;
-    }
-
-    if (!library.edgeComponents || typeof library.edgeComponents !== 'object') {
-      return `Missing or invalid 'edgeComponents' in ${filePath}`;
-    }
-
-    // Note: nodeComponents and edgeComponents fields like 'shape' and 'style' are optional.
-    // The CLI validator only checks for unknown fields, not required fields.
-    // Visual rendering code should handle missing shape/style gracefully with defaults.
-
-    // Validate event schemas if present
-    if (library.eventSchemas) {
-      if (typeof library.eventSchemas !== 'object') {
-        return `Field 'eventSchemas' must be an object in ${filePath}`;
-      }
-
-      for (const [eventName, schema] of Object.entries(library.eventSchemas)) {
-        if (!schema.description) {
-          return `Event schema '${eventName}' is missing required field 'description' in ${filePath}`;
-        }
-
-        if (!schema.attributes || typeof schema.attributes !== 'object') {
-          return `Event schema '${eventName}' is missing or has invalid 'attributes' field in ${filePath}`;
-        }
-
-        // Validate each attribute in the event schema
-        for (const [attrName, attrSchema] of Object.entries(schema.attributes)) {
-          if (!attrSchema.type) {
-            return `Event schema '${eventName}' attribute '${attrName}' is missing required field 'type' in ${filePath}`;
-          }
-
-          const validTypes = ['string', 'number', 'boolean', 'object', 'array'];
-          if (!validTypes.includes(attrSchema.type)) {
-            return `Event schema '${eventName}' attribute '${attrName}' has invalid type '${attrSchema.type}' in ${filePath}. Valid types: ${validTypes.join(', ')}`;
-          }
-        }
-      }
-    }
-
-    // Validate connection rules if present
-    if (library.connectionRules) {
-      for (const [index, rule] of library.connectionRules.entries()) {
-        if (!rule.from || !rule.to || !rule.via) {
-          return `Connection rule at index ${index} is missing required fields (from, to, via) in ${filePath}`;
-        }
-
-        // Check that referenced types exist
-        if (!library.nodeComponents[rule.from]) {
-          return `Connection rule references unknown node type '${rule.from}' in ${filePath}`;
-        }
-        if (!library.nodeComponents[rule.to]) {
-          return `Connection rule references unknown node type '${rule.to}' in ${filePath}`;
-        }
-        if (!library.edgeComponents[rule.via]) {
-          return `Connection rule references unknown edge type '${rule.via}' in ${filePath}`;
-        }
-      }
-    }
-
-    // Validate resources if present
-    if (library.resources) {
-      if (typeof library.resources !== 'object' || Array.isArray(library.resources)) {
-        return `Field 'resources' must be an object in ${filePath}`;
-      }
-
-      for (const [serviceId, resourceAttrs] of Object.entries(library.resources)) {
-        // Check that each service has a resource attributes object
-        if (typeof resourceAttrs !== 'object' || Array.isArray(resourceAttrs) || resourceAttrs === null) {
-          return `Resource entry '${serviceId}' must be an object in ${filePath}`;
-        }
-
-        // Check that service.name is present (required)
-        if (!resourceAttrs['service.name']) {
-          return `Resource entry '${serviceId}' is missing required attribute 'service.name' in ${filePath}`;
-        }
-
-        // Validate attribute values
-        for (const [attrName, attrValue] of Object.entries(resourceAttrs)) {
-          // owned-scopes can be either:
-          // - Legacy format: array of strings ["scope1", "scope2"]
-          // - New format: Record<string, ScopeDefinition> { "scope1": { color: "#fff" } }
-          if (attrName === 'owned-scopes') {
-            if (Array.isArray(attrValue)) {
-              // Legacy format - array of strings
-              for (const scope of attrValue) {
-                if (typeof scope !== 'string') {
-                  return `Resource '${serviceId}' attribute 'owned-scopes' array must contain only strings in ${filePath}`;
-                }
-              }
-            } else if (typeof attrValue === 'object' && attrValue !== null) {
-              // New format - Record<string, ScopeDefinition>
-              for (const [scopeName, scopeDef] of Object.entries(attrValue)) {
-                if (typeof scopeDef !== 'object' || scopeDef === null) {
-                  return `Resource '${serviceId}' scope '${scopeName}' must be an object with color property in ${filePath}`;
-                }
-                const def = scopeDef as unknown as Record<string, unknown>;
-                if (typeof def.color !== 'string') {
-                  return `Resource '${serviceId}' scope '${scopeName}' is missing required 'color' property in ${filePath}`;
-                }
-              }
-            } else {
-              return `Resource '${serviceId}' attribute 'owned-scopes' must be an array or object in ${filePath}`;
-            }
-          } else if (typeof attrValue !== 'string') {
-            return `Resource '${serviceId}' attribute '${attrName}' must have a string value in ${filePath}`;
-          }
-        }
-      }
+    if (!result.valid && result.errors.length > 0) {
+      // Return the first error with file path context
+      const firstError = result.errors[0];
+      return `${firstError.message} in ${filePath}`;
     }
 
     return undefined;
