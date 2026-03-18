@@ -19,6 +19,7 @@ export {
   getScopeNames,
   getScopeDefinition,
   getScopeColor,
+  getScopeIcon,
   normalizeScopes,
   buildScopeColorMap,
   getAllScopeNames,

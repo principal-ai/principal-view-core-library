@@ -35,6 +35,9 @@ export interface ScopeDefinition {
   /** Color for nodes belonging to this scope (hex format). Required unless external. */
   color?: string;
 
+  /** Icon identifier (Lucide icons) */
+  icon?: string;
+
   /** Human-readable description of what this scope covers */
   description?: string;
 

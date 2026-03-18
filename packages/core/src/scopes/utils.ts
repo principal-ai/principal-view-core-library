@@ -19,6 +19,8 @@ export const DRAFT_NODE_COLOR = '#9CA3AF'; // gray-400
 export interface NormalizedScope {
   name: string;
   color: string;
+  /** Icon identifier (Lucide icons) */
+  icon?: string;
   description?: string;
   /** Whether this scope is defined externally (in another library) */
   external?: boolean;
@@ -66,10 +68,22 @@ export function normalizeScopes(
     return {
       name,
       color: definition?.color ?? DEFAULT_SCOPE_COLOR,
+      icon: definition?.icon,
       description: definition?.description,
       external: definition?.external,
     };
   });
+}
+
+/**
+ * Get scope icon by name from library scopes
+ * Returns the defined icon, or undefined if not found
+ */
+export function getScopeIcon(
+  libraryScopes: Record<string, ScopeDefinition> | undefined,
+  scopeName: string
+): string | undefined {
+  return libraryScopes?.[scopeName]?.icon;
 }
 
 /**

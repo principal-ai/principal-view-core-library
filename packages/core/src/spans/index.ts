@@ -15,8 +15,10 @@ export {
   extractSpanConventions,
   buildSpanColorMap,
   buildSpanColorMapFromCanvases,
+  buildSpanIconMap,
   matchSpanPattern,
   getSpanColor,
+  getSpanIcon,
   resolveEventSpanColor,
   type NormalizedSpanConvention,
 } from './utils';

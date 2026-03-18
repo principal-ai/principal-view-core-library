@@ -141,12 +141,11 @@ export function createValidateCommand(): Command {
             console.log('━'.repeat(60));
 
             for (const violation of result.violations) {
-              const icon = violation.severity === 'error' ? chalk.red('✗') : chalk.yellow('⚠');
-              const severity = violation.severity === 'error'
-                ? chalk.red('Error')
-                : chalk.yellow('Warning');
+              const label = violation.severity === 'error'
+                ? chalk.red('error')
+                : chalk.yellow('warning');
 
-              console.log(`\n${icon} ${severity}: ${violation.message}`);
+              console.log(`\n${label}: ${violation.message}`);
               if (violation.path) {
                 console.log(chalk.gray(`  Location: ${violation.path}`));
               }

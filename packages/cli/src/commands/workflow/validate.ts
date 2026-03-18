@@ -320,13 +320,12 @@ export function createValidateCommand(): Command {
           } else {
             // Show violations
             for (const violation of violations) {
-              const icon = violation.severity === 'error' ? chalk.red('✗') : chalk.yellow('⚠');
-              const severity =
+              const label =
                 violation.severity === 'error'
-                  ? chalk.red('Error')
-                  : chalk.yellow('Warning');
+                  ? chalk.red('error')
+                  : chalk.yellow('warning');
 
-              console.log(`\n${icon} ${severity}: ${violation.message}`);
+              console.log(`\n${label}: ${violation.message}`);
               if (violation.path) {
                 console.log(chalk.gray(`  Location: ${violation.path}`));
               }

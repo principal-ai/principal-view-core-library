@@ -308,6 +308,28 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
     }
   }
 
+  // 4. CLI-specific: Validate scopes section for unknown fields and icon names
+  if (lib.scopes && typeof lib.scopes === 'object' && !Array.isArray(lib.scopes)) {
+    const scopes = lib.scopes as Record<string, unknown>;
+
+    for (const [scopeId, scopeDef] of Object.entries(scopes)) {
+      if (scopeDef && typeof scopeDef === 'object') {
+        const scope = scopeDef as Record<string, unknown>;
+
+        // Check for unknown fields
+        checkUnknownFields(
+          scope,
+          ALLOWED_LIBRARY_FIELDS.scope,
+          `scopes.${scopeId}`,
+          issues
+        );
+
+        // Validate icon name format (must be PascalCase for Lucide icons)
+        validateIconName(scope.icon, `scopes.${scopeId}.icon`, issues);
+      }
+    }
+  }
+
   return issues;
 }
 
@@ -548,6 +570,7 @@ const ALLOWED_LIBRARY_FIELDS = {
   edgeComponentLabel: ['field', 'position'],
   connectionRule: ['from', 'to', 'via', 'constraints'],
   connectionRuleConstraints: ['maxInstances', 'bidirectional', 'exclusive'],
+  scope: ['color', 'icon', 'description', 'external'],
 };
 
 /**
@@ -2324,11 +2347,11 @@ function outputResults(
         } else {
           console.log(chalk.red(`✗ ${result.file}`));
           result.issues.forEach((issue) => {
-            const icon = issue.type === 'error' ? '✗' : '⚠';
+            const label = issue.type === 'error' ? 'error' : 'warning';
             const color = issue.type === 'error' ? chalk.red : chalk.yellow;
-            console.log(color(`  ${icon} ${issue.message}`));
+            console.log(color(`    ${label}: ${issue.message}`));
             if (issue.suggestion) {
-              console.log(chalk.dim(`    → ${issue.suggestion}`));
+              console.log(chalk.dim(`      → ${issue.suggestion}`));
             }
           });
         }

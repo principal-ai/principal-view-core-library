@@ -20,6 +20,8 @@ export interface NormalizedSpanConvention {
   spanPattern: string;
   /** Color for this span (used as fill for events) */
   color: string;
+  /** Icon identifier (Lucide icons) */
+  icon?: string;
   /** Human-readable description */
   description?: string;
   /** Status of the span convention */
@@ -56,10 +58,14 @@ export function extractSpanConvention(node: ExtendedCanvasNode): NormalizedSpanC
     }
   }
 
+  // Get icon from pv.icon (Lucide icon identifier)
+  const icon = pv.icon as string | undefined;
+
   return {
     id: node.id,
     spanPattern,
     color,
+    icon,
     description,
     status: pv.status as 'draft' | 'approved' | 'implemented' | undefined,
   };
@@ -176,4 +182,46 @@ export function resolveEventSpanColor(
   }
 
   return DEFAULT_SPAN_COLOR;
+}
+
+/**
+ * Build a span icon map from a spans.canvas
+ * Returns a map of spanPattern -> icon for fast lookups
+ */
+export function buildSpanIconMap(canvas: ExtendedCanvas | null | undefined): Record<string, string> {
+  const iconMap: Record<string, string> = {};
+
+  if (!canvas) return iconMap;
+
+  const conventions = extractSpanConventions(canvas);
+  for (const convention of conventions) {
+    if (convention.icon) {
+      iconMap[convention.spanPattern] = convention.icon;
+    }
+  }
+
+  return iconMap;
+}
+
+/**
+ * Find the icon for a span name by matching against span patterns
+ * Returns the first matching pattern's icon, or undefined if none match
+ */
+export function getSpanIcon(
+  spanName: string,
+  spanIconMap: Record<string, string>
+): string | undefined {
+  // First try exact match
+  if (spanIconMap[spanName]) {
+    return spanIconMap[spanName];
+  }
+
+  // Then try pattern matching
+  for (const [pattern, icon] of Object.entries(spanIconMap)) {
+    if (matchSpanPattern(spanName, pattern)) {
+      return icon;
+    }
+  }
+
+  return undefined;
 }
