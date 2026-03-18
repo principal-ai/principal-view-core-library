@@ -13,92 +13,77 @@
   "nodes": [
     {
       "id": "cli-command",
-      "type": "text",
+      "type": "otel-span-convention",
       "x": 0,
       "y": 200,
       "width": 220,
       "height": 100,
       "color": "#8B5CF6",
-      "text": "# CLI Entry Point\n\nCLI invocation entry point",
-      "pv": {
-        "nodeType": "span-convention",
+      "label": "CLI Entry Point",
+      "otel": {
         "status": "draft",
-        "otel": {
-          "spanPattern": "cli.command",
-          "spanKind": "SERVER"
-        }
+        "spanPattern": "cli.command",
+        "spanKind": "SERVER"
       }
     },
     {
       "id": "validate",
-      "type": "text",
+      "type": "otel-span-convention",
       "x": 320,
       "y": 0,
       "width": 220,
       "height": 100,
       "color": "#22C55E",
-      "text": "# Validation Operations\n\nCanvas, workflow, trace validation",
-      "pv": {
-        "nodeType": "span-convention",
+      "label": "Validation Operations",
+      "otel": {
         "status": "draft",
-        "otel": {
-          "spanPattern": "validate.*",
-          "spanKind": "INTERNAL"
-        }
+        "spanPattern": "validate.*",
+        "spanKind": "INTERNAL"
       }
     },
     {
       "id": "discover",
-      "type": "text",
+      "type": "otel-span-convention",
       "x": 320,
       "y": 150,
       "width": 220,
       "height": 100,
       "color": "#3B82F6",
-      "text": "# Discovery Operations\n\nLibrary, canvas, workflow discovery",
-      "pv": {
-        "nodeType": "span-convention",
+      "label": "Discovery Operations",
+      "otel": {
         "status": "draft",
-        "otel": {
-          "spanPattern": "discover.*",
-          "spanKind": "INTERNAL"
-        }
+        "spanPattern": "discover.*",
+        "spanKind": "INTERNAL"
       }
     },
     {
       "id": "parse",
-      "type": "text",
+      "type": "otel-span-convention",
       "x": 320,
       "y": 300,
       "width": 220,
       "height": 100,
       "color": "#F97316",
-      "text": "# Parsing Operations\n\nCanvas, YAML, JSON parsing",
-      "pv": {
-        "nodeType": "span-convention",
+      "label": "Parsing Operations",
+      "otel": {
         "status": "draft",
-        "otel": {
-          "spanPattern": "parse.*",
-          "spanKind": "INTERNAL"
-        }
+        "spanPattern": "parse.*",
+        "spanKind": "INTERNAL"
       }
     },
     {
       "id": "file",
-      "type": "text",
+      "type": "otel-span-convention",
       "x": 640,
       "y": 150,
       "width": 220,
       "height": 100,
       "color": "#6B7280",
-      "text": "# File Operations\n\nFile system read/write",
-      "pv": {
-        "nodeType": "span-convention",
+      "label": "File Operations",
+      "otel": {
         "status": "draft",
-        "otel": {
-          "spanPattern": "file.*",
-          "spanKind": "INTERNAL"
-        }
+        "spanPattern": "file.*",
+        "spanKind": "INTERNAL"
       }
     }
   ],
@@ -109,7 +94,9 @@
       "fromSide": "right",
       "toNode": "validate",
       "toSide": "left",
-      "pv": { "edgeType": "data-flow" }
+      "pv": {
+        "edgeType": "data-flow"
+      }
     },
     {
       "id": "e2",
@@ -117,7 +104,9 @@
       "fromSide": "right",
       "toNode": "discover",
       "toSide": "left",
-      "pv": { "edgeType": "data-flow" }
+      "pv": {
+        "edgeType": "data-flow"
+      }
     },
     {
       "id": "e3",
@@ -125,7 +114,9 @@
       "fromSide": "right",
       "toNode": "parse",
       "toSide": "left",
-      "pv": { "edgeType": "data-flow" }
+      "pv": {
+        "edgeType": "data-flow"
+      }
     },
     {
       "id": "e4",
@@ -133,7 +124,9 @@
       "fromSide": "bottom",
       "toNode": "discover",
       "toSide": "top",
-      "pv": { "edgeType": "data-flow" }
+      "pv": {
+        "edgeType": "data-flow"
+      }
     },
     {
       "id": "e5",
@@ -141,7 +134,9 @@
       "fromSide": "bottom",
       "toNode": "parse",
       "toSide": "top",
-      "pv": { "edgeType": "data-flow" }
+      "pv": {
+        "edgeType": "data-flow"
+      }
     },
     {
       "id": "e6",
@@ -149,7 +144,9 @@
       "fromSide": "right",
       "toNode": "file",
       "toSide": "left",
-      "pv": { "edgeType": "data-flow" }
+      "pv": {
+        "edgeType": "data-flow"
+      }
     },
     {
       "id": "e7",
@@ -157,7 +154,9 @@
       "fromSide": "right",
       "toNode": "file",
       "toSide": "left",
-      "pv": { "edgeType": "data-flow" }
+      "pv": {
+        "edgeType": "data-flow"
+      }
     }
   ]
 }

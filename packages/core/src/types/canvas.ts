@@ -903,14 +903,174 @@ export interface ExtendedCanvasGroupNode extends CanvasGroupNode {
   pv?: PVNodeExtension;
 }
 
+// ============================================================================
+// OTEL Node Types (Custom extensions to JSON Canvas)
+// See: docs/NODE_TYPE_MIGRATION.md
+// ============================================================================
+
 /**
- * Union of all extended node types
+ * Base interface for all OTEL node types
+ *
+ * These are custom node types that extend JSON Canvas for OpenTelemetry concepts.
+ * Standard canvas tools will not recognize these types.
+ */
+export interface OtelNodeBase extends CanvasNodeBase {
+  /** Display label shown on canvas node (required) */
+  label: string;
+  /** Icon identifier (Lucide icons) */
+  icon?: string;
+  /** Fill color (hex string) */
+  fill?: string;
+  /** Stroke/border color (hex string) */
+  stroke?: string;
+  /** Visual shape */
+  shape?: PVNodeShape;
+  /**
+   * Legacy PV extension field for backward compatibility during migration.
+   * New OTEL nodes should use top-level fields instead.
+   * @deprecated Use top-level fields (label, icon, etc.) instead
+   */
+  pv?: PVNodeExtension;
+}
+
+/**
+ * Shared OTEL instrumentation metadata
+ *
+ * Common fields for tracking implementation status and code location.
+ */
+export interface OtelMetadata {
+  /** Implementation status */
+  status?: PVNodeStatus;
+  /** Instrumentation scope (maps to getTracer('scope-name')) */
+  scope?: string;
+  /** Files where this is instrumented */
+  files?: string[];
+  /**
+   * Origin of the code
+   * - 'internal': Code exists in this repository (default)
+   * - 'external': Code exists in external packages/libraries
+   */
+  origin?: 'internal' | 'external';
+  /** References/documentation for external code */
+  references?: string[];
+}
+
+/**
+ * OTEL Event Node
+ *
+ * Represents a telemetry event emitted during workflow execution.
+ * The event schema defines the structure of the telemetry data.
+ */
+export interface OtelEventNode extends OtelNodeBase {
+  type: 'otel-event';
+  /** Inline event schema definition */
+  event?: PVEventSchema;
+  /** Reference to a library event schema */
+  eventRef?: string;
+  /** Data schema for typed fields in templates */
+  dataSchema?: Record<
+    string,
+    {
+      type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+      required?: boolean;
+      description?: string;
+      placeholder?: unknown;
+    }
+  >;
+  /** OTEL instrumentation metadata */
+  otel?: OtelMetadata;
+}
+
+/**
+ * OTEL Span Convention Node
+ *
+ * Defines a span naming convention/pattern for consistent instrumentation.
+ */
+export interface OtelSpanConventionNode extends OtelNodeBase {
+  type: 'otel-span-convention';
+  /** Short description of this span convention */
+  description?: string;
+  /** OTEL metadata including span-specific fields */
+  otel: OtelMetadata & {
+    /** Span naming pattern (e.g., "validate.*", "http.request") */
+    spanPattern: string;
+    /** OTel SpanKind */
+    spanKind?: PVOtelSpanKind;
+    /** Span matching criteria for runtime correlation */
+    spanMatch?: PVOtelSpanMatch;
+  };
+}
+
+/**
+ * OTEL Scope Node
+ *
+ * Represents an instrumentation scope (tracer instance).
+ */
+export interface OtelScopeNode extends OtelNodeBase {
+  type: 'otel-scope';
+  /** Short description of this instrumentation scope */
+  description?: string;
+  /** OTEL metadata - scope name is required */
+  otel: OtelMetadata & {
+    /** Scope name (required - maps to getTracer('scope-name')) */
+    scope: string;
+  };
+}
+
+/**
+ * OTEL Resource Node
+ *
+ * Represents a service or deployment resource identified by OTEL resource attributes.
+ */
+export interface OtelResourceNode extends OtelNodeBase {
+  type: 'otel-resource';
+  /** Short description of this resource */
+  description?: string;
+  /** OTEL metadata including resource matching criteria */
+  otel: OtelMetadata & {
+    /** Resource attribute matching criteria */
+    resourceMatch: PVOtelResourceMatch;
+  };
+}
+
+/**
+ * OTEL Boundary Node
+ *
+ * Represents an interface point with an external system.
+ */
+export interface OtelBoundaryNode extends OtelNodeBase {
+  type: 'otel-boundary';
+  /** Short description of this boundary */
+  description?: string;
+  /** OTEL instrumentation metadata */
+  otel?: OtelMetadata;
+  /** Boundary configuration (required) */
+  boundary: PVBoundaryExtension;
+}
+
+/**
+ * Union of all OTEL node types
+ */
+export type OtelNode =
+  | OtelEventNode
+  | OtelSpanConventionNode
+  | OtelScopeNode
+  | OtelResourceNode
+  | OtelBoundaryNode;
+
+/**
+ * Union of all extended node types (JSON Canvas + OTEL extensions)
  */
 export type ExtendedCanvasNode =
   | ExtendedCanvasTextNode
   | ExtendedCanvasFileNode
   | ExtendedCanvasLinkNode
-  | ExtendedCanvasGroupNode;
+  | ExtendedCanvasGroupNode
+  | OtelEventNode
+  | OtelSpanConventionNode
+  | OtelScopeNode
+  | OtelResourceNode
+  | OtelBoundaryNode;
 
 /**
  * Extended edge with PV extensions
@@ -923,11 +1083,13 @@ export interface ExtendedCanvasEdge extends CanvasEdge {
  * Extended Canvas document with Principal View support
  *
  * This is the primary type for .canvas files used with the Principal View Framework.
- * It's fully compatible with standard JSON Canvas tools while supporting rich
- * visualization features when rendered in React Flow.
+ * It supports both standard JSON Canvas node types (text, file, link, group) and
+ * custom OTEL node types (otel-event, otel-span-convention, etc.).
+ *
+ * Standard canvas tools will only recognize the JSON Canvas node types.
  */
-export interface ExtendedCanvas extends Canvas {
-  /** Nodes with optional PV extensions */
+export interface ExtendedCanvas {
+  /** Nodes - JSON Canvas types and/or OTEL node types */
   nodes?: ExtendedCanvasNode[];
   /** Edges with optional PV extensions */
   edges?: ExtendedCanvasEdge[];
@@ -980,6 +1142,84 @@ export function isGroupNode(
  */
 export function hasPVExtension(node: CanvasNode | ExtendedCanvasNode): node is ExtendedCanvasNode {
   return 'pv' in node && node.pv !== undefined;
+}
+
+// ============================================================================
+// OTEL Node Type Guards
+// ============================================================================
+
+/**
+ * Type guard for OTEL event nodes
+ */
+export function isOtelEventNode(node: ExtendedCanvasNode): node is OtelEventNode {
+  return node.type === 'otel-event';
+}
+
+/**
+ * Type guard for OTEL span convention nodes
+ */
+export function isOtelSpanConventionNode(node: ExtendedCanvasNode): node is OtelSpanConventionNode {
+  return node.type === 'otel-span-convention';
+}
+
+/**
+ * Type guard for OTEL scope nodes
+ */
+export function isOtelScopeNode(node: ExtendedCanvasNode): node is OtelScopeNode {
+  return node.type === 'otel-scope';
+}
+
+/**
+ * Type guard for OTEL resource nodes
+ */
+export function isOtelResourceNode(node: ExtendedCanvasNode): node is OtelResourceNode {
+  return node.type === 'otel-resource';
+}
+
+/**
+ * Type guard for OTEL boundary nodes
+ */
+export function isOtelBoundaryNode(node: ExtendedCanvasNode): node is OtelBoundaryNode {
+  return node.type === 'otel-boundary';
+}
+
+/**
+ * Type guard for any OTEL node type
+ */
+export function isOtelNode(node: ExtendedCanvasNode): node is OtelNode {
+  return (
+    node.type === 'otel-event' ||
+    node.type === 'otel-span-convention' ||
+    node.type === 'otel-scope' ||
+    node.type === 'otel-resource' ||
+    node.type === 'otel-boundary'
+  );
+}
+
+/**
+ * Get the identifier for an OTEL node (shown below the label)
+ */
+export function getOtelNodeIdentifier(node: OtelNode): string | undefined {
+  switch (node.type) {
+    case 'otel-event':
+      return node.event?.name || node.eventRef;
+    case 'otel-span-convention':
+      return node.otel.spanPattern;
+    case 'otel-scope':
+      return node.otel.scope;
+    case 'otel-resource': {
+      const entries = Object.entries(node.otel.resourceMatch);
+      if (entries.length > 0) {
+        const [key, value] = entries[0];
+        return `${key}: ${Array.isArray(value) ? value[0] : value}`;
+      }
+      return undefined;
+    }
+    case 'otel-boundary':
+      return node.boundary.direction;
+    default:
+      return undefined;
+  }
 }
 
 /**

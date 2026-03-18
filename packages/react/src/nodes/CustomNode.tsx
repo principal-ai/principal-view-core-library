@@ -439,12 +439,39 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
   // Get display name - use name from props (falls back to node.id in converter)
   const displayName = nodeProps.name;
 
-  // Extract event name if present
+  // Extract identifier based on node type (for display below the label)
+  // Supports: event.name, otel.spanPattern, otel.scope, otel.resourceMatch, boundary.direction
   const eventData = nodeData?.event as { name?: string; description?: string; attributes?: Record<string, unknown> } | undefined;
-  const eventName = eventData?.name;
+  const otelData = nodeData?.otel as { spanPattern?: string; scope?: string; resourceMatch?: Record<string, string | string[]> } | undefined;
+  const boundaryData = nodeData?.boundary as { direction?: string } | undefined;
 
-  // Show event name if it differs from display name
-  const showEventName = eventName && eventName !== displayName;
+  // Get identifier from multiple sources
+  const getNodeIdentifier = (): string | undefined => {
+    // Event name (for otel-event nodes)
+    if (eventData?.name) return eventData.name;
+    // Event ref (for nodes using library events)
+    if (nodeData?.eventRef) return nodeData.eventRef as string;
+    // Span pattern (for otel-span-convention nodes)
+    if (otelData?.spanPattern) return otelData.spanPattern;
+    // Scope name (for otel-scope nodes)
+    if (otelData?.scope) return otelData.scope;
+    // Resource match (for otel-resource nodes) - show first key:value
+    if (otelData?.resourceMatch) {
+      const entries = Object.entries(otelData.resourceMatch);
+      if (entries.length > 0) {
+        const [key, value] = entries[0];
+        return `${key}: ${Array.isArray(value) ? value[0] : value}`;
+      }
+    }
+    // Boundary direction (for otel-boundary nodes)
+    if (boundaryData?.direction) return boundaryData.direction;
+    return undefined;
+  };
+
+  const identifier = getNodeIdentifier();
+
+  // Show identifier if it differs from display name
+  const showIdentifier = identifier && identifier !== displayName;
 
   // Helper to render text with word break opportunities after dots
   const renderWithDotBreaks = (text: string) => {
@@ -461,11 +488,12 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
     ));
   };
 
-  // Helper component for rendering name with optional event name
-  const renderNameWithEvent = (centered: boolean = true) => (
+  // Helper component for rendering name with optional identifier
+  // Identifiers can come from: event.name, eventRef, otel.spanPattern, otel.scope, otel.resourceMatch, boundary.direction
+  const renderNameWithIdentifier = (centered: boolean = true) => (
     <div style={{ textAlign: centered ? 'center' : 'left', wordBreak: 'break-word' }}>
       <div>{displayName}</div>
-      {showEventName && (
+      {showIdentifier && (
         <div
           style={{
             fontSize: theme.fontSizes[0] * 0.75, // 75% of the main font size
@@ -474,7 +502,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
             fontFamily: theme.fonts.monospace,
           }}
         >
-          {renderWithDotBreaks(eventName)}
+          {renderWithDotBreaks(identifier)}
         </div>
       )}
     </div>
@@ -786,7 +814,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
                   {resolveIcon(icon, 20)}
                 </div>
               )}
-              {renderNameWithEvent()}
+              {renderNameWithIdentifier()}
               {state && (
                 <div
                   style={{
@@ -859,7 +887,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
                   {resolveIcon(icon, 20)}
                 </div>
               )}
-              {renderNameWithEvent()}
+              {renderNameWithIdentifier()}
               {state && (
                 <div
                   style={{
@@ -934,7 +962,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
                   }}
                 >
                   {icon && resolveIcon(icon, 18)}
-                  {renderNameWithEvent(false)}
+                  {renderNameWithIdentifier(false)}
                 </div>
               ) : (
                 <>
@@ -945,7 +973,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, se
                       {resolveIcon(icon, 20)}
                     </div>
                   )}
-                  {renderNameWithEvent()}
+                  {renderNameWithIdentifier()}
                 </>
               )}
               {state && (

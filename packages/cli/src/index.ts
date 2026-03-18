@@ -18,6 +18,7 @@ import { createLintCommand } from './commands/lint.js';
 import { createCoverageCommand } from './commands/coverage.js';
 import { createWorkflowCommand } from './commands/workflow/index.js';
 import { createMigrationCommand } from './commands/migration.js';
+import { createMigrateNodesCommand } from './commands/migrate-nodes.js';
 import { createScopesCommand } from './commands/scopes/index.js';
 
 // Version is injected at build time via package.json
@@ -40,6 +41,7 @@ program.addCommand(createSchemaCommand());
 program.addCommand(createFormatsCommand());
 program.addCommand(createSetupCommand());
 program.addCommand(createMigrationCommand()); // Migration guide
+program.addCommand(createMigrateNodesCommand()); // Node type migration
 program.addCommand(createHooksCommand());
 program.addCommand(createCoverageCommand());
 program.addCommand(createWorkflowCommand());

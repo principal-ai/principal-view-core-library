@@ -338,6 +338,18 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
  */
 const STANDARD_CANVAS_TYPES = ['text', 'group', 'file', 'link'] as const;
 
+/**
+ * OTEL semantic node types (new format)
+ * These replace the legacy "type: text" + "pv.nodeType" pattern
+ */
+const OTEL_NODE_TYPES = [
+  'otel-event',
+  'otel-span-convention',
+  'otel-scope',
+  'otel-resource',
+  'otel-boundary',
+] as const;
+
 // ============================================================================
 // Icon Validation
 // ============================================================================
@@ -379,6 +391,17 @@ function kebabToPascalCase(str: string): string {
     .split('-')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join('');
+}
+
+/**
+ * Convert a dot/hyphen-separated ID to a human-readable label.
+ * E.g., "multi-canvas-panel.render" → "Multi Canvas Panel Render"
+ */
+function idToHumanReadable(id: string): string {
+  return id
+    .split(/[-.]/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 /**
@@ -483,6 +506,8 @@ const ALLOWED_CANVAS_FIELDS = {
   nodeFile: ['file', 'subpath'],
   nodeLink: ['url'],
   nodeGroup: ['label', 'background', 'backgroundStyle'],
+  // OTEL node type fields (new semantic format)
+  nodeOtel: ['label', 'description', 'icon', 'shape', 'fill', 'otel', 'event', 'eventRef', 'dataSchema', 'boundary'],
   // Node pv extension
   nodePv: [
     'nodeType',
@@ -1077,6 +1102,9 @@ function validateCanvas(
         allowedNodeFields = [...allowedNodeFields, ...ALLOWED_CANVAS_FIELDS.nodeLink];
       } else if (nodeType === 'group') {
         allowedNodeFields = [...allowedNodeFields, ...ALLOWED_CANVAS_FIELDS.nodeGroup];
+      } else if (OTEL_NODE_TYPES.includes(nodeType as (typeof OTEL_NODE_TYPES)[number])) {
+        // OTEL node types have their own set of fields
+        allowedNodeFields = [...allowedNodeFields, ...ALLOWED_CANVAS_FIELDS.nodeOtel];
       }
       // Custom types can have any base fields
       checkUnknownFields(n, allowedNodeFields, nodePath, issues);
@@ -1216,20 +1244,88 @@ function validateCanvas(
         });
       }
 
-      // Validate node type - must be a standard JSON Canvas type
+      // Validate node type - must be a standard JSON Canvas type or OTEL type
       const isStandardType = STANDARD_CANVAS_TYPES.includes(
         nodeType as (typeof STANDARD_CANVAS_TYPES)[number]
       );
+      const isOtelType = OTEL_NODE_TYPES.includes(
+        nodeType as (typeof OTEL_NODE_TYPES)[number]
+      );
 
-      if (!isStandardType) {
+      if (!isStandardType && !isOtelType) {
         issues.push({
           type: 'error',
           message: `Node "${n.id || index}" uses invalid type "${nodeType}"`,
           path: `nodes[${index}].type`,
           suggestion: `Use a standard JSON Canvas type (${STANDARD_CANVAS_TYPES.join(
             ', '
-          )}). For custom shapes, use type: "text" with pv.shape: "${nodeType}"`,
+          )}) or OTEL type (${OTEL_NODE_TYPES.join(', ')}). For custom shapes, use type: "text" with pv.shape: "${nodeType}"`,
         });
+      }
+
+      // Validate OTEL node types have required fields
+      if (isOtelType) {
+        // OTEL nodes must have a label
+        if (typeof n.label !== 'string' || !n.label) {
+          issues.push({
+            type: 'error',
+            message: `OTEL node "${n.id || index}" must have a "label" field`,
+            path: `${nodePath}.label`,
+            suggestion: 'Add a human-readable label for display (e.g., "User Login", "Process Payment")',
+          });
+        } else if (n.label === n.id) {
+          // Label should not be the same as ID
+          const suggestedLabel = idToHumanReadable(n.id as string);
+          issues.push({
+            type: 'error',
+            message: `OTEL node "${n.id}" has label identical to its ID`,
+            path: `${nodePath}.label`,
+            suggestion: `Labels must be human-readable, not technical identifiers. Try: "${suggestedLabel}"`,
+          });
+        } else if (typeof n.label === 'string' && /[*_#`\[\]]/.test(n.label)) {
+          // Label should not contain markdown formatting
+          const cleanLabel = (n.label as string)
+            .replace(/\*\*/g, '')
+            .replace(/\*/g, '')
+            .replace(/_/g, ' ')
+            .replace(/^#+\s*/, '')
+            .replace(/`/g, '')
+            .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+            .trim();
+          issues.push({
+            type: 'error',
+            message: `OTEL node "${n.id}" has markdown formatting in label`,
+            path: `${nodePath}.label`,
+            suggestion: `Labels should be plain text without markdown. Try: "${cleanLabel}"`,
+          });
+        }
+
+        // otel-event nodes must have event or eventRef
+        if (nodeType === 'otel-event') {
+          const hasEvent = n.event && typeof n.event === 'object';
+          const hasEventRef = typeof n.eventRef === 'string' && n.eventRef;
+          if (!hasEvent && !hasEventRef) {
+            issues.push({
+              type: 'error',
+              message: `OTEL event node "${n.id}" is missing "event" or "eventRef" field`,
+              path: `${nodePath}`,
+              suggestion: 'Add an event schema: event: { name: "your.event.name", attributes: {...} } or reference a library event: eventRef: "library.event.name". If migrating from legacy format, run: npx @principal-ai/principal-view-cli migrate-nodes',
+            });
+          }
+        }
+
+        // otel-span-convention nodes must have spanPattern in otel
+        if (nodeType === 'otel-span-convention') {
+          const otel = n.otel as Record<string, unknown> | undefined;
+          if (!otel?.spanPattern) {
+            issues.push({
+              type: 'error',
+              message: `Span convention "${n.id}" is missing "otel.spanPattern"`,
+              path: `${nodePath}.otel.spanPattern`,
+              suggestion: 'Add the span pattern: otel: { spanPattern: "your.span.pattern" }. This pattern is used to match workflows and color events within this span.',
+            });
+          }
+        }
       }
 
       // Validate node pv extension fields
@@ -1459,18 +1555,18 @@ The display name will be shown large on the node, and the event name will appear
         const nodeOtel = nodePv.otel as Record<string, unknown> | undefined;
         if (nodeOtel?.kind !== undefined) {
           issues.push({
-            type: 'warning',
+            type: 'error',
             message: `Node "${nodeLabel}" uses deprecated "pv.otel.kind" field`,
             path: `${nodePath}.pv.otel.kind`,
-            suggestion: 'Use "pv.nodeType" instead. For example, use nodeType: "event" instead of otel.kind: "event". The "otel.kind" field will be removed in a future version.',
+            suggestion: 'Use semantic node types instead. For example, use type: "otel-event" instead of type: "text" with otel.kind: "event". Run: npx @principal-ai/principal-view-cli migrate-nodes',
           });
         }
         if (nodeOtel?.category !== undefined) {
           issues.push({
-            type: 'warning',
+            type: 'error',
             message: `Node "${nodeLabel}" uses deprecated "pv.otel.category" field`,
             path: `${nodePath}.pv.otel.category`,
-            suggestion: 'Use "pv.nodeType" instead. The "otel.category" field will be removed in a future version.',
+            suggestion: 'Use semantic node types instead. Run: npx @principal-ai/principal-view-cli migrate-nodes',
           });
         }
 
@@ -1490,13 +1586,13 @@ The display name will be shown large on the node, and the event name will appear
         const hasOtelFeatures = nodePv.otel !== undefined || nodePv.event !== undefined || nodePv.eventRef !== undefined;
         if (hasOtelFeatures && !isBoundaryNode) {
 
-          // For .otel.canvas files: nodes with event or eventRef must have pv.nodeType for UI rendering
-          if (filePath.endsWith('.otel.canvas') && (nodePv.event !== undefined || nodePv.eventRef !== undefined) && nodePv.nodeType === undefined) {
+          // For .otel.canvas files: nodes using legacy pv.event/pv.eventRef should migrate to otel-event type
+          if (filePath.endsWith('.otel.canvas') && nodeType === 'text' && (nodePv.event !== undefined || nodePv.eventRef !== undefined)) {
             issues.push({
-              type: 'warning',
-              message: `Node "${nodeLabel}" in .otel.canvas file has event schema but is missing "pv.nodeType" field`,
-              path: `${nodePath}.pv.nodeType`,
-              suggestion: 'Add nodeType for clarity, e.g.: "nodeType": "event"',
+              type: 'error',
+              message: `Node "${nodeLabel}" uses legacy format: type "text" with pv.event/pv.eventRef`,
+              path: `${nodePath}.type`,
+              suggestion: 'Migrate to semantic type: change type from "text" to "otel-event" and move event/eventRef to top level. Run: npx @principal-ai/principal-view-cli migrate-nodes',
             });
           }
 
@@ -1642,6 +1738,18 @@ The display name will be shown large on the node, and the event name will appear
 
         // Validate pv.nodeType references a defined nodeType
         if (typeof nodePv.nodeType === 'string' && nodePv.nodeType) {
+          // Check for legacy OTEL format: type "text" with pv.nodeType set to OTEL type
+          const LEGACY_OTEL_NODE_TYPES = ['event', 'span', 'span-convention', 'scope', 'resource', 'boundary'];
+          if (nodeType === 'text' && LEGACY_OTEL_NODE_TYPES.includes(nodePv.nodeType)) {
+            const newType = nodePv.nodeType === 'span' ? 'otel-span-convention' : `otel-${nodePv.nodeType}`;
+            issues.push({
+              type: 'error',
+              message: `Node "${nodeLabel}" uses legacy format: type "text" with pv.nodeType: "${nodePv.nodeType}"`,
+              path: `${nodePath}.type`,
+              suggestion: `Migrate to semantic type: change type from "text" to "${newType}". Run: npx @principal-ai/principal-view-cli migrate-nodes`,
+            });
+          }
+
           if (allDefinedNodeTypes.length === 0) {
             issues.push({
               type: 'error',
@@ -1682,9 +1790,9 @@ The display name will be shown large on the node, and the event name will appear
             if (!validResourceTypes.includes(nodeTypeValue)) {
               issues.push({
                 type: 'error',
-                message: `Node "${nodeLabel}" in resources.canvas has invalid nodeType "${nodeTypeValue}"`,
+                message: `Node "${nodeLabel}" in resources.canvas has invalid pv.nodeType "${nodeTypeValue}"`,
                 path: `${nodePath}.pv.nodeType`,
-                suggestion: `resources.canvas nodes must have nodeType: "resource" or "scope". Got: "${nodeTypeValue}"`,
+                suggestion: `Migrate to semantic types: use type: "otel-resource" or type: "otel-scope" instead of pv.nodeType. Run: npx @principal-ai/principal-view-cli migrate-nodes`,
               });
             }
           } else if (isSpansCanvas) {
@@ -1692,41 +1800,19 @@ The display name will be shown large on the node, and the event name will appear
             if (!validSpanTypes.includes(nodeTypeValue)) {
               issues.push({
                 type: 'error',
-                message: `Node "${nodeLabel}" in .spans.canvas has invalid nodeType "${nodeTypeValue}"`,
+                message: `Node "${nodeLabel}" in .spans.canvas has invalid pv.nodeType "${nodeTypeValue}"`,
                 path: `${nodePath}.pv.nodeType`,
-                suggestion: `spans.canvas nodes must have nodeType: "span-convention". Got: "${nodeTypeValue}"`,
+                suggestion: `Migrate to semantic types: use type: "otel-span-convention" instead of pv.nodeType. Run: npx @principal-ai/principal-view-cli migrate-nodes`,
               });
-            }
-
-            // Validate that span text doesn't just echo the spanPattern
-            const nodeText = (node as Record<string, unknown>).text as string | undefined;
-            const otelData = nodePv.otel as Record<string, unknown> | undefined;
-            const spanPattern = otelData?.spanPattern as string | undefined;
-
-            if (nodeText && spanPattern) {
-              // Extract the header from markdown text (first line after #)
-              const headerMatch = nodeText.match(/^#\s*(.+?)(?:\n|$)/);
-              if (headerMatch) {
-                const headerText = headerMatch[1].trim();
-                // Check if header matches or contains the spanPattern
-                if (headerText === spanPattern || headerText.toLowerCase() === spanPattern.toLowerCase()) {
-                  issues.push({
-                    type: 'error',
-                    message: `Node "${nodeLabel}" text header echoes the spanPattern "${spanPattern}"`,
-                    path: `${nodePath}.text`,
-                    suggestion: `Use a descriptive name instead. For example, instead of "# ${spanPattern}", use a human-readable title like "# Task Operations" or "# CLI Request Handler". The spanPattern is already stored in pv.otel.spanPattern.`,
-                  });
-                }
-              }
             }
           } else if (isOtelCanvas) {
             const validOtelTypes = ['event', 'boundary'];
             if (!validOtelTypes.includes(nodeTypeValue)) {
               issues.push({
                 type: 'error',
-                message: `Node "${nodeLabel}" in .otel.canvas has invalid nodeType "${nodeTypeValue}"`,
+                message: `Node "${nodeLabel}" in .otel.canvas has invalid pv.nodeType "${nodeTypeValue}"`,
                 path: `${nodePath}.pv.nodeType`,
-                suggestion: `otel.canvas nodes must have nodeType: "event" or "boundary". Got: "${nodeTypeValue}"`,
+                suggestion: `Migrate to semantic types: use type: "otel-event" or type: "otel-boundary" instead of pv.nodeType. Run: npx @principal-ai/principal-view-cli migrate-nodes`,
               });
             }
           }

@@ -20,7 +20,7 @@ import type {
   PVBoundaryExtension,
 } from '../types/canvas';
 import type { JsonValue } from '../types';
-import { resolveCanvasColor } from '../types/canvas';
+import { resolveCanvasColor, isOtelNode } from '../types/canvas';
 import type { NodeState, EdgeState } from '../types';
 import type { ResourceMatch } from '../types/resource-match';
 
@@ -44,7 +44,7 @@ export interface ReactFlowNode {
     references?: string[];
     status?: 'draft' | 'approved' | 'implemented';
     // actions removed - legacy path-based patterns
-    canvasType?: 'text' | 'file' | 'link' | 'group';
+    canvasType?: 'text' | 'file' | 'link' | 'group' | 'otel-event' | 'otel-span-convention' | 'otel-scope' | 'otel-resource' | 'otel-boundary';
     text?: string;
     file?: string;
     url?: string;
@@ -178,21 +178,31 @@ export class CanvasConverter {
       case 'group':
         nodeName = node.label || 'Group';
         break;
+      // OTEL node types use the label field directly
+      case 'otel-event':
+      case 'otel-span-convention':
+      case 'otel-scope':
+      case 'otel-resource':
+      case 'otel-boundary':
+        nodeName = node.label;
+        break;
     }
 
     // Build the data object based on canvas node type
+    // For OTEL nodes, use the node type directly; for standard canvas types, use pv or default
+    const isOtelType = isOtelNode(node);
     const data: ReactFlowNode['data'] = {
       name: nodeName,
-      nodeType: pv?.nodeType || node.id,
+      nodeType: isOtelType ? node.type : (pv?.nodeType || node.type),
       canvasType: node.type,
-      shape: pv?.shape || 'rectangle',
-      icon: pv?.icon,
+      shape: isOtelType ? (node.shape || 'rectangle') : (pv?.shape || 'rectangle'),
+      icon: isOtelType ? node.icon : pv?.icon,
       color: pv?.states?.idle?.color || color,
       width: node.width,
       height: node.height,
     };
 
-    // Add type-specific data
+    // Add type-specific data for JSON Canvas types
     if (node.type === 'text') {
       data.text = node.text;
     } else if (node.type === 'file') {
@@ -201,22 +211,62 @@ export class CanvasConverter {
       data.url = node.url;
     }
 
-    // Add PV extensions if present
-    if (pv) {
+    // Handle OTEL node types (new format with top-level fields)
+    if (
+      node.type === 'otel-event' ||
+      node.type === 'otel-span-convention' ||
+      node.type === 'otel-scope' ||
+      node.type === 'otel-resource' ||
+      node.type === 'otel-boundary'
+    ) {
+      // OTEL nodes use top-level fields, not pv wrapper
+      data.nodeType = node.type;
+      if (node.icon) data.icon = node.icon;
+      if (node.fill) data.color = node.fill;
+      if (node.shape) data.shape = node.shape;
+      if ('description' in node && node.description) data.description = node.description;
+
+      // Add OTEL-specific data
+      if ('otel' in node && node.otel) {
+        (data as Record<string, unknown>).otel = node.otel;
+        if (node.otel.status) data.status = node.otel.status;
+        if (node.otel.references) data.references = node.otel.references;
+      }
+      if ('event' in node && node.event) {
+        (data as Record<string, unknown>).event = node.event;
+      }
+      if ('eventRef' in node && node.eventRef) {
+        (data as Record<string, unknown>).eventRef = node.eventRef;
+      }
+      if ('dataSchema' in node && node.dataSchema) {
+        data.dataSchema = node.dataSchema;
+      }
+      if ('boundary' in node && node.boundary) {
+        (data as Record<string, unknown>).boundary = node.boundary;
+      }
+    }
+
+    // Add PV extensions if present (for standard canvas nodes only)
+    // OTEL nodes use top-level fields, not pv wrapper
+    if (pv && !isOtelType) {
       if (pv.states) data.states = pv.states;
       if (pv.sources) data.sources = pv.sources; // deprecated, use references
       if (pv.references) data.references = pv.references;
       if (pv.status) data.status = pv.status;
-      // actions removed - legacy path-based
       if (pv.dataSchema) data.dataSchema = pv.dataSchema;
-      if (pv.event) (data as Record<string, unknown>).event = pv.event;
-      if (pv.eventRef) (data as Record<string, unknown>).eventRef = pv.eventRef;
-      if (pv.boundary) (data as Record<string, unknown>).boundary = pv.boundary;
+    }
+
+    // Determine React Flow node type from shape
+    let reactFlowType = 'default';
+    if (isOtelType && node.shape) {
+      reactFlowType = node.shape;
+    } else if (pv?.shape) {
+      reactFlowType = pv.shape;
     }
 
     return {
       id: node.id,
-      type: pv?.shape || 'default',
+      type: reactFlowType,
       position: { x: node.x, y: node.y },
       data,
       style: {
@@ -304,9 +354,17 @@ export class CanvasConverter {
           case 'group':
             nodeName = node.label || 'Group';
             break;
+          // OTEL node types use the label field directly
+          case 'otel-event':
+          case 'otel-span-convention':
+          case 'otel-scope':
+          case 'otel-resource':
+          case 'otel-boundary':
+            nodeName = node.label;
+            break;
           default:
-            // For custom types, use pv.nodeType or fall back to node id
-            nodeName = pv?.nodeType || (node as { id: string }).id;
+            // For unknown custom types, use node id
+            nodeName = (node as { id: string }).id;
             break;
         }
 
@@ -315,36 +373,62 @@ export class CanvasConverter {
         // pv.description takes priority over parsed description from text
         const finalDescription = pv?.description || nodeDescription;
 
+        // Check if this is an OTEL node type
+        const isOtelType = isOtelNode(node);
+
         // Build data object, filtering out undefined values
         const nodeData: Record<string, JsonValue> = {
           description: finalDescription || '',
-          shape: pv?.shape || 'rectangle',
-          color: pv?.fill || resolveCanvasColor(node.color) || '',
+          shape: isOtelType ? (node.shape || 'rectangle') : (pv?.shape || 'rectangle'),
+          color: isOtelType ? (node.fill || resolveCanvasColor(node.color) || '') : (pv?.fill || resolveCanvasColor(node.color) || ''),
           width: node.width,
           height: node.height,
           sources: pv?.sources || [], // deprecated, use references
           references: pv?.references || [],
-          // actions removed - legacy path-based
           canvasType: node.type,
         };
 
-        // Add optional properties only if defined
-        if (pv?.icon) nodeData.icon = pv.icon;
-        if (pv?.stroke) nodeData.stroke = pv.stroke;
-        if (pv?.states) nodeData.states = pv.states as JsonValue;
-        if (pv?.status) nodeData.status = pv.status;
-        if (pv?.otel) nodeData.otel = pv.otel as JsonValue;
-        if (pv?.resourceMatch) nodeData.resourceMatch = pv.resourceMatch as JsonValue;
-        if (pv?.event) nodeData.event = pv.event as unknown as JsonValue;
-        if (pv?.eventRef) nodeData.eventRef = pv.eventRef;
-        if (pv?.boundary) nodeData.boundary = pv.boundary as unknown as JsonValue;
-        // Include nodeType in data for component access
-        if (pv?.nodeType) nodeData.nodeType = pv.nodeType;
+        // Add optional pv properties for standard canvas nodes only
+        // Note: pv.otel and pv.resourceMatch are removed - use otel-* node types instead
+        if (!isOtelType && pv) {
+          if (pv.icon) nodeData.icon = pv.icon;
+          if (pv.stroke) nodeData.stroke = pv.stroke;
+          if (pv.states) nodeData.states = pv.states as JsonValue;
+          if (pv.status) nodeData.status = pv.status;
+        }
 
         // Add type-specific data
         if (node.type === 'text' && node.text) nodeData.text = node.text;
         if (node.type === 'file' && node.file) nodeData.file = node.file;
         if (node.type === 'link' && node.url) nodeData.url = node.url;
+
+        // Handle OTEL node types (new format with top-level fields)
+        if (isOtelNode(node)) {
+          nodeData.nodeType = node.type;
+          if (node.icon) nodeData.icon = node.icon;
+          if (node.fill) nodeData.color = node.fill;
+          if (node.shape) nodeData.shape = node.shape;
+          if ('description' in node && node.description) nodeData.description = node.description;
+
+          // Add OTEL-specific data from top-level fields
+          if ('otel' in node && node.otel) {
+            nodeData.otel = node.otel as JsonValue;
+            if (node.otel.status) nodeData.status = node.otel.status;
+            if (node.otel.references) nodeData.references = node.otel.references;
+          }
+          if ('event' in node && node.event) {
+            nodeData.event = node.event as unknown as JsonValue;
+          }
+          if ('eventRef' in node && node.eventRef) {
+            nodeData.eventRef = node.eventRef;
+          }
+          if ('dataSchema' in node && node.dataSchema) {
+            nodeData.dataSchema = node.dataSchema as JsonValue;
+          }
+          if ('boundary' in node && node.boundary) {
+            nodeData.boundary = node.boundary as unknown as JsonValue;
+          }
+        }
 
         nodes.push({
           id: node.id,

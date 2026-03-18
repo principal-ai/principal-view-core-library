@@ -5,7 +5,8 @@
  * all instrumentation scopes declared in library.yaml.
  */
 
-import type { ExtendedCanvas, ExtendedCanvasNode } from '../types/canvas';
+import type { ExtendedCanvas, ExtendedCanvasNode, OtelScopeNode, isOtelScopeNode } from '../types/canvas';
+import { isOtelScopeNode as checkOtelScopeNode } from '../types/canvas';
 
 /**
  * Scopes canvas validation context
@@ -99,7 +100,7 @@ export class ScopesCanvasValidator {
         impact: 'Cannot visualize or validate instrumentation scope boundaries',
         suggestion: `Create a scopes canvas at .principal-views/architecture.scopes.canvas with nodes for each scope:\n` +
           ownedScopes.map(s => `  - ${s}`).join('\n') +
-          '\n\nEach node should have pv.nodeType: "scope" and pv.otel.scope set to the scope name.',
+          '\n\nUse type: "otel-scope" with otel.scope set to the scope name.',
       });
 
       return {
@@ -158,7 +159,7 @@ export class ScopesCanvasValidator {
         message: `Scopes canvas is missing ${missingScopes.length} scope(s) from library.yaml`,
         impact: 'These scopes are not documented in the scope boundary map',
         suggestion: `Add nodes for the following scopes:\n` +
-          missingScopes.map(s => `  - ${s}: Add a node with pv.otel.scope: "${s}"`).join('\n'),
+          missingScopes.map(s => `  - ${s}: Add type: "otel-scope" node with otel.scope: "${s}"`).join('\n'),
       });
     }
 
@@ -176,10 +177,11 @@ export class ScopesCanvasValidator {
       });
     }
 
-    // Validate scope nodes have required fields
+    // Validate scope nodes have required fields (otel-scope nodes only)
     for (const { scope, nodeId, node } of canvasScopes) {
-      // Check for description
-      if (!node.pv?.description) {
+      // type === 'otel-scope' with top-level description
+      const otelScopeNode = node as unknown as OtelScopeNode;
+      if (!otelScopeNode.description) {
         violations.push({
           ruleId: 'scopes-canvas-node-description',
           severity: 'warn',
@@ -187,20 +189,7 @@ export class ScopesCanvasValidator {
           path: `nodes[${nodeId}]`,
           message: `Scope node "${scope}" is missing a description`,
           impact: 'Scope documentation is incomplete without a description',
-          suggestion: `Add pv.description to explain what this scope covers`,
-        });
-      }
-
-      // Check for nodeType
-      if (node.pv?.nodeType !== 'scope') {
-        violations.push({
-          ruleId: 'scopes-canvas-node-type',
-          severity: 'warn',
-          file: scopesCanvasPath || '.principal-views/architecture.scopes.canvas',
-          path: `nodes[${nodeId}]`,
-          message: `Scope node "${scope}" should have nodeType: "scope"`,
-          impact: 'Node may not be recognized as a scope node',
-          suggestion: `Add pv.nodeType: "scope" to this node`,
+          suggestion: `Add a description field to explain what this scope covers`,
         });
       }
     }
@@ -220,7 +209,7 @@ export class ScopesCanvasValidator {
   }
 
   /**
-   * Extract scope information from canvas nodes
+   * Extract scope information from canvas nodes (otel-scope nodes only)
    */
   private extractScopesFromCanvas(
     canvas: ExtendedCanvas
@@ -228,14 +217,18 @@ export class ScopesCanvasValidator {
     const scopes: Array<{ scope: string; nodeId: string; node: ExtendedCanvasNode }> = [];
 
     for (const node of canvas.nodes || []) {
-      const scope = node.pv?.otel?.scope;
-      if (scope && typeof scope === 'string') {
-        scopes.push({
-          scope,
-          nodeId: node.id,
-          node: node as ExtendedCanvasNode,
-        });
+      // Only process otel-scope nodes
+      if (checkOtelScopeNode(node)) {
+        const scope = node.otel?.scope;
+        if (scope && typeof scope === 'string') {
+          scopes.push({
+            scope,
+            nodeId: node.id,
+            node: node as ExtendedCanvasNode,
+          });
+        }
       }
+      // Legacy pv.otel.scope format is no longer supported
     }
 
     return scopes;

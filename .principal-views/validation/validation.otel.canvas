@@ -2,772 +2,667 @@
   "nodes": [
     {
       "id": "analysis-started",
-      "type": "text",
-      "text": "Analysis Started",
+      "type": "otel-event",
       "x": 100,
       "y": 50,
       "width": 200,
       "height": 100,
       "color": "#4CAF50",
-      "pv": {
-        "nodeType": "event",
-        "name": "Analysis Started",
-        "description": "Codebase composition analysis begins",
-        "shape": "roundedRect",
-        "icon": "Play",
-        "status": "draft",
-        "event": {
-          "name": "analysis.started",
-          "attributes": {
-            "repository.path": {
-              "type": "string",
-              "description": "Repository root path",
-              "required": true
-            },
-            "analysis.type": {
-              "type": "string",
-              "description": "Type of analysis (discovery, validation, full)",
-              "required": true
-            }
+      "label": "Analysis Started",
+      "icon": "Play",
+      "shape": "roundedRect",
+      "event": {
+        "name": "analysis.started",
+        "attributes": {
+          "repository.path": {
+            "type": "string",
+            "description": "Repository root path",
+            "required": true
+          },
+          "analysis.type": {
+            "type": "string",
+            "description": "Type of analysis (discovery, validation, full)",
+            "required": true
           }
-        },
-        "references": [
-          "packages/core/src/discovery/CanvasDiscovery.ts",
-          "packages/cli/src/commands/validate.ts"
-        ]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "filetree-built",
-      "type": "text",
-      "text": "FileTree Built",
+      "type": "otel-event",
       "x": 100,
       "y": 250,
       "width": 200,
       "height": 100,
       "color": "#2196F3",
-      "pv": {
-        "nodeType": "event",
-        "name": "FileTree Built",
-        "description": "Repository file tree constructed",
-        "shape": "roundedRect",
-        "icon": "FolderTree",
-        "status": "draft",
-        "event": {
-          "name": "filetree.built",
-          "attributes": {
-            "files.total": {
-              "type": "integer",
-              "description": "Total files in repository",
-              "required": true
-            },
-            "filetree.sha": {
-              "type": "string",
-              "description": "Content hash for caching",
-              "required": true
-            }
+      "label": "FileTree Built",
+      "icon": "FolderTree",
+      "shape": "roundedRect",
+      "event": {
+        "name": "filetree.built",
+        "attributes": {
+          "files.total": {
+            "type": "integer",
+            "description": "Total files in repository",
+            "required": true
+          },
+          "filetree.sha": {
+            "type": "string",
+            "description": "Content hash for caching",
+            "required": true
           }
-        },
-        "references": ["packages/core/src/discovery/CanvasDiscovery.ts"]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "packages-discovered",
-      "type": "text",
-      "text": "Packages Discovered",
+      "type": "otel-event",
       "x": 100,
       "y": 450,
       "width": 200,
       "height": 100,
       "color": "#FF9800",
-      "pv": {
-        "nodeType": "event",
-        "name": "Packages Discovered",
-        "description": "Monorepo packages identified",
-        "shape": "roundedRect",
-        "icon": "Package",
-        "status": "draft",
-        "event": {
-          "name": "packages.discovered",
-          "attributes": {
-            "packages.count": {
-              "type": "integer",
-              "description": "Number of packages found",
-              "required": true
-            },
-            "packages.names": {
-              "type": "string[]",
-              "description": "Package names",
-              "required": false
-            },
-            "repository.type": {
-              "type": "string",
-              "description": "Repository type (monorepo, single-package)",
-              "required": true
-            }
+      "label": "Packages Discovered",
+      "icon": "Package",
+      "shape": "roundedRect",
+      "event": {
+        "name": "packages.discovered",
+        "attributes": {
+          "packages.count": {
+            "type": "integer",
+            "description": "Number of packages found",
+            "required": true
+          },
+          "packages.names": {
+            "type": "string[]",
+            "description": "Package names",
+            "required": false
+          },
+          "repository.type": {
+            "type": "string",
+            "description": "Repository type (monorepo, single-package)",
+            "required": true
           }
-        },
-        "references": ["packages/core/src/discovery/CanvasDiscovery.ts"]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "canvases-discovered",
-      "type": "text",
-      "text": "Canvases Discovered",
+      "type": "otel-event",
       "x": 450,
       "y": 250,
       "width": 200,
       "height": 100,
       "color": "#9C27B0",
-      "pv": {
-        "nodeType": "event",
-        "name": "Canvases Discovered",
-        "description": "Canvas files found in packages",
-        "shape": "roundedRect",
-        "icon": "FileJson",
-        "status": "draft",
-        "event": {
-          "name": "canvases.discovered",
-          "attributes": {
-            "canvases.total": {
-              "type": "integer",
-              "description": "Total canvas files found",
-              "required": true
-            },
-            "canvases.regular": {
-              "type": "integer",
-              "description": "Regular .canvas files",
-              "required": true
-            },
-            "canvases.otel": {
-              "type": "integer",
-              "description": "OTEL .otel.canvas files",
-              "required": true
-            },
-            "canvases.byPackage": {
-              "type": "object",
-              "description": "Canvas count per package",
-              "required": false
-            }
+      "label": "Canvases Discovered",
+      "icon": "FileJson",
+      "shape": "roundedRect",
+      "event": {
+        "name": "canvases.discovered",
+        "attributes": {
+          "canvases.total": {
+            "type": "integer",
+            "description": "Total canvas files found",
+            "required": true
+          },
+          "canvases.regular": {
+            "type": "integer",
+            "description": "Regular .canvas files",
+            "required": true
+          },
+          "canvases.otel": {
+            "type": "integer",
+            "description": "OTEL .otel.canvas files",
+            "required": true
+          },
+          "canvases.byPackage": {
+            "type": "object",
+            "description": "Canvas count per package",
+            "required": false
           }
-        },
-        "references": ["packages/core/src/discovery/CanvasDiscovery.ts"]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "executions-discovered",
-      "type": "text",
-      "text": "Executions Discovered",
+      "type": "otel-event",
       "x": 450,
       "y": 400,
       "width": 200,
       "height": 100,
       "color": "#9C27B0",
-      "pv": {
-        "nodeType": "event",
-        "name": "Executions Discovered",
-        "description": "Execution files found in __executions__",
-        "shape": "roundedRect",
-        "icon": "Activity",
-        "status": "draft",
-        "event": {
-          "name": "executions.discovered",
-          "attributes": {
-            "executions.total": {
-              "type": "integer",
-              "description": "Total execution files found",
-              "required": true
-            },
-            "executions.byCanvas": {
-              "type": "object",
-              "description": "Execution count per canvas",
-              "required": false
-            }
+      "label": "Executions Discovered",
+      "icon": "Activity",
+      "shape": "roundedRect",
+      "event": {
+        "name": "executions.discovered",
+        "attributes": {
+          "executions.total": {
+            "type": "integer",
+            "description": "Total execution files found",
+            "required": true
+          },
+          "executions.byCanvas": {
+            "type": "object",
+            "description": "Execution count per canvas",
+            "required": false
           }
-        },
-        "references": ["packages/core/src/discovery/CanvasDiscovery.ts"]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "library-loaded",
-      "type": "text",
-      "text": "Library Loaded",
+      "type": "otel-event",
       "x": 450,
       "y": 550,
       "width": 200,
       "height": 100,
       "color": "#9C27B0",
-      "pv": {
-        "nodeType": "event",
-        "name": "Library Loaded",
-        "description": "Component library definitions loaded",
-        "shape": "roundedRect",
-        "icon": "Library",
-        "status": "draft",
-        "event": {
-          "name": "library.loaded",
-          "attributes": {
-            "library.found": {
-              "type": "boolean",
-              "description": "Whether library file exists",
-              "required": true
-            },
-            "library.path": {
-              "type": "string",
-              "description": "Path to library file",
-              "required": false
-            },
-            "nodeComponents.count": {
-              "type": "integer",
-              "description": "Number of node component types",
-              "required": false
-            },
-            "edgeComponents.count": {
-              "type": "integer",
-              "description": "Number of edge component types",
-              "required": false
-            }
+      "label": "Library Loaded",
+      "icon": "Library",
+      "shape": "roundedRect",
+      "event": {
+        "name": "library.loaded",
+        "attributes": {
+          "library.found": {
+            "type": "boolean",
+            "description": "Whether library file exists",
+            "required": true
+          },
+          "library.path": {
+            "type": "string",
+            "description": "Path to library file",
+            "required": false
+          },
+          "nodeComponents.count": {
+            "type": "integer",
+            "description": "Number of node component types",
+            "required": false
+          },
+          "edgeComponents.count": {
+            "type": "integer",
+            "description": "Number of edge component types",
+            "required": false
           }
-        },
-        "references": ["packages/core/src/LibraryLoader.ts"]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "discovery-complete",
-      "type": "text",
-      "text": "Discovery Complete",
+      "type": "otel-event",
       "x": 100,
       "y": 650,
       "width": 200,
       "height": 100,
       "color": "#FF9800",
-      "pv": {
-        "nodeType": "event",
-        "name": "Discovery Complete",
-        "description": "All discovery operations completed",
-        "shape": "roundedRect",
-        "icon": "CheckSquare",
-        "status": "draft",
-        "event": {
-          "name": "discovery.complete",
-          "attributes": {
-            "discovery.duration": {
-              "type": "number",
-              "description": "Discovery duration in milliseconds",
-              "required": false
-            },
-            "items.discovered": {
-              "type": "integer",
-              "description": "Total items discovered",
-              "required": true
-            }
+      "label": "Discovery Complete",
+      "icon": "CheckSquare",
+      "shape": "roundedRect",
+      "event": {
+        "name": "discovery.complete",
+        "attributes": {
+          "discovery.duration": {
+            "type": "number",
+            "description": "Discovery duration in milliseconds",
+            "required": false
+          },
+          "items.discovered": {
+            "type": "integer",
+            "description": "Total items discovered",
+            "required": true
           }
-        },
-        "references": ["packages/core/src/discovery/CanvasDiscovery.ts"]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "validation-started",
-      "type": "text",
-      "text": "Validation Started",
+      "type": "otel-event",
       "x": 100,
       "y": 850,
       "width": 200,
       "height": 100,
       "color": "#4CAF50",
-      "pv": {
-        "nodeType": "event",
-        "name": "Validation Started",
-        "description": "Validation process begins on discovered items",
-        "shape": "roundedRect",
-        "icon": "PlayCircle",
-        "status": "draft",
-        "event": {
-          "name": "validation.started",
-          "attributes": {
-            "validation.type": {
-              "type": "string",
-              "description": "Type of validation (canvas, workflow, execution, library, config, rules, event)",
-              "required": true
-            },
-            "input.fileCount": {
-              "type": "integer",
-              "description": "Number of files to validate",
-              "required": false
-            }
+      "label": "Validation Started",
+      "icon": "PlayCircle",
+      "shape": "roundedRect",
+      "event": {
+        "name": "validation.started",
+        "attributes": {
+          "validation.type": {
+            "type": "string",
+            "description": "Type of validation (canvas, workflow, execution, library, config, rules, event)",
+            "required": true
+          },
+          "input.fileCount": {
+            "type": "integer",
+            "description": "Number of files to validate",
+            "required": false
           }
-        },
-        "references": [
-          "packages/cli/src/commands/validate.ts",
-          "packages/cli/src/commands/lint.ts"
-        ]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "file-parsed",
-      "type": "text",
-      "text": "File Parsed",
+      "type": "otel-event",
       "x": 100,
       "y": 1050,
       "width": 200,
       "height": 100,
       "color": "#2196F3",
-      "pv": {
-        "nodeType": "event",
-        "name": "File Parsed",
-        "description": "File successfully parsed (JSON/YAML)",
-        "shape": "roundedRect",
-        "icon": "FileJson",
-        "status": "draft",
-        "event": {
-          "name": "file.parsed",
-          "attributes": {
-            "file.path": {
-              "type": "string",
-              "description": "Path to parsed file",
-              "required": true
-            },
-            "file.format": {
-              "type": "string",
-              "description": "File format (json, yaml)",
-              "required": true
-            },
-            "file.size": {
-              "type": "integer",
-              "description": "File size in bytes",
-              "required": false
-            }
+      "label": "File Parsed",
+      "icon": "FileJson",
+      "shape": "roundedRect",
+      "event": {
+        "name": "file.parsed",
+        "attributes": {
+          "file.path": {
+            "type": "string",
+            "description": "Path to parsed file",
+            "required": true
+          },
+          "file.format": {
+            "type": "string",
+            "description": "File format (json, yaml)",
+            "required": true
+          },
+          "file.size": {
+            "type": "integer",
+            "description": "File size in bytes",
+            "required": false
           }
-        },
-        "references": [
-          "packages/cli/src/commands/validate.ts",
-          "packages/core/src/ConfigurationLoader.ts"
-        ]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "type-detected",
-      "type": "text",
-      "text": "Type Detected",
+      "type": "otel-event",
       "x": 100,
       "y": 1250,
       "width": 200,
       "height": 100,
       "color": "#FF9800",
-      "pv": {
-        "nodeType": "event",
-        "name": "Validation Type Detected",
-        "description": "Determined which validation to perform",
-        "shape": "roundedRect",
-        "icon": "GitBranch",
-        "status": "draft",
-        "event": {
-          "name": "type.detected",
-          "attributes": {
-            "detected.type": {
-              "type": "string",
-              "description": "Detected validation type",
-              "required": true
-            },
-            "detection.method": {
-              "type": "string",
-              "description": "How type was detected (file extension, content, explicit)",
-              "required": false
-            }
+      "label": "Validation Type Detected",
+      "icon": "GitBranch",
+      "shape": "roundedRect",
+      "event": {
+        "name": "type.detected",
+        "attributes": {
+          "detected.type": {
+            "type": "string",
+            "description": "Detected validation type",
+            "required": true
+          },
+          "detection.method": {
+            "type": "string",
+            "description": "How type was detected (file extension, content, explicit)",
+            "required": false
           }
-        },
-        "references": [
-          "packages/cli/src/commands/validate.ts",
-          "packages/cli/src/commands/lint.ts"
-        ]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "canvas-validated",
-      "type": "text",
-      "text": "Canvas Validated",
+      "type": "otel-event",
       "x": 450,
       "y": 1050,
       "width": 200,
       "height": 100,
       "color": "#9C27B0",
-      "pv": {
-        "nodeType": "event",
-        "name": "Canvas Validated",
-        "description": "Canvas file validation completed",
-        "shape": "roundedRect",
-        "icon": "CheckSquare",
-        "status": "draft",
-        "event": {
-          "name": "canvas.validated",
-          "attributes": {
-            "canvas.type": {
-              "type": "string",
-              "description": "Canvas type (standard, otel)",
-              "required": true
-            },
-            "checks.total": {
-              "type": "integer",
-              "description": "Total validation checks performed",
-              "required": true
-            },
-            "checks.passed": {
-              "type": "integer",
-              "description": "Checks that passed",
-              "required": true
-            },
-            "checks.failed": {
-              "type": "integer",
-              "description": "Checks that failed",
-              "required": true
-            },
-            "nodes.count": {
-              "type": "integer",
-              "description": "Number of nodes validated",
-              "required": false
-            },
-            "edges.count": {
-              "type": "integer",
-              "description": "Number of edges validated",
-              "required": false
-            }
+      "label": "Canvas Validated",
+      "icon": "CheckSquare",
+      "shape": "roundedRect",
+      "event": {
+        "name": "canvas.validated",
+        "attributes": {
+          "canvas.type": {
+            "type": "string",
+            "description": "Canvas type (standard, otel)",
+            "required": true
+          },
+          "checks.total": {
+            "type": "integer",
+            "description": "Total validation checks performed",
+            "required": true
+          },
+          "checks.passed": {
+            "type": "integer",
+            "description": "Checks that passed",
+            "required": true
+          },
+          "checks.failed": {
+            "type": "integer",
+            "description": "Checks that failed",
+            "required": true
+          },
+          "nodes.count": {
+            "type": "integer",
+            "description": "Number of nodes validated",
+            "required": false
+          },
+          "edges.count": {
+            "type": "integer",
+            "description": "Number of edges validated",
+            "required": false
           }
-        },
-        "references": ["packages/cli/src/commands/validate.ts"]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "workflow-validated",
-      "type": "text",
-      "text": "Workflow Validated",
+      "type": "otel-event",
       "x": 450,
       "y": 1200,
       "width": 200,
       "height": 100,
       "color": "#9C27B0",
-      "pv": {
-        "nodeType": "event",
-        "name": "Workflow Validated",
-        "description": "Workflow template validation completed",
-        "shape": "roundedRect",
-        "icon": "FileText",
-        "status": "draft",
-        "event": {
-          "name": "workflow.validated",
-          "attributes": {
-            "scenarios.count": {
-              "type": "integer",
-              "description": "Number of scenarios validated",
-              "required": true
-            },
-            "violations.count": {
-              "type": "integer",
-              "description": "Total violations found",
-              "required": true
-            },
-            "errors.count": {
-              "type": "integer",
-              "description": "Error violations",
-              "required": true
-            },
-            "warnings.count": {
-              "type": "integer",
-              "description": "Warning violations",
-              "required": true
-            }
+      "label": "Workflow Validated",
+      "icon": "FileText",
+      "shape": "roundedRect",
+      "event": {
+        "name": "workflow.validated",
+        "attributes": {
+          "scenarios.count": {
+            "type": "integer",
+            "description": "Number of scenarios validated",
+            "required": true
+          },
+          "violations.count": {
+            "type": "integer",
+            "description": "Total violations found",
+            "required": true
+          },
+          "errors.count": {
+            "type": "integer",
+            "description": "Error violations",
+            "required": true
+          },
+          "warnings.count": {
+            "type": "integer",
+            "description": "Warning violations",
+            "required": true
           }
-        },
-        "references": [
-          "packages/cli/src/commands/workflow/validate.ts",
-          "packages/core/src/workflow/validator.ts"
-        ]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "execution-validated",
-      "type": "text",
-      "text": "Execution Validated",
+      "type": "otel-event",
       "x": 450,
       "y": 1350,
       "width": 200,
       "height": 100,
       "color": "#9C27B0",
-      "pv": {
-        "nodeType": "event",
-        "name": "Execution Validated",
-        "description": "Execution file (OTLP) validation completed",
-        "shape": "roundedRect",
-        "icon": "Activity",
-        "status": "draft",
-        "event": {
-          "name": "execution.validated",
-          "attributes": {
-            "format": {
-              "type": "string",
-              "description": "Format detected (OTLP, ExecutionData)",
-              "required": true
-            },
-            "spans.count": {
-              "type": "integer",
-              "description": "Number of spans validated",
-              "required": true
-            },
-            "events.count": {
-              "type": "integer",
-              "description": "Total events across all spans",
-              "required": true
-            },
-            "errors.count": {
-              "type": "integer",
-              "description": "Validation errors found",
-              "required": true
-            }
+      "label": "Execution Validated",
+      "icon": "Activity",
+      "shape": "roundedRect",
+      "event": {
+        "name": "execution.validated",
+        "attributes": {
+          "format": {
+            "type": "string",
+            "description": "Format detected (OTLP, ExecutionData)",
+            "required": true
+          },
+          "spans.count": {
+            "type": "integer",
+            "description": "Number of spans validated",
+            "required": true
+          },
+          "events.count": {
+            "type": "integer",
+            "description": "Total events across all spans",
+            "required": true
+          },
+          "errors.count": {
+            "type": "integer",
+            "description": "Validation errors found",
+            "required": true
           }
-        },
-        "references": [
-          "packages/cli/src/commands/validate.ts",
-          "packages/core/src/execution/ExecutionValidator.ts"
-        ]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "library-validated",
-      "type": "text",
-      "text": "Library Validated",
+      "type": "otel-event",
       "x": 450,
       "y": 1500,
       "width": 200,
       "height": 100,
       "color": "#9C27B0",
-      "pv": {
-        "nodeType": "event",
-        "name": "Library Validated",
-        "description": "Library file validation completed",
-        "shape": "roundedRect",
-        "icon": "Library",
-        "status": "draft",
-        "event": {
-          "name": "library.validated",
-          "attributes": {
-            "nodeComponents.count": {
-              "type": "integer",
-              "description": "Number of node components",
-              "required": true
-            },
-            "edgeComponents.count": {
-              "type": "integer",
-              "description": "Number of edge components",
-              "required": true
-            },
-            "issues.count": {
-              "type": "integer",
-              "description": "Total issues found",
-              "required": true
-            }
+      "label": "Library Validated",
+      "icon": "Library",
+      "shape": "roundedRect",
+      "event": {
+        "name": "library.validated",
+        "attributes": {
+          "nodeComponents.count": {
+            "type": "integer",
+            "description": "Number of node components",
+            "required": true
+          },
+          "edgeComponents.count": {
+            "type": "integer",
+            "description": "Number of edge components",
+            "required": true
+          },
+          "issues.count": {
+            "type": "integer",
+            "description": "Total issues found",
+            "required": true
           }
-        },
-        "references": ["packages/cli/src/commands/validate.ts"]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "rules-executed",
-      "type": "text",
-      "text": "Rules Executed",
+      "type": "otel-event",
       "x": 450,
       "y": 1650,
       "width": 200,
       "height": 100,
       "color": "#9C27B0",
-      "pv": {
-        "nodeType": "event",
-        "name": "Rules Executed",
-        "description": "Linting rules execution completed",
-        "shape": "roundedRect",
-        "icon": "ListChecks",
-        "status": "draft",
-        "event": {
-          "name": "rules.executed",
-          "attributes": {
-            "rules.count": {
-              "type": "integer",
-              "description": "Number of rules executed",
-              "required": true
-            },
-            "violations.total": {
-              "type": "integer",
-              "description": "Total violations found",
-              "required": true
-            },
-            "violations.error": {
-              "type": "integer",
-              "description": "Error-level violations",
-              "required": true
-            },
-            "violations.warning": {
-              "type": "integer",
-              "description": "Warning-level violations",
-              "required": true
-            },
-            "fixable.count": {
-              "type": "integer",
-              "description": "Auto-fixable violations",
-              "required": false
-            }
+      "label": "Rules Executed",
+      "icon": "ListChecks",
+      "shape": "roundedRect",
+      "event": {
+        "name": "rules.executed",
+        "attributes": {
+          "rules.count": {
+            "type": "integer",
+            "description": "Number of rules executed",
+            "required": true
+          },
+          "violations.total": {
+            "type": "integer",
+            "description": "Total violations found",
+            "required": true
+          },
+          "violations.error": {
+            "type": "integer",
+            "description": "Error-level violations",
+            "required": true
+          },
+          "violations.warning": {
+            "type": "integer",
+            "description": "Warning-level violations",
+            "required": true
+          },
+          "fixable.count": {
+            "type": "integer",
+            "description": "Auto-fixable violations",
+            "required": false
           }
-        },
-        "references": [
-          "packages/cli/src/commands/lint.ts",
-          "packages/core/src/rules/engine.ts"
-        ]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "results-aggregated",
-      "type": "text",
-      "text": "Results Aggregated",
+      "type": "otel-event",
       "x": 100,
       "y": 1450,
       "width": 200,
       "height": 100,
       "color": "#FF9800",
-      "pv": {
-        "nodeType": "event",
-        "name": "Results Aggregated",
-        "description": "All validation results combined",
-        "shape": "roundedRect",
-        "icon": "Layers",
-        "status": "draft",
-        "event": {
-          "name": "results.aggregated",
-          "attributes": {
-            "total.files": {
-              "type": "integer",
-              "description": "Total files validated",
-              "required": true
-            },
-            "total.errors": {
-              "type": "integer",
-              "description": "Total errors across all validations",
-              "required": true
-            },
-            "total.warnings": {
-              "type": "integer",
-              "description": "Total warnings across all validations",
-              "required": true
-            },
-            "validations.performed": {
-              "type": "string[]",
-              "description": "Types of validations performed",
-              "required": true
-            }
+      "label": "Results Aggregated",
+      "icon": "Layers",
+      "shape": "roundedRect",
+      "event": {
+        "name": "results.aggregated",
+        "attributes": {
+          "total.files": {
+            "type": "integer",
+            "description": "Total files validated",
+            "required": true
+          },
+          "total.errors": {
+            "type": "integer",
+            "description": "Total errors across all validations",
+            "required": true
+          },
+          "total.warnings": {
+            "type": "integer",
+            "description": "Total warnings across all validations",
+            "required": true
+          },
+          "validations.performed": {
+            "type": "string[]",
+            "description": "Types of validations performed",
+            "required": true
           }
-        },
-        "references": [
-          "packages/cli/src/commands/validate.ts",
-          "packages/cli/src/commands/lint.ts"
-        ]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "validation-complete",
-      "type": "text",
-      "text": "Validation Complete",
+      "type": "otel-event",
       "x": 100,
       "y": 1650,
       "width": 200,
       "height": 100,
       "color": "#4CAF50",
-      "pv": {
-        "nodeType": "event",
-        "name": "Validation Complete",
-        "description": "All validations completed successfully",
-        "shape": "roundedRect",
-        "icon": "CheckCircle2",
-        "status": "draft",
-        "event": {
-          "name": "validation.complete",
-          "attributes": {
-            "result.valid": {
-              "type": "boolean",
-              "description": "Overall validation result",
-              "required": true
-            },
-            "result.validCount": {
-              "type": "integer",
-              "description": "Number of valid items",
-              "required": true
-            },
-            "result.invalidCount": {
-              "type": "integer",
-              "description": "Number of invalid items",
-              "required": true
-            },
-            "duration.ms": {
-              "type": "number",
-              "description": "Total validation duration",
-              "required": false
-            }
+      "label": "Validation Complete",
+      "icon": "CheckCircle2",
+      "shape": "roundedRect",
+      "event": {
+        "name": "validation.complete",
+        "attributes": {
+          "result.valid": {
+            "type": "boolean",
+            "description": "Overall validation result",
+            "required": true
+          },
+          "result.validCount": {
+            "type": "integer",
+            "description": "Number of valid items",
+            "required": true
+          },
+          "result.invalidCount": {
+            "type": "integer",
+            "description": "Number of invalid items",
+            "required": true
+          },
+          "duration.ms": {
+            "type": "number",
+            "description": "Total validation duration",
+            "required": false
           }
-        },
-        "references": [
-          "packages/cli/src/commands/validate.ts",
-          "packages/cli/src/commands/lint.ts",
-          "packages/cli/src/commands/workflow/validate.ts"
-        ]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     },
     {
       "id": "validation-error",
-      "type": "text",
-      "text": "Validation Error",
+      "type": "otel-event",
       "x": 800,
       "y": 1250,
       "width": 200,
       "height": 100,
       "color": "#F44336",
-      "pv": {
-        "nodeType": "event",
-        "name": "Validation Error",
-        "description": "Validation failed with errors",
-        "shape": "roundedRect",
-        "icon": "XCircle",
-        "status": "draft",
-        "event": {
-          "name": "validation.error",
-          "attributes": {
-            "error.type": {
-              "type": "string",
-              "description": "Error type (parse, schema, reference, structure)",
-              "required": true
-            },
-            "error.message": {
-              "type": "string",
-              "description": "Error message",
-              "required": true
-            },
-            "error.stage": {
-              "type": "string",
-              "description": "Stage where error occurred",
-              "required": true
-            },
-            "error.file": {
-              "type": "string",
-              "description": "File that caused the error",
-              "required": false
-            },
-            "error.line": {
-              "type": "integer",
-              "description": "Line number where error occurred",
-              "required": false
-            }
+      "label": "Validation Error",
+      "icon": "XCircle",
+      "shape": "roundedRect",
+      "event": {
+        "name": "validation.error",
+        "attributes": {
+          "error.type": {
+            "type": "string",
+            "description": "Error type (parse, schema, reference, structure)",
+            "required": true
+          },
+          "error.message": {
+            "type": "string",
+            "description": "Error message",
+            "required": true
+          },
+          "error.stage": {
+            "type": "string",
+            "description": "Stage where error occurred",
+            "required": true
+          },
+          "error.file": {
+            "type": "string",
+            "description": "File that caused the error",
+            "required": false
+          },
+          "error.line": {
+            "type": "integer",
+            "description": "Line number where error occurred",
+            "required": false
           }
-        },
-        "references": [
-          "packages/cli/src/commands/validate.ts",
-          "packages/core/src/ConfigurationValidator.ts",
-          "packages/core/src/execution/ExecutionValidator.ts",
-          "packages/core/src/workflow/validator.ts"
-        ]
+        }
+      },
+      "otel": {
+        "status": "draft"
       }
     }
   ],

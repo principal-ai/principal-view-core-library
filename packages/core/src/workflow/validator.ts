@@ -5,7 +5,8 @@
 
 import type { WorkflowTemplate, WorkflowScenario, ScenarioTemplate } from './types';
 import { getEventTemplateString } from './types';
-import type { ExtendedCanvas } from '../types/canvas';
+import type { ExtendedCanvas, OtelEventNode } from '../types/canvas';
+import { isOtelEventNode } from '../types/canvas';
 import { existsSync, readFileSync } from 'fs';
 import { resolve, basename } from 'path';
 import type { EventRegistry } from '../registry/EventRegistry';
@@ -135,6 +136,7 @@ export class WorkflowValidator {
     // Run all validation rules
     violations.push(...this.checkSchema(context));
     violations.push(...this.checkCanvasExists(context));
+    violations.push(...this.checkCanvasNodeLabels(context));
     violations.push(...this.checkCanvasCrossReference(context));
     violations.push(...this.checkDeprecatedFields(context));
     violations.push(...this.checkScenarios(context));
@@ -528,6 +530,64 @@ export class WorkflowValidator {
   }
 
   /**
+   * Check OTEL node labels are meaningful (not equal to their IDs).
+   * Labels should be human-readable display names, not technical identifiers.
+   */
+  private checkCanvasNodeLabels(context: WorkflowValidationContext): WorkflowViolation[] {
+    const violations: WorkflowViolation[] = [];
+    const { canvas, canvasPath } = context;
+
+    if (!canvas?.nodes || !canvasPath) {
+      return violations;
+    }
+
+    // OTEL node types that require meaningful labels
+    const otelNodeTypes = ['otel-event', 'otel-span-convention', 'otel-scope', 'otel-resource', 'otel-boundary'];
+
+    for (const node of canvas.nodes) {
+      // Check if it's an OTEL node type
+      if (!otelNodeTypes.includes(node.type)) {
+        continue;
+      }
+
+      // Get label from OTEL node (top-level field)
+      const label = 'label' in node ? (node as { label?: string }).label : undefined;
+
+      // Skip if no label defined
+      if (!label) {
+        continue;
+      }
+
+      // Check if label equals ID
+      if (label === node.id) {
+        violations.push({
+          ruleId: 'canvas-node-label-meaningful',
+          severity: 'warn',
+          file: canvasPath,
+          path: `nodes[${node.id}].label`,
+          message: `Node "${node.id}" has label identical to its ID`,
+          impact: 'Labels should be human-readable display names, not technical identifiers',
+          suggestion: `Change the label to a human-readable name like "${this.idToHumanReadable(node.id)}"`,
+          fixable: true,
+        });
+      }
+    }
+
+    return violations;
+  }
+
+  /**
+   * Convert a dot-separated ID to a human-readable label.
+   * E.g., "multi-canvas-panel.render" → "Multi Canvas Panel Render"
+   */
+  private idToHumanReadable(id: string): string {
+    return id
+      .split(/[-.]/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  /**
    * Check if workflow references a canvas from a different storyboard folder.
    * Workflows should be co-located with their canvas in the same storyboard.
    */
@@ -655,31 +715,19 @@ export class WorkflowValidator {
       return violations;
     }
 
-    // Extract all event names from canvas nodes
+    // Extract all event names from canvas nodes (otel-event nodes only)
     const canvasEvents = new Set<string>();
     for (const node of canvas.nodes) {
-      if (node.pv?.event) {
-        if (typeof node.pv.event === 'string') {
-          // Legacy string format detected - provide migration guidance
-          violations.push({
-            ruleId: 'canvas-event-format-deprecated',
-            severity: 'error',
-            file: workflow.canvas || 'canvas',
-            path: `nodes[${node.id}].pv.event`,
-            message: `Canvas node "${node.id}" uses deprecated string format for event: "${node.pv.event}"`,
-            impact: 'Event will not be recognized by workflow validator and workflows will fail to match',
-            suggestion: `Use "eventRef": "${node.pv.event}" to reference a library event, or use "event": { "name": "${node.pv.event}", "attributes": {} } for inline definition. If using eventRef, define the event schema in library.yaml under eventSchemas.`,
-            fixable: false,
-          });
-        } else if (typeof node.pv.event === 'object' && node.pv.event.name) {
-          // event is a PVEventSchema object with a 'name' property
-          canvasEvents.add(node.pv.event.name);
+      // Only process otel-event nodes
+      if (isOtelEventNode(node)) {
+        const otelEventNode = node as OtelEventNode;
+        if (otelEventNode.event?.name) {
+          canvasEvents.add(otelEventNode.event.name);
+        } else if (otelEventNode.eventRef) {
+          canvasEvents.add(otelEventNode.eventRef);
         }
       }
-      // Also check for eventRef (library reference)
-      if (node.pv?.eventRef && typeof node.pv.eventRef === 'string') {
-        canvasEvents.add(node.pv.eventRef);
-      }
+      // Legacy pv.event/pv.eventRef format is no longer supported - use otel-event nodes
     }
 
     // Extract all event names from workflow scenarios (from template.events)
@@ -1115,25 +1163,23 @@ export class WorkflowValidator {
       return violations;
     }
 
-    // Build a map of event name -> scope from canvas nodes
+    // Build a map of event name -> scope from canvas nodes (otel-event nodes only)
     const eventToScope = new Map<string, string | undefined>();
     const eventToNodeId = new Map<string, string>();
 
     for (const node of canvas.nodes || []) {
-      let eventName: string | undefined;
+      // Only process otel-event nodes
+      if (isOtelEventNode(node)) {
+        const otelEventNode = node as OtelEventNode;
+        const eventName = otelEventNode.event?.name || otelEventNode.eventRef;
+        const scope = otelEventNode.otel?.scope;
 
-      // Get event name from inline event or eventRef
-      if (node.pv?.event && typeof node.pv.event === 'object' && node.pv.event.name) {
-        eventName = node.pv.event.name;
-      } else if (node.pv?.eventRef && typeof node.pv.eventRef === 'string') {
-        eventName = node.pv.eventRef;
+        if (eventName) {
+          eventToScope.set(eventName, scope);
+          eventToNodeId.set(eventName, node.id);
+        }
       }
-
-      if (eventName) {
-        const scope = node.pv?.otel?.scope;
-        eventToScope.set(eventName, scope);
-        eventToNodeId.set(eventName, node.id);
-      }
+      // Legacy pv.event/pv.eventRef format is no longer supported
     }
 
     // Check each scenario for scope consistency
@@ -1861,27 +1907,29 @@ export class WorkflowValidator {
     }
 
     // Check each canvas node's event schema (only for events included in the workflow)
+    // Only otel-event nodes are supported
     for (const node of canvas.nodes) {
-      if (!node.pv) continue;
-
       let eventName: string | undefined;
       let eventSchema: { attributes?: Record<string, { display?: boolean }> } | undefined;
       let schemaSource: 'inline' | 'library' = 'inline';
 
-      // Get event schema - either inline or from registry
-      if (node.pv.event && typeof node.pv.event === 'object' && node.pv.event.name) {
-        eventName = node.pv.event.name;
-        eventSchema = node.pv.event;
-      } else if (node.pv.eventRef && typeof node.pv.eventRef === 'string') {
-        eventName = node.pv.eventRef;
-        schemaSource = 'library';
-        // Try to get schema from registry
-        const sources = context.eventRegistry?.findEvent(eventName) ?? [];
-        const librarySource = sources.find((s) => s.type === 'library' && s.eventSchema);
-        if (librarySource?.eventSchema) {
-          eventSchema = librarySource.eventSchema;
+      // Only process otel-event nodes
+      if (isOtelEventNode(node)) {
+        const otelEventNode = node as OtelEventNode;
+        if (otelEventNode.event?.name) {
+          eventName = otelEventNode.event.name;
+          eventSchema = otelEventNode.event as { attributes?: Record<string, { display?: boolean }> };
+        } else if (otelEventNode.eventRef) {
+          eventName = otelEventNode.eventRef;
+          schemaSource = 'library';
+          const sources = context.eventRegistry?.findEvent(eventName) ?? [];
+          const librarySource = sources.find((s) => s.type === 'library' && s.eventSchema);
+          if (librarySource?.eventSchema) {
+            eventSchema = librarySource.eventSchema;
+          }
         }
       }
+      // Legacy pv.event/pv.eventRef format is no longer supported
 
       if (!eventName || !eventSchema?.attributes) {
         continue; // No schema to validate
@@ -1904,7 +1952,7 @@ export class WorkflowValidator {
           ruleId: 'canvas-event-no-displayable-attributes',
           severity: 'error',
           file: canvasPath || workflowPath,
-          path: schemaSource === 'inline' ? `nodes[${node.id}].pv.event.attributes` : `nodes[${node.id}].pv.eventRef`,
+          path: schemaSource === 'inline' ? `nodes[${node.id}].event.attributes` : `nodes[${node.id}].eventRef`,
           message: `Event "${eventName}" has no displayable attributes`,
           impact: 'Event templates cannot display any meaningful data from this event',
           suggestion:
@@ -1928,7 +1976,7 @@ export class WorkflowValidator {
             ruleId: 'workflow-attribute-unused',
             severity: 'error',
             file: canvasPath || workflowPath,
-            path: schemaSource === 'inline' ? `nodes[${node.id}].pv.event.attributes.${attr}` : `library.eventSchemas.${eventName}.attributes.${attr}`,
+            path: schemaSource === 'inline' ? `nodes[${node.id}].event.attributes.${attr}` : `library.eventSchemas.${eventName}.attributes.${attr}`,
             message: `Event "${eventName}" defines attribute "${attr}" that is not used in any template`,
             impact: 'This attribute is defined but never displayed to users',
             suggestion: `Either use {{${attr}}} in a template for event "${eventName}" or mark it as display: false if it's for telemetry only`,
@@ -1962,27 +2010,29 @@ export class WorkflowValidator {
     }
 
     // Build a map of event name -> schema attributes (including nested paths)
+    // Only otel-event nodes are supported
     const eventSchemaAttributes = new Map<string, Set<string>>();
 
     for (const node of canvas.nodes) {
-      if (!node.pv) continue;
-
       let eventName: string | undefined;
       let eventSchema: { attributes?: Record<string, unknown> } | undefined;
 
-      // Get event schema - either inline or from registry
-      if (node.pv.event && typeof node.pv.event === 'object' && node.pv.event.name) {
-        eventName = node.pv.event.name;
-        eventSchema = node.pv.event;
-      } else if (node.pv.eventRef && typeof node.pv.eventRef === 'string') {
-        eventName = node.pv.eventRef;
-        // Try to get schema from registry
-        const sources = context.eventRegistry?.findEvent(eventName) ?? [];
-        const librarySource = sources.find((s) => s.type === 'library' && s.eventSchema);
-        if (librarySource?.eventSchema) {
-          eventSchema = librarySource.eventSchema;
+      // Only process otel-event nodes
+      if (isOtelEventNode(node)) {
+        const otelEventNode = node as OtelEventNode;
+        if (otelEventNode.event?.name) {
+          eventName = otelEventNode.event.name;
+          eventSchema = otelEventNode.event as { attributes?: Record<string, unknown> };
+        } else if (otelEventNode.eventRef) {
+          eventName = otelEventNode.eventRef;
+          const sources = context.eventRegistry?.findEvent(eventName) ?? [];
+          const librarySource = sources.find((s) => s.type === 'library' && s.eventSchema);
+          if (librarySource?.eventSchema) {
+            eventSchema = librarySource.eventSchema;
+          }
         }
       }
+      // Legacy pv.event/pv.eventRef format is no longer supported
 
       if (!eventName) continue;
 
@@ -2090,12 +2140,17 @@ export class WorkflowValidator {
 
     const { workflow, canvas } = context;
 
-    // Build event name → node ID mapping
+    // Build event name → node ID mapping (otel-event nodes only)
     const eventToNodeId = new Map<string, string>();
     for (const node of canvas.nodes || []) {
-      if (node.pv?.event?.name) {
-        eventToNodeId.set(node.pv.event.name, node.id);
+      if (isOtelEventNode(node)) {
+        const otelEventNode = node as OtelEventNode;
+        const eventName = otelEventNode.event?.name || otelEventNode.eventRef;
+        if (eventName) {
+          eventToNodeId.set(eventName, node.id);
+        }
       }
+      // Legacy pv.event/pv.eventRef format is no longer supported
     }
 
     // Build adjacency graph from edges
@@ -2141,7 +2196,12 @@ export class WorkflowValidator {
           impact: 'Events will appear as isolated nodes in workflow visualizations, making it unclear how execution flows between them',
           suggestion: `Add intermediate events to connect the flow. Disconnected events: ${disconnected.map(id => {
             const node = canvas.nodes?.find(n => n.id === id);
-            return node?.pv?.event?.name || id;
+            if (!node) return id;
+            if (isOtelEventNode(node)) {
+              const otelEventNode = node as OtelEventNode;
+              return otelEventNode.event?.name || otelEventNode.eventRef || id;
+            }
+            return id;
           }).join(', ')}`,
           fixable: false,
         });
