@@ -3,8 +3,10 @@
  *
  * Types for representing storyboard context data that panels consume.
  * Used to communicate which storyboard/workflow/scenario is selected
- * and map nodes to their source files.
+ * and provide file manifests for visualization.
  */
+
+import type { CanvasFileManifest } from '../discovery/types';
 
 // ============================================================================
 // Reference Types
@@ -81,10 +83,7 @@ export interface ScenarioReference {
  *     nodeIds: ['node-cart', 'node-payment', 'node-confirm'],
  *   },
  *   scenario: null,
- *   nodeSources: {
- *     'node-cart': ['src/cart/Cart.tsx', 'src/cart/cartUtils.ts'],
- *     'node-payment': ['src/payment/Payment.tsx'],
- *   },
+ *   manifest: { ... }, // CanvasFileManifest with file mappings
  *   supportingFiles: [
  *     '.principal-views/checkout-flow.otel.canvas',
  *     '.principal-views/checkout-flow/complete-checkout.workflow.json',
@@ -103,11 +102,12 @@ export interface StoryboardContextSliceData {
   scenario: ScenarioReference | null;
 
   /**
-   * Map of canvas node ID to source file paths.
-   * Built from each node's `pv.sources` field in the canvas.
-   * Used to highlight source files in visualizations.
+   * Canvas file manifest with bidirectional mappings.
+   * Use `manifest.nodeToFiles.get(nodeId)` to get files for a node.
+   * Use `manifest.fileToNodes.get(path)` to get nodes for a file.
+   * Use `manifest.byRole.instrumentation` for instrumented files.
    */
-  nodeSources: Record<string, string[]>;
+  manifest: CanvasFileManifest | null;
 
   /**
    * Additional files associated with the storyboard context.

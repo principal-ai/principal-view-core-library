@@ -15,7 +15,6 @@ export type {
 // Builder utilities
 export {
   buildStoryboardContext,
-  buildNodeSourcesMap,
   buildEventNodeMap,
   getNodeEventName,
   resolveScenarioNodeIds,

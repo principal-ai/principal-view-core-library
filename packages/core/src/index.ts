@@ -282,7 +282,27 @@ export type {
   DiscoveredWorkflowWithContent,
   DiscoveredStoryboardWithContent,
   CanvasDiscoveryResultWithContent,
+  // File manifest types
+  CanvasFileRole,
+  CanvasFileOrigin,
+  CanvasFileLevel,
+  CanvasFile,
+  CanvasFileStats,
+  StoryboardFileStats,
+  CanvasFileManifest,
+  WorkflowFileManifest,
+  StoryboardFileManifest,
+  DiscoveredCanvasWithManifest,
+  DiscoveredWorkflowWithManifest,
+  DiscoveredStoryboardWithManifest,
 } from './discovery/types';
+
+// Export file manifest builders (browser-safe)
+export {
+  buildCanvasFileManifest,
+  buildWorkflowFileManifest,
+  buildStoryboardFileManifest,
+} from './discovery/CanvasFileManifest';
 
 // Export scopes module (canvas validation + scope utilities)
 export {
@@ -403,7 +423,6 @@ export type {
 } from './storyboard/index';
 export {
   buildStoryboardContext,
-  buildNodeSourcesMap,
   buildEventNodeMap,
   getNodeEventName,
   resolveScenarioNodeIds,

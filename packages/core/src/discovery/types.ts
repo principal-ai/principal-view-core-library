@@ -208,3 +208,179 @@ export interface CanvasDiscoveryResultWithContent {
   errors: Array<{ path: string; error: string }>;
   warnings: Array<{ path: string; message: string; type: 'deprecation' }>;
 }
+
+// =============================================================================
+// Canvas File Manifest Types
+// =============================================================================
+
+/**
+ * Classification of how a file relates to a canvas/workflow
+ */
+export type CanvasFileRole =
+  | 'instrumentation' // File contains OTEL instrumentation (from otel.files)
+  | 'reference' // External reference/documentation (from otel.references)
+  | 'root-span'; // Root span instrumentation (from workflow.files)
+
+/**
+ * Origin of the file - internal to repo or external
+ */
+export type CanvasFileOrigin = 'internal' | 'external';
+
+/**
+ * Source level where the file was defined
+ */
+export type CanvasFileLevel = 'canvas-node' | 'workflow';
+
+/**
+ * A file referenced by a canvas, workflow, or scenario
+ */
+export interface CanvasFile {
+  /** File path (relative to repo root for internal, URL/package ref for external) */
+  path: string;
+
+  /** How this file relates to the canvas */
+  role: CanvasFileRole;
+
+  /** Whether the file is in this repo or external */
+  origin: CanvasFileOrigin;
+
+  /** Where this file reference was defined */
+  level: CanvasFileLevel;
+
+  /** IDs of nodes that reference this file (for canvas-node level) */
+  nodeIds: string[];
+
+  /** Node types that reference this file */
+  nodeTypes: string[];
+
+  /** Workflow IDs that reference this file (for workflow level) */
+  workflowIds: string[];
+
+  /** Event names associated with this file's nodes */
+  eventNames: string[];
+}
+
+/**
+ * Canvas-level statistics
+ */
+export interface CanvasFileStats {
+  totalFiles: number;
+  internalFiles: number;
+  externalFiles: number;
+  instrumentationFiles: number;
+  referenceFiles: number;
+  nodesWithFiles: number;
+  nodesWithoutFiles: number;
+  uniqueEventNames: number;
+}
+
+/**
+ * Storyboard-level statistics
+ */
+export interface StoryboardFileStats extends CanvasFileStats {
+  workflowCount: number;
+  scenarioCount: number;
+  rootSpanFiles: number;
+}
+
+/**
+ * File manifest for a single canvas (without workflows)
+ */
+export interface CanvasFileManifest {
+  /** Canvas ID */
+  canvasId: string;
+
+  /** Canvas path */
+  canvasPath: string;
+
+  /** Canvas type */
+  canvasType: CanvasType;
+
+  /** All files from canvas nodes, deduplicated */
+  files: CanvasFile[];
+
+  /** Quick lookup by role */
+  byRole: Record<CanvasFileRole, CanvasFile[]>;
+
+  /** Quick lookup by origin */
+  byOrigin: Record<CanvasFileOrigin, CanvasFile[]>;
+
+  /** Reverse mapping: file path -> node IDs */
+  fileToNodes: Map<string, string[]>;
+
+  /** Reverse mapping: node ID -> file paths */
+  nodeToFiles: Map<string, string[]>;
+
+  /** Reverse mapping: event name -> file paths */
+  eventToFiles: Map<string, string[]>;
+
+  /** Summary statistics */
+  stats: CanvasFileStats;
+}
+
+/**
+ * File manifest for a workflow (includes canvas + workflow-level files)
+ */
+export interface WorkflowFileManifest extends CanvasFileManifest {
+  /** Workflow ID */
+  workflowId: string;
+
+  /** Workflow path */
+  workflowPath: string;
+
+  /** Root span name */
+  rootSpan?: string;
+
+  /** Files from workflow.files property */
+  workflowFiles: CanvasFile[];
+
+  /** Merged files (canvas + workflow) */
+  allFiles: CanvasFile[];
+
+  /** Files filtered by scenario (scenario ID -> files) */
+  byScenario: Map<string, CanvasFile[]>;
+}
+
+/**
+ * File manifest for an entire storyboard
+ */
+export interface StoryboardFileManifest {
+  /** Storyboard ID */
+  storyboardId: string;
+
+  /** Storyboard path */
+  storyboardPath: string;
+
+  /** Main canvas manifest */
+  canvas: CanvasFileManifest;
+
+  /** Workflow manifests */
+  workflows: WorkflowFileManifest[];
+
+  /** All files across canvas and all workflows */
+  allFiles: CanvasFile[];
+
+  /** Summary statistics */
+  stats: StoryboardFileStats;
+}
+
+/**
+ * Discovered canvas with content AND file manifest
+ */
+export interface DiscoveredCanvasWithManifest extends DiscoveredCanvasWithContent {
+  manifest: CanvasFileManifest;
+}
+
+/**
+ * Discovered workflow with content AND file manifest
+ */
+export interface DiscoveredWorkflowWithManifest extends DiscoveredWorkflowWithContent {
+  manifest: WorkflowFileManifest;
+}
+
+/**
+ * Discovered storyboard with content AND file manifest
+ */
+export interface DiscoveredStoryboardWithManifest extends DiscoveredStoryboardWithContent {
+  manifest: StoryboardFileManifest;
+}

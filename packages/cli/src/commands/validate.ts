@@ -1456,32 +1456,6 @@ function validateCanvas(
           });
         }
 
-        // For .otel.canvas files: require event or eventRef field on nodes with pv extension (except groups and boundary nodes)
-        const isBoundaryNode = nodePv.nodeType === 'boundary';
-        if (filePath.endsWith('.otel.canvas') && nodeType !== 'group') {
-          if (isBoundaryNode) {
-            // Boundary nodes require boundary field instead of event/eventRef
-            if (!nodePv.boundary || typeof nodePv.boundary !== 'object') {
-              issues.push({
-                type: 'error',
-                message: `Node "${nodeLabel}" has nodeType "boundary" but is missing required "pv.boundary" field`,
-                path: `${nodePath}.pv.boundary`,
-                suggestion: 'Add boundary details, e.g.: "boundary": { "direction": "outbound", "node": { "pv.event.name": "host.event-name" } }',
-              });
-            }
-          } else {
-            // Regular nodes require event or eventRef
-            if (nodePv.event === undefined && nodePv.eventRef === undefined) {
-              issues.push({
-                type: 'error',
-                message: `Node "${nodeLabel}" in .otel.canvas file must have either "pv.event" or "pv.eventRef" field`,
-                path: `${nodePath}.pv`,
-                suggestion: 'Add inline event schema with "event": {...} or reference library event with "eventRef": "event.name". For boundary nodes (external callbacks, APIs), use "nodeType": "boundary" with "boundary": {...} instead.',
-              });
-            }
-          }
-        }
-
         // Validate that display name doesn't match event name (poor UX)
         // Check both inline event definitions (pv.event.name) and library references (pv.eventRef)
         if (nodeType === 'text' && typeof n.text === 'string') {
@@ -1583,6 +1557,7 @@ The display name will be shown large on the node, and the event name will appear
         }
 
         // Validate source file references for OTEL event nodes (skip boundary nodes)
+        const isBoundaryNode = nodePv.nodeType === 'boundary';
         const hasOtelFeatures = nodePv.otel !== undefined || nodePv.event !== undefined || nodePv.eventRef !== undefined;
         if (hasOtelFeatures && !isBoundaryNode) {
 

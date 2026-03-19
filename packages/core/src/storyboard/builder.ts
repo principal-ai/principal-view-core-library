@@ -13,6 +13,8 @@ import type {
   ScenarioReference,
   StoryboardContextSliceData,
 } from './types';
+import type { CanvasType } from '../discovery/types';
+import { buildCanvasFileManifest } from '../discovery/CanvasFileManifest';
 
 // ============================================================================
 // Types
@@ -33,6 +35,9 @@ export interface BuildStoryboardContextOptions {
   /** Storyboard metadata (id, name, path) */
   storyboard: StoryboardReference;
 
+  /** Canvas type (defaults to 'otel') */
+  canvasType?: CanvasType;
+
   /** Optional: Selected workflow template and its path */
   workflow?: {
     template: WorkflowTemplate;
@@ -49,37 +54,6 @@ export interface BuildStoryboardContextOptions {
 // ============================================================================
 // Core Functions
 // ============================================================================
-
-/**
- * Build a map of canvas node ID to reference paths.
- * Extracts `pv.references` (or deprecated `pv.sources`) from each node.
- *
- * @param canvas - The extended canvas with nodes
- * @returns Record mapping node IDs to their reference paths
- *
- * @example
- * ```typescript
- * const nodeSources = buildNodeSourcesMap(canvas);
- * // { 'node-abc': ['src/auth/login.ts'], 'node-xyz': ['@logfire/pydantic-ai'] }
- * ```
- */
-export function buildNodeSourcesMap(canvas: ExtendedCanvas): Record<string, string[]> {
-  const nodeSources: Record<string, string[]> = {};
-
-  if (!canvas.nodes) {
-    return nodeSources;
-  }
-
-  for (const node of canvas.nodes) {
-    // Prefer references, fall back to deprecated sources
-    const refs = node.pv?.references ?? node.pv?.sources;
-    if (refs && refs.length > 0) {
-      nodeSources[node.id] = [...refs];
-    }
-  }
-
-  return nodeSources;
-}
 
 /**
  * Build a map of event name to canvas node IDs.
@@ -267,10 +241,10 @@ export function getAllNodeIds(canvas: ExtendedCanvas): string[] {
 export function buildStoryboardContext(
   options: BuildStoryboardContextOptions
 ): StoryboardContextSliceData {
-  const { canvas, storyboard, workflow, scenario, additionalSupportingFiles = [] } = options;
+  const { canvas, storyboard, canvasType = 'otel', workflow, scenario, additionalSupportingFiles = [] } = options;
 
-  // Build node sources map from canvas
-  const nodeSources = buildNodeSourcesMap(canvas);
+  // Build canvas file manifest
+  const manifest = buildCanvasFileManifest(canvas, storyboard.id, storyboard.path, canvasType);
 
   // Build supporting files list
   const supportingFiles: string[] = [storyboard.path];
@@ -310,7 +284,7 @@ export function buildStoryboardContext(
     storyboard,
     workflow: workflowReference,
     scenario: scenarioReference,
-    nodeSources,
+    manifest,
     supportingFiles,
   };
 }
