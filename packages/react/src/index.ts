@@ -77,5 +77,5 @@ export {
   swapNodePositions,
   swapEdgeSides,
 } from './utils/orientationUtils';
-export { getCanvasBounds, getCanvasDisplaySize } from './utils/canvasBounds';
-export type { CanvasBounds } from './utils/canvasBounds';
+export { getCanvasBounds, getCanvasDisplaySize, calculateInitialViewport } from './utils/canvasBounds';
+export type { CanvasBounds, Viewport } from './utils/canvasBounds';

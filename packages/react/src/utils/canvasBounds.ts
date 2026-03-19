@@ -55,6 +55,61 @@ export function getCanvasBounds(canvas: ExtendedCanvas): CanvasBounds {
   };
 }
 
+export interface Viewport {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+/**
+ * Calculate the initial viewport to fit all nodes within a container.
+ * This allows setting defaultViewport on ReactFlow to avoid the
+ * "zoom in then animate out" effect.
+ *
+ * @param bounds - The bounding box of all nodes
+ * @param containerWidth - Width of the container in pixels
+ * @param containerHeight - Height of the container in pixels
+ * @param options - Additional options for padding and zoom limits
+ * @returns The viewport { x, y, zoom } to pass to ReactFlow's defaultViewport
+ */
+export function calculateInitialViewport(
+  bounds: CanvasBounds,
+  containerWidth: number,
+  containerHeight: number,
+  options: {
+    padding?: number;
+    minZoom?: number;
+    maxZoom?: number;
+  } = {}
+): Viewport {
+  const { padding = 0.2, minZoom = 0.1, maxZoom = 1.5 } = options;
+
+  // Calculate the zoom level needed to fit the bounds within the container
+  // Account for padding by reducing the effective container size
+  const effectiveWidth = containerWidth * (1 - padding);
+  const effectiveHeight = containerHeight * (1 - padding);
+
+  const zoomX = effectiveWidth / bounds.width;
+  const zoomY = effectiveHeight / bounds.height;
+
+  // Use the smaller zoom to ensure both dimensions fit
+  let zoom = Math.min(zoomX, zoomY);
+
+  // Clamp to min/max zoom
+  zoom = Math.max(minZoom, Math.min(maxZoom, zoom));
+
+  // Calculate the center of the bounds
+  const boundsCenterX = bounds.minX + bounds.width / 2;
+  const boundsCenterY = bounds.minY + bounds.height / 2;
+
+  // Calculate viewport position to center the bounds
+  // ReactFlow viewport x,y represent the offset of the canvas origin from the container's top-left
+  const x = containerWidth / 2 - boundsCenterX * zoom;
+  const y = containerHeight / 2 - boundsCenterY * zoom;
+
+  return { x, y, zoom };
+}
+
 /**
  * Calculate a recommended display size for a canvas cell.
  * Adds padding and enforces minimum dimensions.

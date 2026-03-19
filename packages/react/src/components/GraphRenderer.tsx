@@ -59,6 +59,11 @@ import {
   convertToXYFlowNodes,
   convertToXYFlowEdges,
 } from '../utils/graphConverter';
+import {
+  getCanvasBounds,
+  calculateInitialViewport,
+  type Viewport,
+} from '../utils/canvasBounds';
 import { GraphEditProvider } from '../contexts/GraphEditContext';
 import { useUndoRedo, type HistoryEntry } from '../hooks/useUndoRedo';
 
@@ -257,6 +262,20 @@ interface GraphRendererBaseProps {
    * Use this to implement custom copy behavior.
    */
   onCopy?: (selectedNodeIds: string[]) => void;
+
+  /**
+   * Container width in pixels. When provided along with containerHeight,
+   * enables calculating the initial viewport synchronously to avoid the
+   * "zoom in then animate out" effect on initial render.
+   */
+  containerWidth?: number;
+
+  /**
+   * Container height in pixels. When provided along with containerWidth,
+   * enables calculating the initial viewport synchronously to avoid the
+   * "zoom in then animate out" effect on initial render.
+   */
+  containerHeight?: number;
 
 }
 
@@ -514,6 +533,8 @@ interface GraphRendererInnerProps {
   draggableNodeIds?: Set<string>;
   onNodeDragStop?: (nodeId: string, position: { x: number; y: number }) => void;
   onCopy?: (selectedNodeIds: string[]) => void;
+  /** Pre-calculated initial viewport to avoid zoom animation on mount */
+  initialViewport?: Viewport;
 }
 
 /**
@@ -553,6 +574,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   draggableNodeIds,
   onNodeDragStop: onNodeDragStopProp,
   onCopy,
+  initialViewport,
 }) => {
   const { fitView, fitBounds, getNodes } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
@@ -2172,6 +2194,11 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       return;
     }
 
+    // Skip delayed fitView if we have a pre-calculated initial viewport
+    if (initialViewport) {
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
       fitView({
         padding: 0.2,
@@ -2183,7 +2210,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [baseNodesKey, baseEdgesKey, fitView, fitViewDuration, fitViewToNodeIds]);
+  }, [baseNodesKey, baseEdgesKey, fitView, fitViewDuration, fitViewToNodeIds, initialViewport]);
 
   // Create a stable key from fitViewToNodeIds for dependency tracking
   const fitViewToNodeIdsKey = useMemo(
@@ -2249,6 +2276,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         edgeTypes={edgeTypes}
         minZoom={0.1}
         maxZoom={4}
+        defaultViewport={initialViewport}
         defaultEdgeOptions={{ type: 'custom' }}
         onEdgeClick={onEdgeClick}
         onNodeClick={onNodeClick}
@@ -2615,6 +2643,8 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     className,
     width = '100%',
     height = '100%',
+    containerWidth,
+    containerHeight,
   } = props;
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -2628,6 +2658,20 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
   // Convert canvas to internal format (merging library types if provided)
   // Also inject scope colors (for border) and span colors (for fill)
   const canvasData = useCanvasToLegacy(canvas, library, spansCanvas, workflowSpanPattern);
+
+  // Calculate initial viewport if container dimensions are provided
+  // This avoids the "zoom in then animate out" effect on initial render
+  const initialViewport = useMemo(() => {
+    if (!containerWidth || !containerHeight || !canvas) {
+      return undefined;
+    }
+    const bounds = getCanvasBounds(canvas);
+    return calculateInitialViewport(bounds, containerWidth, containerHeight, {
+      padding: 0.2,
+      minZoom: 0.1,
+      maxZoom: 1.5,
+    });
+  }, [canvas, containerWidth, containerHeight]);
 
   // Debug: Log canvas data to help diagnose disappearing edges
   if (process.env.NODE_ENV === 'development') {
@@ -2775,6 +2819,16 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     onCopy,
   } = props;
 
+  // If container dimensions are provided but viewport isn't calculated yet, wait
+  // This prevents the flash from rendering with default viewport then re-rendering
+  const isWaitingForViewport = (containerWidth !== undefined || containerHeight !== undefined) && !initialViewport;
+
+  if (isWaitingForViewport) {
+    return (
+      <div ref={containerRef} className={className} style={{ width, height, position: 'relative' }} />
+    );
+  }
+
   return (
     <div ref={containerRef} className={className} style={{ width, height, position: 'relative' }}>
       <TooltipPortalContext.Provider value={portalTarget}>
@@ -2812,6 +2866,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
             draggableNodeIds={draggableNodeIds}
             onNodeDragStop={onNodeDragStop}
             onCopy={onCopy}
+            initialViewport={initialViewport}
           />
         </ReactFlowProvider>
       </TooltipPortalContext.Provider>

@@ -2992,3 +2992,148 @@ export const FitViewToNodes: Story = {
     },
   },
 };
+
+// ============================================================================
+// Initial Viewport Comparison Story
+// ============================================================================
+
+const InitialViewportComparisonTemplate = () => {
+  const [key, setKey] = React.useState(0);
+
+  const handleRemount = () => {
+    setKey((k) => k + 1);
+  };
+
+  return (
+    <div>
+      <div
+        style={{
+          marginBottom: 16,
+          padding: 12,
+          backgroundColor: '#fef3c7',
+          borderRadius: 4,
+          border: '1px solid #f59e0b',
+        }}
+      >
+        <strong style={{ color: '#92400e' }}>Initial Viewport Comparison</strong>
+        <div style={{ marginTop: 8, fontSize: 12, color: '#78350f' }}>
+          <p style={{ margin: '4px 0' }}>
+            Compare the loading behavior with and without pre-calculated viewport dimensions.
+          </p>
+          <p style={{ margin: '8px 0 4px 0' }}>
+            <strong>Left:</strong> Default behavior - starts at zoom=1, then animates to fit
+          </p>
+          <p style={{ margin: '4px 0' }}>
+            <strong>Right:</strong> With <code>containerWidth</code>/<code>containerHeight</code> - instant correct positioning
+          </p>
+          <button
+            onClick={handleRemount}
+            style={{
+              marginTop: 12,
+              padding: '8px 16px',
+              backgroundColor: '#f59e0b',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: 14,
+            }}
+          >
+            Remount Both (to see initial load behavior)
+          </button>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 16 }}>
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              padding: '8px 12px',
+              backgroundColor: '#fee2e2',
+              borderRadius: '4px 4px 0 0',
+              border: '1px solid #fca5a5',
+              borderBottom: 'none',
+              fontSize: 12,
+              fontWeight: 'bold',
+              color: '#991b1b',
+            }}
+          >
+            Without containerWidth/Height (animated)
+          </div>
+          <div
+            key={`animated-${key}`}
+            style={{ width: '100%', height: '500px', border: '1px solid #fca5a5' }}
+          >
+            <GraphRenderer canvas={versionRegistryCanvas} />
+          </div>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              padding: '8px 12px',
+              backgroundColor: '#dcfce7',
+              borderRadius: '4px 4px 0 0',
+              border: '1px solid #86efac',
+              borderBottom: 'none',
+              fontSize: 12,
+              fontWeight: 'bold',
+              color: '#166534',
+            }}
+          >
+            With containerWidth/Height (instant)
+          </div>
+          <div
+            key={`instant-${key}`}
+            style={{ width: '100%', height: '500px', border: '1px solid #86efac' }}
+          >
+            <GraphRenderer
+              canvas={versionRegistryCanvas}
+              containerWidth={600}
+              containerHeight={500}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const InitialViewportComparison: Story = {
+  render: () => <InitialViewportComparisonTemplate />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Initial Viewport Comparison** - Demonstrates the difference between default and pre-calculated viewport behavior.
+
+**The Problem:**
+By default, React Flow renders at zoom=1 centered at origin, then after ~100ms calls \`fitView()\` with a 200ms animation.
+This creates a visible "zoom in then zoom out" effect on initial load.
+
+**The Solution:**
+When you provide \`containerWidth\` and \`containerHeight\` props, the component calculates the correct viewport
+(zoom level and pan position) synchronously before the first render. This eliminates the animation entirely.
+
+**How to Use:**
+\`\`\`tsx
+<GraphRenderer
+  canvas={myCanvas}
+  containerWidth={800}   // Your container's width in pixels
+  containerHeight={600}  // Your container's height in pixels
+/>
+\`\`\`
+
+**When to Use:**
+- When you know the container dimensions ahead of time (fixed layouts)
+- When the container size comes from a layout system (CSS grid, flexbox with known dimensions)
+- When you want to eliminate any visual "settling" on initial load
+
+**When NOT to Use:**
+- When container dimensions are dynamic/unknown until mount
+- When using percentage-based sizing without a parent with known dimensions
+- In these cases, the default delayed fitView behavior is still appropriate
+        `,
+      },
+    },
+  },
+};
