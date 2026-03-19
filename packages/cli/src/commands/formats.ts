@@ -574,16 +574,13 @@ ${chalk.dim('│')} {                                                           
 ${chalk.dim('│')}   ${chalk.green('"nodes"')}: [                                                       ${chalk.dim('│')}
 ${chalk.dim('│')}     {                                                              ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"id"')}: "scope-node-id",                                        ${chalk.dim('│')}
-${chalk.dim('│')}       ${chalk.yellow('"type"')}: "text",                                               ${chalk.dim('│')}
-${chalk.dim('│')}       ${chalk.yellow('"text"')}: "Scope Display Name",                                 ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.green('"type"')}: "otel-scope",          ${chalk.dim('// Required: scope node type')}  ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"x"')}: 0, ${chalk.yellow('"y"')}: 0, ${chalk.yellow('"width"')}: 200, ${chalk.yellow('"height"')}: 100,                   ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"color"')}: "#4CAF50",                                           ${chalk.dim('│')}
-${chalk.dim('│')}       ${chalk.green('"pv"')}: {                                                        ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"nodeType"')}: "scope",       ${chalk.dim('// Required: identifies as scope')} ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.green('"otel"')}: {                                                      ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"scope"')}: "my-scope-name",    ${chalk.dim('// Must match library.yaml')}   ${chalk.dim('│')}
 ${chalk.dim('│')}         ${chalk.cyan('"description"')}: "What this scope instruments",              ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"otel"')}: {                                                    ${chalk.dim('│')}
-${chalk.dim('│')}           ${chalk.yellow('"scope"')}: "my-scope-name"  ${chalk.dim('// Must match library.yaml')}   ${chalk.dim('│')}
-${chalk.dim('│')}         }                                                          ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"status"')}: "implemented"      ${chalk.dim('// draft|approved|implemented')} ${chalk.dim('│')}
 ${chalk.dim('│')}       }                                                            ${chalk.dim('│')}
 ${chalk.dim('│')}     }                                                              ${chalk.dim('│')}
 ${chalk.dim('│')}   ],                                                               ${chalk.dim('│')}
@@ -593,9 +590,9 @@ ${chalk.dim('└─────────────────────�
 
 ${chalk.bold('Node Required Fields:')}
 
-  ${chalk.green('pv.otel.scope')}    ${chalk.dim('string')}   Scope name (must match library.yaml owned-scopes)
-  ${chalk.green('pv.nodeType')}      ${chalk.dim('string')}   Must be "scope"
-  ${chalk.green('pv.description')}   ${chalk.dim('string')}   What this scope instruments
+  ${chalk.green('type')}             ${chalk.dim('string')}   Must be "otel-scope"
+  ${chalk.green('otel.scope')}       ${chalk.dim('string')}   Scope name (must match library.yaml owned-scopes)
+  ${chalk.green('otel.description')} ${chalk.dim('string')}   What this scope instruments
 
 ${chalk.bold('Relationship to library.yaml:')}
 
@@ -636,30 +633,24 @@ ${chalk.yellow('.principal-views/architecture.scopes.canvas')}
   "nodes": [
     {
       "id": "validation-scope",
-      "type": "text",
-      "text": "Validation",
+      ${chalk.green('"type": "otel-scope"')},
       "x": 0, "y": 0, "width": 200, "height": 120,
       ${chalk.green('"color": "#4CAF50"')},
-      "pv": {
-        ${chalk.green('"nodeType": "scope"')},
+      ${chalk.green('"otel"')}: {
+        ${chalk.green('"scope"')}: "validation",
         ${chalk.green('"description"')}: "Validates incoming data against schemas",
-        ${chalk.green('"otel"')}: {
-          ${chalk.green('"scope"')}: "validation"
-        }
+        ${chalk.green('"status"')}: "implemented"
       }
     },
     {
       "id": "import-scope",
-      "type": "text",
-      "text": "Import Processing",
+      "type": "otel-scope",
       "x": 250, "y": 0, "width": 200, "height": 120,
       "color": "#2196F3",
-      "pv": {
-        "nodeType": "scope",
+      "otel": {
+        "scope": "import-processing",
         "description": "Handles data import from external sources",
-        "otel": {
-          "scope": "import-processing"
-        }
+        "status": "implemented"
       }
     }
   ],
@@ -701,16 +692,13 @@ ${chalk.dim('│')}   },                                                        
 ${chalk.dim('│')}   ${chalk.green('"nodes"')}: [                                                       ${chalk.dim('│')}
 ${chalk.dim('│')}     {                                                              ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"id"')}: "validation",                                            ${chalk.dim('│')}
-${chalk.dim('│')}       ${chalk.yellow('"type"')}: "text",                                               ${chalk.dim('│')}
-${chalk.dim('│')}       ${chalk.yellow('"text"')}: "# Validation Operations\\n\\nValidate input data",    ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.green('"type"')}: "otel-span-convention",   ${chalk.dim('// Required: span node type')} ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"x"')}: 0, ${chalk.yellow('"y"')}: 0, ${chalk.yellow('"width"')}: 220, ${chalk.yellow('"height"')}: 100,                   ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.green('"color"')}: "#22C55E",        ${chalk.dim('// Required: span fill color')}   ${chalk.dim('│')}
-${chalk.dim('│')}       ${chalk.green('"pv"')}: {                                                        ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"nodeType"')}: "span-convention",  ${chalk.dim('// Required')}             ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"status"')}: "implemented",        ${chalk.dim('// draft|approved|implemented')} ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"otel"')}: {                                                    ${chalk.dim('│')}
-${chalk.dim('│')}           ${chalk.yellow('"spanPattern"')}: "validate.*"   ${chalk.dim('// Matches span names')}  ${chalk.dim('│')}
-${chalk.dim('│')}         }                                                          ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.green('"otel"')}: {                                                      ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"spanPattern"')}: "validate.*",   ${chalk.dim('// Matches span names')}    ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"description"')}: "Validation operations",                      ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"status"')}: "implemented"        ${chalk.dim('// draft|approved|implemented')} ${chalk.dim('│')}
 ${chalk.dim('│')}       }                                                            ${chalk.dim('│')}
 ${chalk.dim('│')}     }                                                              ${chalk.dim('│')}
 ${chalk.dim('│')}   ],                                                               ${chalk.dim('│')}
@@ -720,10 +708,10 @@ ${chalk.dim('└─────────────────────�
 
 ${chalk.bold('Node Required Fields:')}
 
+  ${chalk.green('type')}               ${chalk.dim('string')}   Must be "otel-span-convention"
   ${chalk.green('color')}              ${chalk.dim('string')}   Hex color for this span (used as event fill)
-  ${chalk.green('pv.nodeType')}        ${chalk.dim('string')}   Must be "span-convention"
-  ${chalk.green('pv.status')}          ${chalk.dim('string')}   "draft" | "approved" | "implemented"
-  ${chalk.green('pv.otel.spanPattern')} ${chalk.dim('string')}   Pattern to match span names
+  ${chalk.green('otel.spanPattern')}   ${chalk.dim('string')}   Pattern to match span names
+  ${chalk.green('otel.status')}        ${chalk.dim('string')}   "draft" | "approved" | "implemented"
 
 ${chalk.bold('Relationship to Workflows:')}
 
