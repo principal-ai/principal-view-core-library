@@ -20,9 +20,11 @@ import { createWorkflowCommand } from './commands/workflow/index.js';
 import { createMigrationCommand } from './commands/migration.js';
 import { createMigrateNodesCommand } from './commands/migrate-nodes.js';
 import { createScopesCommand } from './commands/scopes/index.js';
+import { createCollectorCommand } from './commands/collector/index.js';
+import { createTraceCommand } from './commands/trace/index.js';
 
 // Version is injected at build time via package.json
-const VERSION = '0.10.0';
+const VERSION = '0.16.8';
 
 const program = new Command();
 
@@ -46,6 +48,8 @@ program.addCommand(createHooksCommand());
 program.addCommand(createCoverageCommand());
 program.addCommand(createWorkflowCommand());
 program.addCommand(createScopesCommand());
+program.addCommand(createCollectorCommand());
+program.addCommand(createTraceCommand());
 
 // Parse command line arguments
 program.parse(process.argv);
