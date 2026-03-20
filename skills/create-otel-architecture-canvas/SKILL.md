@@ -244,65 +244,55 @@ Rules:
   "pv": {
     "name": "Span Conventions",
     "version": "1.0.0",
-    "markdown": ".principal-views/architecture.spans.md",
-    "nodeTypes": {
-      "span-convention": {
-        "label": "Span Convention",
-        "description": "A span convention defining an operation type",
-        "color": "#3B82F6"
-      }
-    }
+    "markdown": ".principal-views/architecture.spans.md"
   },
   "nodes": [
     {
       "id": "http-request",
-      "type": "text",
+      "type": "otel-span-convention",
       "x": 0,
       "y": 100,
-      "width": 200,
+      "width": 220,
       "height": 100,
-      "text": "# http.request\n\nHTTP request handling",
-      "pv": {
-        "nodeType": "span-convention",
+      "color": "#8B5CF6",
+      "label": "HTTP Request",
+      "description": "HTTP request handling",
+      "otel": {
         "status": "draft",
-        "otel": {
-          "spanPattern": "http.request",
-          "spanKind": "SERVER"
-        }
+        "spanPattern": "http.request",
+        "spanKind": "SERVER"
       }
     },
     {
       "id": "validate",
-      "type": "text",
-      "x": 300,
+      "type": "otel-span-convention",
+      "x": 320,
       "y": 0,
-      "width": 200,
+      "width": 220,
       "height": 100,
-      "text": "# validate.*\n\nValidation operations",
-      "pv": {
-        "nodeType": "span-convention",
+      "color": "#22C55E",
+      "label": "Validation Operations",
+      "description": "Input and schema validation",
+      "otel": {
         "status": "draft",
-        "otel": {
-          "spanPattern": "validate.*",
-          "spanKind": "INTERNAL"
-        }
+        "spanPattern": "validate.*",
+        "spanKind": "INTERNAL"
       }
     },
     {
       "id": "db-query",
-      "type": "text",
-      "x": 300,
+      "type": "otel-span-convention",
+      "x": 320,
       "y": 150,
-      "width": 200,
+      "width": 220,
       "height": 100,
-      "text": "# db.query\n\nDatabase queries",
-      "pv": {
-        "nodeType": "span-convention",
+      "color": "#3B82F6",
+      "label": "Database Queries",
+      "description": "Database query operations",
+      "otel": {
         "status": "draft",
-        "otel": {
-          "spanPattern": "db.query",
-          "spanKind": "CLIENT"
-        }
+        "spanPattern": "db.query",
+        "spanKind": "CLIENT"
       }
     }
   ],
@@ -396,9 +386,9 @@ owned-scopes:
 ### Step 2: Create Canvas with Scope Nodes
 
 Each owned scope needs a node with:
-- `pv.nodeType: "scope"`
-- `pv.otel.scope: "<scope-name>"`
-- `pv.description: "<what this scope covers>"`
+- `type: "otel-scope"`
+- `otel.scope: "<scope-name>"`
+- `description: "<what this scope covers>"`
 
 ```json
 {
@@ -410,36 +400,30 @@ Each owned scope needs a node with:
   "nodes": [
     {
       "id": "api-scope",
-      "type": "text",
+      "type": "otel-scope",
       "x": 0,
       "y": 0,
       "width": 250,
       "height": 120,
       "color": "#7ED321",
-      "text": "# my-api\n\nAPI instrumentation scope",
-      "pv": {
-        "nodeType": "scope",
-        "description": "Covers HTTP handlers and request processing",
-        "otel": {
-          "scope": "my-api"
-        }
+      "label": "my-api",
+      "description": "Covers HTTP handlers and request processing",
+      "otel": {
+        "scope": "my-api"
       }
     },
     {
       "id": "worker-scope",
-      "type": "text",
+      "type": "otel-scope",
       "x": 300,
       "y": 0,
       "width": 250,
       "height": 120,
       "color": "#7ED321",
-      "text": "# my-worker\n\nWorker instrumentation scope",
-      "pv": {
-        "nodeType": "scope",
-        "description": "Covers background job processing",
-        "otel": {
-          "scope": "my-worker"
-        }
+      "label": "my-worker",
+      "description": "Covers background job processing",
+      "otel": {
+        "scope": "my-worker"
       }
     }
   ],
@@ -450,40 +434,74 @@ Each owned scope needs a node with:
 ### Step 3: Validate
 
 ```bash
-npx @principal-ai/principal-view-cli validate
+npx @principal-ai/principal-view-cli scopes validate
 ```
 
 Validation checks:
 - All `owned-scopes` from library.yaml have nodes
-- Nodes have required `pv.nodeType: "scope"`
-- Nodes have `pv.otel.scope` matching the scope name
-- Nodes have `pv.description`
+- Nodes have required `type: "otel-scope"`
+- Nodes have `otel.scope` matching the scope name
+- Nodes have a `description` field
 
-## PV OTEL Extension Fields
+## OTEL Node Types
 
-### Node-Level OTEL Metadata
+The implementation uses dedicated OTEL node types with top-level `otel` metadata:
+
+### otel-scope Node
 
 ```json
-"pv": {
+{
+  "type": "otel-scope",
+  "label": "my-api",
+  "description": "API instrumentation scope",
   "otel": {
-    "kind": "service",           // "service", "function", "database", etc.
-    "category": "api",           // "api", "worker", "storage", etc.
-    "scope": "my-scope",         // For scopes canvas
-    "spanPattern": "http.*",     // For spans canvas
-    "spanKind": "SERVER"         // OTEL span kind
+    "scope": "my-api"
+  }
+}
+```
+
+### otel-span-convention Node
+
+```json
+{
+  "type": "otel-span-convention",
+  "label": "HTTP Request",
+  "description": "HTTP request handling",
+  "otel": {
+    "status": "draft",
+    "spanPattern": "http.*",
+    "spanKind": "SERVER"
+  }
+}
+```
+
+### otel-resource Node
+
+```json
+{
+  "type": "otel-resource",
+  "label": "checkout-api",
+  "description": "Checkout service resource",
+  "otel": {
+    "resourceMatch": {
+      "service.name": "checkout-api"
+    }
   }
 }
 ```
 
 ### Resource Matching
 
-For nodes that should "light up" when matching spans arrive:
+For otel-resource nodes that should "light up" when matching spans arrive:
 
 ```json
-"pv": {
-  "resourceMatch": {
-    "service.name": "checkout-api",
-    "deployment.environment": "production"
+{
+  "type": "otel-resource",
+  "otel": {
+    "resourceMatch": {
+      "service.name": "checkout-api",
+      "deployment.environment": "production"
+    }
   }
 }
 ```
@@ -497,9 +515,14 @@ Supports:
 
 ### Span Matching
 
+For otel-span-convention nodes:
+
 ```json
-"pv": {
+{
+  "type": "otel-span-convention",
   "otel": {
+    "spanPattern": "http.request",
+    "spanKind": "SERVER",
     "spanMatch": {
       "name": "POST /api/*",
       "kind": "SPAN_KIND_SERVER",
@@ -524,9 +547,10 @@ Supports:
    - What are the valid call hierarchies?
 
 3. **Create canvas with proper structure**
-   - Use `pv.otel` for OTEL-specific metadata
+   - Use dedicated OTEL node types (`otel-scope`, `otel-span-convention`, `otel-resource`)
+   - Use top-level `otel` field for OTEL-specific metadata
    - Connect nodes with edges for relationships
-   - Use consistent node sizing (200×100 recommended)
+   - Use consistent node sizing (220×100 recommended)
 
 4. **Create associated markdown**
    - Explain WHAT and WHY, not just HOW
@@ -576,6 +600,9 @@ See these files for working examples:
 ```bash
 # Validate all canvas files
 npx @principal-ai/principal-view-cli validate
+
+# Validate scopes canvas specifically
+npx @principal-ai/principal-view-cli scopes validate
 ```
 
 **Validation checks:**
@@ -591,6 +618,11 @@ npx @principal-ai/principal-view-cli validate
 - Missing scopes → error
 - Extra scopes → warning
 - Missing description → warning
+
+**Required node structure for scopes:**
+- `type: "otel-scope"` (not `type: "text"`)
+- `otel.scope` must match the scope name from library.yaml
+- `description` field should explain what the scope covers
 
 ## Integration with Other Skills
 
