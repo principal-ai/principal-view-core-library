@@ -1865,11 +1865,9 @@ export class WorkflowValidator {
 
   /**
    * Check event attribute requirements:
-   * 1. Every event schema must have at least one displayable attribute
-   * 2. All displayable attributes must be used in at least one template
+   * All attributes defined in event schemas must be used in at least one template.
    *
-   * This ensures events carry meaningful displayable data and that
-   * all defined attributes have a purpose.
+   * This ensures all defined attributes have a purpose and are displayed to users.
    */
   private checkEventAttributeRequirements(context: WorkflowValidationContext): WorkflowViolation[] {
     const violations: WorkflowViolation[] = [];
@@ -1910,7 +1908,7 @@ export class WorkflowValidator {
     // Only otel-event nodes are supported
     for (const node of canvas.nodes) {
       let eventName: string | undefined;
-      let eventSchema: { attributes?: Record<string, { display?: boolean }> } | undefined;
+      let eventSchema: { attributes?: Record<string, unknown> } | undefined;
       let schemaSource: 'inline' | 'library' = 'inline';
 
       // Only process otel-event nodes
@@ -1918,7 +1916,7 @@ export class WorkflowValidator {
         const otelEventNode = node as OtelEventNode;
         if (otelEventNode.event?.name) {
           eventName = otelEventNode.event.name;
-          eventSchema = otelEventNode.event as { attributes?: Record<string, { display?: boolean }> };
+          eventSchema = otelEventNode.event as { attributes?: Record<string, unknown> };
         } else if (otelEventNode.eventRef) {
           eventName = otelEventNode.eventRef;
           schemaSource = 'library';
@@ -1941,31 +1939,13 @@ export class WorkflowValidator {
         continue;
       }
 
-      // Get displayable attributes (where display !== false)
-      const displayableAttrs = Object.entries(eventSchema.attributes)
-        .filter(([_, fieldSchema]) => fieldSchema.display !== false)
-        .map(([attrName]) => attrName);
+      // Get all defined attributes
+      const definedAttrs = Object.keys(eventSchema.attributes);
 
-      // Rule 1: Require at least one displayable attribute
-      if (displayableAttrs.length === 0) {
-        violations.push({
-          ruleId: 'canvas-event-no-displayable-attributes',
-          severity: 'error',
-          file: canvasPath || workflowPath,
-          path: schemaSource === 'inline' ? `nodes[${node.id}].event.attributes` : `nodes[${node.id}].eventRef`,
-          message: `Event "${eventName}" has no displayable attributes`,
-          impact: 'Event templates cannot display any meaningful data from this event',
-          suggestion:
-            'Add at least one attribute without display: false, or remove the event schema if no data is needed',
-          fixable: false,
-        });
-        continue; // Skip unused check for this event
-      }
-
-      // Rule 2: All displayable attributes must be used
+      // All attributes must be used in templates
       const usedAttrs = templateAttributesByEvent.get(eventName) ?? new Set<string>();
 
-      for (const attr of displayableAttrs) {
+      for (const attr of definedAttrs) {
         // Check if attribute is used (direct match or as prefix of a nested path)
         const isUsed = Array.from(usedAttrs).some(
           (usedAttr) => usedAttr === attr || usedAttr.startsWith(attr + '.')
@@ -1978,8 +1958,8 @@ export class WorkflowValidator {
             file: canvasPath || workflowPath,
             path: schemaSource === 'inline' ? `nodes[${node.id}].event.attributes.${attr}` : `library.eventSchemas.${eventName}.attributes.${attr}`,
             message: `Event "${eventName}" defines attribute "${attr}" that is not used in any template`,
-            impact: 'This attribute is defined but never displayed to users',
-            suggestion: `Either use {{${attr}}} in a template for event "${eventName}" or mark it as display: false if it's for telemetry only`,
+            impact: 'This attribute is defined but never used in any template',
+            suggestion: `Use {{${attr}}} in a template for event "${eventName}", or remove the attribute if it's not needed`,
             fixable: false,
           });
         }

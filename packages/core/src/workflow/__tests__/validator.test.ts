@@ -75,36 +75,30 @@ describe('WorkflowValidator', () => {
       nodes: [
         {
           id: 'test-started',
-          type: 'text',
+          type: 'otel-event',
           x: 0,
           y: 0,
           width: 200,
           height: 100,
-          pv: {
-            eventRef: 'test.started',
-          },
+          eventRef: 'test.started',
         },
         {
           id: 'test-complete',
-          type: 'text',
+          type: 'otel-event',
           x: 250,
           y: 0,
           width: 200,
           height: 100,
-          pv: {
-            eventRef: 'test.complete',
-          },
+          eventRef: 'test.complete',
         },
         {
           id: 'test-error',
-          type: 'text',
+          type: 'otel-event',
           x: 500,
           y: 0,
           width: 200,
           height: 100,
-          pv: {
-            eventRef: 'test.error',
-          },
+          eventRef: 'test.error',
         },
       ],
       edges: [
@@ -1404,9 +1398,9 @@ describe('WorkflowValidator', () => {
 
       const canvas: ExtendedCanvas = {
         nodes: [
-          { id: 'n1', type: 'text', x: 0, y: 0, width: 100, height: 50, pv: { event: { name: 'event.started', attributes: {} } } },
-          { id: 'n2', type: 'text', x: 150, y: 0, width: 100, height: 50, pv: { event: { name: 'event.processing', attributes: {} } } },
-          { id: 'n3', type: 'text', x: 300, y: 0, width: 100, height: 50, pv: { event: { name: 'event.complete', attributes: {} } } }
+          { id: 'n1', type: 'otel-event', x: 0, y: 0, width: 100, height: 50, event: { name: 'event.started', attributes: {} } },
+          { id: 'n2', type: 'otel-event', x: 150, y: 0, width: 100, height: 50, event: { name: 'event.processing', attributes: {} } },
+          { id: 'n3', type: 'otel-event', x: 300, y: 0, width: 100, height: 50, event: { name: 'event.complete', attributes: {} } }
         ],
         edges: [
           { id: 'e1', fromNode: 'n1', toNode: 'n2' },
@@ -1454,9 +1448,9 @@ describe('WorkflowValidator', () => {
 
       const canvas: ExtendedCanvas = {
         nodes: [
-          { id: 'n1', type: 'text', x: 0, y: 0, width: 100, height: 50, pv: { event: { name: 'event.started', attributes: {} } } },
-          { id: 'n2', type: 'text', x: 150, y: 0, width: 100, height: 50, pv: { event: { name: 'event.complete', attributes: {} } } },
-          { id: 'n3', type: 'text', x: 0, y: 100, width: 100, height: 50, pv: { event: { name: 'event.error', attributes: {} } } }
+          { id: 'n1', type: 'otel-event', x: 0, y: 0, width: 100, height: 50, event: { name: 'event.started', attributes: {} } },
+          { id: 'n2', type: 'otel-event', x: 150, y: 0, width: 100, height: 50, event: { name: 'event.complete', attributes: {} } },
+          { id: 'n3', type: 'otel-event', x: 0, y: 100, width: 100, height: 50, event: { name: 'event.error', attributes: {} } }
         ],
         edges: [
           { id: 'e1', fromNode: 'n1', toNode: 'n2' }
@@ -1505,8 +1499,8 @@ describe('WorkflowValidator', () => {
 
       const canvas: ExtendedCanvas = {
         nodes: [
-          { id: 'n1', type: 'text', x: 0, y: 0, width: 100, height: 50, pv: { event: { name: 'event.started', attributes: {} } } },
-          { id: 'n2', type: 'text', x: 150, y: 0, width: 100, height: 50, pv: { event: { name: 'event.complete', attributes: {} } } }
+          { id: 'n1', type: 'otel-event', x: 0, y: 0, width: 100, height: 50, event: { name: 'event.started', attributes: {} } },
+          { id: 'n2', type: 'otel-event', x: 150, y: 0, width: 100, height: 50, event: { name: 'event.complete', attributes: {} } }
         ],
         edges: [], // No edges defined
         pv: {
@@ -1552,7 +1546,7 @@ describe('WorkflowValidator', () => {
 
       const canvas: ExtendedCanvas = {
         nodes: [
-          { id: 'n1', type: 'text', x: 0, y: 0, width: 100, height: 50, pv: { event: { name: 'event.started', attributes: {} } } }
+          { id: 'n1', type: 'otel-event', x: 0, y: 0, width: 100, height: 50, event: { name: 'event.started', attributes: {} } }
         ],
         edges: [],
         pv: {
@@ -1596,10 +1590,10 @@ describe('WorkflowValidator', () => {
 
       const canvas: ExtendedCanvas = {
         nodes: [
-          { id: 'n1', type: 'text', x: 0, y: 0, width: 100, height: 50, pv: { event: { name: 'event.start', attributes: {} } } },
-          { id: 'n2', type: 'text', x: 150, y: 0, width: 100, height: 50, pv: { event: { name: 'event.middle1', attributes: {} } } },
-          { id: 'n3', type: 'text', x: 300, y: 0, width: 100, height: 50, pv: { event: { name: 'event.middle2', attributes: {} } } },
-          { id: 'n4', type: 'text', x: 450, y: 0, width: 100, height: 50, pv: { event: { name: 'event.end', attributes: {} } } }
+          { id: 'n1', type: 'otel-event', x: 0, y: 0, width: 100, height: 50, event: { name: 'event.start', attributes: {} } },
+          { id: 'n2', type: 'otel-event', x: 150, y: 0, width: 100, height: 50, event: { name: 'event.middle1', attributes: {} } },
+          { id: 'n3', type: 'otel-event', x: 300, y: 0, width: 100, height: 50, event: { name: 'event.middle2', attributes: {} } },
+          { id: 'n4', type: 'otel-event', x: 450, y: 0, width: 100, height: 50, event: { name: 'event.end', attributes: {} } }
         ],
         edges: [
           { id: 'e1', fromNode: 'n1', toNode: 'n2' },
@@ -2462,124 +2456,7 @@ describe('WorkflowValidator', () => {
   // ============================================================================
 
   describe('Event Attribute Requirements', () => {
-    it('should error when event has no displayable attributes', async () => {
-      const workflow: WorkflowTemplate = {
-        version: '1.0.0',
-        name: 'Test',
-        description: 'Test workflow',
-        mode: 'span-tree',
-        canvas: 'test.otel.canvas',
-        scenarios: [{
-          id: 'test',
-          priority: 1,
-          description: 'Test scenario',
-          template: {
-            events: {
-              'event.heartbeat': 'Heartbeat received'
-            }
-          }
-        }]
-      };
-
-      const canvas: ExtendedCanvas = {
-        nodes: [
-          {
-            id: 'n1',
-            type: 'text',
-            x: 0,
-            y: 0,
-            width: 100,
-            height: 50,
-            pv: {
-              event: {
-                name: 'event.heartbeat',
-                description: 'System heartbeat',
-                attributes: {
-                  // All attributes are telemetry-only
-                  timestamp: { type: 'number', display: false },
-                  traceId: { type: 'string', display: false }
-                }
-              }
-            }
-          }
-        ],
-        edges: [],
-        pv: { version: '1.0.0', name: 'Test Canvas', markdown: 'test.md' }
-      };
-
-      const context: WorkflowValidationContext = {
-        workflow,
-        workflowPath: 'test.workflow.json',
-        canvas,
-        basePath: tempDir
-      };
-
-      const result = await validator.validate(context);
-      const violations = result.violations.filter(v => v.ruleId === 'canvas-event-no-displayable-attributes');
-
-      expect(violations).toHaveLength(1);
-      expect(violations[0].message).toContain('event.heartbeat');
-      expect(violations[0].message).toContain('no displayable attributes');
-    });
-
-    it('should pass when event has at least one displayable attribute', async () => {
-      const workflow: WorkflowTemplate = {
-        version: '1.0.0',
-        name: 'Test',
-        description: 'Test workflow',
-        mode: 'span-tree',
-        canvas: 'test.otel.canvas',
-        scenarios: [{
-          id: 'test',
-          priority: 1,
-          description: 'Test scenario',
-          template: {
-            events: {
-              'event.login': 'User {{username}} logged in'
-            }
-          }
-        }]
-      };
-
-      const canvas: ExtendedCanvas = {
-        nodes: [
-          {
-            id: 'n1',
-            type: 'text',
-            x: 0,
-            y: 0,
-            width: 100,
-            height: 50,
-            pv: {
-              event: {
-                name: 'event.login',
-                description: 'User login event',
-                attributes: {
-                  username: { type: 'string' },
-                  sessionId: { type: 'string', display: false } // telemetry only
-                }
-              }
-            }
-          }
-        ],
-        edges: [],
-        pv: { version: '1.0.0', name: 'Test Canvas', markdown: 'test.md' }
-      };
-
-      const context: WorkflowValidationContext = {
-        workflow,
-        workflowPath: 'test.workflow.json',
-        canvas,
-        basePath: tempDir
-      };
-
-      const result = await validator.validate(context);
-      const violations = result.violations.filter(v => v.ruleId === 'canvas-event-no-displayable-attributes');
-
-      expect(violations).toHaveLength(0);
-    });
-
-    it('should error when displayable attribute is not used in any template', async () => {
+    it('should error when attribute is not used in any template', async () => {
       const workflow: WorkflowTemplate = {
         version: '1.0.0',
         name: 'Test',
@@ -2602,19 +2479,17 @@ describe('WorkflowValidator', () => {
         nodes: [
           {
             id: 'n1',
-            type: 'text',
+            type: 'otel-event',
             x: 0,
             y: 0,
             width: 100,
             height: 50,
-            pv: {
-              event: {
-                name: 'order.completed',
-                description: 'Order completion event',
-                attributes: {
-                  orderId: { type: 'string' },
-                  total: { type: 'number' } // displayable but not used
-                }
+            event: {
+              name: 'order.completed',
+              description: 'Order completion event',
+              attributes: {
+                orderId: { type: 'string' },
+                total: { type: 'number' } // not used in template
               }
             }
           }
@@ -2639,7 +2514,7 @@ describe('WorkflowValidator', () => {
       expect(violations[0].message).toContain('not used in any template');
     });
 
-    it('should pass when all displayable attributes are used', async () => {
+    it('should pass when all attributes are used', async () => {
       const workflow: WorkflowTemplate = {
         version: '1.0.0',
         name: 'Test',
@@ -2662,20 +2537,17 @@ describe('WorkflowValidator', () => {
         nodes: [
           {
             id: 'n1',
-            type: 'text',
+            type: 'otel-event',
             x: 0,
             y: 0,
             width: 100,
             height: 50,
-            pv: {
-              event: {
-                name: 'order.completed',
-                description: 'Order completion event',
-                attributes: {
-                  orderId: { type: 'string' },
-                  total: { type: 'number' },
-                  traceId: { type: 'string', display: false } // not required to be used
-                }
+            event: {
+              name: 'order.completed',
+              description: 'Order completion event',
+              attributes: {
+                orderId: { type: 'string' },
+                total: { type: 'number' }
               }
             }
           }
@@ -2720,18 +2592,16 @@ describe('WorkflowValidator', () => {
         nodes: [
           {
             id: 'n1',
-            type: 'text',
+            type: 'otel-event',
             x: 0,
             y: 0,
             width: 100,
             height: 50,
-            pv: {
-              event: {
-                name: 'config.loaded',
-                description: 'Configuration loaded',
-                attributes: {
-                  config: { type: 'object' } // used via nested path {{config.timeout}}
-                }
+            event: {
+              name: 'config.loaded',
+              description: 'Configuration loaded',
+              attributes: {
+                config: { type: 'object' } // used via nested path {{config.timeout}}
               }
             }
           }
@@ -2776,14 +2646,12 @@ describe('WorkflowValidator', () => {
         nodes: [
           {
             id: 'n1',
-            type: 'text',
+            type: 'otel-event',
             x: 0,
             y: 0,
             width: 100,
             height: 50,
-            pv: {
-              eventRef: 'user.signup'
-            }
+            eventRef: 'user.signup'
           }
         ],
         edges: [],
@@ -2797,7 +2665,7 @@ describe('WorkflowValidator', () => {
             description: 'User signup event',
             attributes: {
               email: { type: 'string' },
-              name: { type: 'string' } // displayable but not used
+              name: { type: 'string' } // not used in template
             }
           }
         }
@@ -2856,72 +2724,64 @@ describe('WorkflowValidator', () => {
           // Subgraph 1: Navigation (included in workflow)
           {
             id: 'nav1',
-            type: 'text',
+            type: 'otel-event',
             x: 0,
             y: 0,
             width: 100,
             height: 50,
-            pv: {
-              event: {
-                name: 'panel.opened',
-                description: 'Panel opened event',
-                attributes: {
-                  panelName: { type: 'string' }
-                }
+            event: {
+              name: 'panel.opened',
+              description: 'Panel opened event',
+              attributes: {
+                panelName: { type: 'string' }
               }
             }
           },
           {
             id: 'nav2',
-            type: 'text',
+            type: 'otel-event',
             x: 200,
             y: 0,
             width: 100,
             height: 50,
-            pv: {
-              event: {
-                name: 'panel.closed',
-                description: 'Panel closed event',
-                attributes: {
-                  panelName: { type: 'string' }
-                }
+            event: {
+              name: 'panel.closed',
+              description: 'Panel closed event',
+              attributes: {
+                panelName: { type: 'string' }
               }
             }
           },
           // Subgraph 2: Tool execution (NOT included in workflow)
           {
             id: 'tool1',
-            type: 'text',
+            type: 'otel-event',
             x: 0,
             y: 200,
             width: 100,
             height: 50,
-            pv: {
-              event: {
-                name: 'tool.started',
-                description: 'Tool started event',
-                attributes: {
-                  toolName: { type: 'string' },
-                  toolArgs: { type: 'string' } // These attributes are NOT used in the workflow
-                }
+            event: {
+              name: 'tool.started',
+              description: 'Tool started event',
+              attributes: {
+                toolName: { type: 'string' },
+                toolArgs: { type: 'string' } // These attributes are NOT used in the workflow
               }
             }
           },
           {
             id: 'tool2',
-            type: 'text',
+            type: 'otel-event',
             x: 200,
             y: 200,
             width: 100,
             height: 50,
-            pv: {
-              event: {
-                name: 'tool.completed',
-                description: 'Tool completed event',
-                attributes: {
-                  toolName: { type: 'string' },
-                  result: { type: 'string' } // These attributes are NOT used in the workflow
-                }
+            event: {
+              name: 'tool.completed',
+              description: 'Tool completed event',
+              attributes: {
+                toolName: { type: 'string' },
+                result: { type: 'string' } // These attributes are NOT used in the workflow
               }
             }
           }
@@ -2980,21 +2840,19 @@ describe('WorkflowValidator', () => {
         nodes: [
           {
             id: 'n1',
-            type: 'text',
+            type: 'otel-event',
             x: 0,
             y: 0,
             width: 100,
             height: 50,
-            pv: {
-              event: {
-                name: 'task.delete.error',
-                description: 'Task deletion error',
-                attributes: {
-                  'error.type': { type: 'string' },
-                  'error.message': { type: 'string' },
-                  'input.taskId': { type: 'string' }
-                  // Note: context.projectRoot is NOT defined here
-                }
+            event: {
+              name: 'task.delete.error',
+              description: 'Task deletion error',
+              attributes: {
+                'error.type': { type: 'string' },
+                'error.message': { type: 'string' },
+                'input.taskId': { type: 'string' }
+                // Note: context.projectRoot is NOT defined here
               }
             }
           }
@@ -3042,19 +2900,17 @@ describe('WorkflowValidator', () => {
         nodes: [
           {
             id: 'n1',
-            type: 'text',
+            type: 'otel-event',
             x: 0,
             y: 0,
             width: 100,
             height: 50,
-            pv: {
-              event: {
-                name: 'task.create.complete',
-                description: 'Task creation complete',
-                attributes: {
-                  'output.taskId': { type: 'string' },
-                  'duration.ms': { type: 'number' }
-                }
+            event: {
+              name: 'task.create.complete',
+              description: 'Task creation complete',
+              attributes: {
+                'output.taskId': { type: 'string' },
+                'duration.ms': { type: 'number' }
               }
             }
           }
@@ -3099,19 +2955,17 @@ describe('WorkflowValidator', () => {
         nodes: [
           {
             id: 'n1',
-            type: 'text',
+            type: 'otel-event',
             x: 0,
             y: 0,
             width: 100,
             height: 50,
-            pv: {
-              event: {
-                name: 'task.delete.error',
-                description: 'Task deletion error',
-                attributes: {
-                  'input.taskId': { type: 'string' }
-                  // context.projectRoot and context.taskCount are NOT defined
-                }
+            event: {
+              name: 'task.delete.error',
+              description: 'Task deletion error',
+              attributes: {
+                'input.taskId': { type: 'string' }
+                // context.projectRoot and context.taskCount are NOT defined
               }
             }
           }
@@ -3159,19 +3013,17 @@ describe('WorkflowValidator', () => {
         nodes: [
           {
             id: 'n1',
-            type: 'text',
+            type: 'otel-event',
             x: 0,
             y: 0,
             width: 100,
             height: 50,
-            pv: {
-              event: {
-                name: 'task.update.started',
-                description: 'Task update started',
-                attributes: {
-                  'input.taskId': { type: 'string' },
-                  'input.hasTitle': { type: 'boolean' }
-                }
+            event: {
+              name: 'task.update.started',
+              description: 'Task update started',
+              attributes: {
+                'input.taskId': { type: 'string' },
+                'input.hasTitle': { type: 'boolean' }
               }
             }
           }
@@ -3217,18 +3069,16 @@ describe('WorkflowValidator', () => {
         nodes: [
           {
             id: 'n1',
-            type: 'text',
+            type: 'otel-event',
             x: 0,
             y: 0,
             width: 100,
             height: 50,
-            pv: {
-              event: {
-                name: 'task.delete.started',
-                description: 'Task deletion started',
-                attributes: {
-                  'input.taskId': { type: 'string' }
-                }
+            event: {
+              name: 'task.delete.started',
+              description: 'Task deletion started',
+              attributes: {
+                'input.taskId': { type: 'string' }
               }
             }
           }

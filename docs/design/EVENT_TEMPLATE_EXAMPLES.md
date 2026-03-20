@@ -32,8 +32,7 @@ interface PVEventFieldSchema {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array'
   required?: boolean
   description?: string
-  display?: boolean
-  example: PVExampleValue  // NEW - required for displayable attributes
+  example: PVExampleValue  // NEW - required for all attributes
 }
 
 // Support complex nested structures
@@ -124,13 +123,13 @@ console.log(preview.toString())
 
 ## Validation Rules
 
-### 1. Example Required for Displayable Attributes
+### 1. Example Required for All Attributes
 
-**Rule:** All attributes with `display !== false` must have an `example` field.
+**Rule:** All attributes must have an `example` field.
 
 **Error:**
 ```
-error[missing-example]: Attribute "user.name" is displayable but has no example value
+error[missing-example]: Attribute "user.name" has no example value
   --> workflow.yaml:15:7
    |
 15 |       user.name:

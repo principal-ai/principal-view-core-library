@@ -58,9 +58,6 @@ interface SpanAttributeSchema {
   /** Human-readable description */
   description?: string;
 
-  /** Whether this attribute should be displayed (default: true) */
-  display?: boolean;
-
   /** For object types: nested attribute schemas */
   properties?: {
     [key: string]: SpanAttributeSchema;
@@ -108,13 +105,7 @@ interface SpanAttributeSchema {
     "user.id": {
       "type": "string",
       "description": "Authenticated user ID",
-      "display": true,
       "example": "usr_123"
-    },
-    "internal.trace_id": {
-      "type": "string",
-      "description": "Internal trace identifier",
-      "display": false
     }
   },
 
@@ -145,11 +136,11 @@ define this span attribute. Available: http.request.method, http.response.status
 
 **Severity:** `warning`
 
-Warns when a displayable span attribute is defined but never used in templates.
+Warns when a span attribute is defined but never used in templates.
 
 ```
 Warning: Span attribute "user.id" is defined but not used in any template.
-Either use {{@span.user.id}} in a template or mark it as display: false.
+Use {{@span.user.id}} in a template, or remove the attribute if it's not needed.
 ```
 
 ### 3. Runtime Validation (`workflow-span-attribute-missing`)
