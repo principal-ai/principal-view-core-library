@@ -344,15 +344,31 @@ span.end();
    - Attribute types match (string, number, boolean)
    - Attribute names use dot notation consistently
 
-3. **Run with telemetry enabled:**
+3. **Verify collector is running:**
+   ```bash
+   # Check collector status
+   principal-ai collector status
+
+   # Send a test trace to verify connectivity
+   principal-ai collector check
+   ```
+
+4. **Run with telemetry enabled:**
    - Configure an OTEL collector or console exporter
    - Execute the code path
    - Verify span and events appear correctly
+   - Check `principal-ai collector status` to see your service appear
 
-4. **Test against canvas schema (optional but recommended):**
+5. **Test against canvas schema (optional but recommended):**
    ```bash
    # If you have setup-otel-testing configured
    bun test
+   ```
+
+6. **Troubleshoot with diagnostics (if needed):**
+   ```bash
+   # Run comprehensive diagnostics
+   principal-ai collector diagnose
    ```
 
 ## Common Mistakes
@@ -465,6 +481,7 @@ This validates attributes against the canvas schema and warns/throws on mismatch
 
 After implementing telemetry, verify:
 
+- [ ] Collector is running (`principal-ai collector status`)
 - [ ] ONE span created matching `spanPattern` from workflow.json
 - [ ] Events emitted WITHIN span using `span.addEvent()`
 - [ ] Event names match `template.events` keys exactly
@@ -472,6 +489,7 @@ After implementing telemetry, verify:
 - [ ] Span always ends (via try/finally pattern)
 - [ ] Error scenarios emit error events and set span status
 - [ ] Only `@opentelemetry/api` imported (not SDK packages)
+- [ ] Service appears in collector stats after running code
 
 ## Example Session
 
@@ -507,5 +525,6 @@ Let me show you how to instrument your processFile() function..."
 - **setup-otel-testing**: For test instrumentation and validation
 - **create-workflow-scenarios**: For creating workflow.json files
 - **create-otel-canvas**: For defining event schemas
+- **`principal-ai collector` CLI**: Check collector status, test connectivity, run diagnostics
 - **OpenTelemetry JS API**: https://opentelemetry.io/docs/languages/js/
 - **Span Events**: https://opentelemetry.io/docs/concepts/signals/traces/#span-events

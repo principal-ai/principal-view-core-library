@@ -318,11 +318,65 @@ Set up export to workflow folders in storyboard structure:
    };
    ```
 
-### Phase 7: Troubleshooting
+### Phase 7: Verify Collector Setup
+
+Before running tests that send traces to a collector, verify the collector is running:
+
+1. **Check collector status:**
+   ```bash
+   principal-ai collector status
+   ```
+   Output:
+   ```
+   OTEL Collector Status
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+     Endpoint:        http://localhost:4318
+     Status:          ✓ healthy
+     Traces received: 142
+     Logs received:   38
+
+     Services (2 active):
+       ✓ my-service          last seen 30s ago    (52 traces)
+       ✓ auth-service        last seen 2m ago     (90 traces)
+
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Collector is ready to receive traces.
+   ```
+
+2. **Test end-to-end connectivity:**
+   ```bash
+   principal-ai collector check
+   ```
+   This sends a test trace and verifies it was received.
+
+3. **Run comprehensive diagnostics:**
+   ```bash
+   principal-ai collector diagnose
+   ```
+   Checks all ports, endpoints, and recent activity.
+
+4. **Use JSON output for scripts/CI:**
+   ```bash
+   principal-ai collector status --json
+   principal-ai collector check --json
+   ```
+
+**Ask the user:**
+- "Is the collector running? Let's verify with `principal-ai collector status`"
+- "Are traces being received? Run `principal-ai collector check` to send a test trace"
+
+### Phase 8: Troubleshooting
 
 Offer to help with common issues:
 
-1. **No spans exported?**
+1. **Collector not receiving traces?**
+   - Run `principal-ai collector status` to check health
+   - Run `principal-ai collector check` to test connectivity
+   - Run `principal-ai collector diagnose` for detailed diagnostics
+   - Common issues: collector not running, wrong port, auth required
+
+2. **No spans exported?**
    - Check that afterAll hook runs
    - Verify spans are being created (console.log)
    - Ensure export path is correct
@@ -397,6 +451,8 @@ Location: `templates/export-config.ts`
 ## Success Criteria
 
 User should be able to:
+- ✅ Verify collector is running with `principal-ai collector status`
+- ✅ Test collector connectivity with `principal-ai collector check`
 - ✅ Run tests that emit OTEL spans and events
 - ✅ See validation errors when events don't match schema
 - ✅ Export test execution data to workflow folders in storyboard structure
@@ -451,6 +507,7 @@ You can then load this in Storybook for visualization!"
 - EVENT-SCHEMA-VALIDATION-GUIDE.md - Event validation details
 - docs/guides/adding-opentelemetry-to-tests.md - OTEL test setup guide
 - TEST-INSTRUMENTATION-GUIDE.md - Instrumentation patterns
+- `principal-ai collector` CLI commands - Collector status, connectivity checks, diagnostics
 
 ## Notes
 
