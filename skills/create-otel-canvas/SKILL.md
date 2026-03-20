@@ -56,7 +56,7 @@ This skill helps create properly structured .otel.canvas files that:
 
 ## OTEL Canvas Structure
 
-An .otel.canvas file is a JSON Canvas file with special "pv" metadata extensions for OTEL features.
+An .otel.canvas file is a JSON Canvas file with dedicated OTEL node types for telemetry features.
 
 ### File Naming Convention
 
@@ -64,99 +64,114 @@ An .otel.canvas file is a JSON Canvas file with special "pv" metadata extensions
 
 The CLI validates this naming convention. Canvas files with OTEL features that don't use `.otel.canvas` will produce validation errors.
 
-### OTEL Features
+### OTEL Node Types
 
-A canvas is considered an "OTEL canvas" if it contains ANY of:
-- **pv.otel**: Node-level OTEL metadata (kind, category)
-- **pv.event**: Event schema with attributes and validation rules
-- **pv.scope**: Canvas-level scope for log routing
-- **pv.audit**: Canvas-level audit configuration
-- **resourceMatch**: Node-level resource matching for OTEL logs
+A canvas is considered an "OTEL canvas" if it contains ANY of these dedicated node types:
+- **`otel-event`**: Event nodes with `event` schema
+- **`otel-span-convention`**: Span naming convention nodes
+- **`otel-scope`**: Instrumentation scope nodes
+- **`otel-resource`**: Resource matching nodes
+- **`otel-boundary`**: External system boundary nodes
 
 ### Basic Structure
 
 ```json
 {
-  "nodes": [/* array of nodes with pv metadata */],
+  "nodes": [/* array of otel-event and other nodes */],
   "edges": [/* array of edges with pv metadata */],
   "pv": {
     "version": "1.0.0",
     "name": "Canvas Name",
     "description": "Canvas description",
-    "nodeTypes": {/* custom node type definitions */},
-    "edgeTypes": {/* custom edge type definitions */}
+    "markdown": ".principal-views/my-feature.md"
   }
 }
 ```
 
 ## Node Structure with OTEL Features
 
-### Standard Node Fields (JSON Canvas)
-- **id**: Unique identifier for the node
-- **type**: Canvas type (usually "text")
-- **text**: Display text (markdown supported)
-- **x, y**: Position coordinates
-- **width, height**: Dimensions
-- **color**: **REQUIRED** - Hex color (e.g., "#4CAF50")
+### OTEL Event Node Type
 
-### Required PV Fields for OTEL Nodes
-- **pv.status**: **REQUIRED** - Implementation status: `"draft"`, `"approved"`, or `"implemented"`
-- **pv.event**: **REQUIRED** - Event schema as an object (NOT a string):
+For telemetry events, use the dedicated `otel-event` node type with top-level fields:
+
+- **id**: Unique identifier for the node
+- **type**: `"otel-event"` for telemetry event nodes
+- **label**: Display label for the node
+- **description**: What this event represents
+- **x, y**: Position coordinates
+- **width, height**: Dimensions (recommended: 200×100)
+- **color**: **REQUIRED** - Hex color (e.g., "#4CAF50")
+- **icon**: Lucide icon name in PascalCase (e.g., "Play", "CheckCircle")
+- **shape**: Node shape (e.g., "roundedRect", "rectangle")
+
+### Required Fields for OTEL Event Nodes
+
+- **event**: **REQUIRED** - Event schema as an object:
   ```json
   "event": {
     "name": "event.name",
     "attributes": { ... }
   }
   ```
-- **pv.references**: Source file paths (replaces deprecated `pv.sources`)
+- **otel.status**: **REQUIRED** - Implementation status: `"draft"`, `"approved"`, or `"implemented"`
+- **references**: Source file paths (array of strings)
 
-### PrincipalView Extensions (pv)
+### OTEL Event Node Structure
 
-#### Basic Node Metadata
 ```json
-"pv": {
-  "nodeType": "service",
-  "name": "Service Name",
-  "description": "Service description",
-  "shape": "rectangle",
-  "icon": "Box",
-  "fill": "#4A90E2"
-}
-```
-
-#### OTEL Metadata
-```json
-"pv": {
-  "otel": {
-    "kind": "service",      // "type", "service", "function", etc.
-    "category": "router"    // "router", "collector", "validator", etc.
-  }
-}
-```
-
-#### Event Schema
-```json
-"pv": {
+{
+  "id": "my-event",
+  "type": "otel-event",
+  "x": 100,
+  "y": 100,
+  "width": 200,
+  "height": 100,
+  "color": "#4CAF50",
+  "label": "My Event",
+  "icon": "Activity",
+  "shape": "roundedRect",
+  "description": "Description of what this event represents",
   "event": {
-    "name": "event.name",
-    "description": "What this event represents",
+    "name": "my.event.name",
     "attributes": {
       "attribute.name": {
-        "type": "string",        // "string" | "number" | "boolean" | "object" | "array"
-        "required": true,        // true | false
+        "type": "string",
+        "required": true,
         "description": "What this attribute represents"
       }
     }
-  }
+  },
+  "otel": {
+    "status": "draft",
+    "kind": "event",
+    "category": "processing"
+  },
+  "references": ["src/my-component.ts"]
 }
 ```
 
-#### Resource Matching (for Log Routing)
+### OTEL Metadata (otel field)
+
 ```json
-"pv": {
-  "resourceMatch": {
-    "service.name": "my-service",
-    "deployment.environment": "production"
+"otel": {
+  "status": "draft",        // "draft", "approved", "implemented"
+  "kind": "event",          // "event", "service", "function", etc.
+  "category": "processing"  // "processing", "validation", "integration", etc.
+}
+```
+
+### Resource Matching (for otel-resource nodes)
+
+For resource nodes that should match based on OTEL resource attributes:
+
+```json
+{
+  "type": "otel-resource",
+  "otel": {
+    "resourceMatch": {
+      "service.name": "my-service",
+      "deployment.environment": "production"
+    }
   }
 }
 ```
@@ -165,11 +180,11 @@ A canvas is considered an "OTEL canvas" if it contains ANY of:
 
 **IMPORTANT:** Use consistent, standardized sizes for all nodes:
 
-- **Standard Node (most common):** `150 × 100`
+- **Standard Node (most common):** `200 × 100`
   - Use for: Events, services, components, most nodes
   - Fits concise event names, key attributes, brief descriptions
 
-- **Larger Concept Node:** `200 × 200`
+- **Larger Concept Node:** `250 × 150`
   - Use for: Complex validation logic, detailed correlations, error scenarios with multiple paths
   - Fits: Extended bullet lists, code snippets, multi-step explanations
 
@@ -185,57 +200,54 @@ A canvas is considered an "OTEL canvas" if it contains ANY of:
 ```json
 {
   "id": "event-function-invocation",
-  "type": "text",
-  "text": "forge.function.invocation",
+  "type": "otel-event",
   "x": 50,
   "y": 200,
-  "width": 150,
+  "width": 200,
   "height": 100,
   "color": "#FFE4B5",
-  "pv": {
-    "status": "draft",
-    "nodeType": "integration",
+  "label": "Function Invocation",
+  "icon": "Zap",
+  "shape": "roundedRect",
+  "description": "Tracks Forge function executions with performance and outcome",
+  "event": {
     "name": "forge.function.invocation",
-    "description": "Tracks Forge function executions with performance and outcome",
-    "event": {
-      "name": "forge.function.invocation",
-      "description": "Tracks Forge function executions with performance and outcome",
-      "attributes": {
-        "forge.function.name": {
-          "type": "string",
-          "required": true,
-          "description": "Name of the Forge function being invoked"
-        },
-        "forge.issue.key": {
-          "type": "string",
-          "required": true,
-          "description": "Jira issue key"
-        },
-        "duration_ms": {
-          "type": "number",
-          "required": true,
-          "description": "Execution duration in milliseconds"
-        },
-        "success": {
-          "type": "boolean",
-          "required": true,
-          "description": "Whether the function execution succeeded"
-        },
-        "error.message": {
-          "type": "string",
-          "required": false,
-          "description": "Error message if execution failed"
-        }
+    "attributes": {
+      "forge.function.name": {
+        "type": "string",
+        "required": true,
+        "description": "Name of the Forge function being invoked"
+      },
+      "forge.issue.key": {
+        "type": "string",
+        "required": true,
+        "description": "Jira issue key"
+      },
+      "duration_ms": {
+        "type": "number",
+        "required": true,
+        "description": "Execution duration in milliseconds"
+      },
+      "success": {
+        "type": "boolean",
+        "required": true,
+        "description": "Whether the function execution succeeded"
+      },
+      "error.message": {
+        "type": "string",
+        "required": false,
+        "description": "Error message if execution failed"
       }
-    },
-    "otel": {
-      "kind": "event",
-      "category": "integration"
-    },
-    "references": [
-      "src/forge-function.ts"
-    ]
-  }
+    }
+  },
+  "otel": {
+    "status": "draft",
+    "kind": "event",
+    "category": "integration"
+  },
+  "references": [
+    "src/forge-function.ts"
+  ]
 }
 ```
 
@@ -495,7 +507,7 @@ Common validation fixes:
 Event schemas in .otel.canvas files can generate TypeScript types:
 
 ```typescript
-// Generated from canvas event schema (pv.event)
+// Generated from canvas event schema (event field on otel-event nodes)
 type ConversionStartedAttributes = {
   'config.nodeTypes': number;
   'config.edgeTypes': number;

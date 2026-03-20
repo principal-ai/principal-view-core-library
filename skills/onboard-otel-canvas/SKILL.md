@@ -162,7 +162,7 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
    **IMPORTANT: Canvas Structure**
    - **One node per event type** - Each event gets its own node in the canvas
    - Example: If you have 4 events (`validation.started`, `validation.complete`, `validation.error`, `validation.progress`), create 4 nodes
-   - Each node contains ONE event schema in its `pv.event` field
+   - Each node contains ONE event schema in its top-level `event` field
    - Connect nodes with edges to show the event flow (start -> progress -> complete/error)
 
    **RECOMMENDED: Node Sizing and Layout**
@@ -206,29 +206,42 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
    - Edges: Connect `fromSide: "right"` -> `toSide: "left"` for horizontal flow
    - Best for: Parallel processes, service architectures
 
-   **REQUIRED NODE FIELDS:**
+   **REQUIRED NODE FIELDS (for otel-event nodes):**
 
-   Each node in an OTEL canvas requires:
+   Each event node in an OTEL canvas uses `type: "otel-event"` with these fields:
 
-   1. **`color`** - Hex color for the node (e.g., `"#4CAF50"`)
+   1. **`type`** - Must be `"otel-event"` for telemetry event nodes
 
-   2. **`pv.status`** - Implementation status: `"draft"`, `"approved"`, or `"implemented"`
+   2. **`color`** - Hex color for the node (e.g., `"#4CAF50"`)
 
-   3. **`pv.event`** - Event schema as an **object** (NOT a string!):
+   3. **`label`** - Display label for the node
+
+   4. **`otel.status`** - Implementation status: `"draft"`, `"approved"`, or `"implemented"`
+
+   5. **`event`** - Event schema as a top-level **object** (NOT nested under pv!):
       ```json
-      "event": {
-        "name": "validation.started",
-        "attributes": {
-          "input.recordCount": {
-            "type": "integer",
-            "description": "Number of records to validate",
-            "required": true
+      {
+        "type": "otel-event",
+        "label": "Validation Started",
+        "color": "#4CAF50",
+        "event": {
+          "name": "validation.started",
+          "attributes": {
+            "input.recordCount": {
+              "type": "integer",
+              "description": "Number of records to validate",
+              "required": true
+            }
           }
-        }
+        },
+        "otel": {
+          "status": "draft"
+        },
+        "references": ["src/commands/validate.ts"]
       }
       ```
 
-   4. **`pv.references`** - Source file paths (exact paths, no globs):
+   6. **`references`** - Source file paths (exact paths, no globs):
       - Good: `"references": ["src/commands/validate.ts"]`
       - Bad: `"references": ["src/**/*.ts"]` (glob pattern not supported)
 
@@ -238,13 +251,6 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
    - `pv.name` - Feature name
    - `pv.version` - Schema version
    - `pv.markdown` - Path to documentation file (e.g., `".principal-views/feature.md"`)
-
-   **REQUIRED EDGE FIELDS:**
-
-   Each edge requires:
-   - `pv.edgeType` - Must reference an edge type defined in `pv.edgeTypes`
-
-   **DEPRECATED:** `pv.sources` - Use `pv.references` instead
 
    **Format reference**: Run `npx @principal-ai/principal-view-cli formats canvas` to see full format documentation, or look at existing `.otel.canvas` files in `.principal-views/` directory.
 
@@ -434,7 +440,7 @@ A: Use the `spanPattern` field in your workflow.json:
 **Q: "How should I structure the canvas nodes?"**
 A: **One node per event type**. Each event gets its own node in the canvas:
 - If you have 3 events (`started`, `complete`, `error`), create 3 nodes
-- Each node has ONE event schema defined in its `pv.event` field
+- Each node has ONE event schema defined in its top-level `event` field
 - Connect nodes with edges to show the flow (started -> complete/error)
 - This keeps the visual structure clear and matches the event emission pattern
 
@@ -472,7 +478,7 @@ After completing onboarding, user should have:
 
 **One working canvas** (.otel.canvas)
 - Event schemas that capture the shape of the code (as many as needed)
-- All nodes have required fields: `color`, `pv.status`, `pv.event` (object format)
+- All nodes have required fields: `type: "otel-event"`, `color`, `otel.status`, `event` (object format)
 - Canvas has required `pv.markdown` field
 - Edges have `pv.edgeType` referencing defined edge types
 - Validates with CLI
@@ -553,8 +559,8 @@ I'll define these events:
 
 Each node will have the required fields:
 - color (hex color for visual display)
-- pv.status: 'draft' (since this is new)
-- pv.event: object with name and attributes
+- otel.status: 'draft' (since this is new)
+- event: object with name and attributes (top-level, not nested under pv)
 - pv.references pointing to src/commands/import.ts
 
 Sound good?"
