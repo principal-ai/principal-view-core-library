@@ -54,6 +54,23 @@ export type { GenericNodeProps } from './nodes/GenericNode';
 export { CustomNode } from './nodes/CustomNode';
 export type { CustomNodeData } from './nodes/CustomNode';
 
+// Export OTEL node components
+export {
+  OtelSpanConventionNode,
+  OtelEventNode,
+  OtelScopeNode,
+  OtelResourceNode,
+  OtelBoundaryNode,
+} from './nodes/otel';
+export type {
+  OtelSpanConventionNodeData,
+  OtelEventNodeData,
+  OtelScopeNodeData,
+  OtelResourceNodeData,
+  OtelBoundaryNodeData,
+  WorkflowChip,
+} from './nodes/otel';
+
 export { GenericEdge } from './edges/GenericEdge';
 export type { GenericEdgeProps } from './edges/GenericEdge';
 

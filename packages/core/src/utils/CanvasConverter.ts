@@ -244,6 +244,10 @@ export class CanvasConverter {
       if ('boundary' in node && node.boundary) {
         (data as Record<string, unknown>).boundary = node.boundary;
       }
+      // Pass through workflow chips if present (for span convention nodes)
+      if ('workflowChips' in node && node.workflowChips) {
+        (data as Record<string, unknown>).workflowChips = node.workflowChips;
+      }
     }
 
     // Add PV extensions if present (for standard canvas nodes only)
@@ -427,6 +431,10 @@ export class CanvasConverter {
           }
           if ('boundary' in node && node.boundary) {
             nodeData.boundary = node.boundary as unknown as JsonValue;
+          }
+          // Pass through workflow chips if present (for span convention nodes)
+          if ('workflowChips' in node && node.workflowChips) {
+            nodeData.workflowChips = node.workflowChips as unknown as JsonValue;
           }
         }
 

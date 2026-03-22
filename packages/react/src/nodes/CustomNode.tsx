@@ -8,6 +8,15 @@ import { NodeTooltip } from '../components/NodeTooltip';
 import type { OtelInfo } from '../components/NodeTooltip';
 import { useGraphEdit } from '../contexts/GraphEditContext';
 
+// OTEL node components
+import {
+  OtelSpanConventionNode,
+  OtelEventNode,
+  OtelScopeNode,
+  OtelResourceNode,
+  OtelBoundaryNode,
+} from './otel';
+
 /**
  * Converts a hex color to a lighter/tinted version (opaque, not transparent)
  * @param hexColor - Hex color string (e.g., "#FF5733" or "#888")
@@ -61,8 +70,38 @@ export interface CustomNodeData extends Record<string, unknown> {
 
 /**
  * Custom node component for xyflow that renders based on NodeTypeDefinition
+ *
+ * This component now delegates to specialized OTEL node components when the
+ * node type matches an OTEL concept. This allows each OTEL node type to have
+ * its own specialized rendering and features (e.g., workflow chips on span nodes).
  */
-export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = ({ data, selected, dragging }) => {
+export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = (props) => {
+  const { data, selected, dragging } = props;
+
+  // Determine the OTEL node type from nodeData.nodeType (pv.nodeType in canvas)
+  // The typeDefinition.shape can also hint at OTEL types but nodeType is authoritative
+  const nodeType = data.data?.nodeType as string | undefined;
+
+  // Delegate to specialized OTEL node components
+  switch (nodeType) {
+    case 'otel-span-convention':
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return <OtelSpanConventionNode {...(props as any)} />;
+    case 'otel-event':
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return <OtelEventNode {...(props as any)} />;
+    case 'otel-scope':
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return <OtelScopeNode {...(props as any)} />;
+    case 'otel-resource':
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return <OtelResourceNode {...(props as any)} />;
+    case 'otel-boundary':
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return <OtelBoundaryNode {...(props as any)} />;
+  }
+
+  // Fall through to legacy rendering for non-OTEL nodes
   const { theme } = useTheme();
   const { onNodeResizeEnd, onToggleNodeHidden, onHideUnconnectedNodes } = useGraphEdit();
   const nodeId = useNodeId();

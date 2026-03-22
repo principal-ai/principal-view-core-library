@@ -799,7 +799,7 @@ export class WorkflowValidator {
             ? `Canvas defines event "${eventName}" which is not used in any workflow for this canvas`
             : `Canvas defines event "${eventName}" which is not used in this workflow scenario`,
           impact: 'This canvas node may never be highlighted during workflow playback',
-          suggestion: `Add event "${eventName}" to a scenario's template.events or condition.requires`,
+          suggestion: `Add event "${eventName}" to a scenario's template.events`,
           fixable: false,
         });
       }

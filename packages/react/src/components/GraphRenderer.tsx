@@ -7,7 +7,6 @@ import React, {
   useRef,
   useImperativeHandle,
   forwardRef,
-  createContext,
 } from 'react';
 import {
   ReactFlow,
@@ -66,13 +65,10 @@ import {
 } from '../utils/canvasBounds';
 import { GraphEditProvider } from '../contexts/GraphEditContext';
 import { useUndoRedo, type HistoryEntry } from '../hooks/useUndoRedo';
+import { TooltipPortalContext } from '../contexts/TooltipPortalContext';
 
-/**
- * Context for providing a portal target for tooltips.
- * This allows tooltips to be rendered within the graph container
- * instead of document.body, so they hide properly when tabs switch.
- */
-export const TooltipPortalContext = createContext<HTMLElement | null>(null);
+// Re-export for backwards compatibility
+export { TooltipPortalContext };
 
 /** Position change event for tracking node movements */
 export interface NodePositionChange {

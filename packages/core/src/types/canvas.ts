@@ -982,6 +982,19 @@ export interface OtelEventNode extends OtelNodeBase {
 }
 
 /**
+ * Workflow chip displayed on span convention nodes
+ * Shows which workflow.json scenarios reference this span
+ */
+export interface WorkflowChip {
+  /** Workflow scenario ID for selection/filtering */
+  id: string;
+  /** Display label (may be truncated) */
+  label: string;
+  /** Optional color for the chip */
+  color?: string;
+}
+
+/**
  * OTEL Span Convention Node
  *
  * Defines a span naming convention/pattern for consistent instrumentation.
@@ -999,6 +1012,8 @@ export interface OtelSpanConventionNode extends OtelNodeBase {
     /** Span matching criteria for runtime correlation */
     spanMatch?: PVOtelSpanMatch;
   };
+  /** Workflow chips showing which workflow.json scenarios use this span */
+  workflowChips?: WorkflowChip[];
 }
 
 /**

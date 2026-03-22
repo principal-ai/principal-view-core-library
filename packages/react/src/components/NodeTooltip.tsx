@@ -2,7 +2,7 @@ import React, { useEffect, useState, useContext } from 'react';
 import { createPortal } from 'react-dom';
 import { useTheme } from '@principal-ade/industry-theme';
 import { IndustryMarkdownSlide } from 'themed-markdown';
-import { TooltipPortalContext } from './GraphRenderer';
+import { TooltipPortalContext } from '../contexts/TooltipPortalContext';
 
 export interface OtelInfo {
   kind: 'type' | 'service' | 'instance';

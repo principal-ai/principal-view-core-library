@@ -102,6 +102,8 @@ export type {
   ExtendedCanvasNode,
   ExtendedCanvasEdge,
   ExtendedCanvas,
+  // Workflow chip type (for span convention nodes)
+  WorkflowChip,
 } from './types/canvas';
 
 // Re-export canvas utility functions (imported at top to avoid module resolution issues)
