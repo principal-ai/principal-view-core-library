@@ -317,7 +317,7 @@ ${chalk.dim('─'.repeat(50))}
         "fill": "#3b82f6",
         "stroke": "#1d4ed8",
         "icon": "Server",
-        "sources": ["src/api/**/*.ts"]
+        "references": ["src/api/**/*.ts"]
       }
     },
     {
