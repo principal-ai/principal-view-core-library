@@ -884,6 +884,12 @@ function hasOtelFeatures(canvas: unknown): boolean {
     for (const node of c.nodes) {
       if (node && typeof node === 'object') {
         const n = node as Record<string, unknown>;
+
+        // Check for OTEL semantic node types (e.g., otel-event, otel-span-convention)
+        if (typeof n.type === 'string' && OTEL_NODE_TYPES.includes(n.type as typeof OTEL_NODE_TYPES[number])) {
+          return true;
+        }
+
         if (n.pv && typeof n.pv === 'object') {
           const nodePv = n.pv as Record<string, unknown>;
 
@@ -1323,6 +1329,28 @@ function validateCanvas(
               message: `Span convention "${n.id}" is missing "otel.spanPattern"`,
               path: `${nodePath}.otel.spanPattern`,
               suggestion: 'Add the span pattern: otel: { spanPattern: "your.span.pattern" }. This pattern is used to match workflows and color events within this span.',
+            });
+          }
+        }
+
+        // Semantic OTEL nodes must have valid otel.status
+        if (OTEL_NODE_TYPES.includes(nodeType as typeof OTEL_NODE_TYPES[number])) {
+          const otel = n.otel as Record<string, unknown> | undefined;
+          const validStatuses = ['draft', 'approved', 'implemented'];
+
+          if (otel?.status === undefined) {
+            issues.push({
+              type: 'error',
+              message: `OTEL node "${n.id}" is missing required "otel.status" field`,
+              path: `${nodePath}.otel.status`,
+              suggestion: 'Add implementation status: "status": "draft" | "approved" | "implemented". Use "draft" for design, "approved" for finalized design, "implemented" for code with instrumentation.',
+            });
+          } else if (!validStatuses.includes(otel.status as string)) {
+            issues.push({
+              type: 'error',
+              message: `OTEL node "${n.id}" has invalid status value "${otel.status}"`,
+              path: `${nodePath}.otel.status`,
+              suggestion: `Valid values: ${validStatuses.join(', ')}`,
             });
           }
         }
@@ -2040,7 +2068,7 @@ The display name will be shown large on the node, and the event name will appear
       message:
         'Canvas uses .otel.canvas naming but does not contain any OTEL features',
       suggestion:
-        'Either add OTEL features (pv.otel, pv.events, pv.scope, pv.audit, resourceMatch) or rename to .canvas',
+        'Either add OTEL features (otel-event, otel-span-convention, otel-scope, otel-resource nodes, or pv.otel, pv.scope, pv.audit) or rename to .canvas',
     });
   }
 
