@@ -96,3 +96,9 @@ export {
 } from './utils/orientationUtils';
 export { getCanvasBounds, getCanvasDisplaySize, calculateInitialViewport } from './utils/canvasBounds';
 export type { CanvasBounds, Viewport } from './utils/canvasBounds';
+
+// ELK layout utilities for circuit-board style edge routing
+export { computeElkLayout, createElkLayouter } from './utils/elkLayout';
+export type { ElkLayoutOptions, ElkLayoutResult, ElkRoutingStyle } from './utils/elkLayout';
+export { useElkLayout, applyElkPathsToEdges } from './hooks/useElkLayout';
+export type { UseElkLayoutOptions, UseElkLayoutResult } from './hooks/useElkLayout';

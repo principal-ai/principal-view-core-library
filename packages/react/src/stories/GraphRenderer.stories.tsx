@@ -3137,3 +3137,156 @@ When you provide \`containerWidth\` and \`containerHeight\` props, the component
     },
   },
 };
+
+// ============================================================================
+// ELK Layout with Edit Mode
+// ============================================================================
+
+const elkEditableCanvas: ExtendedCanvas = {
+  nodes: [
+    {
+      id: 'a',
+      type: 'text',
+      x: 50,
+      y: 50,
+      width: 120,
+      height: 60,
+      text: 'Node A',
+      color: 5,
+      pv: { nodeType: 'component', shape: 'rectangle' },
+    },
+    {
+      id: 'b',
+      type: 'text',
+      x: 250,
+      y: 50,
+      width: 120,
+      height: 60,
+      text: 'Node B',
+      color: 4,
+      pv: { nodeType: 'component', shape: 'rectangle' },
+    },
+    {
+      id: 'c',
+      type: 'text',
+      x: 250,
+      y: 180,
+      width: 120,
+      height: 60,
+      text: 'Node C',
+      color: 2,
+      pv: { nodeType: 'component', shape: 'rectangle' },
+    },
+  ],
+  edges: [
+    { id: 'e1', fromNode: 'a', toNode: 'b', fromSide: 'right', toSide: 'left', pv: { edgeType: 'flow' } },
+    { id: 'e2', fromNode: 'a', toNode: 'c', fromSide: 'bottom', toSide: 'left', pv: { edgeType: 'flow' } },
+  ],
+  pv: {
+    version: '1.0.0',
+    name: 'ELK Editable Test',
+    edgeTypes: {
+      flow: { style: 'solid', color: '#3b82f6', width: 2, directed: true },
+    },
+    nodeTypes: {
+      component: { color: '#4A90E2' },
+    },
+  },
+};
+
+const ElkEditModeTemplate = () => {
+  const [isEditMode, setIsEditMode] = React.useState(false);
+  const [hasChanges, setHasChanges] = React.useState(false);
+  const graphRef = React.useRef<GraphRendererHandle>(null);
+
+  return (
+    <div style={{ height: '500px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '10px', background: '#f0f0f0', display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <button
+          onClick={() => setIsEditMode(!isEditMode)}
+          style={{
+            padding: '8px 16px',
+            background: isEditMode ? '#ef4444' : '#22c55e',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+          }}
+        >
+          {isEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
+        </button>
+        {isEditMode && hasChanges && (
+          <>
+            <button
+              onClick={() => {
+                graphRef.current?.getPendingChanges();
+                setHasChanges(false);
+              }}
+              style={{
+                padding: '8px 16px',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+            >
+              Save
+            </button>
+            <button
+              onClick={() => {
+                graphRef.current?.resetEditState();
+                setHasChanges(false);
+              }}
+              style={{
+                padding: '8px 16px',
+                background: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+            >
+              Discard
+            </button>
+          </>
+        )}
+        <span style={{ marginLeft: 'auto', color: '#666' }}>
+          {isEditMode ? 'Drag nodes to test edge routing' : 'Click Edit to enable node dragging'}
+        </span>
+      </div>
+      <div style={{ flex: 1 }}>
+        <GraphRenderer
+          ref={graphRef}
+          canvas={elkEditableCanvas}
+          width="100%"
+          height="100%"
+          editable={isEditMode}
+          onPendingChangesChange={setHasChanges}
+          showBackground={true}
+          backgroundVariant="dots"
+          elkLayout={{ enabled: true, routingStyle: 'orthogonal' }}
+        />
+      </div>
+    </div>
+  );
+};
+
+export const ElkLayoutEditMode: Story = {
+  render: () => <ElkEditModeTemplate />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**ELK Layout with Edit Mode** - Tests orthogonal edge routing with editable nodes.
+
+**Test Cases:**
+1. Enter edit mode and drag Node A - edges should maintain connection points and reroute
+2. Drag Node C - bottom-to-left edge should stay connected correctly
+3. Save/Discard should preserve or reset positions
+4. Edges should not disappear when entering edit mode
+        `,
+      },
+    },
+  },
+};

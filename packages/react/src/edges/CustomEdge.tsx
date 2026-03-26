@@ -17,6 +17,10 @@ export interface CustomEdgeData extends Record<string, unknown> {
   tooltipsEnabled?: boolean;
   // Whether shift key is currently pressed (for tooltip control)
   shiftKeyPressed?: boolean;
+  // ELK-computed path (circuit-board style routing)
+  elkPath?: string;
+  // ELK-computed label position
+  elkLabelPosition?: { x: number; y: number };
 }
 
 /**
@@ -46,6 +50,8 @@ export const CustomEdge: React.FC<EdgeProps<Edge<CustomEdgeData>>> = ({
     animationDirection = 'forward',
     tooltipsEnabled = true,
     shiftKeyPressed = false,
+    elkPath,
+    elkLabelPosition,
   } = edgeProps || ({} as CustomEdgeData);
 
   const [particlePosition, setParticlePosition] = useState(0);
@@ -77,8 +83,8 @@ export const CustomEdge: React.FC<EdgeProps<Edge<CustomEdgeData>>> = ({
   const color = hasViolations ? '#D0021B' : edgeColor || typeDefinition.color || '#888';
   const width = typeDefinition.width || 2;
 
-  // Get SmoothStep path (orthogonal routing with rounded corners)
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
+  // Get edge path - use ELK path if available, otherwise fall back to SmoothStep
+  const [defaultPath, defaultLabelX, defaultLabelY] = getSmoothStepPath({
     sourceX,
     sourceY,
     sourcePosition,
@@ -88,6 +94,11 @@ export const CustomEdge: React.FC<EdgeProps<Edge<CustomEdgeData>>> = ({
     borderRadius: 0,
     offset: 20,
   });
+
+  // Use ELK-computed path for circuit-board style routing when available
+  const edgePath = elkPath || defaultPath;
+  const labelX = elkLabelPosition?.x ?? defaultLabelX;
+  const labelY = elkLabelPosition?.y ?? defaultLabelY;
 
   // Style based on edge type
   const getStrokeStyle = () => {

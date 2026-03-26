@@ -58,6 +58,7 @@ import {
   convertToXYFlowNodes,
   convertToXYFlowEdges,
 } from '../utils/graphConverter';
+import { useElkLayout, applyElkPathsToEdges } from '../hooks/useElkLayout';
 import {
   getCanvasBounds,
   calculateInitialViewport,
@@ -272,6 +273,35 @@ interface GraphRendererBaseProps {
    * "zoom in then animate out" effect on initial render.
    */
   containerHeight?: number;
+
+  /**
+   * ELK layout configuration for circuit-board style edge routing.
+   * When enabled, edges are routed with orthogonal paths that don't overlap.
+   */
+  elkLayout?: {
+    /**
+     * Whether ELK layout is enabled
+     * @default false
+     */
+    enabled: boolean;
+    /**
+     * Edge routing style
+     * - 'orthogonal': Circuit-board style with 90-degree angles (default)
+     * - 'splines': Smooth curved edges
+     * - 'polyline': Straight line segments
+     */
+    routingStyle?: 'orthogonal' | 'splines' | 'polyline';
+    /**
+     * Minimum spacing between parallel edges in pixels
+     * @default 15
+     */
+    edgeSpacing?: number;
+    /**
+     * Spacing between edges and nodes in pixels
+     * @default 20
+     */
+    edgeNodeSpacing?: number;
+  };
 
 }
 
@@ -531,6 +561,13 @@ interface GraphRendererInnerProps {
   onCopy?: (selectedNodeIds: string[]) => void;
   /** Pre-calculated initial viewport to avoid zoom animation on mount */
   initialViewport?: Viewport;
+  /** ELK layout configuration for circuit-board style edge routing */
+  elkLayout?: {
+    enabled: boolean;
+    routingStyle?: 'orthogonal' | 'splines' | 'polyline';
+    edgeSpacing?: number;
+    edgeNodeSpacing?: number;
+  };
 }
 
 /**
@@ -571,6 +608,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   onNodeDragStop: onNodeDragStopProp,
   onCopy,
   initialViewport,
+  elkLayout,
 }) => {
   const { fitView, fitBounds, getNodes } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
@@ -2147,31 +2185,69 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     });
   }, [edges, configuration, violations, animationState.edgeAnimations, showTooltips, selectedEdgeIds, shiftKeyPressed, activeNodeIds, hiddenNodeIds]);
 
-  // Local xyflow edges state for reconnection
-  const [xyflowLocalEdges, setXyflowLocalEdges] = useState<Edge<CustomEdgeData>[]>(xyflowEdgesBase);
-
-  // Sync when base edges change (structure changes like add/remove)
-  const prevBaseEdgesKeyRef2 = useRef(baseEdgesKey);
-  useEffect(() => {
-    if (prevBaseEdgesKeyRef2.current !== baseEdgesKey) {
-      prevBaseEdgesKeyRef2.current = baseEdgesKey;
-      setXyflowLocalEdges(xyflowEdgesBase);
+  // ELK layout for circuit-board style edge routing
+  const { edgePaths: elkEdgePaths, edgeLabelPositions: elkLabelPositions } = useElkLayout(
+    xyflowNodesBase,
+    xyflowEdgesBase,
+    {
+      enabled: elkLayout?.enabled ?? false,
+      routingStyle: elkLayout?.routingStyle ?? 'orthogonal',
+      edgeSpacing: elkLayout?.edgeSpacing ?? 5,
+      edgeNodeSpacing: elkLayout?.edgeNodeSpacing ?? 10,
+      preserveNodePositions: true,
     }
-  }, [baseEdgesKey, xyflowEdgesBase]);
+  );
+
+  // Apply ELK paths to edges when ELK layout is enabled
+  const xyflowEdgesWithElk = useMemo(() => {
+    if (!elkLayout?.enabled) {
+      return xyflowEdgesBase;
+    }
+    // Hide edges until ELK has computed paths to prevent flash of default edge routing
+    if (elkEdgePaths.size === 0) {
+      return [];
+    }
+    return applyElkPathsToEdges(xyflowEdgesBase, elkEdgePaths, elkLabelPositions);
+  }, [elkLayout?.enabled, xyflowEdgesBase, elkEdgePaths, elkLabelPositions]);
+
+  // Local xyflow edges state for reconnection
+  const [xyflowLocalEdges, setXyflowLocalEdges] = useState<Edge<CustomEdgeData>[]>(xyflowEdgesWithElk);
+
+  // Create a stable key for ELK paths to detect when they actually change
+  const elkPathsKey = useMemo(() => {
+    if (!elkLayout?.enabled || elkEdgePaths.size === 0) return '';
+    // Create a key from edge IDs and their full paths
+    return Array.from(elkEdgePaths.entries())
+      .map(([id, path]) => `${id}:${path}`)
+      .join('|');
+  }, [elkLayout?.enabled, elkEdgePaths]);
+
+  // Sync local edges when base edges or ELK paths change
+  const prevSyncKeyRef = useRef({ baseEdgesKey, elkPathsKey });
+  useEffect(() => {
+    const keyChanged =
+      prevSyncKeyRef.current.baseEdgesKey !== baseEdgesKey ||
+      prevSyncKeyRef.current.elkPathsKey !== elkPathsKey;
+
+    if (keyChanged && xyflowEdgesWithElk.length > 0) {
+      prevSyncKeyRef.current = { baseEdgesKey, elkPathsKey };
+      setXyflowLocalEdges(xyflowEdgesWithElk);
+    }
+  }, [baseEdgesKey, elkPathsKey, xyflowEdgesWithElk]);
 
   // Set the reset visual state function for use by resetEditState
   // This resets both nodes and edges to their original state
   useEffect(() => {
     resetVisualStateRef.current = () => {
       setXyflowLocalNodes(xyflowNodesBase);
-      setXyflowLocalEdges(xyflowEdgesBase);
+      setXyflowLocalEdges(xyflowEdgesWithElk);
       // Notify parent that changes have been cleared
       onPendingChangesChange?.(false);
     };
-  }, [xyflowNodesBase, xyflowEdgesBase, onPendingChangesChange]);
+  }, [xyflowNodesBase, xyflowEdgesWithElk, onPendingChangesChange]);
 
   // Use local edges in edit mode, base edges otherwise
-  const xyflowEdges = editable ? xyflowLocalEdges : xyflowEdgesBase;
+  const xyflowEdges = editable ? xyflowLocalEdges : xyflowEdgesWithElk;
 
   // Handle edge changes (selection, reconnection, etc.)
   const handleEdgesChange = useCallback(
@@ -2641,6 +2717,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     height = '100%',
     containerWidth,
     containerHeight,
+    elkLayout,
   } = props;
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -2863,6 +2940,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
             onNodeDragStop={onNodeDragStop}
             onCopy={onCopy}
             initialViewport={initialViewport}
+            elkLayout={elkLayout}
           />
         </ReactFlowProvider>
       </TooltipPortalContext.Provider>
