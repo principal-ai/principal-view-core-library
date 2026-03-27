@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { GraphRenderer } from '../components/GraphRenderer';
-import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
+import type { ExtendedCanvas, DerivedEdge } from '@principal-ai/principal-view-core';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 
 const meta = {
@@ -1288,6 +1288,163 @@ When you try to reconnect this edge to a different node pair (even with the same
 the validation fails because it's checking node IDs, not node types.
 
 **Enable editing mode** to test the reconnection behavior.
+        `,
+      },
+    },
+  },
+};
+
+/**
+ * Canvas for testing scenario sequence labels on edges
+ */
+const sequenceLabelsCanvas: ExtendedCanvas = {
+  nodes: [
+    createNode('client', 100, 150, 'Client', 5),
+    createNode('gateway', 300, 150, 'API Gateway', 4),
+    createNode('auth', 500, 80, 'Auth Service', 3),
+    createNode('database', 500, 220, 'Database', 6),
+    createNode('cache', 700, 150, 'Cache', 2),
+  ],
+  edges: [
+    {
+      id: 'client-gateway',
+      fromNode: 'client',
+      toNode: 'gateway',
+      fromSide: 'right',
+      toSide: 'left',
+      pv: { edgeType: 'request' },
+    },
+    {
+      id: 'gateway-auth',
+      fromNode: 'gateway',
+      toNode: 'auth',
+      fromSide: 'right',
+      toSide: 'left',
+      pv: { edgeType: 'request' },
+    },
+    {
+      id: 'gateway-database',
+      fromNode: 'gateway',
+      toNode: 'database',
+      fromSide: 'right',
+      toSide: 'left',
+      pv: { edgeType: 'request' },
+    },
+    {
+      id: 'database-cache',
+      fromNode: 'database',
+      toNode: 'cache',
+      fromSide: 'right',
+      toSide: 'left',
+      pv: { edgeType: 'request' },
+    },
+  ],
+  pv: {
+    version: '1.0.0',
+    name: 'Sequence Labels Demo',
+    description: 'Demonstrating scenario-based sequence labels on edges',
+    edgeTypes: {
+      request: {
+        style: 'solid',
+        color: '#3b82f6',
+        directed: true,
+      },
+    },
+  },
+};
+
+/**
+ * Scenario edges representing execution order
+ * These would normally come from deriveEdgesFromSequence()
+ */
+const mockScenarioEdges: Array<{ fromSpan: string; toSpan: string; sequenceNumber: number }> = [
+  { fromSpan: 'client', toSpan: 'gateway', sequenceNumber: 1 },
+  { fromSpan: 'gateway', toSpan: 'auth', sequenceNumber: 2 },
+  { fromSpan: 'gateway', toSpan: 'database', sequenceNumber: 3 },
+  { fromSpan: 'database', toSpan: 'cache', sequenceNumber: 4 },
+];
+
+/**
+ * Interactive component to toggle sequence labels
+ */
+const SequenceLabelsDemo = () => {
+  const [showLabels, setShowLabels] = useState(true);
+  const [useScenario, setUseScenario] = useState(true);
+
+  return (
+    <div>
+      <div style={{ marginBottom: 16, display: 'flex', gap: 16 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            type="checkbox"
+            checked={useScenario}
+            onChange={(e) => setUseScenario(e.target.checked)}
+          />
+          Pass scenarioEdges
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            type="checkbox"
+            checked={showLabels}
+            onChange={(e) => setShowLabels(e.target.checked)}
+          />
+          showSequenceLabels
+        </label>
+      </div>
+      <GraphRenderer
+        canvas={sequenceLabelsCanvas}
+        scenarioEdges={useScenario ? mockScenarioEdges : undefined}
+        showSequenceLabels={showLabels}
+        width={900}
+        height={400}
+      />
+      <div style={{ marginTop: 16, fontSize: 13, color: '#666' }}>
+        <strong>scenarioEdges:</strong>{' '}
+        {useScenario ? (
+          <pre style={{ margin: '8px 0', fontSize: 12, background: '#f5f5f5', padding: 12, borderRadius: 4 }}>
+            {JSON.stringify(mockScenarioEdges, null, 2)}
+          </pre>
+        ) : (
+          'undefined'
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const SequenceLabels: Story = {
+  render: () => <SequenceLabelsDemo />,
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Scenario Sequence Labels**
+
+When a workflow scenario is selected, edges can display sequence numbers showing the execution order.
+
+**Usage:**
+
+\`\`\`tsx
+import { extractEventSpans, deriveEdgesFromSequence } from '@principal-ai/principal-view-core';
+
+// Get scenario edges with sequence numbers
+const eventSpans = extractEventSpans(selectedScenario, rootSpan);
+const scenarioEdges = deriveEdgesFromSequence(eventSpans, selectedScenario.id);
+
+// Pass to GraphRenderer
+<GraphRenderer
+  canvas={canvas}
+  scenarioEdges={scenarioEdges}
+  showSequenceLabels={true}  // default
+/>
+\`\`\`
+
+**Props:**
+
+- \`scenarioEdges\` - Array of \`{ fromSpan, toSpan, sequenceNumber }\` from edge derivation
+- \`showSequenceLabels\` - Toggle visibility (default: true)
+
+The sequence numbers help users understand the order of operations in a workflow scenario.
         `,
       },
     },

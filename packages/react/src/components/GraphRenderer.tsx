@@ -303,6 +303,23 @@ interface GraphRendererBaseProps {
     edgeNodeSpacing?: number;
   };
 
+  /**
+   * Scenario-derived edges with sequence information.
+   * When provided, edges matching these transitions will show sequence numbers.
+   * Use with deriveEdgesFromSequence() from @principal-ai/core to generate these.
+   */
+  scenarioEdges?: Array<{
+    fromSpan: string;
+    toSpan: string;
+    sequenceNumber: number;
+  }>;
+
+  /**
+   * Whether to show sequence labels on edges when scenarioEdges is provided.
+   * @default true
+   */
+  showSequenceLabels?: boolean;
+
 }
 
 /** GraphRenderer props - canvas format only */
@@ -568,6 +585,14 @@ interface GraphRendererInnerProps {
     edgeSpacing?: number;
     edgeNodeSpacing?: number;
   };
+  /** Scenario-derived edges with sequence information */
+  scenarioEdges?: Array<{
+    fromSpan: string;
+    toSpan: string;
+    sequenceNumber: number;
+  }>;
+  /** Whether to show sequence labels on edges when scenarioEdges is provided */
+  showSequenceLabels?: boolean;
 }
 
 /**
@@ -609,6 +634,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   onCopy,
   initialViewport,
   elkLayout,
+  scenarioEdges,
+  showSequenceLabels = true,
 }) => {
   const { fitView, fitBounds, getNodes } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
@@ -2130,6 +2157,17 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     [editable, updateEditState, selectedNodeIds, draggableNodeIds, pushHistory]
   );
 
+  // Build lookup map for scenario edge sequence numbers
+  const scenarioEdgeSequenceMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (scenarioEdges && showSequenceLabels) {
+      for (const se of scenarioEdges) {
+        map.set(`${se.fromSpan}->${se.toSpan}`, se.sequenceNumber);
+      }
+    }
+    return map;
+  }, [scenarioEdges, showSequenceLabels]);
+
   const xyflowEdgesBase = useMemo(() => {
     const converted = convertToXYFlowEdges(edges, configuration, violations);
 
@@ -2155,10 +2193,32 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     const mappedEdges = filtered.map((edge) => {
       const animation = animationState.edgeAnimations[edge.id];
       const isSelected = selectedEdgeIds.has(edge.id);
+
+      // Look up sequence number from scenario edges
+      const edgeKey = `${edge.source}->${edge.target}`;
+      const sequenceNumber = scenarioEdgeSequenceMap.get(edgeKey);
+
       return {
         ...edge,
         data: {
           ...edge.data,
+          // Inject sequence number into edge data for label rendering
+          ...(sequenceNumber !== undefined
+            ? {
+                data: {
+                  ...(edge.data?.data as Record<string, unknown> | undefined),
+                  sequenceNumber,
+                },
+                // Configure label to show sequence number
+                typeDefinition: {
+                  ...edge.data?.typeDefinition,
+                  label: {
+                    field: 'sequenceNumber',
+                    position: 'middle' as const,
+                  },
+                },
+              }
+            : {}),
           tooltipsEnabled: showTooltips,
           shiftKeyPressed,
           ...(animation
@@ -2183,7 +2243,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       if (!aSelected && bSelected) return -1; // b comes after a (rendered on top)
       return 0; // maintain original order
     });
-  }, [edges, configuration, violations, animationState.edgeAnimations, showTooltips, selectedEdgeIds, shiftKeyPressed, activeNodeIds, hiddenNodeIds]);
+  }, [edges, configuration, violations, animationState.edgeAnimations, showTooltips, selectedEdgeIds, shiftKeyPressed, activeNodeIds, hiddenNodeIds, scenarioEdgeSequenceMap]);
 
   // ELK layout for circuit-board style edge routing
   const { edgePaths: elkEdgePaths, edgeLabelPositions: elkLabelPositions } = useElkLayout(
@@ -2718,6 +2778,8 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     containerWidth,
     containerHeight,
     elkLayout,
+    scenarioEdges,
+    showSequenceLabels,
   } = props;
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -2941,6 +3003,8 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
             onCopy={onCopy}
             initialViewport={initialViewport}
             elkLayout={elkLayout}
+            scenarioEdges={scenarioEdges}
+            showSequenceLabels={showSequenceLabels}
           />
         </ReactFlowProvider>
       </TooltipPortalContext.Provider>

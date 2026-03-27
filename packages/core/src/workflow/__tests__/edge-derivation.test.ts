@@ -120,6 +120,7 @@ describe('deriveEdgesFromSequence', () => {
       toSpan: 'span.b',
       scenarioId: 'test-scenario',
       eventNames: ['start', 'middle'],
+      sequenceNumber: 1,
     });
   });
 

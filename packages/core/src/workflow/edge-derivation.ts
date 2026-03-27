@@ -28,6 +28,9 @@ export interface DerivedEdge {
 
   /** Event names that caused this transition */
   eventNames: string[];
+
+  /** Execution order (1-based) within the scenario */
+  sequenceNumber: number;
 }
 
 /**
@@ -118,6 +121,7 @@ export function deriveEdgesFromSequence(
 ): DerivedEdge[] {
   const edges: DerivedEdge[] = [];
   const seenEdges = new Set<string>();
+  let sequenceNumber = 0;
 
   for (let i = 0; i < eventSpans.length - 1; i++) {
     const current = eventSpans[i];
@@ -129,11 +133,13 @@ export function deriveEdgesFromSequence(
 
       if (!seenEdges.has(edgeKey)) {
         seenEdges.add(edgeKey);
+        sequenceNumber++;
         edges.push({
           fromSpan: current.span,
           toSpan: next.span,
           scenarioId,
           eventNames: [current.eventName, next.eventName],
+          sequenceNumber,
         });
       }
     }

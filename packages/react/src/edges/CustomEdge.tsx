@@ -295,6 +295,7 @@ export const CustomEdge: React.FC<EdgeProps<Edge<CustomEdgeData>>> = ({
               fontFamily: theme.fonts.body,
               border: `1px solid ${color}`,
               pointerEvents: 'all',
+              zIndex: 1000,
             }}
             className="nodrag nopan"
           >
