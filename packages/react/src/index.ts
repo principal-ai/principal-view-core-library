@@ -102,3 +102,52 @@ export { computeElkLayout, createElkLayouter } from './utils/elkLayout';
 export type { ElkLayoutOptions, ElkLayoutResult, ElkRoutingStyle } from './utils/elkLayout';
 export { useElkLayout, applyElkPathsToEdges } from './hooks/useElkLayout';
 export type { UseElkLayoutOptions, UseElkLayoutResult } from './hooks/useElkLayout';
+
+// Dashboard components for rendering metrics from dashboard definition files
+export {
+  DashboardRenderer,
+  MetricPanel,
+  MetricCard,
+  LineChart,
+  BarChart,
+  SourceLink,
+  TimeRangeSelector,
+  MockDataProvider,
+  createMockDataProvider,
+} from './components/dashboard';
+export type {
+  // Dashboard definition types
+  DashboardDefinition,
+  MetricDefinition,
+  MetricType,
+  MetricSource,
+  MetricQuery,
+  Derivation,
+  TimeGroup,
+  AlertDefinition,
+  MetricDisplay,
+  DisplayComponent,
+  DashboardLayout,
+  DashboardRow,
+  PanelPlacement,
+  // Time range types
+  TimeRangePreset,
+  TimeRange,
+  RefreshInterval,
+  TimeRangeConfig,
+  // Mock data types
+  MockMetricData,
+  TimeSeriesPoint,
+  HistogramData,
+  // Runtime types
+  MetricData,
+  DataProvider,
+  // Component props
+  DashboardRendererProps,
+  MetricPanelProps,
+  MetricCardProps,
+  LineChartProps,
+  BarChartProps,
+  SourceLinkProps,
+  TimeRangeSelectorProps,
+} from './components/dashboard';
