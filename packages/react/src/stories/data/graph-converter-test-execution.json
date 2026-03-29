@@ -2,7 +2,7 @@
   {
     "id": "span-1",
     "name": "rules.lint.with.violations",
-    "startTime": 1774568488546,
+    "startTime": 1774820800788,
     "attributes": {
       "span.kind": "test.case",
       "test.name": "rules.lint.with.violations",
@@ -11,7 +11,7 @@
     },
     "events": [
       {
-        "time": 1774568488546,
+        "time": 1774820800788,
         "name": "test.started",
         "attributes": {
           "code.filepath": "rules-engine-instrumented.test.ts",
@@ -21,7 +21,7 @@
         }
       },
       {
-        "time": 1774568488546,
+        "time": 1774820800788,
         "name": "engine.creating",
         "attributes": {
           "code.filepath": "rules-engine-instrumented.test.ts",
@@ -30,7 +30,7 @@
         }
       },
       {
-        "time": 1774568488546,
+        "time": 1774820800788,
         "name": "engine.created",
         "attributes": {
           "code.filepath": "rules-engine-instrumented.test.ts",
@@ -39,7 +39,7 @@
         }
       },
       {
-        "time": 1774568488546,
+        "time": 1774820800788,
         "name": "lint.starting",
         "attributes": {
           "code.filepath": "rules-engine-instrumented.test.ts",
@@ -50,7 +50,7 @@
         }
       },
       {
-        "time": 1774568488549,
+        "time": 1774820800792,
         "name": "lint.completed",
         "attributes": {
           "code.filepath": "rules-engine-instrumented.test.ts",
@@ -62,7 +62,7 @@
         }
       },
       {
-        "time": 1774568488549,
+        "time": 1774820800792,
         "name": "violations.analyzed",
         "attributes": {
           "code.filepath": "rules-engine-instrumented.test.ts",
@@ -74,13 +74,13 @@
       }
     ],
     "status": "OK",
-    "endTime": 1774568488549,
-    "duration": 3
+    "endTime": 1774820800792,
+    "duration": 4
   },
   {
     "id": "span-2",
     "name": "rules.lint.valid.config",
-    "startTime": 1774568488550,
+    "startTime": 1774820800792,
     "attributes": {
       "span.kind": "test.case",
       "test.name": "rules.lint.valid.config",
@@ -89,7 +89,7 @@
     },
     "events": [
       {
-        "time": 1774568488550,
+        "time": 1774820800792,
         "name": "test.started",
         "attributes": {
           "code.filepath": "rules-engine-instrumented.test.ts",
@@ -100,7 +100,7 @@
         }
       },
       {
-        "time": 1774568488550,
+        "time": 1774820800792,
         "name": "lint.starting",
         "attributes": {
           "code.filepath": "rules-engine-instrumented.test.ts",
@@ -110,7 +110,7 @@
         }
       },
       {
-        "time": 1774568488550,
+        "time": 1774820800792,
         "name": "lint.completed",
         "attributes": {
           "code.filepath": "rules-engine-instrumented.test.ts",
@@ -122,13 +122,13 @@
       }
     ],
     "status": "OK",
-    "endTime": 1774568488550,
+    "endTime": 1774820800792,
     "duration": 0
   },
   {
     "id": "span-3",
     "name": "rules.lint.severity.override",
-    "startTime": 1774568488550,
+    "startTime": 1774820800792,
     "attributes": {
       "span.kind": "test.case",
       "test.name": "rules.lint.severity.override",
@@ -137,7 +137,7 @@
     },
     "events": [
       {
-        "time": 1774568488550,
+        "time": 1774820800792,
         "name": "test.started",
         "attributes": {
           "code.filepath": "rules-engine-instrumented.test.ts",
@@ -147,7 +147,7 @@
         }
       },
       {
-        "time": 1774568488550,
+        "time": 1774820800792,
         "name": "lint.starting",
         "attributes": {
           "code.filepath": "rules-engine-instrumented.test.ts",
@@ -157,7 +157,7 @@
         }
       },
       {
-        "time": 1774568488550,
+        "time": 1774820800792,
         "name": "lint.completed",
         "attributes": {
           "code.filepath": "rules-engine-instrumented.test.ts",
@@ -168,13 +168,13 @@
       }
     ],
     "status": "OK",
-    "endTime": 1774568488550,
+    "endTime": 1774820800792,
     "duration": 0
   },
   {
     "id": "span-4",
     "name": "rules.lint.disabled.rules",
-    "startTime": 1774568488550,
+    "startTime": 1774820800793,
     "attributes": {
       "span.kind": "test.case",
       "test.name": "rules.lint.disabled.rules",
@@ -183,7 +183,7 @@
     },
     "events": [
       {
-        "time": 1774568488550,
+        "time": 1774820800793,
         "name": "test.started",
         "attributes": {
           "code.filepath": "rules-engine-instrumented.test.ts",
@@ -193,7 +193,7 @@
         }
       },
       {
-        "time": 1774568488550,
+        "time": 1774820800793,
         "name": "lint.starting",
         "attributes": {
           "code.filepath": "rules-engine-instrumented.test.ts",
@@ -202,7 +202,7 @@
         }
       },
       {
-        "time": 1774568488551,
+        "time": 1774820800793,
         "name": "lint.completed",
         "attributes": {
           "code.filepath": "rules-engine-instrumented.test.ts",
@@ -214,13 +214,13 @@
       }
     ],
     "status": "OK",
-    "endTime": 1774568488551,
-    "duration": 1
+    "endTime": 1774820800793,
+    "duration": 0
   },
   {
     "id": "span-5",
     "name": "should convert simple config to nodes and edges",
-    "startTime": 1774568488967,
+    "startTime": 1774820801016,
     "attributes": {
       "span.kind": "test.case",
       "test.name": "should convert simple config to nodes and edges",
@@ -231,7 +231,7 @@
     },
     "events": [
       {
-        "time": 1774568488967,
+        "time": 1774820801016,
         "name": "setup.started",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -240,7 +240,7 @@
         }
       },
       {
-        "time": 1774568488967,
+        "time": 1774820801016,
         "name": "setup.complete",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -250,7 +250,7 @@
         }
       },
       {
-        "time": 1774568488967,
+        "time": 1774820801016,
         "name": "execution.started",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -259,7 +259,7 @@
         }
       },
       {
-        "time": 1774568488967,
+        "time": 1774820801016,
         "name": "execution.complete",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -269,7 +269,7 @@
         }
       },
       {
-        "time": 1774568488967,
+        "time": 1774820801016,
         "name": "assertion.started",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -278,7 +278,7 @@
         }
       },
       {
-        "time": 1774568488967,
+        "time": 1774820801016,
         "name": "assertion.complete",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -289,13 +289,13 @@
       }
     ],
     "status": "OK",
-    "endTime": 1774568488967,
+    "endTime": 1774820801016,
     "duration": 0
   },
   {
     "id": "span-6",
     "name": "should extract manual positions from node types",
-    "startTime": 1774568488967,
+    "startTime": 1774820801016,
     "attributes": {
       "span.kind": "test.case",
       "test.name": "should extract manual positions from node types",
@@ -306,7 +306,7 @@
     },
     "events": [
       {
-        "time": 1774568488967,
+        "time": 1774820801016,
         "name": "setup.started",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -315,7 +315,7 @@
         }
       },
       {
-        "time": 1774568488967,
+        "time": 1774820801016,
         "name": "setup.complete",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -325,7 +325,7 @@
         }
       },
       {
-        "time": 1774568488967,
+        "time": 1774820801016,
         "name": "execution.started",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -334,7 +334,7 @@
         }
       },
       {
-        "time": 1774568488967,
+        "time": 1774820801016,
         "name": "execution.complete",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -343,7 +343,7 @@
         }
       },
       {
-        "time": 1774568488967,
+        "time": 1774820801016,
         "name": "assertion.started",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -352,7 +352,7 @@
         }
       },
       {
-        "time": 1774568488967,
+        "time": 1774820801016,
         "name": "assertion.complete",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -363,13 +363,13 @@
       }
     ],
     "status": "OK",
-    "endTime": 1774568488967,
+    "endTime": 1774820801016,
     "duration": 0
   },
   {
     "id": "span-7",
     "name": "should handle nodes without positions",
-    "startTime": 1774568488967,
+    "startTime": 1774820801017,
     "attributes": {
       "span.kind": "test.case",
       "test.name": "should handle nodes without positions",
@@ -380,7 +380,7 @@
     },
     "events": [
       {
-        "time": 1774568488967,
+        "time": 1774820801017,
         "name": "setup.started",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -389,7 +389,7 @@
         }
       },
       {
-        "time": 1774568488967,
+        "time": 1774820801017,
         "name": "setup.complete",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -399,7 +399,7 @@
         }
       },
       {
-        "time": 1774568488967,
+        "time": 1774820801017,
         "name": "execution.started",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -408,7 +408,7 @@
         }
       },
       {
-        "time": 1774568488967,
+        "time": 1774820801017,
         "name": "execution.complete",
         "attributes": {
           "code.filepath": "GraphConverter.ts",
@@ -417,7 +417,7 @@
         }
       },
       {
-        "time": 1774568488967,
+        "time": 1774820801017,
         "name": "assertion.started",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -426,7 +426,7 @@
         }
       },
       {
-        "time": 1774568488967,
+        "time": 1774820801017,
         "name": "assertion.complete",
         "attributes": {
           "code.filepath": "GraphConverter.test.ts",
@@ -437,7 +437,7 @@
       }
     ],
     "status": "OK",
-    "endTime": 1774568488967,
+    "endTime": 1774820801017,
     "duration": 0
   }
 ]

@@ -96,6 +96,12 @@ export interface DiscoveredWorkflow {
   scope: 'root' | 'package';
   /** Associated test trace files for this workflow */
   testTraces: DiscoveredTestTrace[];
+  /**
+   * All span conventions referenced by this workflow.
+   * Includes rootSpan and any explicit span fields in event templates.
+   * Only populated when includeContent: true during discovery.
+   */
+  referencedSpans?: string[];
 }
 
 /**

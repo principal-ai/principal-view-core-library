@@ -17,6 +17,7 @@ import type {
   DiscoveryOptions,
   CanvasType,
 } from './types';
+import { deriveWorkflowEdges } from '../workflow/edge-derivation';
 
 /**
  * Unified discovery system for canvas and execution files in a package-aware way
@@ -384,7 +385,16 @@ export class CanvasDiscovery {
         try {
           const content = await options.fileReader(path);
           const parsedContent = JSON.parse(content);
-          workflow = { ...workflow, content: parsedContent } as DiscoveredWorkflowWithContent;
+
+          // Extract referenced spans from workflow content
+          const edgeResult = deriveWorkflowEdges(parsedContent, path);
+          const referencedSpans = edgeResult.referencedSpans;
+
+          workflow = {
+            ...workflow,
+            content: parsedContent,
+            referencedSpans,
+          } as DiscoveredWorkflowWithContent;
         } catch (error) {
           errors.push({
             path,
