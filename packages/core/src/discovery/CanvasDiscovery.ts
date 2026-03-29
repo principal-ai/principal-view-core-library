@@ -43,6 +43,7 @@ import type {
 export class CanvasDiscovery {
   private static readonly CANVAS_DIR = '.principal-views';
   private static readonly WORKFLOW_EXTENSION = '.workflow.json';
+  private static readonly DASHBOARD_EXTENSION = '.dashboard.json';
 
   private packageModule: PackageLayerModule;
   private packageCache: Map<string, PackageLayer[]> = new Map();
@@ -118,6 +119,10 @@ export class CanvasDiscovery {
     }
     // Workflow files (.workflow.json) in .principal-views
     if (path.includes(CanvasDiscovery.CANVAS_DIR) && path.endsWith(CanvasDiscovery.WORKFLOW_EXTENSION)) {
+      return true;
+    }
+    // Dashboard files (.dashboard.json) in .principal-views
+    if (path.includes(CanvasDiscovery.CANVAS_DIR) && path.endsWith(CanvasDiscovery.DASHBOARD_EXTENSION)) {
       return true;
     }
     // Test trace files (.otel.json) in .principal-views
@@ -631,6 +636,14 @@ export class CanvasDiscovery {
       return {
         basename: filename.replace(/\.spans\.canvas$/, ''),
         type: 'spans',
+      };
+    }
+
+    // Check for .dashboard.json (dashboard definition files)
+    if (filename.endsWith('.dashboard.json')) {
+      return {
+        basename: filename.replace(/\.dashboard\.json$/, ''),
+        type: 'dashboard',
       };
     }
 

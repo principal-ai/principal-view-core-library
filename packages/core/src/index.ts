@@ -137,6 +137,10 @@ export {
   getNestedValue,
   setNestedValue,
 } from './workflow/scenario-matcher';
+
+// Edge derivation (for sequence numbering on edges)
+export type { DerivedEdge } from './workflow/edge-derivation';
+export { extractEventSpans, deriveEdgesFromSequence } from './workflow/edge-derivation';
 export type {
   WorkflowTemplate,
   WorkflowScenario,
@@ -423,6 +427,37 @@ export type {
   EventNodeMap,
   BuildStoryboardContextOptions,
 } from './storyboard/index';
+
+// Export dashboard types (browser-safe - for dashboard definition files)
+export type {
+  // Dashboard definition types
+  DashboardDefinition,
+  MetricDefinition,
+  MetricType,
+  MetricSource,
+  MetricQuery,
+  Derivation,
+  TimeGroup,
+  AlertDefinition,
+  MetricDisplay,
+  DisplayComponent,
+  // Layout types
+  DashboardLayout,
+  DashboardRow,
+  PanelPlacement,
+  // Mock data types
+  MockMetricData,
+  TimeSeriesPoint,
+  HistogramData,
+  // Time range types
+  TimeRangePreset,
+  TimeRange,
+  RefreshInterval,
+  TimeRangeConfig,
+  // Runtime types
+  MetricData,
+  DataProvider,
+} from './types/dashboard';
 export {
   buildStoryboardContext,
   buildEventNodeMap,

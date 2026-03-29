@@ -89,12 +89,23 @@ export function buildEventNodeMap(canvas: ExtendedCanvas): EventNodeMap {
 
 /**
  * Get the event name from a canvas node.
- * Checks `pv.event.name` first, then falls back to `pv.eventRef`.
+ *
+ * Supports two schema locations:
+ * 1. Top-level `event.name` / `eventRef` (OtelEventNode in .otel.canvas files)
+ * 2. `pv.event.name` / `pv.eventRef` (PVNodeExtension for generic canvas nodes)
  *
  * @param node - The canvas node
  * @returns Event name or undefined if node doesn't emit events
  */
 export function getNodeEventName(node: ExtendedCanvasNode): string | undefined {
+  // 1. Top-level OtelEventNode format (newer .otel.canvas files)
+  const topLevelEvent = (node as { event?: { name?: string } }).event?.name;
+  if (topLevelEvent) return topLevelEvent;
+
+  const topLevelEventRef = (node as { eventRef?: string }).eventRef;
+  if (topLevelEventRef) return topLevelEventRef;
+
+  // 2. PVNodeExtension format (inside node.pv)
   return node.pv?.event?.name || node.pv?.eventRef;
 }
 

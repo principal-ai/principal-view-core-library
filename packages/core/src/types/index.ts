@@ -446,3 +446,4 @@ export * from './otel';
 export * from './resource-match';
 export * from './canvas-scope';
 export * from './audit';
+export * from './dashboard';

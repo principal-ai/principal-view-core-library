@@ -12,9 +12,10 @@ import type { WorkflowTemplate } from '../workflow/types';
  * - 'scopes': Scopes canvas (.scopes.canvas) for documenting instrumentation scopes
  * - 'resources': Resources canvas (.resources.canvas) for documenting OTel resources
  * - 'spans': Spans canvas (.spans.canvas) for documenting span conventions
+ * - 'dashboard': Dashboard definition (.dashboard.json) for observability metrics
  * - 'regular': Regular canvas (.canvas) for documentation/architecture diagrams
  */
-export type CanvasType = 'otel' | 'scopes' | 'resources' | 'spans' | 'regular';
+export type CanvasType = 'otel' | 'scopes' | 'resources' | 'spans' | 'dashboard' | 'regular';
 
 /**
  * Test trace file type discriminator based on extension

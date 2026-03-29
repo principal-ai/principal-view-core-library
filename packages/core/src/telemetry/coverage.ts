@@ -12,6 +12,7 @@ import type { FileTree } from '@principal-ai/repository-abstraction';
 import { CanvasDiscovery } from '../discovery/CanvasDiscovery';
 import type { DiscoveredCanvasWithContent } from '../discovery/types';
 import type { ExtendedCanvasNode } from '../types/canvas';
+import { getNodeEventName } from '../storyboard/builder';
 import {
   ImplementationFileLayerModule,
   PackageLayerModule,
@@ -96,18 +97,10 @@ export interface PackageCoverageMetrics {
 
 /**
  * Extract event name from a canvas node
- * Supports both inline event definitions (pv.event.name) and library references (pv.eventRef)
+ * Uses the canonical getNodeEventName() which supports all event reference formats
  */
 function getEventName(node: ExtendedCanvasNode): string | null {
-  // Check inline event definition first
-  if (node.pv?.event?.name) {
-    return node.pv.event.name;
-  }
-  // Check library event reference
-  if (node.pv?.eventRef) {
-    return node.pv.eventRef;
-  }
-  return null;
+  return getNodeEventName(node) ?? null;
 }
 
 /**
