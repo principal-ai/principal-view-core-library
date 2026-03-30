@@ -1,523 +1,83 @@
 /**
- * Lint command - Lint graph configuration files using the rules engine
+ * Lint command - DEPRECATED
  *
- * This command focuses on style, conventions, and configurable linting rules.
- * For structural validation of workflows and executions, use the `validate` command.
+ * This command has been deprecated and now calls the `validate` command internally.
+ * Please use `validate` directly for all validation needs.
+ *
+ * @deprecated Use `validate` command instead
  */
 
 import { Command } from 'commander';
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve, relative, basename } from 'node:path';
-import { determineFileType } from '../file-utils.js';
 import chalk from 'chalk';
-import { globby } from 'globby';
-import yaml from 'js-yaml';
-// Node.js-specific imports (rules engine, validators)
-import {
-  createDefaultRulesEngine,
-  getDefaultConfig,
-  type GraphLintResult,
-  type GraphRuleViolation,
-  type PrivuConfig,
-  createWorkflowValidator,
-  type WorkflowViolation,
-} from '@principal-ai/principal-view-core/node';
-// Browser-safe type imports
-import type {
-  GraphConfiguration,
-  ComponentLibrary,
-  WorkflowTemplate,
-  ExtendedCanvas,
-} from '@principal-ai/principal-view-core';
-
-/**
- * Load a component library file
- */
-function loadLibrary(libraryPath: string): ComponentLibrary | null {
-  if (!existsSync(libraryPath)) {
-    return null;
-  }
-
-  try {
-    const content = readFileSync(libraryPath, 'utf8');
-    const ext = libraryPath.toLowerCase();
-
-    if (ext.endsWith('.json')) {
-      return JSON.parse(content) as ComponentLibrary;
-    } else {
-      return yaml.load(content) as ComponentLibrary;
-    }
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Load a graph configuration file (YAML or JSON)
- */
-function loadGraphConfig(filePath: string): { config: GraphConfiguration; raw: string } | null {
-  if (!existsSync(filePath)) {
-    return null;
-  }
-
-  try {
-    const raw = readFileSync(filePath, 'utf8');
-    const ext = filePath.toLowerCase();
-
-    let config: GraphConfiguration;
-    if (ext.endsWith('.json')) {
-      config = JSON.parse(raw) as GraphConfiguration;
-    } else {
-      config = yaml.load(raw) as GraphConfiguration;
-    }
-
-    return { config, raw };
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Load a workflow template file
- */
-function loadWorkflowTemplate(filePath: string): { workflow: WorkflowTemplate; raw: string } | null {
-  if (!existsSync(filePath)) {
-    return null;
-  }
-
-  try {
-    const raw = readFileSync(filePath, 'utf8');
-    const workflow = JSON.parse(raw) as WorkflowTemplate;
-    return { workflow, raw };
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Load a canvas file for workflow validation
- */
-function loadCanvas(filePath: string): ExtendedCanvas | null {
-  if (!existsSync(filePath)) {
-    return null;
-  }
-
-  try {
-    const content = readFileSync(filePath, 'utf8');
-    const ext = filePath.toLowerCase();
-
-    if (ext.endsWith('.json')) {
-      return JSON.parse(content) as ExtendedCanvas;
-    } else {
-      return yaml.load(content) as ExtendedCanvas;
-    }
-  } catch {
-    return null;
-  }
-}
-
-
-// ============================================================================
-// Output Formatting
-// ============================================================================
-
-/**
- * Format violations for pretty console output
- */
-function formatPrettyOutput(
-  results: Map<string, GraphLintResult>,
-  quiet: boolean
-): { output: string; hasErrors: boolean } {
-  const lines: string[] = [];
-  let totalErrors = 0;
-  let totalWarnings = 0;
-  let totalFixable = 0;
-
-  for (const [filePath, result] of results) {
-    totalErrors += result.errorCount;
-    totalWarnings += result.warningCount;
-    totalFixable += result.fixableCount;
-
-    if (result.violations.length === 0) {
-      if (!quiet) {
-        lines.push(chalk.green(`✓ ${filePath}`));
-      }
-      continue;
-    }
-
-    lines.push('');
-    lines.push(chalk.cyan(filePath));
-    lines.push('');
-
-    for (const violation of result.violations) {
-      const severityColor = violation.severity === 'error' ? chalk.red : chalk.yellow;
-      const severityLabel = violation.severity === 'error' ? 'error' : 'warn ';
-
-      // Format: "  error  rule-id  message"
-      const ruleId = chalk.dim(violation.ruleId.padEnd(30));
-      lines.push(`  ${severityColor(severityLabel)}  ${ruleId}  ${violation.message}`);
-
-      if (violation.suggestion) {
-        lines.push(chalk.dim(`         ${''.padEnd(30)}  → ${violation.suggestion}`));
-      }
-    }
-  }
-
-  // Summary
-  lines.push('');
-  if (totalErrors === 0 && totalWarnings === 0) {
-    lines.push(chalk.green(`✓ All files passed linting`));
-  } else {
-    const parts: string[] = [];
-    if (totalErrors > 0) {
-      parts.push(chalk.red(`${totalErrors} error${totalErrors === 1 ? '' : 's'}`));
-    }
-    if (totalWarnings > 0) {
-      parts.push(chalk.yellow(`${totalWarnings} warning${totalWarnings === 1 ? '' : 's'}`));
-    }
-    lines.push(`✖ ${parts.join(', ')}`);
-
-    if (totalFixable > 0) {
-      lines.push(chalk.dim(`  ${totalFixable} fixable with --fix (coming soon)`));
-    }
-  }
-
-  return {
-    output: lines.join('\n'),
-    hasErrors: totalErrors > 0,
-  };
-}
-
-/**
- * Format violations for JSON output
- */
-function formatJsonOutput(results: Map<string, GraphLintResult>): object {
-  const files: Array<{
-    file: string;
-    errorCount: number;
-    warningCount: number;
-    fixableCount: number;
-    violations: GraphRuleViolation[];
-  }> = [];
-
-  let totalErrors = 0;
-  let totalWarnings = 0;
-  let totalFixable = 0;
-
-  for (const [filePath, result] of results) {
-    totalErrors += result.errorCount;
-    totalWarnings += result.warningCount;
-    totalFixable += result.fixableCount;
-
-    files.push({
-      file: filePath,
-      errorCount: result.errorCount,
-      warningCount: result.warningCount,
-      fixableCount: result.fixableCount,
-      violations: result.violations,
-    });
-  }
-
-  return {
-    files,
-    summary: {
-      totalFiles: files.length,
-      totalErrors,
-      totalWarnings,
-      totalFixable,
-    },
-  };
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Count violations by rule ID
- */
-function countByRule(violations: GraphRuleViolation[]): Record<string, number> {
-  const counts: Record<string, number> = {};
-  for (const v of violations) {
-    counts[v.ruleId] = (counts[v.ruleId] || 0) + 1;
-  }
-  return counts;
-}
-
-// ============================================================================
-// Command Implementation
-// ============================================================================
+import { spawn } from 'node:child_process';
 
 export function createLintCommand(): Command {
   const command = new Command('lint');
 
   command
-    .description('Lint configuration files for style and best practices (use `validate` for structural validation)')
+    .description('DEPRECATED: Use `validate` instead. Validates Principal View files.')
     .argument(
       '[files...]',
-      'Files or glob patterns to lint (defaults to .principal-views/**/*.yaml)'
+      'Files or glob patterns to validate (defaults to .principal-views/**/*)'
     )
-    .option('--library <path>', 'Path to component library file')
+    .option('--library <path>', 'DEPRECATED: Path to component library file (ignored)')
     .option('-q, --quiet', 'Only output errors')
     .option('--json', 'Output results as JSON')
-    .option('--rule <rules...>', 'Only run specific rules')
-    .option('--ignore-rule <rules...>', 'Skip specific rules')
+    .option('--rule <rules...>', 'DEPRECATED: Only run specific rules (ignored)')
+    .option('--ignore-rule <rules...>', 'DEPRECATED: Skip specific rules (ignored)')
     .action(async (files: string[], options) => {
-      try {
-        const cwd = process.cwd();
+      // Show deprecation warning (unless JSON output or quiet mode)
+      if (!options.json && !options.quiet) {
+        console.log(
+          chalk.yellow('⚠️  The `lint` command is deprecated and will be removed in a future version.')
+        );
+        console.log(chalk.yellow('   Please use `validate` instead.\n'));
+      }
 
-        // Use default config (no config file support)
-        const privuConfig: PrivuConfig = getDefaultConfig();
+      // Warn about ignored options
+      if (!options.json && !options.quiet) {
+        const ignoredOptions: string[] = [];
+        if (options.library) ignoredOptions.push('--library');
+        if (options.rule) ignoredOptions.push('--rule');
+        if (options.ignoreRule) ignoredOptions.push('--ignore-rule');
 
-        // Determine files to lint
-        let patterns: string[];
-        if (files.length > 0) {
-          patterns = files;
-        } else if (privuConfig.include && privuConfig.include.length > 0) {
-          patterns = privuConfig.include;
+        if (ignoredOptions.length > 0) {
+          console.log(
+            chalk.dim(`   Note: ${ignoredOptions.join(', ')} option(s) are no longer supported and will be ignored.\n`)
+          );
+        }
+      }
+
+      // Build validate command arguments
+      const validateArgs = ['validate'];
+      if (files.length > 0) {
+        validateArgs.push(...files);
+      }
+      if (options.quiet) {
+        validateArgs.push('--quiet');
+      }
+      if (options.json) {
+        validateArgs.push('--json');
+      }
+
+      // Spawn the validate command using the same CLI
+      const child = spawn(process.execPath, [process.argv[1], ...validateArgs], {
+        stdio: 'inherit',
+        cwd: process.cwd(),
+      });
+
+      child.on('close', (code) => {
+        process.exit(code ?? 0);
+      });
+
+      child.on('error', (error) => {
+        if (!options.json) {
+          console.error(chalk.red('Error:'), error.message);
         } else {
-          patterns = [
-            '.principal-views/**/*.yaml',
-            '.principal-views/**/*.yml',
-            '.principal-views/**/*.json',
-          ];
-        }
-
-        // Find matching files
-        const matchedFiles = await globby(patterns, {
-          ignore: privuConfig.exclude || ['**/node_modules/**'],
-          expandDirectories: false,
-        });
-
-        // Filter out library files and execution artifacts
-        // INCLUDE both canvas files and workflow templates for linting
-        const configFiles = matchedFiles.filter((f: string) => {
-          const name = basename(f).toLowerCase();
-          const isLibraryFile = name.startsWith('library.');
-          const isExecutionArtifact = f.includes('__executions__/');
-          return !isLibraryFile && !isExecutionArtifact;
-        });
-
-        if (configFiles.length === 0) {
-          if (options.json) {
-            console.log(
-              JSON.stringify({
-                files: [],
-                summary: { totalFiles: 0, totalErrors: 0, totalWarnings: 0, totalFixable: 0 },
-              })
-            );
-          } else {
-            console.log(
-              chalk.yellow('No configuration files found matching the specified patterns.')
-            );
-            console.log(chalk.dim(`Patterns searched: ${patterns.join(', ')}`));
-          }
-          return;
-        }
-
-        // Load library if specified
-        let library: ComponentLibrary | undefined;
-        const libraryPath = options.library || privuConfig.library;
-        if (libraryPath) {
-          const resolvedLibraryPath = resolve(cwd, libraryPath);
-          library = loadLibrary(resolvedLibraryPath) ?? undefined;
-          if (!library && !options.quiet) {
-            console.log(chalk.yellow(`Warning: Could not load library from ${libraryPath}`));
-          }
-        }
-
-        // Create validators
-        const engine = createDefaultRulesEngine();
-        const workflowValidator = createWorkflowValidator();
-
-        // Lint each file
-        const results = new Map<string, GraphLintResult>();
-
-        // PHASE 1: Group workflows by canvas and collect all events used
-        const workflowsByCanvas = new Map<string, Array<{ absolutePath: string; relativePath: string; loaded: { workflow: WorkflowTemplate; raw: string } }>>();
-        const canvasEventMap = new Map<string, Set<string>>();
-
-        for (const filePath of configFiles) {
-          const absolutePath = resolve(cwd, filePath);
-          const relativePath = relative(cwd, absolutePath);
-          const fileType = determineFileType(absolutePath);
-
-          // Skip test traces, library files, and unknown files - they're not linted
-          if (fileType === 'testTrace' || fileType === 'library' || fileType === 'unknown') {
-            continue;
-          }
-
-          if (fileType === 'workflow') {
-            const loaded = loadWorkflowTemplate(absolutePath);
-            if (!loaded) continue;
-
-            // Canvas paths are always relative to repository root (cwd)
-            const canvasPath = loaded.workflow.canvas
-              ? resolve(cwd, loaded.workflow.canvas)
-              : undefined;
-
-            if (canvasPath) {
-              const canvasKey = relative(cwd, canvasPath);
-
-              // Group workflow by canvas
-              if (!workflowsByCanvas.has(canvasKey)) {
-                workflowsByCanvas.set(canvasKey, []);
-                canvasEventMap.set(canvasKey, new Set<string>());
-              }
-              workflowsByCanvas.get(canvasKey)!.push({ absolutePath, relativePath, loaded });
-
-              // Collect events from this workflow
-              const workflowEvents = canvasEventMap.get(canvasKey)!;
-              for (const scenario of loaded.workflow.scenarios) {
-                if (scenario.template?.events) {
-                  for (const eventName of Object.keys(scenario.template.events)) {
-                    if (!eventName.includes('*')) {
-                      workflowEvents.add(eventName);
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        // PHASE 2: Validate each file with canvas-wide event knowledge
-        for (const filePath of configFiles) {
-          const absolutePath = resolve(cwd, filePath);
-          const relativePath = relative(cwd, absolutePath);
-          const fileType = determineFileType(absolutePath);
-
-          // Skip test traces, library files, and unknown files - they're not linted
-          if (fileType === 'testTrace' || fileType === 'library' || fileType === 'unknown') {
-            continue;
-          }
-
-          if (fileType === 'workflow') {
-            // Validate workflow template
-            const loaded = loadWorkflowTemplate(absolutePath);
-            if (!loaded) {
-              // File couldn't be loaded - report as error
-              results.set(relativePath, {
-                violations: [
-                  {
-                    ruleId: 'parse-error',
-                    severity: 'error',
-                    file: relativePath,
-                    message: `Could not parse workflow file: ${filePath}`,
-                    impact: 'File cannot be validated',
-                    fixable: false,
-                  },
-                ],
-                errorCount: 1,
-                warningCount: 0,
-                fixableCount: 0,
-                byCategory: { schema: 1, reference: 0, structure: 0, pattern: 0, library: 0 },
-                byRule: { 'parse-error': 1 },
-              });
-              continue;
-            }
-
-            // Load the referenced canvas if it exists
-            // Canvas paths are always relative to repository root (cwd)
-            const canvasPath = loaded.workflow.canvas
-              ? resolve(cwd, loaded.workflow.canvas)
-              : undefined;
-            const canvas = canvasPath ? loadCanvas(canvasPath) : undefined;
-
-            // Get all events used across workflows for this canvas
-            const canvasKey = canvasPath ? relative(cwd, canvasPath) : undefined;
-            const allWorkflowEvents = canvasKey ? canvasEventMap.get(canvasKey) : undefined;
-
-            // Run workflow validation with canvas-wide event knowledge
-            // Use cwd as basePath since workflow files reference paths from repository root
-            const workflowResult = await workflowValidator.validate({
-              workflow: loaded.workflow,
-              workflowPath: relativePath,
-              canvas: canvas ?? undefined,
-              canvasPath: canvasKey,
-              basePath: cwd,
-              rawContent: loaded.raw,
-              allWorkflowEvents,
-            });
-
-            // Convert workflow violations to graph violations format
-            const violations: GraphRuleViolation[] = workflowResult.violations.map((v: WorkflowViolation) => ({
-              ruleId: v.ruleId,
-              severity: v.severity,
-              file: v.file,
-              line: v.line,
-              path: v.path,
-              message: v.message,
-              impact: v.impact,
-              suggestion: v.suggestion,
-              fixable: v.fixable,
-            }));
-
-            results.set(relativePath, {
-              violations,
-              errorCount: workflowResult.errorCount,
-              warningCount: workflowResult.warningCount,
-              fixableCount: workflowResult.fixableCount,
-              byCategory: { schema: 0, reference: 0, structure: 0, pattern: 0, library: 0 }, // Could categorize workflow rules
-              byRule: countByRule(violations),
-            });
-          } else {
-            // Validate canvas/graph configuration
-            const loaded = loadGraphConfig(absolutePath);
-            if (!loaded) {
-              // File couldn't be loaded - report as error
-              results.set(relativePath, {
-                violations: [
-                  {
-                    ruleId: 'parse-error',
-                    severity: 'error',
-                    file: relativePath,
-                    message: `Could not parse file: ${filePath}`,
-                    impact: 'File cannot be validated',
-                    fixable: false,
-                  },
-                ],
-                errorCount: 1,
-                warningCount: 0,
-                fixableCount: 0,
-                byCategory: { schema: 1, reference: 0, structure: 0, pattern: 0, library: 0 },
-                byRule: { 'parse-error': 1 },
-              });
-              continue;
-            }
-
-            // Run linting
-            const result = await engine.lintWithConfig(loaded.config, privuConfig, {
-              library,
-              configPath: relativePath,
-              rawContent: loaded.raw,
-              enabledRules: options.rule,
-              disabledRules: options.ignoreRule,
-            });
-
-            results.set(relativePath, result);
-          }
-        }
-
-        // Output results
-        if (options.json) {
-          console.log(JSON.stringify(formatJsonOutput(results), null, 2));
-        } else {
-          const { output, hasErrors } = formatPrettyOutput(results, options.quiet);
-          console.log(output);
-
-          if (hasErrors) {
-            process.exit(1);
-          }
-        }
-      } catch (error) {
-        if (options.json) {
-          console.log(JSON.stringify({ error: (error as Error).message }));
-        } else {
-          console.error(chalk.red('Error:'), (error as Error).message);
+          console.log(JSON.stringify({ error: error.message }));
         }
         process.exit(1);
-      }
+      });
     });
 
   return command;
