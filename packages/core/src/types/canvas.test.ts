@@ -3,7 +3,15 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import { resolveCanvasColor, CANVAS_COLOR_PRESETS } from './canvas';
+import {
+  resolveCanvasColor,
+  CANVAS_COLOR_PRESETS,
+  getOtelNodeIdentifier,
+  type OtelSpanConventionNode,
+  type OtelScopeNode,
+  type OtelResourceNode,
+  type OtelBoundaryNode,
+} from './canvas';
 
 describe('resolveCanvasColor', () => {
   it('should return undefined for undefined input', () => {
@@ -52,5 +60,140 @@ describe('resolveCanvasColor', () => {
       expect(CANVAS_COLOR_PRESETS[i]).toBeDefined();
       expect(CANVAS_COLOR_PRESETS[i]).toMatch(/^#[0-9a-f]{6}$/i);
     }
+  });
+});
+
+describe('getOtelNodeIdentifier', () => {
+  describe('otel-span-convention nodes', () => {
+    it('should return spanPattern for valid nodes', () => {
+      const node: OtelSpanConventionNode = {
+        id: 'test-span',
+        type: 'otel-span-convention',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 100,
+        otel: {
+          spanPattern: 'activity-feed.init',
+          spanKind: 'internal',
+        },
+      };
+      expect(getOtelNodeIdentifier(node)).toBe('activity-feed.init');
+    });
+
+    it('should handle nodes with missing otel property gracefully', () => {
+      // BUG REPRODUCTION: This test demonstrates the crash when otel is undefined
+      // The validator CLI crashes with: "Cannot read properties of undefined (reading 'spanPattern')"
+      // This happens when a .spans.canvas file has malformed otel-span-convention nodes
+      const malformedNode = {
+        id: 'malformed-span',
+        type: 'otel-span-convention' as const,
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 100,
+        // otel property is missing - this causes the crash
+      } as OtelSpanConventionNode;
+
+      // Currently this throws: Cannot read properties of undefined (reading 'spanPattern')
+      // Expected behavior: should return undefined gracefully
+      expect(() => getOtelNodeIdentifier(malformedNode)).not.toThrow();
+      expect(getOtelNodeIdentifier(malformedNode)).toBeUndefined();
+    });
+  });
+
+  describe('otel-scope nodes', () => {
+    it('should return scope for valid nodes', () => {
+      const node: OtelScopeNode = {
+        id: 'test-scope',
+        type: 'otel-scope',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 100,
+        otel: {
+          scope: 'activity-feed',
+        },
+      };
+      expect(getOtelNodeIdentifier(node)).toBe('activity-feed');
+    });
+
+    it('should handle nodes with missing otel property gracefully', () => {
+      const malformedNode = {
+        id: 'malformed-scope',
+        type: 'otel-scope' as const,
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 100,
+      } as OtelScopeNode;
+
+      expect(() => getOtelNodeIdentifier(malformedNode)).not.toThrow();
+      expect(getOtelNodeIdentifier(malformedNode)).toBeUndefined();
+    });
+  });
+
+  describe('otel-resource nodes', () => {
+    it('should return first resource match entry for valid nodes', () => {
+      const node: OtelResourceNode = {
+        id: 'test-resource',
+        type: 'otel-resource',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 100,
+        otel: {
+          resourceMatch: {
+            'service.name': 'my-service',
+          },
+        },
+      };
+      expect(getOtelNodeIdentifier(node)).toBe('service.name: my-service');
+    });
+
+    it('should handle nodes with missing otel property gracefully', () => {
+      const malformedNode = {
+        id: 'malformed-resource',
+        type: 'otel-resource' as const,
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 100,
+      } as OtelResourceNode;
+
+      expect(() => getOtelNodeIdentifier(malformedNode)).not.toThrow();
+      expect(getOtelNodeIdentifier(malformedNode)).toBeUndefined();
+    });
+  });
+
+  describe('otel-boundary nodes', () => {
+    it('should return direction for valid nodes', () => {
+      const node: OtelBoundaryNode = {
+        id: 'test-boundary',
+        type: 'otel-boundary',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 100,
+        boundary: {
+          direction: 'incoming',
+        },
+      };
+      expect(getOtelNodeIdentifier(node)).toBe('incoming');
+    });
+
+    it('should handle nodes with missing boundary property gracefully', () => {
+      const malformedNode = {
+        id: 'malformed-boundary',
+        type: 'otel-boundary' as const,
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 100,
+      } as OtelBoundaryNode;
+
+      expect(() => getOtelNodeIdentifier(malformedNode)).not.toThrow();
+      expect(getOtelNodeIdentifier(malformedNode)).toBeUndefined();
+    });
   });
 });

@@ -1219,10 +1219,11 @@ export function getOtelNodeIdentifier(node: OtelNode): string | undefined {
     case 'otel-event':
       return node.event?.name || node.eventRef;
     case 'otel-span-convention':
-      return node.otel.spanPattern;
+      return node.otel?.spanPattern;
     case 'otel-scope':
-      return node.otel.scope;
+      return node.otel?.scope;
     case 'otel-resource': {
+      if (!node.otel?.resourceMatch) return undefined;
       const entries = Object.entries(node.otel.resourceMatch);
       if (entries.length > 0) {
         const [key, value] = entries[0];
@@ -1231,7 +1232,7 @@ export function getOtelNodeIdentifier(node: OtelNode): string | undefined {
       return undefined;
     }
     case 'otel-boundary':
-      return node.boundary.direction;
+      return node.boundary?.direction;
     default:
       return undefined;
   }

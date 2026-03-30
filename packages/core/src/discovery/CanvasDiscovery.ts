@@ -22,10 +22,21 @@ import type {
 } from './types';
 import { deriveWorkflowEdges } from '../workflow/edge-derivation';
 import type { ExtendedCanvas } from '../types/canvas';
-import { isOtelSpanConventionNode } from '../types/canvas';
+import { isOtelSpanConventionNode, isOtelScopeNode } from '../types/canvas';
 
-/** Lookup map from span pattern to display label */
-type SpanLabelLookup = Map<string, string>;
+/** Info about a span convention extracted from spans.canvas */
+interface SpanInfo {
+  /** Display label from spans.canvas node label field */
+  label?: string;
+  /** Instrumentation scope from spans.canvas node otel.scope field */
+  scope?: string;
+}
+
+/** Lookup map from span pattern to span info (label, scope) */
+type SpanLookup = Map<string, SpanInfo>;
+
+/** Lookup map from scope name to display label */
+type ScopeLabelLookup = Map<string, string>;
 
 /**
  * Unified discovery system for canvas and execution files in a package-aware way
@@ -62,15 +73,15 @@ export class CanvasDiscovery {
   }
 
   /**
-   * Build a lookup map from span pattern to display label from spans.canvas files
+   * Build a lookup map from span pattern to span info from spans.canvas files
    *
    * @param canvases - Discovered canvases (must include content for spans.canvas)
-   * @returns Map of spanPattern → label
+   * @returns Map of spanPattern → { label?, scope? }
    */
-  private buildSpanLabelLookup(
+  private buildSpanLookup(
     canvases: (DiscoveredCanvas | DiscoveredCanvasWithContent)[]
-  ): SpanLabelLookup {
-    const lookup: SpanLabelLookup = new Map();
+  ): SpanLookup {
+    const lookup: SpanLookup = new Map();
 
     for (const canvas of canvases) {
       // Only process spans.canvas files with content
@@ -80,13 +91,49 @@ export class CanvasDiscovery {
       const content = canvasWithContent.content as ExtendedCanvas | undefined;
       if (!content?.nodes) continue;
 
-      // Extract span patterns and labels from otel-span-convention nodes
+      // Extract span patterns, labels, and scopes from otel-span-convention nodes
       for (const node of content.nodes) {
         if (isOtelSpanConventionNode(node)) {
-          const spanPattern = node.otel.spanPattern;
+          const spanPattern = node.otel?.spanPattern;
+          if (spanPattern) {
+            lookup.set(spanPattern, {
+              label: node.label,
+              scope: node.otel?.scope,
+            });
+          }
+        }
+      }
+    }
+
+    return lookup;
+  }
+
+  /**
+   * Build a lookup map from scope name to display label from scopes.canvas files
+   *
+   * @param canvases - Discovered canvases (must include content for scopes.canvas)
+   * @returns Map of scopeName → label
+   */
+  private buildScopeLabelLookup(
+    canvases: (DiscoveredCanvas | DiscoveredCanvasWithContent)[]
+  ): ScopeLabelLookup {
+    const lookup: ScopeLabelLookup = new Map();
+
+    for (const canvas of canvases) {
+      // Only process scopes.canvas files with content
+      if (canvas.type !== 'scopes') continue;
+
+      const canvasWithContent = canvas as DiscoveredCanvasWithContent;
+      const content = canvasWithContent.content as ExtendedCanvas | undefined;
+      if (!content?.nodes) continue;
+
+      // Extract scope names and labels from otel-scope nodes
+      for (const node of content.nodes) {
+        if (isOtelScopeNode(node)) {
+          const scopeName = node.otel.scope;
           const label = node.label;
-          if (spanPattern && label) {
-            lookup.set(spanPattern, label);
+          if (scopeName && label) {
+            lookup.set(scopeName, label);
           }
         }
       }
@@ -118,12 +165,15 @@ export class CanvasDiscovery {
     // 3. Discover canvas files
     const canvases = await this.discoverCanvasFiles(fileTree, packageMap, options, errors);
 
-    // 3.5. Build span label lookup from spans.canvas files (for enriching workflow referencedSpans)
-    const spanLabelLookup = this.buildSpanLabelLookup(canvases);
+    // 3.5. Build span lookup from spans.canvas files (for enriching workflow referencedSpans with labels and scopes)
+    const spanLookup = this.buildSpanLookup(canvases);
+
+    // 3.6. Build scope label lookup from scopes.canvas files (for resolving scope display names)
+    const scopeLabelLookup = this.buildScopeLabelLookup(canvases);
 
     // 4. Discover storyboards (hierarchical organization)
     // Note: Test traces are discovered as part of workflows, not separately
-    const storyboards = await this.discoverStoryboards(fileTree, packageMap, canvases, options, errors, spanLabelLookup);
+    const storyboards = await this.discoverStoryboards(fileTree, packageMap, canvases, options, errors, spanLookup, scopeLabelLookup);
 
     // 5. Collect all test traces from workflows for backward compatibility
     const testTraces: (DiscoveredTestTrace | DiscoveredTestTraceWithContent)[] = [];
@@ -141,6 +191,11 @@ export class CanvasDiscovery {
 
     // 8. Validate required canvas types
     this.validateRequiredCanvases(canvases, storyboards, errors);
+
+    // 8.5. Validate scope hierarchy (when content is loaded)
+    if (options.includeContent) {
+      this.validateScopeHierarchy(storyboards, spanLookup, scopeLabelLookup, errors);
+    }
 
     // 9. Sort results
     canvases.sort(this.compareByPackageThenName);
@@ -255,7 +310,8 @@ export class CanvasDiscovery {
     canvases: DiscoveredCanvas[],
     options: DiscoveryOptions,
     errors: Array<{ path: string; error: string }>,
-    spanLabelLookup: SpanLabelLookup
+    spanLookup: SpanLookup,
+    scopeLabelLookup: ScopeLabelLookup
   ): Promise<(DiscoveredStoryboard | DiscoveredStoryboardWithContent)[]> {
     const storyboards: (DiscoveredStoryboard | DiscoveredStoryboardWithContent)[] = [];
 
@@ -302,7 +358,8 @@ export class CanvasDiscovery {
           storyboardName,
           packageMap,
           options,
-          spanLabelLookup,
+          spanLookup,
+          scopeLabelLookup,
           errors
         );
 
@@ -378,7 +435,8 @@ export class CanvasDiscovery {
     storyboardName: string,
     packageMap: Map<string, PackageLayer>,
     options: DiscoveryOptions,
-    spanLabelLookup: SpanLabelLookup,
+    spanLookup: SpanLookup,
+    scopeLabelLookup: ScopeLabelLookup,
     errors: Array<{ path: string; error: string }>
   ): Promise<(DiscoveredWorkflow | DiscoveredWorkflowWithContent)[]> {
     const workflows: (DiscoveredWorkflow | DiscoveredWorkflowWithContent)[] = [];
@@ -441,18 +499,32 @@ export class CanvasDiscovery {
           // Extract referenced spans from workflow content
           const edgeResult = deriveWorkflowEdges(parsedContent, path);
 
-          // Convert span patterns to ReferencedSpan objects with labels
+          // Convert span patterns to ReferencedSpan objects with labels and scopes
           const referencedSpans: ReferencedSpan[] = edgeResult.referencedSpans.map(
-            (pattern) => ({
-              pattern,
-              label: spanLabelLookup.get(pattern),
-            })
+            (pattern) => {
+              const spanInfo = spanLookup.get(pattern);
+              return {
+                pattern,
+                label: spanInfo?.label,
+                scope: spanInfo?.scope,
+              };
+            }
           );
+
+          // Derive workflow instrumentation scope from rootSpan's scope
+          const rootSpan = parsedContent.rootSpan as string | undefined;
+          const rootSpanInfo = rootSpan ? spanLookup.get(rootSpan) : undefined;
+          const instrumentationScope = rootSpanInfo?.scope;
+          const instrumentationScopeLabel = instrumentationScope
+            ? scopeLabelLookup.get(instrumentationScope)
+            : undefined;
 
           workflow = {
             ...workflow,
             content: parsedContent,
             referencedSpans,
+            instrumentationScope,
+            instrumentationScopeLabel,
           } as DiscoveredWorkflowWithContent;
         } catch (error) {
           errors.push({
@@ -944,6 +1016,73 @@ export class CanvasDiscovery {
           errors.push({
             path: canvas.path,
             error: 'DEPRECATED: Flat .otel.canvas files are no longer supported. .otel.canvas files must use the storyboard structure (.principal-views/storyboard-name/storyboard-name.otel.canvas). For static documentation, use .canvas files instead.',
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * Validate scope hierarchy for hierarchical filtering
+   *
+   * Validates:
+   * 1. Workflow rootSpan exists in spans.canvas
+   * 2. Span conventions have otel.scope defined
+   * 3. Scope references exist in scopes.canvas (warning)
+   */
+  private validateScopeHierarchy(
+    storyboards: (DiscoveredStoryboard | DiscoveredStoryboardWithContent)[],
+    spanLookup: SpanLookup,
+    scopeLabelLookup: ScopeLabelLookup,
+    errors: Array<{ path: string; error: string }>
+  ): void {
+    // Track scopes that have been warned about (to avoid duplicate warnings)
+    const warnedScopes = new Set<string>();
+
+    for (const storyboard of storyboards) {
+      // Only validate otel storyboards
+      if (storyboard.canvas.type !== 'otel') continue;
+
+      for (const workflow of storyboard.workflows) {
+        const workflowWithContent = workflow as DiscoveredWorkflowWithContent;
+        const content = workflowWithContent.content;
+        if (!content) continue;
+
+        const rootSpan = content.rootSpan as string | undefined;
+        if (!rootSpan) continue;
+
+        // 1. Validate rootSpan exists in spans.canvas
+        const rootSpanInfo = spanLookup.get(rootSpan);
+        if (!rootSpanInfo) {
+          errors.push({
+            path: workflow.path,
+            error:
+              `Workflow "${workflow.basename}" has rootSpan "${rootSpan}" but no matching span convention ` +
+              `was found in spans.canvas. Add an otel-span-convention node with spanPattern: "${rootSpan}".`,
+          });
+          continue; // Skip further validation for this workflow
+        }
+
+        // 2. Validate span convention has otel.scope defined
+        if (!rootSpanInfo.scope) {
+          errors.push({
+            path: workflow.path,
+            error:
+              `Span convention "${rootSpan}" in spans.canvas does not declare a scope. ` +
+              `Add otel.scope to specify which instrumentation scope creates this span.`,
+          });
+          continue; // Skip further validation for this workflow
+        }
+
+        // 3. Warn if scope doesn't exist in scopes.canvas
+        const scopeName = rootSpanInfo.scope;
+        if (!scopeLabelLookup.has(scopeName) && !warnedScopes.has(scopeName)) {
+          warnedScopes.add(scopeName);
+          errors.push({
+            path: workflow.path,
+            error:
+              `Span convention "${rootSpan}" references scope "${scopeName}" but no matching ` +
+              `otel-scope node was found in scopes.canvas. Consider adding it for documentation.`,
           });
         }
       }
