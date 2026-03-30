@@ -209,10 +209,6 @@ export class LocalRegistry implements StoryboardRegistryInterface {
     }
 
     // Build VersionSnapshot from FileTree
-    console.log('[LocalRegistry] Building snapshot from FileTree:', {
-      scopeName: scope.name,
-      workspaceId,
-    });
     const snapshot = await this.buildFromFileTree(workspace.fileTree);
 
     // Cache it
@@ -302,35 +298,6 @@ export class LocalRegistry implements StoryboardRegistryInterface {
         isLocal: true,
       },
     };
-
-    // Count workflows and check content loading
-    let totalWorkflows = 0;
-    let workflowsWithContent = 0;
-    const workflowDetails: Array<{ storyboard: string; workflow: string; hasContent: boolean; spanPattern?: string }> = [];
-
-    for (const storyboard of discoveryResult.storyboards) {
-      for (const workflow of storyboard.workflows) {
-        totalWorkflows++;
-        const hasContent = (workflow as { content?: unknown }).content !== undefined;
-        if (hasContent) workflowsWithContent++;
-        workflowDetails.push({
-          storyboard: storyboard.id,
-          workflow: workflow.id,
-          hasContent,
-          spanPattern: hasContent ? (workflow as { content?: { spanPattern?: string } }).content?.spanPattern : undefined,
-        });
-      }
-    }
-
-    console.log('[LocalRegistry] Built snapshot from FileTree:', {
-      sha: fileTree.sha,
-      storyboards: discoveryResult.storyboards.length,
-      totalWorkflows,
-      workflowsWithContent,
-      errors: discoveryResult.errors.length,
-    });
-
-    console.log('[LocalRegistry] Workflow details:', workflowDetails);
 
     // Log errors if any
     if (discoveryResult.errors.length > 0) {

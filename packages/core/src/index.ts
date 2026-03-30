@@ -279,6 +279,8 @@ export type {
   DiscoveredTestTrace,
   DiscoveredWorkflow,
   DiscoveredStoryboard,
+  DiscoveredDashboard,
+  ReferencedSpan,
   CanvasDiscoveryResult,
   DiscoveryOptions,
   CanvasType,
@@ -287,6 +289,7 @@ export type {
   DiscoveredTestTraceWithContent,
   DiscoveredWorkflowWithContent,
   DiscoveredStoryboardWithContent,
+  DiscoveredDashboardWithContent,
   CanvasDiscoveryResultWithContent,
   // File manifest types
   CanvasFileRole,

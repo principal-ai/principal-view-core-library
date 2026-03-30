@@ -13,6 +13,9 @@ import type { WorkflowTemplate } from '../workflow/types';
  * - 'resources': Resources canvas (.resources.canvas) for documenting OTel resources
  * - 'spans': Spans canvas (.spans.canvas) for documenting span conventions
  * - 'regular': Regular canvas (.canvas) for documentation/architecture diagrams
+ *
+ * Note: Dashboards (.dashboard.json) are NOT canvases - they live in .principal-views/dashboards/
+ * and are discovered separately as DiscoveredDashboard.
  */
 export type CanvasType = 'otel' | 'scopes' | 'resources' | 'spans' | 'regular';
 
@@ -71,6 +74,34 @@ export interface DiscoveredTestTrace {
   packagePath?: string;
   /** Whether this is from repo root vs package */
   scope: 'root' | 'package';
+}
+
+/**
+ * Discovered dashboard file in .principal-views/dashboards/
+ */
+export interface DiscoveredDashboard {
+  /** Unique ID with package prefix (e.g., "core/auth-health" or "auth-health") */
+  id: string;
+  /** Display name (Title Case from basename) */
+  name: string;
+  /** Full relative path from repo root */
+  path: string;
+  /** Dashboard basename (without .dashboard.json extension) */
+  basename: string;
+  /** Package name if in a package */
+  packageName?: string;
+  /** Package path if in a package */
+  packagePath?: string;
+  /** Whether this is from repo root vs package */
+  scope: 'root' | 'package';
+}
+
+/**
+ * Discovered dashboard with parsed content
+ */
+export interface DiscoveredDashboardWithContent extends DiscoveredDashboard {
+  /** Parsed dashboard content (only when includeContent: true) */
+  content: import('../types/dashboard').DashboardDefinition;
 }
 
 /**
@@ -147,6 +178,8 @@ export interface CanvasDiscoveryResult {
   testTraces: DiscoveredTestTrace[];
   /** All discovered storyboards (hierarchical organization of canvas + workflows + test traces) */
   storyboards: DiscoveredStoryboard[];
+  /** All discovered dashboard files from .principal-views/dashboards/ */
+  dashboards: DiscoveredDashboard[];
   /** Any errors encountered during discovery */
   errors: Array<{ path: string; error: string }>;
   /** Deprecation warnings for legacy structures */
@@ -221,6 +254,7 @@ export interface CanvasDiscoveryResultWithContent {
   canvases: (DiscoveredCanvas | DiscoveredCanvasWithContent)[];
   testTraces: (DiscoveredTestTrace | DiscoveredTestTraceWithContent)[];
   storyboards: (DiscoveredStoryboard | DiscoveredStoryboardWithContent)[];
+  dashboards: (DiscoveredDashboard | DiscoveredDashboardWithContent)[];
   errors: Array<{ path: string; error: string }>;
   warnings: Array<{ path: string; message: string; type: 'deprecation' }>;
 }

@@ -2875,15 +2875,20 @@ export function createValidateCommand(): Command {
           ? discoveryResult.testTraces
           : [];
 
+        // Dashboards are always validated when canvases are validated
+        const dashboards = validateCanvases
+          ? discoveryResult.dashboards
+          : [];
+
         // Check if any files were found
         const canvasCount = discoveryResult.canvases.length;
-        const totalFiles = canvasCount + workflows.length + testTraces.length;
+        const totalFiles = canvasCount + workflows.length + testTraces.length + dashboards.length;
         if (totalFiles === 0) {
           if (options.json) {
             console.log(JSON.stringify({
               files: [],
               discoveryErrors: discoveryResult.errors,
-              summary: { total: 0, valid: 0, invalid: 0, byType: { canvas: 0, workflow: 0, testTrace: 0, library: 0 } }
+              summary: { total: 0, valid: 0, invalid: 0, byType: { canvas: 0, workflow: 0, testTrace: 0, library: 0, dashboard: 0 } }
             }));
           } else {
             console.log(chalk.yellow('No Principal View files found.'));
@@ -3141,6 +3146,13 @@ export function createValidateCommand(): Command {
             if (validationResult.canvas) {
               parsedCanvases.set(canvas.path, validationResult.canvas);
             }
+          }
+
+          // Validate dashboard files from .principal-views/dashboards/
+          for (const dashboard of dashboards) {
+            const absolutePath = resolve(repositoryPath, dashboard.path);
+            const validationResult = validateDashboard(absolutePath, repositoryPath);
+            results.push(validationResult);
           }
         }
 

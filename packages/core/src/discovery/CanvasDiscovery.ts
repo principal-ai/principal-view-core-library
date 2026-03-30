@@ -13,6 +13,8 @@ import type {
   DiscoveredWorkflowWithContent,
   DiscoveredStoryboard,
   DiscoveredStoryboardWithContent,
+  DiscoveredDashboard,
+  DiscoveredDashboardWithContent,
   CanvasDiscoveryResult,
   DiscoveryOptions,
   CanvasType,
@@ -131,18 +133,22 @@ export class CanvasDiscovery {
       }
     }
 
-    // 6. Detect legacy flat canvas structures and add deprecation errors
+    // 6. Discover dashboard files from .principal-views/dashboards/
+    const dashboards = await this.discoverDashboards(fileTree, packageMap, options, errors);
+
+    // 7. Detect legacy flat canvas structures and add deprecation errors
     this.detectLegacyStructures(canvases, storyboards, errors);
 
-    // 7. Validate required canvas types
+    // 8. Validate required canvas types
     this.validateRequiredCanvases(canvases, storyboards, errors);
 
-    // 8. Sort results
+    // 9. Sort results
     canvases.sort(this.compareByPackageThenName);
     testTraces.sort(this.compareByPackageThenName);
     storyboards.sort(this.compareByPackageThenName);
+    dashboards.sort(this.compareByPackageThenName);
 
-    return { canvases, testTraces, storyboards, errors, warnings };
+    return { canvases, testTraces, storyboards, dashboards, errors, warnings };
   }
 
   /**
@@ -702,14 +708,6 @@ export class CanvasDiscovery {
       };
     }
 
-    // Check for .dashboard.json (dashboard definition files)
-    if (filename.endsWith('.dashboard.json')) {
-      return {
-        basename: filename.replace(/\.dashboard\.json$/, ''),
-        type: 'dashboard',
-      };
-    }
-
     // Check for .otel.canvas (must come before .canvas check)
     if (filename.endsWith('.otel.canvas')) {
       return {
@@ -777,8 +775,8 @@ export class CanvasDiscovery {
    * Sort by package then name
    */
   private compareByPackageThenName(
-    a: DiscoveredCanvas | DiscoveredTestTrace | DiscoveredStoryboard,
-    b: DiscoveredCanvas | DiscoveredTestTrace | DiscoveredStoryboard
+    a: DiscoveredCanvas | DiscoveredTestTrace | DiscoveredStoryboard | DiscoveredDashboard,
+    b: DiscoveredCanvas | DiscoveredTestTrace | DiscoveredStoryboard | DiscoveredDashboard
   ): number {
     // Package files first, then root
     if (a.packageName && !b.packageName) return -1;
@@ -849,6 +847,73 @@ export class CanvasDiscovery {
           'Create a storyboard with an .otel.canvas file (e.g., .principal-views/my-feature/my-feature.otel.canvas) documenting events for a specific feature.',
       });
     }
+  }
+
+  /**
+   * Discover dashboard files from .principal-views/dashboards/ folder
+   */
+  private async discoverDashboards(
+    fileTree: FileTree,
+    packageMap: Map<string, PackageLayer>,
+    options: DiscoveryOptions,
+    errors: Array<{ path: string; error: string }>
+  ): Promise<(DiscoveredDashboard | DiscoveredDashboardWithContent)[]> {
+    const dashboards: (DiscoveredDashboard | DiscoveredDashboardWithContent)[] = [];
+
+    for (const file of fileTree.allFiles) {
+      const path = file.relativePath || file.path || '';
+
+      // Only look for .dashboard.json files in dashboards/ folder
+      if (!path.endsWith(CanvasDiscovery.DASHBOARD_EXTENSION)) continue;
+
+      // Must be in .principal-views/dashboards/ folder
+      const parts = path.split('/');
+      const pvIndex = parts.indexOf(CanvasDiscovery.CANVAS_DIR);
+      if (pvIndex === -1) continue;
+
+      // Check if it's in the dashboards/ folder (directly after .principal-views/)
+      const nextPart = parts[pvIndex + 1];
+      if (nextPart !== 'dashboards') continue;
+
+      const filename = parts[parts.length - 1];
+      const basename = filename.replace(/\.dashboard\.json$/, '');
+
+      // Determine package context
+      const packageInfo = this.findPackageForPath(path, packageMap);
+
+      // Generate unique ID
+      const id = packageInfo
+        ? `${packageInfo.packageData.name}/${basename}`
+        : basename;
+
+      const dashboard: DiscoveredDashboard = {
+        id,
+        name: this.toDisplayName(basename),
+        path,
+        basename,
+        packageName: packageInfo?.packageData.name,
+        packagePath: packageInfo?.packageData.path,
+        scope: packageInfo ? 'package' : 'root',
+      };
+
+      // Optionally load content
+      if (options.includeContent && options.fileReader) {
+        try {
+          const content = await options.fileReader(path);
+          const parsed = JSON.parse(content);
+          (dashboard as DiscoveredDashboardWithContent).content = parsed;
+        } catch (e) {
+          errors.push({
+            path,
+            error: `Failed to parse dashboard: ${e instanceof Error ? e.message : String(e)}`,
+          });
+        }
+      }
+
+      dashboards.push(dashboard);
+    }
+
+    return dashboards;
   }
 
   /**
