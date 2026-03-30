@@ -7,7 +7,7 @@ import { basename } from 'node:path';
 /**
  * File types recognized by the CLI
  */
-export type FileType = 'canvas' | 'workflow' | 'testTrace' | 'library' | 'unknown';
+export type FileType = 'canvas' | 'workflow' | 'testTrace' | 'library' | 'dashboard' | 'unknown';
 
 /**
  * Determine file type based on naming convention
@@ -23,6 +23,9 @@ export function determineFileType(filePath: string): FileType {
   }
   if (name.endsWith('.workflow.json')) {
     return 'workflow';
+  }
+  if (name.endsWith('.dashboard.json')) {
+    return 'dashboard';
   }
   if (name.endsWith('.otel.json')) {
     return 'testTrace';

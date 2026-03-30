@@ -350,6 +350,14 @@ export type {
   ExecutionValidationResult,
 } from './execution/ExecutionValidator';
 
+// Export dashboard validation (browser-safe - no Node.js dependencies)
+export { DashboardValidator, createDashboardValidator } from './dashboard';
+export type {
+  DashboardValidationError,
+  DashboardValidationResult,
+  DashboardValidationContext,
+} from './dashboard';
+
 // Export telemetry coverage analysis (browser-safe - uses FileTree abstraction)
 export { analyzeCoverage } from './telemetry/coverage';
 export type {

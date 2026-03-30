@@ -186,6 +186,14 @@ export type {
   ExecutionValidationResult,
 } from './execution/ExecutionValidator';
 
+// Export dashboard validation
+export { DashboardValidator, createDashboardValidator } from './dashboard';
+export type {
+  DashboardValidationError,
+  DashboardValidationResult,
+  DashboardValidationContext,
+} from './dashboard';
+
 // Export execution loading (Node.js only - file system)
 export { ExecutionLoader, createExecutionLoader } from './execution/ExecutionLoader';
 export type {

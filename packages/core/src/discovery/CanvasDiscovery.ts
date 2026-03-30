@@ -16,8 +16,14 @@ import type {
   CanvasDiscoveryResult,
   DiscoveryOptions,
   CanvasType,
+  ReferencedSpan,
 } from './types';
 import { deriveWorkflowEdges } from '../workflow/edge-derivation';
+import type { ExtendedCanvas } from '../types/canvas';
+import { isOtelSpanConventionNode } from '../types/canvas';
+
+/** Lookup map from span pattern to display label */
+type SpanLabelLookup = Map<string, string>;
 
 /**
  * Unified discovery system for canvas and execution files in a package-aware way
@@ -54,6 +60,40 @@ export class CanvasDiscovery {
   }
 
   /**
+   * Build a lookup map from span pattern to display label from spans.canvas files
+   *
+   * @param canvases - Discovered canvases (must include content for spans.canvas)
+   * @returns Map of spanPattern → label
+   */
+  private buildSpanLabelLookup(
+    canvases: (DiscoveredCanvas | DiscoveredCanvasWithContent)[]
+  ): SpanLabelLookup {
+    const lookup: SpanLabelLookup = new Map();
+
+    for (const canvas of canvases) {
+      // Only process spans.canvas files with content
+      if (canvas.type !== 'spans') continue;
+
+      const canvasWithContent = canvas as DiscoveredCanvasWithContent;
+      const content = canvasWithContent.content as ExtendedCanvas | undefined;
+      if (!content?.nodes) continue;
+
+      // Extract span patterns and labels from otel-span-convention nodes
+      for (const node of content.nodes) {
+        if (isOtelSpanConventionNode(node)) {
+          const spanPattern = node.otel.spanPattern;
+          const label = node.label;
+          if (spanPattern && label) {
+            lookup.set(spanPattern, label);
+          }
+        }
+      }
+    }
+
+    return lookup;
+  }
+
+  /**
    * Discover all canvas, workflow, and test trace files in the file tree
    *
    * @param fileTree - FileTree from repository-abstraction
@@ -76,9 +116,12 @@ export class CanvasDiscovery {
     // 3. Discover canvas files
     const canvases = await this.discoverCanvasFiles(fileTree, packageMap, options, errors);
 
+    // 3.5. Build span label lookup from spans.canvas files (for enriching workflow referencedSpans)
+    const spanLabelLookup = this.buildSpanLabelLookup(canvases);
+
     // 4. Discover storyboards (hierarchical organization)
     // Note: Test traces are discovered as part of workflows, not separately
-    const storyboards = await this.discoverStoryboards(fileTree, packageMap, canvases, options, errors);
+    const storyboards = await this.discoverStoryboards(fileTree, packageMap, canvases, options, errors, spanLabelLookup);
 
     // 5. Collect all test traces from workflows for backward compatibility
     const testTraces: (DiscoveredTestTrace | DiscoveredTestTraceWithContent)[] = [];
@@ -205,7 +248,8 @@ export class CanvasDiscovery {
     packageMap: Map<string, PackageLayer>,
     canvases: DiscoveredCanvas[],
     options: DiscoveryOptions,
-    errors: Array<{ path: string; error: string }>
+    errors: Array<{ path: string; error: string }>,
+    spanLabelLookup: SpanLabelLookup
   ): Promise<(DiscoveredStoryboard | DiscoveredStoryboardWithContent)[]> {
     const storyboards: (DiscoveredStoryboard | DiscoveredStoryboardWithContent)[] = [];
 
@@ -252,6 +296,7 @@ export class CanvasDiscovery {
           storyboardName,
           packageMap,
           options,
+          spanLabelLookup,
           errors
         );
 
@@ -327,6 +372,7 @@ export class CanvasDiscovery {
     storyboardName: string,
     packageMap: Map<string, PackageLayer>,
     options: DiscoveryOptions,
+    spanLabelLookup: SpanLabelLookup,
     errors: Array<{ path: string; error: string }>
   ): Promise<(DiscoveredWorkflow | DiscoveredWorkflowWithContent)[]> {
     const workflows: (DiscoveredWorkflow | DiscoveredWorkflowWithContent)[] = [];
@@ -388,7 +434,14 @@ export class CanvasDiscovery {
 
           // Extract referenced spans from workflow content
           const edgeResult = deriveWorkflowEdges(parsedContent, path);
-          const referencedSpans = edgeResult.referencedSpans;
+
+          // Convert span patterns to ReferencedSpan objects with labels
+          const referencedSpans: ReferencedSpan[] = edgeResult.referencedSpans.map(
+            (pattern) => ({
+              pattern,
+              label: spanLabelLookup.get(pattern),
+            })
+          );
 
           workflow = {
             ...workflow,

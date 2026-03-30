@@ -16,8 +16,8 @@ import { readFile } from 'node:fs/promises';
 import chalk from 'chalk';
 import { globby } from 'globby';
 import yaml from 'js-yaml';
-import type { ExtendedCanvas, WorkflowTemplate, ExecutionData, ComponentLibrary as CoreComponentLibrary } from '@principal-ai/principal-view-core';
-import { createExecutionValidator, validateLibraryStructure } from '@principal-ai/principal-view-core';
+import type { ExtendedCanvas, WorkflowTemplate, ExecutionData, ComponentLibrary as CoreComponentLibrary, DashboardDefinition } from '@principal-ai/principal-view-core';
+import { createExecutionValidator, validateLibraryStructure, createDashboardValidator } from '@principal-ai/principal-view-core';
 import { CanvasDiscovery, LibraryDiscovery, createWorkflowValidator, EventRegistry, WorkflowValidator } from '@principal-ai/principal-view-core/node';
 import type { ComponentLibrary } from '@principal-ai/principal-view-core';
 import { FilesystemService, NodeFileSystemAdapter as CompositionFsAdapter } from '@principal-ai/codebase-composition/node';
@@ -32,7 +32,7 @@ interface ValidationIssue {
 
 interface ValidationResult {
   file: string;
-  fileType: 'canvas' | 'workflow' | 'testTrace' | 'library';
+  fileType: 'canvas' | 'workflow' | 'testTrace' | 'library' | 'dashboard';
   isValid: boolean;
   issues: ValidationIssue[];
   canvas?: ExtendedCanvas;
@@ -2319,6 +2319,64 @@ The workflow's 'canvas' field should point to the canvas this trace validates ag
 }
 
 /**
+ * Validate a .dashboard.json file
+ */
+function validateDashboard(
+  filePath: string,
+  repositoryPath: string
+): ValidationResult {
+  const relativePath = relative(repositoryPath, filePath);
+
+  if (!existsSync(filePath)) {
+    return {
+      file: relativePath,
+      fileType: 'dashboard',
+      isValid: false,
+      issues: [{ type: 'error', message: `File not found: ${filePath}` }],
+    };
+  }
+
+  try {
+    const content = readFileSync(filePath, 'utf8');
+    const data = JSON.parse(content);
+
+    // Validate using dashboard validator
+    const validator = createDashboardValidator();
+    const result = validator.validate(data, relativePath);
+
+    // Convert dashboard validation result to validation issues
+    const issues: ValidationIssue[] = [
+      ...result.errors.map(e => ({
+        type: 'error' as const,
+        message: e.message,
+        path: e.path,
+        suggestion: e.suggestion,
+      })),
+      ...result.warnings.map(w => ({
+        type: 'warning' as const,
+        message: w.message,
+        path: w.path,
+        suggestion: w.suggestion,
+      })),
+    ];
+
+    return {
+      file: relativePath,
+      fileType: 'dashboard',
+      isValid: result.valid,
+      issues,
+    };
+  } catch (error) {
+    return {
+      file: relativePath,
+      fileType: 'dashboard',
+      isValid: false,
+      issues: [{ type: 'error', message: `Failed to validate: ${(error as Error).message}` }],
+    };
+  }
+}
+
+/**
  * Validate a single .canvas file
  */
 function validateFile(
@@ -2380,6 +2438,7 @@ function outputResults(
     workflow: allResults.filter(r => r.fileType === 'workflow'),
     testTrace: allResults.filter(r => r.fileType === 'testTrace'),
     library: allResults.filter(r => r.fileType === 'library'),
+    dashboard: allResults.filter(r => r.fileType === 'dashboard'),
   };
 
   if (options.json) {
@@ -2396,6 +2455,7 @@ function outputResults(
               workflow: byType.workflow.length,
               testTrace: byType.testTrace.length,
               library: byType.library.length,
+              dashboard: byType.dashboard.length,
             },
           },
         },
@@ -2410,6 +2470,7 @@ function outputResults(
       if (byType.workflow.length > 0) counts.push(`${byType.workflow.length} workflow`);
       if (byType.testTrace.length > 0) counts.push(`${byType.testTrace.length} test trace`);
       if (byType.library.length > 0) counts.push(`${byType.library.length} library`);
+      if (byType.dashboard.length > 0) counts.push(`${byType.dashboard.length} dashboard`);
 
       console.log(chalk.bold(`\nValidating ${counts.join(', ')} file(s)...\n`));
     }
@@ -2453,6 +2514,7 @@ function outputResults(
     outputByType('Canvas', byType.canvas);
     outputByType('Workflow', byType.workflow);
     outputByType('Test Trace', byType.testTrace);
+    outputByType('Dashboard', byType.dashboard);
 
     // Summary
     if (invalidCount === 0) {
@@ -2532,6 +2594,7 @@ export function createValidateCommand(): Command {
           const workflowFiles: string[] = [];
           const canvasFiles: string[] = [];
           const testTraceFiles: string[] = [];
+          const dashboardFiles: string[] = [];
           let libraryFile: string | null = null;
 
           // First pass: categorize files and build workflow event map
@@ -2584,6 +2647,8 @@ export function createValidateCommand(): Command {
               }
             } else if (fileType === 'testTrace') {
               testTraceFiles.push(absolutePath);
+            } else if (fileType === 'dashboard') {
+              dashboardFiles.push(absolutePath);
             } else if (fileType === 'library') {
               libraryFile = file;
             }
@@ -2683,7 +2748,12 @@ export function createValidateCommand(): Command {
             results.push(validateExecution(absolutePath, repositoryPath));
           }
 
-          // PHASE 5: Validate library
+          // PHASE 5: Validate dashboards
+          for (const absolutePath of dashboardFiles) {
+            results.push(validateDashboard(absolutePath, repositoryPath));
+          }
+
+          // PHASE 6: Validate library
           if (libraryFile && library) {
             const libraryIssues = validateLibrary(library);
             const libraryHasErrors = libraryIssues.some((i) => i.type === 'error');
