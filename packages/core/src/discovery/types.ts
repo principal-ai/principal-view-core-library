@@ -112,6 +112,8 @@ export interface ReferencedSpan {
   pattern: string;
   /** Display label from the spans.canvas node, if found */
   label?: string;
+  /** Instrumentation scope from the spans.canvas node otel.scope, if found */
+  scope?: string;
 }
 
 /**
@@ -142,6 +144,20 @@ export interface DiscoveredWorkflow {
    * Only populated when includeContent: true during discovery.
    */
   referencedSpans?: ReferencedSpan[];
+
+  /**
+   * The instrumentation scope this workflow belongs to.
+   * Derived from the rootSpan's scope in spans.canvas.
+   * Only populated when includeContent: true during discovery.
+   */
+  instrumentationScope?: string;
+
+  /**
+   * Display label for the workflow's instrumentation scope.
+   * Resolved from scopes.canvas using the scope name.
+   * Only populated when includeContent: true during discovery.
+   */
+  instrumentationScopeLabel?: string;
 }
 
 /**

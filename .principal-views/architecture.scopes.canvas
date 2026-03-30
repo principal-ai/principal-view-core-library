@@ -1,0 +1,47 @@
+{
+  "pv": {
+    "name": "Principal View CLI Scopes",
+    "version": "1.0.0",
+    "description": "Instrumentation scopes for the Principal View CLI",
+    "markdown": ".principal-views/architecture.scopes.md"
+  },
+  "nodes": [
+    {
+      "id": "scope-cli",
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 280,
+      "height": 120,
+      "color": "#6366F1",
+      "text": "**principal-view.cli**\n\nCLI tool instrumentation scope covering all command operations, validation, discovery, and file parsing.",
+      "pv": {
+        "otel": {
+          "scope": "principal-view.cli"
+        }
+      }
+    },
+    {
+      "id": "operations",
+      "type": "text",
+      "x": 350,
+      "y": 0,
+      "width": 280,
+      "height": 120,
+      "color": "#22C55E",
+      "text": "**Operations**\n\n- validate\n- discover\n- parse\n- file operations"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "fromNode": "scope-cli",
+      "fromSide": "right",
+      "toNode": "operations",
+      "toSide": "left",
+      "pv": {
+        "edgeType": "data-flow"
+      }
+    }
+  ]
+}
