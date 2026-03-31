@@ -37,6 +37,19 @@ export type {
   PendingChanges,
 } from './components/GraphRenderer';
 
+export { SequenceDiagramRenderer } from './components/SequenceDiagramRenderer';
+export type { SequenceDiagramRendererProps } from './components/SequenceDiagramRenderer';
+
+export { useSequenceLayout } from './hooks/useSequenceLayout';
+export type {
+  SequenceEvent,
+  SequenceEdge,
+  Swimlane,
+  NamespaceStrategy,
+  UseSequenceLayoutOptions,
+  UseSequenceLayoutResult,
+} from './hooks/useSequenceLayout';
+
 export { MultiCanvasRenderer, mergeCanvases, parseNodeId } from './components/MultiCanvasRenderer';
 export type {
   MultiCanvasRendererProps,
