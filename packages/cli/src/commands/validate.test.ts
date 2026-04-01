@@ -10,7 +10,10 @@ import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
 /**
  * Test helper to validate a canvas and return issues
  */
-function validateCanvasColor(canvas: ExtendedCanvas, library: { nodeComponents: Record<string, { color?: string }> } | null = null): Array<{ type: 'error' | 'warning'; message: string }> {
+function validateCanvasColor(
+  canvas: ExtendedCanvas,
+  library: { nodeComponents: Record<string, { color?: string }> } | null = null
+): Array<{ type: 'error' | 'warning'; message: string }> {
   const issues: Array<{ type: 'error' | 'warning'; message: string }> = [];
 
   if (!canvas || typeof canvas !== 'object') {
@@ -524,26 +527,17 @@ function validateNodeTypeForCanvasType(
 describe('validate command - nodeType enforcement per canvas type', () => {
   describe('resources.canvas', () => {
     test('should accept nodeType "resource"', () => {
-      const issues = validateNodeTypeForCanvasType(
-        '.principal-views/resources.canvas',
-        'resource'
-      );
+      const issues = validateNodeTypeForCanvasType('.principal-views/resources.canvas', 'resource');
       expect(issues).toHaveLength(0);
     });
 
     test('should accept nodeType "scope"', () => {
-      const issues = validateNodeTypeForCanvasType(
-        '.principal-views/resources.canvas',
-        'scope'
-      );
+      const issues = validateNodeTypeForCanvasType('.principal-views/resources.canvas', 'scope');
       expect(issues).toHaveLength(0);
     });
 
     test('should reject nodeType "event"', () => {
-      const issues = validateNodeTypeForCanvasType(
-        '.principal-views/resources.canvas',
-        'event'
-      );
+      const issues = validateNodeTypeForCanvasType('.principal-views/resources.canvas', 'event');
       expect(issues).toHaveLength(1);
       expect(issues[0].type).toBe('error');
       expect(issues[0].message).toContain('invalid nodeType "event"');
@@ -708,9 +702,7 @@ describe('validate command - spans.canvas ↔ workflow.json cross-validation', (
 
   test('should error when draft span convention has a workflow', () => {
     const issues = validateSpansWorkflowCrossRef(
-      [
-        { spanPattern: 'cli.command', status: 'draft' },
-      ],
+      [{ spanPattern: 'cli.command', status: 'draft' }],
       ['cli.command']
     );
     expect(issues).toHaveLength(1);
@@ -722,10 +714,10 @@ describe('validate command - spans.canvas ↔ workflow.json cross-validation', (
   test('should handle mixed scenarios correctly', () => {
     const issues = validateSpansWorkflowCrossRef(
       [
-        { spanPattern: 'cli.command', status: 'implemented' },  // has workflow - OK
-        { spanPattern: 'validate.*', status: 'implemented' },   // no workflow - ERROR
-        { spanPattern: 'discover.*', status: 'draft' },         // no workflow - OK
-        { spanPattern: 'parse.*', status: 'draft' },            // has workflow - ERROR
+        { spanPattern: 'cli.command', status: 'implemented' }, // has workflow - OK
+        { spanPattern: 'validate.*', status: 'implemented' }, // no workflow - ERROR
+        { spanPattern: 'discover.*', status: 'draft' }, // no workflow - OK
+        { spanPattern: 'parse.*', status: 'draft' }, // has workflow - ERROR
       ],
       ['cli.command', 'parse.*']
     );
@@ -764,18 +756,12 @@ describe('validate command - workflows require spans.canvas', () => {
   });
 
   test('should pass when workflows have spanPattern and spans.canvas exists', () => {
-    const issues = validateWorkflowsRequireSpansCanvas(
-      ['cli.command', 'validate.*'],
-      true
-    );
+    const issues = validateWorkflowsRequireSpansCanvas(['cli.command', 'validate.*'], true);
     expect(issues).toHaveLength(0);
   });
 
   test('should error when workflow has spanPattern but no spans.canvas', () => {
-    const issues = validateWorkflowsRequireSpansCanvas(
-      ['cli.command'],
-      false
-    );
+    const issues = validateWorkflowsRequireSpansCanvas(['cli.command'], false);
     expect(issues).toHaveLength(1);
     expect(issues[0].type).toBe('error');
     expect(issues[0].message).toContain('cli.command');
@@ -811,11 +797,8 @@ function spanPatternMatches(conventionPattern: string, workflowPattern: string):
 /**
  * Test helper to find matching workflows with wildcard support
  */
-function findMatchingWorkflows(
-  conventionPattern: string,
-  workflowPatterns: string[]
-): string[] {
-  return workflowPatterns.filter(wp => spanPatternMatches(conventionPattern, wp));
+function findMatchingWorkflows(conventionPattern: string, workflowPatterns: string[]): string[] {
+  return workflowPatterns.filter((wp) => spanPatternMatches(conventionPattern, wp));
 }
 
 /**
@@ -912,10 +895,10 @@ describe('validate command - spans-workflow cross-validation with wildcards', ()
   test('should handle mixed exact and wildcard patterns', () => {
     const issues = validateSpansWorkflowCrossRefWithWildcards(
       [
-        { spanPattern: 'cli.request', status: 'implemented' },  // exact match - OK
-        { spanPattern: 'task.*', status: 'implemented' },       // wildcard match - OK
-        { spanPattern: 'milestone.*', status: 'draft' },        // draft with matches - ERROR
-        { spanPattern: 'search.*', status: 'implemented' },     // no matches - ERROR
+        { spanPattern: 'cli.request', status: 'implemented' }, // exact match - OK
+        { spanPattern: 'task.*', status: 'implemented' }, // wildcard match - OK
+        { spanPattern: 'milestone.*', status: 'draft' }, // draft with matches - ERROR
+        { spanPattern: 'search.*', status: 'implemented' }, // no matches - ERROR
       ],
       ['cli.request', 'task.create', 'task.edit', 'milestone.create']
     );
@@ -947,7 +930,9 @@ describe('validate command - span text should not echo spanPattern', () => {
   });
 
   test('should allow descriptive headers that differ from spanPattern', () => {
-    expect(spanTextEchoesPattern('# CLI Request Handler\n\nDescription', 'cli.request')).toBe(false);
+    expect(spanTextEchoesPattern('# CLI Request Handler\n\nDescription', 'cli.request')).toBe(
+      false
+    );
     expect(spanTextEchoesPattern('# Task Operations\n\nTask management', 'task.*')).toBe(false);
     expect(spanTextEchoesPattern('# Entry Point\n\nMain entry', 'cli.request')).toBe(false);
   });
@@ -960,5 +945,154 @@ describe('validate command - span text should not echo spanPattern', () => {
   test('should handle text without proper header', () => {
     expect(spanTextEchoesPattern('No header here', 'cli.request')).toBe(false);
     expect(spanTextEchoesPattern('cli.request without hash', 'cli.request')).toBe(false);
+  });
+});
+
+interface NodeRect {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function rectanglesIntersect(a: NodeRect, b: NodeRect): boolean {
+  return !(
+    a.x + a.width <= b.x ||
+    b.x + b.width <= a.x ||
+    a.y + a.height <= b.y ||
+    b.y + b.height <= a.y
+  );
+}
+
+function nodeContains(
+  outer: { x: number; y: number; width: number; height: number },
+  inner: { x: number; y: number; width: number; height: number }
+): boolean {
+  return (
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.width <= outer.x + outer.width &&
+    inner.y + inner.height <= outer.y + outer.height
+  );
+}
+
+function findContainingTextNodes(
+  nodes: Array<{ id: string; type: string; x: number; y: number; width: number; height: number }>
+): Array<{ textNodeId: string; containedIds: string[] }> {
+  const results: Array<{ textNodeId: string; containedIds: string[] }> = [];
+
+  for (const textNode of nodes) {
+    if (textNode.type !== 'text') continue;
+
+    const contained = nodes.filter(
+      (other) => other.id !== textNode.id && other.type !== 'text' && nodeContains(textNode, other)
+    );
+
+    if (contained.length > 0) {
+      results.push({ textNodeId: textNode.id, containedIds: contained.map((n) => n.id) });
+    }
+  }
+
+  return results;
+}
+
+describe('validate command - text nodes containing other nodes', () => {
+  test('should detect text node containing another node', () => {
+    const nodes = [
+      { id: 'container', type: 'text', x: 0, y: 0, width: 300, height: 200 },
+      { id: 'child1', type: 'otel-event', x: 50, y: 50, width: 100, height: 50 },
+    ];
+
+    const results = findContainingTextNodes(nodes);
+    expect(results).toHaveLength(1);
+    expect(results[0]).toEqual({ textNodeId: 'container', containedIds: ['child1'] });
+  });
+
+  test('should not flag text nodes that only intersect but do not contain', () => {
+    const nodes = [
+      { id: 'container', type: 'text', x: 0, y: 0, width: 100, height: 50 },
+      { id: 'child1', type: 'otel-event', x: 50, y: 25, width: 100, height: 50 },
+    ];
+
+    const results = findContainingTextNodes(nodes);
+    expect(results).toHaveLength(0);
+  });
+
+  test('should detect text node containing multiple nodes', () => {
+    const nodes = [
+      { id: 'container', type: 'text', x: 0, y: 0, width: 400, height: 300 },
+      { id: 'child1', type: 'otel-event', x: 50, y: 50, width: 100, height: 50 },
+      { id: 'child2', type: 'otel-event', x: 200, y: 100, width: 100, height: 50 },
+      { id: 'child3', type: 'otel-span-convention', x: 50, y: 200, width: 100, height: 50 },
+    ];
+
+    const results = findContainingTextNodes(nodes);
+    expect(results).toHaveLength(1);
+    expect(results[0].textNodeId).toBe('container');
+    expect(results[0].containedIds).toHaveLength(3);
+    expect(results[0].containedIds).toContain('child1');
+    expect(results[0].containedIds).toContain('child2');
+    expect(results[0].containedIds).toContain('child3');
+  });
+
+  test('should not flag non-text nodes even when containing others', () => {
+    const nodes = [
+      { id: 'node1', type: 'otel-event', x: 0, y: 0, width: 100, height: 50 },
+      { id: 'node2', type: 'otel-event', x: 50, y: 25, width: 100, height: 50 },
+    ];
+
+    const results = findContainingTextNodes(nodes);
+    expect(results).toHaveLength(0);
+  });
+
+  test('should not flag adjacent nodes (touching but not containing)', () => {
+    const nodes = [
+      { id: 'container', type: 'text', x: 0, y: 0, width: 100, height: 50 },
+      { id: 'child1', type: 'otel-event', x: 100, y: 0, width: 100, height: 50 },
+    ];
+
+    const results = findContainingTextNodes(nodes);
+    expect(results).toHaveLength(0);
+  });
+
+  test('should not flag nodes sharing only an edge', () => {
+    const nodes = [
+      { id: 'container', type: 'text', x: 0, y: 0, width: 100, height: 100 },
+      { id: 'child1', type: 'otel-event', x: 0, y: 100, width: 100, height: 50 },
+    ];
+
+    const results = findContainingTextNodes(nodes);
+    expect(results).toHaveLength(0);
+  });
+
+  test('should not flag partial overlap (must fully contain)', () => {
+    const nodes = [
+      { id: 'container', type: 'text', x: 0, y: 0, width: 100, height: 100 },
+      { id: 'child1', type: 'otel-event', x: 50, y: 50, width: 100, height: 100 },
+    ];
+
+    const results = findContainingTextNodes(nodes);
+    expect(results).toHaveLength(0);
+  });
+
+  test('should detect when small text node is inside group node', () => {
+    const nodes = [
+      { id: 'container', type: 'group', x: 0, y: 0, width: 500, height: 500 },
+      { id: 'small-text', type: 'text', x: 100, y: 100, width: 50, height: 50 },
+    ];
+
+    const results = findContainingTextNodes(nodes);
+    expect(results).toHaveLength(0);
+  });
+
+  test('should ignore text nodes containing other text nodes', () => {
+    const nodes = [
+      { id: 'outer', type: 'text', x: 0, y: 0, width: 500, height: 500 },
+      { id: 'inner', type: 'text', x: 100, y: 100, width: 50, height: 50 },
+    ];
+
+    const results = findContainingTextNodes(nodes);
+    expect(results).toHaveLength(0);
   });
 });

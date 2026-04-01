@@ -16,11 +16,30 @@ import { readFile } from 'node:fs/promises';
 import chalk from 'chalk';
 import { globby } from 'globby';
 import yaml from 'js-yaml';
-import type { ExtendedCanvas, WorkflowTemplate, ExecutionData, ComponentLibrary as CoreComponentLibrary, DashboardDefinition } from '@principal-ai/principal-view-core';
-import { createExecutionValidator, validateLibraryStructure, createDashboardValidator } from '@principal-ai/principal-view-core';
-import { CanvasDiscovery, LibraryDiscovery, createWorkflowValidator, EventRegistry, WorkflowValidator } from '@principal-ai/principal-view-core/node';
+import type {
+  ExtendedCanvas,
+  WorkflowTemplate,
+  ExecutionData,
+  ComponentLibrary as CoreComponentLibrary,
+  DashboardDefinition,
+} from '@principal-ai/principal-view-core';
+import {
+  createExecutionValidator,
+  validateLibraryStructure,
+  createDashboardValidator,
+} from '@principal-ai/principal-view-core';
+import {
+  CanvasDiscovery,
+  LibraryDiscovery,
+  createWorkflowValidator,
+  EventRegistry,
+  WorkflowValidator,
+} from '@principal-ai/principal-view-core/node';
 import type { ComponentLibrary } from '@principal-ai/principal-view-core';
-import { FilesystemService, NodeFileSystemAdapter as CompositionFsAdapter } from '@principal-ai/codebase-composition/node';
+import {
+  FilesystemService,
+  NodeFileSystemAdapter as CompositionFsAdapter,
+} from '@principal-ai/codebase-composition/node';
 import { NodeFileSystemAdapter } from '@principal-ai/repository-abstraction/node';
 
 interface ValidationIssue {
@@ -80,6 +99,23 @@ function loadLibrary(principalViewsDir: string): LoadedLibrary | null {
     }
   }
   return null;
+}
+
+interface NodeRect {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function rectanglesIntersect(a: NodeRect, b: NodeRect): boolean {
+  return !(
+    a.x + a.width <= b.x ||
+    b.x + b.width <= a.x ||
+    a.y + a.height <= b.y ||
+    b.y + b.height <= a.y
+  );
 }
 
 /**
@@ -301,7 +337,8 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
             type: 'warning',
             message: `Missing recommended field "deployment.environment" in resource "${serviceId}"`,
             path: `resources.${serviceId}`,
-            suggestion: 'Consider adding deployment.environment (e.g., "development", "production")',
+            suggestion:
+              'Consider adding deployment.environment (e.g., "development", "production")',
           });
         }
       }
@@ -317,12 +354,7 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
         const scope = scopeDef as Record<string, unknown>;
 
         // Check for unknown fields
-        checkUnknownFields(
-          scope,
-          ALLOWED_LIBRARY_FIELDS.scope,
-          `scopes.${scopeId}`,
-          issues
-        );
+        checkUnknownFields(scope, ALLOWED_LIBRARY_FIELDS.scope, `scopes.${scopeId}`, issues);
 
         // Validate icon name format (must be PascalCase for Lucide icons)
         validateIconName(scope.icon, `scopes.${scopeId}.icon`, issues);
@@ -360,26 +392,101 @@ const OTEL_NODE_TYPES = [
  */
 const KNOWN_LUCIDE_ICONS = new Set([
   // Common UI
-  'Server', 'Database', 'Cloud', 'Shield', 'Lock', 'Key',
-  'Zap', 'Cpu', 'HardDrive', 'Network', 'Wifi', 'WifiOff',
-  'User', 'Users', 'UserCheck', 'UserPlus', 'UserMinus',
-  'File', 'Folder', 'Package', 'Box', 'Archive',
-  'GitBranch', 'GitCommit', 'GitMerge', 'GitPullRequest', 'Github',
-  'Circle', 'Square', 'Triangle', 'Pentagon', 'Hexagon', 'Octagon',
-  'Settings', 'Wrench', 'Tool', 'Hammer', 'Cog',
-  'Monitor', 'Smartphone', 'Tablet', 'Laptop',
-  'Mail', 'Phone', 'MessageSquare', 'MessageCircle',
-  'Calendar', 'Clock', 'Timer', 'Watch',
-  'Check', 'X', 'AlertCircle', 'AlertTriangle', 'Info',
-  'Plus', 'Minus', 'Edit', 'Trash', 'Copy',
-  'Search', 'Filter', 'Download', 'Upload',
-  'Home', 'Star', 'Heart', 'Bookmark',
-  'ChevronRight', 'ChevronLeft', 'ChevronUp', 'ChevronDown',
-  'ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown',
-  'Activity', 'BarChart', 'PieChart', 'TrendingUp', 'TrendingDown',
-  'FileText', 'FileCode', 'FileJson', 'Image', 'Video',
-  'Link', 'ExternalLink', 'Unlink',
-  'Eye', 'EyeOff', 'Play', 'Pause', 'Stop', 'RefreshCw',
+  'Server',
+  'Database',
+  'Cloud',
+  'Shield',
+  'Lock',
+  'Key',
+  'Zap',
+  'Cpu',
+  'HardDrive',
+  'Network',
+  'Wifi',
+  'WifiOff',
+  'User',
+  'Users',
+  'UserCheck',
+  'UserPlus',
+  'UserMinus',
+  'File',
+  'Folder',
+  'Package',
+  'Box',
+  'Archive',
+  'GitBranch',
+  'GitCommit',
+  'GitMerge',
+  'GitPullRequest',
+  'Github',
+  'Circle',
+  'Square',
+  'Triangle',
+  'Pentagon',
+  'Hexagon',
+  'Octagon',
+  'Settings',
+  'Wrench',
+  'Tool',
+  'Hammer',
+  'Cog',
+  'Monitor',
+  'Smartphone',
+  'Tablet',
+  'Laptop',
+  'Mail',
+  'Phone',
+  'MessageSquare',
+  'MessageCircle',
+  'Calendar',
+  'Clock',
+  'Timer',
+  'Watch',
+  'Check',
+  'X',
+  'AlertCircle',
+  'AlertTriangle',
+  'Info',
+  'Plus',
+  'Minus',
+  'Edit',
+  'Trash',
+  'Copy',
+  'Search',
+  'Filter',
+  'Download',
+  'Upload',
+  'Home',
+  'Star',
+  'Heart',
+  'Bookmark',
+  'ChevronRight',
+  'ChevronLeft',
+  'ChevronUp',
+  'ChevronDown',
+  'ArrowRight',
+  'ArrowLeft',
+  'ArrowUp',
+  'ArrowDown',
+  'Activity',
+  'BarChart',
+  'PieChart',
+  'TrendingUp',
+  'TrendingDown',
+  'FileText',
+  'FileCode',
+  'FileJson',
+  'Image',
+  'Video',
+  'Link',
+  'ExternalLink',
+  'Unlink',
+  'Eye',
+  'EyeOff',
+  'Play',
+  'Pause',
+  'Stop',
+  'RefreshCw',
 ]);
 
 /**
@@ -507,7 +614,18 @@ const ALLOWED_CANVAS_FIELDS = {
   nodeLink: ['url'],
   nodeGroup: ['label', 'background', 'backgroundStyle'],
   // OTEL node type fields (new semantic format)
-  nodeOtel: ['label', 'description', 'icon', 'shape', 'fill', 'otel', 'event', 'eventRef', 'dataSchema', 'boundary'],
+  nodeOtel: [
+    'label',
+    'description',
+    'icon',
+    'shape',
+    'fill',
+    'otel',
+    'event',
+    'eventRef',
+    'dataSchema',
+    'boundary',
+  ],
   // Node pv extension
   nodePv: [
     'nodeType',
@@ -559,7 +677,17 @@ const ALLOWED_CANVAS_FIELDS = {
  * Allowed fields for library validation
  */
 const ALLOWED_LIBRARY_FIELDS = {
-  root: ['version', 'name', 'description', 'nodeComponents', 'edgeComponents', 'connectionRules', 'resources', 'scopes', 'eventSchemas'],
+  root: [
+    'version',
+    'name',
+    'description',
+    'nodeComponents',
+    'edgeComponents',
+    'connectionRules',
+    'resources',
+    'scopes',
+    'eventSchemas',
+  ],
   nodeComponent: [
     'description',
     'tags',
@@ -579,7 +707,15 @@ const ALLOWED_LIBRARY_FIELDS = {
   nodeComponentSize: ['width', 'height'],
   nodeComponentState: ['color', 'icon', 'label'],
   nodeComponentAction: ['pattern', 'event', 'state', 'metadata', 'triggerEdges'],
-  nodeComponentDataSchemaField: ['type', 'required', 'displayInLabel', 'label', 'displayInInfo', 'description', 'placeholder'],
+  nodeComponentDataSchemaField: [
+    'type',
+    'required',
+    'displayInLabel',
+    'label',
+    'displayInInfo',
+    'description',
+    'placeholder',
+  ],
   nodeComponentLayout: ['layer', 'cluster'],
   edgeComponent: [
     'description',
@@ -723,7 +859,10 @@ function loadExecutionFile(filePath: string): ExecutionData | null {
  * 1. Look for a co-located workflow file and use its canvas reference
  * 2. Fall back to name-based matching for legacy patterns
  */
-function findMatchingCanvas(executionPath: string, repositoryPath: string): { canvasPath: string | null; workflowPath: string | null } {
+function findMatchingCanvas(
+  executionPath: string,
+  repositoryPath: string
+): { canvasPath: string | null; workflowPath: string | null } {
   const fileName = basename(executionPath);
   const dir = dirname(executionPath);
 
@@ -732,7 +871,7 @@ function findMatchingCanvas(executionPath: string, repositoryPath: string): { ca
   //   .principal-views/storyboard/workflow-name/
   //     ├── workflow-name.workflow.json
   //     └── test-trace.otel.json
-  const workflowFiles = readdirSync(dir).filter(f => f.endsWith('.workflow.json'));
+  const workflowFiles = readdirSync(dir).filter((f) => f.endsWith('.workflow.json'));
   if (workflowFiles.length > 0) {
     // Use the first workflow found (typically there's only one per directory)
     const workflowPath = resolve(dir, workflowFiles[0]);
@@ -779,7 +918,10 @@ function findMatchingCanvas(executionPath: string, repositoryPath: string): { ca
     return { canvasPath: regularCanvasPath, workflowPath: null };
   }
 
-  return { canvasPath: null, workflowPath: workflowFiles.length > 0 ? resolve(dir, workflowFiles[0]) : null };
+  return {
+    canvasPath: null,
+    workflowPath: workflowFiles.length > 0 ? resolve(dir, workflowFiles[0]) : null,
+  };
 }
 
 /**
@@ -788,10 +930,7 @@ function findMatchingCanvas(executionPath: string, repositoryPath: string): { ca
  * Searches the canvas directory and parent storyboard directory for .workflow.json files
  * that have a 'canvas' field referencing the given canvas path.
  */
-function findWorkflowsForCanvas(
-  canvasPath: string,
-  repositoryPath: string
-): string[] {
+function findWorkflowsForCanvas(canvasPath: string, repositoryPath: string): string[] {
   const canvasDir = dirname(canvasPath);
   const canvasRelPath = relative(repositoryPath, canvasPath);
   const workflows: string[] = [];
@@ -886,7 +1025,10 @@ function hasOtelFeatures(canvas: unknown): boolean {
         const n = node as Record<string, unknown>;
 
         // Check for OTEL semantic node types (e.g., otel-event, otel-span-convention)
-        if (typeof n.type === 'string' && OTEL_NODE_TYPES.includes(n.type as typeof OTEL_NODE_TYPES[number])) {
+        if (
+          typeof n.type === 'string' &&
+          OTEL_NODE_TYPES.includes(n.type as (typeof OTEL_NODE_TYPES)[number])
+        ) {
           return true;
         }
 
@@ -1072,7 +1214,9 @@ function validateCanvas(
   const builtInNodeTypes = ['scope', 'boundary'];
 
   // Combined types from canvas + library + built-ins
-  const allDefinedNodeTypes = [...new Set([...builtInNodeTypes, ...canvasNodeTypes, ...libraryNodeTypes])];
+  const allDefinedNodeTypes = [
+    ...new Set([...builtInNodeTypes, ...canvasNodeTypes, ...libraryNodeTypes]),
+  ];
   const allDefinedEdgeTypes = [...new Set([...canvasEdgeTypes, ...libraryEdgeTypes])];
 
   // Check nodes
@@ -1211,7 +1355,8 @@ function validateCanvas(
               type: 'error',
               message: `Span convention "${nodeLabel}" must have a color`,
               path: `${nodePath}.color`,
-              suggestion: 'Add a "color" field (e.g., "color": "#3B82F6"). This color is used as the fill color for events emitted within this span.',
+              suggestion:
+                'Add a "color" field (e.g., "color": "#3B82F6"). This color is used as the fill color for events emitted within this span.',
             });
           }
         } else if (!hasDirectColor && !hasNodeTypeColor) {
@@ -1219,7 +1364,8 @@ function validateCanvas(
             type: 'error',
             message: `Node "${nodeLabel}" must have a color`,
             path: `${nodePath}`,
-            suggestion: 'Add a "color" field (e.g., "color": "#64748B") or use a pv.nodeType that defines a color',
+            suggestion:
+              'Add a "color" field (e.g., "color": "#64748B") or use a pv.nodeType that defines a color',
           });
         }
       }
@@ -1254,9 +1400,7 @@ function validateCanvas(
       const isStandardType = STANDARD_CANVAS_TYPES.includes(
         nodeType as (typeof STANDARD_CANVAS_TYPES)[number]
       );
-      const isOtelType = OTEL_NODE_TYPES.includes(
-        nodeType as (typeof OTEL_NODE_TYPES)[number]
-      );
+      const isOtelType = OTEL_NODE_TYPES.includes(nodeType as (typeof OTEL_NODE_TYPES)[number]);
 
       if (!isStandardType && !isOtelType) {
         issues.push({
@@ -1265,7 +1409,9 @@ function validateCanvas(
           path: `nodes[${index}].type`,
           suggestion: `Use a standard JSON Canvas type (${STANDARD_CANVAS_TYPES.join(
             ', '
-          )}) or OTEL type (${OTEL_NODE_TYPES.join(', ')}). For custom shapes, use type: "text" with pv.shape: "${nodeType}"`,
+          )}) or OTEL type (${OTEL_NODE_TYPES.join(
+            ', '
+          )}). For custom shapes, use type: "text" with pv.shape: "${nodeType}"`,
         });
       }
 
@@ -1277,7 +1423,8 @@ function validateCanvas(
             type: 'error',
             message: `OTEL node "${n.id || index}" must have a "label" field`,
             path: `${nodePath}.label`,
-            suggestion: 'Add a human-readable label for display (e.g., "User Login", "Process Payment")',
+            suggestion:
+              'Add a human-readable label for display (e.g., "User Login", "Process Payment")',
           });
         } else if (n.label === n.id) {
           // Label should not be the same as ID
@@ -1315,7 +1462,8 @@ function validateCanvas(
               type: 'error',
               message: `OTEL event node "${n.id}" is missing "event" or "eventRef" field`,
               path: `${nodePath}`,
-              suggestion: 'Add an event schema: event: { name: "your.event.name", attributes: {...} } or reference a library event: eventRef: "library.event.name". If migrating from legacy format, run: npx @principal-ai/principal-view-cli migrate-nodes',
+              suggestion:
+                'Add an event schema: event: { name: "your.event.name", attributes: {...} } or reference a library event: eventRef: "library.event.name". If migrating from legacy format, run: npx @principal-ai/principal-view-cli migrate-nodes',
             });
           }
         }
@@ -1328,13 +1476,14 @@ function validateCanvas(
               type: 'error',
               message: `Span convention "${n.id}" is missing "otel.spanPattern"`,
               path: `${nodePath}.otel.spanPattern`,
-              suggestion: 'Add the span pattern: otel: { spanPattern: "your.span.pattern" }. This pattern is used to match workflows and color events within this span.',
+              suggestion:
+                'Add the span pattern: otel: { spanPattern: "your.span.pattern" }. This pattern is used to match workflows and color events within this span.',
             });
           }
         }
 
         // Semantic OTEL nodes must have valid otel.status
-        if (OTEL_NODE_TYPES.includes(nodeType as typeof OTEL_NODE_TYPES[number])) {
+        if (OTEL_NODE_TYPES.includes(nodeType as (typeof OTEL_NODE_TYPES)[number])) {
           const otel = n.otel as Record<string, unknown> | undefined;
           const validStatuses = ['draft', 'approved', 'implemented'];
 
@@ -1343,7 +1492,8 @@ function validateCanvas(
               type: 'error',
               message: `OTEL node "${n.id}" is missing required "otel.status" field`,
               path: `${nodePath}.otel.status`,
-              suggestion: 'Add implementation status: "status": "draft" | "approved" | "implemented". Use "draft" for design, "approved" for finalized design, "implemented" for code with instrumentation.',
+              suggestion:
+                'Add implementation status: "status": "draft" | "approved" | "implemented". Use "draft" for design, "approved" for finalized design, "implemented" for code with instrumentation.',
             });
           } else if (!validStatuses.includes(otel.status as string)) {
             issues.push({
@@ -1449,7 +1599,8 @@ function validateCanvas(
               type: 'error',
               message: `Node "${nodeLabel}" has invalid or missing boundary.direction`,
               path: `${nodePath}.pv.boundary.direction`,
-              suggestion: 'Use "outbound" for calls to external systems, "inbound" for callbacks from external systems',
+              suggestion:
+                'Use "outbound" for calls to external systems, "inbound" for callbacks from external systems',
             });
           }
 
@@ -1459,7 +1610,8 @@ function validateCanvas(
               type: 'error',
               message: `Node "${nodeLabel}" has boundary but is missing required "node" field`,
               path: `${nodePath}.pv.boundary.node`,
-              suggestion: 'Add node query for resolution, e.g.: "node": { "pv.event.name": "host.event-name" }',
+              suggestion:
+                'Add node query for resolution, e.g.: "node": { "pv.event.name": "host.event-name" }',
             });
           }
         }
@@ -1470,7 +1622,8 @@ function validateCanvas(
             type: 'error',
             message: `Node "${nodeLabel}" has both "pv.event" and "pv.eventRef" - only one is allowed`,
             path: `${nodePath}.pv`,
-            suggestion: 'Use "event" for inline event definition, or "eventRef" to reference a library event schema. Remove one of them.',
+            suggestion:
+              'Use "event" for inline event definition, or "eventRef" to reference a library event schema. Remove one of them.',
           });
         }
 
@@ -1521,7 +1674,11 @@ Suggested:
 
 Example:
   text: "# Registration Started\\nVersion registration request received"
-  ${nodePv.eventRef ? `eventRef: "version.registration.started"` : `event.name: "version.registration.started"`}
+  ${
+    nodePv.eventRef
+      ? `eventRef: "version.registration.started"`
+      : `event.name: "version.registration.started"`
+  }
 
 The display name will be shown large on the node, and the event name will appear below it in smaller monospace font.`,
               });
@@ -1534,7 +1691,11 @@ The display name will be shown large on the node, and the event name will appear
         const isExternal = origin === 'external';
 
         // Validate origin value
-        if (nodePv.origin !== undefined && nodePv.origin !== 'internal' && nodePv.origin !== 'external') {
+        if (
+          nodePv.origin !== undefined &&
+          nodePv.origin !== 'internal' &&
+          nodePv.origin !== 'external'
+        ) {
           issues.push({
             type: 'error',
             message: `Node "${nodeLabel}" has invalid origin value "${nodePv.origin}"`,
@@ -1549,7 +1710,8 @@ The display name will be shown large on the node, and the event name will appear
             type: 'warning',
             message: `Node "${nodeLabel}" uses deprecated "pv.sources" field`,
             path: `${nodePath}.pv.sources`,
-            suggestion: 'Use "pv.references" instead. The "sources" field will be removed in a future version.',
+            suggestion:
+              'Use "pv.references" instead. The "sources" field will be removed in a future version.',
           });
         }
 
@@ -1560,7 +1722,8 @@ The display name will be shown large on the node, and the event name will appear
             type: 'error',
             message: `Node "${nodeLabel}" uses deprecated "pv.otel.kind" field`,
             path: `${nodePath}.pv.otel.kind`,
-            suggestion: 'Use semantic node types instead. For example, use type: "otel-event" instead of type: "text" with otel.kind: "event". Run: npx @principal-ai/principal-view-cli migrate-nodes',
+            suggestion:
+              'Use semantic node types instead. For example, use type: "otel-event" instead of type: "text" with otel.kind: "event". Run: npx @principal-ai/principal-view-cli migrate-nodes',
           });
         }
         if (nodeOtel?.category !== undefined) {
@@ -1568,7 +1731,8 @@ The display name will be shown large on the node, and the event name will appear
             type: 'error',
             message: `Node "${nodeLabel}" uses deprecated "pv.otel.category" field`,
             path: `${nodePath}.pv.otel.category`,
-            suggestion: 'Use semantic node types instead. Run: npx @principal-ai/principal-view-cli migrate-nodes',
+            suggestion:
+              'Use semantic node types instead. Run: npx @principal-ai/principal-view-cli migrate-nodes',
           });
         }
 
@@ -1579,23 +1743,29 @@ The display name will be shown large on the node, and the event name will appear
               type: 'error',
               message: `Node "${nodeLabel}" has origin "external" but is missing required "pv.references" field`,
               path: `${nodePath}.pv.references`,
-              suggestion: 'Add references to document the external package/service, e.g.: "references": ["@logfire/pydantic-ai"]',
+              suggestion:
+                'Add references to document the external package/service, e.g.: "references": ["@logfire/pydantic-ai"]',
             });
           }
         }
 
         // Validate source file references for OTEL event nodes (skip boundary nodes)
         const isBoundaryNode = nodePv.nodeType === 'boundary';
-        const hasOtelFeatures = nodePv.otel !== undefined || nodePv.event !== undefined || nodePv.eventRef !== undefined;
+        const hasOtelFeatures =
+          nodePv.otel !== undefined || nodePv.event !== undefined || nodePv.eventRef !== undefined;
         if (hasOtelFeatures && !isBoundaryNode) {
-
           // For .otel.canvas files: nodes using legacy pv.event/pv.eventRef should migrate to otel-event type
-          if (filePath.endsWith('.otel.canvas') && nodeType === 'text' && (nodePv.event !== undefined || nodePv.eventRef !== undefined)) {
+          if (
+            filePath.endsWith('.otel.canvas') &&
+            nodeType === 'text' &&
+            (nodePv.event !== undefined || nodePv.eventRef !== undefined)
+          ) {
             issues.push({
               type: 'error',
               message: `Node "${nodeLabel}" uses legacy format: type "text" with pv.event/pv.eventRef`,
               path: `${nodePath}.type`,
-              suggestion: 'Migrate to semantic type: change type from "text" to "otel-event" and move event/eventRef to top level. Run: npx @principal-ai/principal-view-cli migrate-nodes',
+              suggestion:
+                'Migrate to semantic type: change type from "text" to "otel-event" and move event/eventRef to top level. Run: npx @principal-ai/principal-view-cli migrate-nodes',
             });
           }
 
@@ -1606,7 +1776,8 @@ The display name will be shown large on the node, and the event name will appear
                 type: 'error',
                 message: `Node "${nodeLabel}" in .otel.canvas file is missing required "pv.status" field`,
                 path: `${nodePath}.pv.status`,
-                suggestion: 'Add implementation status: "status": "draft" | "approved" | "implemented". Use "draft" for design, "approved" for finalized design, "implemented" for code with instrumentation.',
+                suggestion:
+                  'Add implementation status: "status": "draft" | "approved" | "implemented". Use "draft" for design, "approved" for finalized design, "implemented" for code with instrumentation.',
               });
             } else {
               // Validate status value
@@ -1636,7 +1807,8 @@ The display name will be shown large on the node, and the event name will appear
                   type: 'error',
                   message: `Node "${nodeLabel}" with status="${status}" must have pv.otel.files specified`,
                   path: `${nodePath}.pv.otel.files`,
-                  suggestion: 'Add file paths where this event is instrumented, e.g.: "otel": { "files": ["src/app/api/route.ts"] }. For external/auto-instrumented events, set "origin": "external" instead.',
+                  suggestion:
+                    'Add file paths where this event is instrumented, e.g.: "otel": { "files": ["src/app/api/route.ts"] }. For external/auto-instrumented events, set "origin": "external" instead.',
                 });
               }
 
@@ -1695,7 +1867,8 @@ The display name will be shown large on the node, and the event name will appear
                   type: 'error',
                   message: `Node "${nodeLabel}" has glob pattern in sources: ${source}`,
                   path: `${nodePath}.pv.sources[${sourceIndex}]`,
-                  suggestion: 'Use exact file paths only. Glob patterns (*, ?, [], {}) are not supported in sources.',
+                  suggestion:
+                    'Use exact file paths only. Glob patterns (*, ?, [], {}) are not supported in sources.',
                 });
               }
 
@@ -1705,7 +1878,8 @@ The display name will be shown large on the node, and the event name will appear
                   type: 'error',
                   message: `Node "${nodeLabel}" has line number suffix in sources: ${source}`,
                   path: `${nodePath}.pv.sources[${sourceIndex}]`,
-                  suggestion: 'Remove line number suffix. Use exact file paths only (e.g., "src/file.ts" not "src/file.ts:123").',
+                  suggestion:
+                    'Remove line number suffix. Use exact file paths only (e.g., "src/file.ts" not "src/file.ts:123").',
                 });
               }
 
@@ -1742,9 +1916,17 @@ The display name will be shown large on the node, and the event name will appear
         // Validate pv.nodeType references a defined nodeType
         if (typeof nodePv.nodeType === 'string' && nodePv.nodeType) {
           // Check for legacy OTEL format: type "text" with pv.nodeType set to OTEL type
-          const LEGACY_OTEL_NODE_TYPES = ['event', 'span', 'span-convention', 'scope', 'resource', 'boundary'];
+          const LEGACY_OTEL_NODE_TYPES = [
+            'event',
+            'span',
+            'span-convention',
+            'scope',
+            'resource',
+            'boundary',
+          ];
           if (nodeType === 'text' && LEGACY_OTEL_NODE_TYPES.includes(nodePv.nodeType)) {
-            const newType = nodePv.nodeType === 'span' ? 'otel-span-convention' : `otel-${nodePv.nodeType}`;
+            const newType =
+              nodePv.nodeType === 'span' ? 'otel-span-convention' : `otel-${nodePv.nodeType}`;
             issues.push({
               type: 'error',
               message: `Node "${nodeLabel}" uses legacy format: type "text" with pv.nodeType: "${nodePv.nodeType}"`,
@@ -1822,6 +2004,61 @@ The display name will be shown large on the node, and the event name will appear
         }
       }
     });
+
+    // Check for text nodes that contain other nodes (suggest using group nodes instead)
+    const nodesWithBounds: NodeRect[] = (c.nodes as Array<Record<string, unknown>>)
+      .filter(
+        (n) =>
+          n &&
+          typeof n.x === 'number' &&
+          typeof n.y === 'number' &&
+          typeof n.width === 'number' &&
+          typeof n.height === 'number' &&
+          typeof n.id === 'string'
+      )
+      .map((n) => ({
+        id: n.id as string,
+        x: n.x as number,
+        y: n.y as number,
+        width: n.width as number,
+        height: n.height as number,
+      }));
+
+    for (const textNode of nodesWithBounds) {
+      const allNodes = c.nodes as Array<Record<string, unknown>> | undefined;
+      const nodeData = allNodes?.find((n) => n.id === textNode.id);
+      if (!nodeData || nodeData.type !== 'text') continue;
+
+      const containedNonTextNodes = nodesWithBounds.filter((other) => {
+        if (other.id === textNode.id) return false;
+        const otherNode = allNodes?.find((n) => n.id === other.id);
+        if (!otherNode || otherNode.type === 'text') return false;
+        return (
+          other.x >= textNode.x &&
+          other.y >= textNode.y &&
+          other.x + other.width <= textNode.x + textNode.width &&
+          other.y + other.height <= textNode.y + textNode.height
+        );
+      });
+
+      if (containedNonTextNodes.length > 0) {
+        const textNodeLabel =
+          (nodeData.pv &&
+            typeof nodeData.pv === 'object' &&
+            ((nodeData.pv as Record<string, unknown>).label as string)) ||
+          textNode.id;
+
+        issues.push({
+          type: 'warning',
+          message: `Text node "${textNodeLabel}" contains ${
+            containedNonTextNodes.length
+          } other node(s): ${containedNonTextNodes.map((n) => `"${n.id}"`).join(', ')}`,
+          path: `nodes[${allNodes?.findIndex((n) => n.id === textNode.id)}].type`,
+          suggestion:
+            'Consider using type "group" instead of type "text" for container nodes that visually wrap other nodes',
+        });
+      }
+    }
   }
 
   // For .otel.canvas files: warn if library.yaml is missing
@@ -1837,14 +2074,17 @@ The display name will be shown large on the node, and the event name will appear
 
   // For .otel.canvas files with implemented nodes: validate library has resources with owned-scopes
   if (filePath.endsWith('.otel.canvas') && hasImplementedNodes) {
-    const resources = library?.raw?.resources as Record<string, Record<string, unknown>> | undefined;
+    const resources = library?.raw?.resources as
+      | Record<string, Record<string, unknown>>
+      | undefined;
 
     if (!resources || Object.keys(resources).length === 0) {
       issues.push({
         type: 'error',
         message: 'Canvas has implemented nodes but library.yaml is missing "resources" section',
         path: 'library.yaml:resources',
-        suggestion: 'Add a resources section to library.yaml defining your services and their owned-scopes:\n  resources:\n    my-service:\n      service.name: "my-service"\n      owned-scopes:\n        - "my-instrumentation-scope"',
+        suggestion:
+          'Add a resources section to library.yaml defining your services and their owned-scopes:\n  resources:\n    my-service:\n      service.name: "my-service"\n      owned-scopes:\n        - "my-instrumentation-scope"',
       });
     } else {
       // Check that at least one resource has owned-scopes
@@ -1855,9 +2095,11 @@ The display name will be shown large on the node, and the event name will appear
       if (!hasOwnedScopes) {
         issues.push({
           type: 'error',
-          message: 'Canvas has implemented nodes but no resources in library.yaml have "owned-scopes" defined',
+          message:
+            'Canvas has implemented nodes but no resources in library.yaml have "owned-scopes" defined',
           path: 'library.yaml:resources',
-          suggestion: 'Add owned-scopes to at least one resource to specify which instrumentation scopes belong to your services:\n  resources:\n    my-service:\n      service.name: "my-service"\n      owned-scopes:\n        - "my-instrumentation-scope"',
+          suggestion:
+            'Add owned-scopes to at least one resource to specify which instrumentation scopes belong to your services:\n  resources:\n    my-service:\n      service.name: "my-service"\n      owned-scopes:\n        - "my-instrumentation-scope"',
         });
       }
     }
@@ -2057,16 +2299,13 @@ The display name will be shown large on the node, and the event name will appear
   if (hasOtel && !isOtelCanvas && !isScopesCanvas && !isSpansCanvas) {
     issues.push({
       type: 'error',
-      message:
-        'Canvas contains OTEL features but does not use .otel.canvas naming convention',
-      suggestion:
-        'Rename file to use .otel.canvas extension (e.g., "graph-name.otel.canvas")',
+      message: 'Canvas contains OTEL features but does not use .otel.canvas naming convention',
+      suggestion: 'Rename file to use .otel.canvas extension (e.g., "graph-name.otel.canvas")',
     });
   } else if (!hasOtel && isOtelCanvas) {
     issues.push({
       type: 'warning',
-      message:
-        'Canvas uses .otel.canvas naming but does not contain any OTEL features',
+      message: 'Canvas uses .otel.canvas naming but does not contain any OTEL features',
       suggestion:
         'Either add OTEL features (otel-event, otel-span-convention, otel-scope, otel-resource nodes, or pv.otel, pv.scope, pv.audit) or rename to .canvas',
     });
@@ -2089,7 +2328,9 @@ Good: "Task management lets users create, edit, and archive tasks.
 Bad:  "This canvas shows telemetry events. The task.create.started
        event is emitted when..."
 
-The canvas shows HOW ${isOtelCanvas ? 'we instrument it' : 'it works'}. The markdown explains WHAT the feature does and WHY.
+The canvas shows HOW ${
+        isOtelCanvas ? 'we instrument it' : 'it works'
+      }. The markdown explains WHAT the feature does and WHY.
 
 Include:
 - What problem does this feature solve?
@@ -2112,7 +2353,9 @@ The canvas is visual documentation. The markdown supplements it with context.`,
           suggestion: `Create the markdown file at: ${markdownPath}
 
 The markdown should explain the FEATURE (what it does, why it exists), not describe the canvas itself.
-The canvas shows HOW ${isOtelCanvas ? 'we instrument it' : 'it works'}. The markdown explains WHAT the feature does and WHY.
+The canvas shows HOW ${
+            isOtelCanvas ? 'we instrument it' : 'it works'
+          }. The markdown explains WHAT the feature does and WHY.
 
 Example structure:
 - What problem does this feature solve?
@@ -2162,12 +2405,11 @@ async function validateWorkflow(
 
     // Load referenced canvas if it exists
     // Canvas paths are always relative to repository root
-    const canvasPath = workflow.canvas
-      ? resolve(repositoryPath, workflow.canvas)
-      : undefined;
-    const canvas = canvasPath && existsSync(canvasPath)
-      ? JSON.parse(readFileSync(canvasPath, 'utf8')) as ExtendedCanvas
-      : undefined;
+    const canvasPath = workflow.canvas ? resolve(repositoryPath, workflow.canvas) : undefined;
+    const canvas =
+      canvasPath && existsSync(canvasPath)
+        ? (JSON.parse(readFileSync(canvasPath, 'utf8')) as ExtendedCanvas)
+        : undefined;
 
     // Validate using workflow validator
     const validator = createWorkflowValidator();
@@ -2186,7 +2428,7 @@ async function validateWorkflow(
     });
 
     // Convert workflow violations to validation issues
-    const issues: ValidationIssue[] = result.violations.map(v => ({
+    const issues: ValidationIssue[] = result.violations.map((v) => ({
       type: v.severity === 'error' ? 'error' : 'warning',
       message: v.message,
       path: v.path,
@@ -2212,10 +2454,7 @@ async function validateWorkflow(
 /**
  * Validate a test trace artifact (.otel.json file)
  */
-function validateExecution(
-  filePath: string,
-  repositoryPath: string
-): ValidationResult {
+function validateExecution(filePath: string, repositoryPath: string): ValidationResult {
   const relativePath = relative(repositoryPath, filePath);
 
   if (!existsSync(filePath)) {
@@ -2259,7 +2498,10 @@ function validateExecution(
             path: relativePath,
             message: `Workflow '${workflowName}' references canvas that doesn't exist: ${canvasRef}`,
             severity: 'error',
-            suggestion: `Check the 'canvas' field in ${relative(repositoryPath, workflowPath)} and ensure the referenced canvas file exists`,
+            suggestion: `Check the 'canvas' field in ${relative(
+              repositoryPath,
+              workflowPath
+            )} and ensure the referenced canvas file exists`,
           });
         } catch {
           result.errors.push({
@@ -2288,13 +2530,13 @@ The workflow's 'canvas' field should point to the canvas this trace validates ag
 
     // Convert execution validation result to validation issues
     const issues: ValidationIssue[] = [
-      ...result.errors.map(e => ({
+      ...result.errors.map((e) => ({
         type: 'error' as const,
         message: e.message,
         path: e.path,
         suggestion: e.suggestion,
       })),
-      ...result.warnings.map(w => ({
+      ...result.warnings.map((w) => ({
         type: 'warning' as const,
         message: w.message,
         path: w.path,
@@ -2321,10 +2563,7 @@ The workflow's 'canvas' field should point to the canvas this trace validates ag
 /**
  * Validate a .dashboard.json file
  */
-function validateDashboard(
-  filePath: string,
-  repositoryPath: string
-): ValidationResult {
+function validateDashboard(filePath: string, repositoryPath: string): ValidationResult {
   const relativePath = relative(repositoryPath, filePath);
 
   if (!existsSync(filePath)) {
@@ -2346,13 +2585,13 @@ function validateDashboard(
 
     // Convert dashboard validation result to validation issues
     const issues: ValidationIssue[] = [
-      ...result.errors.map(e => ({
+      ...result.errors.map((e) => ({
         type: 'error' as const,
         message: e.message,
         path: e.path,
         suggestion: e.suggestion,
       })),
-      ...result.warnings.map(w => ({
+      ...result.warnings.map((w) => ({
         type: 'warning' as const,
         message: w.message,
         path: w.path,
@@ -2434,11 +2673,11 @@ function outputResults(
 
   // Group by file type
   const byType = {
-    canvas: allResults.filter(r => r.fileType === 'canvas'),
-    workflow: allResults.filter(r => r.fileType === 'workflow'),
-    testTrace: allResults.filter(r => r.fileType === 'testTrace'),
-    library: allResults.filter(r => r.fileType === 'library'),
-    dashboard: allResults.filter(r => r.fileType === 'dashboard'),
+    canvas: allResults.filter((r) => r.fileType === 'canvas'),
+    workflow: allResults.filter((r) => r.fileType === 'workflow'),
+    testTrace: allResults.filter((r) => r.fileType === 'testTrace'),
+    library: allResults.filter((r) => r.fileType === 'library'),
+    dashboard: allResults.filter((r) => r.fileType === 'dashboard'),
   };
 
   if (options.json) {
@@ -2520,12 +2759,14 @@ function outputResults(
     if (invalidCount === 0) {
       console.log(chalk.green(`✓ All ${validCount} file(s) are valid`));
       if (targetedValidation) {
-        console.log(chalk.dim(`\nTip: Run the validate command without arguments for comprehensive validation of all artifacts.`));
+        console.log(
+          chalk.dim(
+            `\nTip: Run the validate command without arguments for comprehensive validation of all artifacts.`
+          )
+        );
       }
     } else {
-      console.log(
-        chalk.red(`✗ ${invalidCount} of ${allResults.length} file(s) failed validation`)
-      );
+      console.log(chalk.red(`✗ ${invalidCount} of ${allResults.length} file(s) failed validation`));
     }
   }
 
@@ -2556,9 +2797,7 @@ export function createValidateCommand(): Command {
     .action(async (files: string[], options) => {
       try {
         // Determine repository path for source file validation
-        const repositoryPath = options.repository
-          ? resolve(options.repository)
-          : process.cwd();
+        const repositoryPath = options.repository ? resolve(options.repository) : process.cwd();
 
         // If specific files are provided, validate each based on its type
         if (files.length > 0) {
@@ -2568,7 +2807,9 @@ export function createValidateCommand(): Command {
 
           if (matchedFiles.length === 0) {
             if (options.json) {
-              console.log(JSON.stringify({ files: [], summary: { total: 0, valid: 0, invalid: 0 } }));
+              console.log(
+                JSON.stringify({ files: [], summary: { total: 0, valid: 0, invalid: 0 } })
+              );
             } else {
               console.log(chalk.yellow('No files found matching the specified patterns.'));
               console.log(chalk.dim(`Patterns searched: ${files.join(', ')}`));
@@ -2667,7 +2908,10 @@ export function createValidateCommand(): Command {
             const hasErrors = validationResult.issues.some((i) => i.type === 'error');
             if (isOtelCanvas && !hasErrors) {
               const absoluteCanvasPath = resolve(repositoryPath, file);
-              const associatedWorkflows = findWorkflowsForCanvas(absoluteCanvasPath, repositoryPath);
+              const associatedWorkflows = findWorkflowsForCanvas(
+                absoluteCanvasPath,
+                repositoryPath
+              );
 
               // Also check if any workflows were passed to validation that reference this canvas
               const canvasRelPath = relative(repositoryPath, absoluteCanvasPath);
@@ -2678,7 +2922,8 @@ export function createValidateCommand(): Command {
                 validationResult.issues.push({
                   type: 'error',
                   message: 'No workflow files found for this .otel.canvas',
-                  suggestion: 'Create a .workflow.json file to define telemetry scenarios for this canvas. Workflows are required for .otel.canvas files.',
+                  suggestion:
+                    'Create a .workflow.json file to define telemetry scenarios for this canvas. Workflows are required for .otel.canvas files.',
                 });
               }
             }
@@ -2789,12 +3034,14 @@ export function createValidateCommand(): Command {
             // Check for multiple .otel.canvas files in the same directory
             if (otel.length > 1) {
               for (const filePath of otel) {
-                const result = results.find(r => r.file === filePath);
+                const result = results.find((r) => r.file === filePath);
                 if (result) {
                   result.isValid = false;
                   result.issues.push({
                     type: 'error',
-                    message: `Multiple .otel.canvas files in the same directory: ${otel.map(f => basename(f)).join(', ')}`,
+                    message: `Multiple .otel.canvas files in the same directory: ${otel
+                      .map((f) => basename(f))
+                      .join(', ')}`,
                     path: filePath,
                     suggestion: `A storyboard folder should contain only one .otel.canvas file. Move additional canvases to separate storyboard folders.`,
                   });
@@ -2807,7 +3054,7 @@ export function createValidateCommand(): Command {
               // No .canvas files allowed in the same folder
               if (regular.length > 0) {
                 for (const filePath of regular) {
-                  const result = results.find(r => r.file === filePath);
+                  const result = results.find((r) => r.file === filePath);
                   if (result) {
                     result.isValid = false;
                     result.issues.push({
@@ -2824,7 +3071,7 @@ export function createValidateCommand(): Command {
               for (const filePath of otel) {
                 const fileName = basename(filePath, '.otel.canvas');
                 if (fileName !== folderName) {
-                  const result = results.find(r => r.file === filePath);
+                  const result = results.find((r) => r.file === filePath);
                   if (result) {
                     result.isValid = false;
                     result.issues.push({
@@ -2868,37 +3115,44 @@ export function createValidateCommand(): Command {
         // Workflows and test traces are discovered by CanvasDiscovery
         // Extract them from the discovery result
         const workflows = validateWorkflows
-          ? discoveryResult.storyboards.flatMap(sb => sb.workflows)
+          ? discoveryResult.storyboards.flatMap((sb) => sb.workflows)
           : [];
 
-        const testTraces = validateExecutions
-          ? discoveryResult.testTraces
-          : [];
+        const testTraces = validateExecutions ? discoveryResult.testTraces : [];
 
         // Dashboards are always validated when canvases are validated
-        const dashboards = validateCanvases
-          ? discoveryResult.dashboards
-          : [];
+        const dashboards = validateCanvases ? discoveryResult.dashboards : [];
 
         // Check if any files were found
         const canvasCount = discoveryResult.canvases.length;
         const totalFiles = canvasCount + workflows.length + testTraces.length + dashboards.length;
         if (totalFiles === 0) {
           if (options.json) {
-            console.log(JSON.stringify({
-              files: [],
-              discoveryErrors: discoveryResult.errors,
-              summary: { total: 0, valid: 0, invalid: 0, byType: { canvas: 0, workflow: 0, testTrace: 0, library: 0, dashboard: 0 } }
-            }));
+            console.log(
+              JSON.stringify({
+                files: [],
+                discoveryErrors: discoveryResult.errors,
+                summary: {
+                  total: 0,
+                  valid: 0,
+                  invalid: 0,
+                  byType: { canvas: 0, workflow: 0, testTrace: 0, library: 0, dashboard: 0 },
+                },
+              })
+            );
           } else {
             console.log(chalk.yellow('No Principal View files found.'));
             if (discoveryResult.errors.length > 0) {
               console.log(chalk.red('\nDiscovery errors:'));
-              discoveryResult.errors.forEach(err => {
+              discoveryResult.errors.forEach((err) => {
                 console.log(chalk.red(`  ✗ ${err.path}: ${err.error}`));
               });
             }
-            console.log(chalk.dim('\nTo create a new .principal-views folder, run: npx @principal-ai/principal-view-cli init'));
+            console.log(
+              chalk.dim(
+                '\nTo create a new .principal-views folder, run: npx @principal-ai/principal-view-cli init'
+              )
+            );
           }
           return;
         }
@@ -2919,7 +3173,8 @@ export function createValidateCommand(): Command {
                 type: 'error',
                 message: error.message,
                 path: relative(repositoryPath, error.path),
-                suggestion: 'Create a .scopes.canvas file (e.g., architecture.scopes.canvas) with nodes for each scope.',
+                suggestion:
+                  'Create a .scopes.canvas file (e.g., architecture.scopes.canvas) with nodes for each scope.',
               });
             }
           }
@@ -2947,11 +3202,13 @@ export function createValidateCommand(): Command {
             file: error.path,
             fileType: 'canvas',
             isValid: false,
-            issues: [{
-              type: 'error',
-              message: error.error,
-              path: error.path,
-            }],
+            issues: [
+              {
+                type: 'error',
+                message: error.error,
+                path: error.path,
+              },
+            ],
           });
         }
 
@@ -2963,7 +3220,7 @@ export function createValidateCommand(): Command {
           }
 
           // Find existing result for this path or create new one
-          let result = results.find(r => r.file === warning.path);
+          let result = results.find((r) => r.file === warning.path);
           if (!result) {
             result = {
               file: warning.path,
@@ -3002,7 +3259,7 @@ export function createValidateCommand(): Command {
           // Check for multiple .otel.canvas files in the same directory
           if (otel.length > 1) {
             for (const filePath of otel) {
-              let result = results.find(r => r.file === filePath);
+              let result = results.find((r) => r.file === filePath);
               if (!result) {
                 result = {
                   file: filePath,
@@ -3016,7 +3273,9 @@ export function createValidateCommand(): Command {
               result.isValid = false;
               result.issues.push({
                 type: 'error',
-                message: `Multiple .otel.canvas files in the same directory: ${otel.map(f => basename(f)).join(', ')}`,
+                message: `Multiple .otel.canvas files in the same directory: ${otel
+                  .map((f) => basename(f))
+                  .join(', ')}`,
                 path: filePath,
                 suggestion: `A storyboard folder should contain only one .otel.canvas file. Move additional canvases to separate storyboard folders.`,
               });
@@ -3028,7 +3287,7 @@ export function createValidateCommand(): Command {
             // No .canvas files allowed in the same folder
             if (regular.length > 0) {
               for (const filePath of regular) {
-                let result = results.find(r => r.file === filePath);
+                let result = results.find((r) => r.file === filePath);
                 if (!result) {
                   result = {
                     file: filePath,
@@ -3053,7 +3312,7 @@ export function createValidateCommand(): Command {
             for (const filePath of otel) {
               const fileName = basename(filePath, '.otel.canvas');
               if (fileName !== folderName) {
-                let result = results.find(r => r.file === filePath);
+                let result = results.find((r) => r.file === filePath);
                 if (!result) {
                   result = {
                     file: filePath,
@@ -3131,9 +3390,8 @@ export function createValidateCommand(): Command {
 
         if (validateCanvases) {
           for (const canvas of discoveryResult.canvases) {
-
             // Check if we already have a result for this canvas (from discovery errors)
-            const existingResult = results.find(r => r.file === canvas.path);
+            const existingResult = results.find((r) => r.file === canvas.path);
             if (existingResult) {
               // Already has errors/warnings, skip validation
               continue;
@@ -3158,11 +3416,7 @@ export function createValidateCommand(): Command {
 
         // Build EventRegistry from library and all parsed canvases
         const componentLibrary = library?.raw as ComponentLibrary | undefined;
-        const eventRegistry = EventRegistry.build(
-          componentLibrary,
-          parsedCanvases,
-          library?.path
-        );
+        const eventRegistry = EventRegistry.build(componentLibrary, parsedCanvases, library?.path);
 
         // PHASE 2.5a: Check that .otel.canvas files have co-located workflows
         // Build a set of canvas paths that have co-located workflows
@@ -3187,7 +3441,7 @@ export function createValidateCommand(): Command {
 
           if (!canvasesWithColocatedWorkflows.has(storyboard.canvas.path)) {
             // Find or create result for this canvas
-            let result = results.find(r => r.file === storyboard.canvas.path);
+            let result = results.find((r) => r.file === storyboard.canvas.path);
             if (!result) {
               result = {
                 file: storyboard.canvas.path,
@@ -3203,7 +3457,8 @@ export function createValidateCommand(): Command {
               type: 'error',
               message: `No workflows found for this .otel.canvas in the "${storyboard.basename}" storyboard`,
               path: storyboard.canvas.path,
-              suggestion: `Create at least one workflow file in ".principal-views/${storyboard.basename}/${storyboard.basename}-workflow/" that references this canvas. ` +
+              suggestion:
+                `Create at least one workflow file in ".principal-views/${storyboard.basename}/${storyboard.basename}-workflow/" that references this canvas. ` +
                 `Workflows define how events in the canvas are visualized during trace playback.`,
             });
           }
@@ -3236,7 +3491,7 @@ export function createValidateCommand(): Command {
           // Add violations to results
           for (const violation of spanPatternViolations) {
             // Find or create result for this workflow file
-            let result = results.find(r => r.file === violation.file);
+            let result = results.find((r) => r.file === violation.file);
             if (!result) {
               result = {
                 file: violation.file,
@@ -3267,7 +3522,9 @@ export function createValidateCommand(): Command {
         // - draft span conventions with a workflow.json should be changed to implemented
         if (validateCanvases && validateWorkflows) {
           // Find spans.canvas files and extract span conventions
-          const spansCanvases = discoveryResult.canvases.filter(c => c.path.endsWith('.spans.canvas'));
+          const spansCanvases = discoveryResult.canvases.filter((c) =>
+            c.path.endsWith('.spans.canvas')
+          );
 
           // Collect all workflow spanPatterns
           const workflowSpanPatterns = new Map<string, string>(); // spanPattern -> workflow path
@@ -3282,7 +3539,7 @@ export function createValidateCommand(): Command {
           // If workflows with spanPatterns exist but no spans.canvas, error on each workflow
           if (workflowSpanPatterns.size > 0 && spansCanvases.length === 0) {
             for (const [spanPattern, workflowPath] of workflowSpanPatterns) {
-              let result = results.find(r => r.file === workflowPath);
+              let result = results.find((r) => r.file === workflowPath);
               if (!result) {
                 result = {
                   file: workflowPath,
@@ -3296,7 +3553,8 @@ export function createValidateCommand(): Command {
                 type: 'error',
                 message: `Workflow defines spanPattern "${spanPattern}" but no spans.canvas file exists`,
                 path: 'spanPattern',
-                suggestion: 'Create a .spans.canvas file (e.g., ".principal-views/architecture.spans.canvas") to define span conventions for your project',
+                suggestion:
+                  'Create a .spans.canvas file (e.g., ".principal-views/architecture.spans.canvas") to define span conventions for your project',
               });
               result.isValid = false;
             }
@@ -3331,7 +3589,7 @@ export function createValidateCommand(): Command {
               const hasWorkflow = matchingWorkflows.length > 0;
 
               // Find or create result for spans.canvas
-              let result = results.find(r => r.file === spansCanvas.path);
+              let result = results.find((r) => r.file === spansCanvas.path);
               if (!result) {
                 result = {
                   file: spansCanvas.path,
@@ -3353,7 +3611,7 @@ export function createValidateCommand(): Command {
                 result.isValid = false;
               } else if (status === 'draft' && hasWorkflow) {
                 // draft span conventions with a workflow.json should be changed to implemented
-                const workflowPaths = matchingWorkflows.map(w => w.path).join(', ');
+                const workflowPaths = matchingWorkflows.map((w) => w.path).join(', ');
                 result.issues.push({
                   type: 'error',
                   message: `Span convention "${spanPattern}" has matching workflow(s) (${workflowPaths}) but is marked as draft`,
@@ -3381,7 +3639,7 @@ export function createValidateCommand(): Command {
             const allWorkflowEvents = canvasKey ? workflowsByCanvas.get(canvasKey) : undefined;
 
             // Get co-located test traces for this workflow
-            const executionFiles = discoveredWorkflow.testTraces.map(tt =>
+            const executionFiles = discoveredWorkflow.testTraces.map((tt) =>
               resolve(repositoryPath, tt.path)
             );
 
