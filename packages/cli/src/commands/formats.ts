@@ -63,30 +63,27 @@ ${chalk.dim('│')} {                                                           
 ${chalk.dim('│')}   ${chalk.green('"nodes"')}: [                  ${chalk.dim('// Array of event schemas')}      ${chalk.dim('│')}
 ${chalk.dim('│')}     {                                                              ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"id"')}: "event-id",      ${chalk.dim('// Unique identifier')}         ${chalk.dim('│')}
-${chalk.dim('│')}       ${chalk.yellow('"type"')}: "text",                                              ${chalk.dim('│')}
-${chalk.dim('│')}       ${chalk.yellow('"text"')}: "Event Name",  ${chalk.dim('// Display text')}              ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.green('"type"')}: "otel-event",   ${chalk.dim('// Semantic OTEL node type')}    ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.green('"label"')}: "Event Name",  ${chalk.dim('// Display label')}              ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.yellow('"x"')}: 0, ${chalk.yellow('"y"')}: 0, ${chalk.yellow('"width"')}: 200, ${chalk.yellow('"height"')}: 100,                   ${chalk.dim('│')}
 ${chalk.dim('│')}       ${chalk.dim('// color: NOT required - derived from scope + span at render time')}   ${chalk.dim('│')}
-${chalk.dim('│')}       ${chalk.green('"pv"')}: {                                                        ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"status"')}: "draft",     ${chalk.dim('// Required: draft|approved|implemented')} ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"event"')}: {             ${chalk.dim('// Event schema (object, NOT string)')} ${chalk.dim('│')}
-${chalk.dim('│')}           ${chalk.yellow('"name"')}: "feature.event.name",                         ${chalk.dim('│')}
-${chalk.dim('│')}           ${chalk.yellow('"attributes"')}: {    ${chalk.dim('// Attribute definitions')}     ${chalk.dim('│')}
-${chalk.dim('│')}             "attr.name": {                                           ${chalk.dim('│')}
-${chalk.dim('│')}               ${chalk.green('"type"')}: "string",                                  ${chalk.dim('│')}
-${chalk.dim('│')}               ${chalk.green('"description"')}: "What this attribute is",         ${chalk.dim('│')}
-${chalk.dim('│')}               ${chalk.green('"required"')}: true                                   ${chalk.dim('│')}
-${chalk.dim('│')}             }                                                        ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.green('"event"')}: {              ${chalk.dim('// Event schema (top-level)')}   ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.yellow('"name"')}: "feature.event.name",                           ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.yellow('"attributes"')}: {      ${chalk.dim('// Attribute definitions')}      ${chalk.dim('│')}
+${chalk.dim('│')}           "attr.name": {                                             ${chalk.dim('│')}
+${chalk.dim('│')}             ${chalk.green('"type"')}: "string",                                    ${chalk.dim('│')}
+${chalk.dim('│')}             ${chalk.green('"description"')}: "What this attribute is",           ${chalk.dim('│')}
+${chalk.dim('│')}             ${chalk.green('"required"')}: true                                     ${chalk.dim('│')}
 ${chalk.dim('│')}           }                                                          ${chalk.dim('│')}
-${chalk.dim('│')}         },                                                           ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"references"')}: ["src/file.ts"],  ${chalk.dim('// Source files')}      ${chalk.dim('│')}
-${chalk.dim('│')}         ${chalk.cyan('"otel"')}: {                       ${chalk.dim('// OTEL metadata')}       ${chalk.dim('│')}
-${chalk.dim('│')}           ${chalk.yellow('"kind"')}: "event",                                       ${chalk.dim('│')}
-${chalk.dim('│')}           ${chalk.yellow('"category"')}: "lifecycle"                               ${chalk.dim('│')}
 ${chalk.dim('│')}         }                                                            ${chalk.dim('│')}
-${chalk.dim('│')}       }                                                                ${chalk.dim('│')}
-${chalk.dim('│')}     }                                                                  ${chalk.dim('│')}
-${chalk.dim('│')}   ],                                                                   ${chalk.dim('│')}
+${chalk.dim('│')}       },                                                             ${chalk.dim('│')}
+${chalk.dim('│')}       ${chalk.green('"otel"')}: {               ${chalk.dim('// OTEL metadata (top-level)')}  ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"status"')}: "draft",     ${chalk.dim('// Required: draft|approved|implemented')} ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"scope"')}: "my-scope",   ${chalk.dim('// Instrumentation scope')}      ${chalk.dim('│')}
+${chalk.dim('│')}         ${chalk.cyan('"files"')}: ["src/file.ts"]  ${chalk.dim('// Source files')}            ${chalk.dim('│')}
+${chalk.dim('│')}       }                                                              ${chalk.dim('│')}
+${chalk.dim('│')}     }                                                                ${chalk.dim('│')}
+${chalk.dim('│')}   ],                                                                 ${chalk.dim('│')}
 ${chalk.dim('│')}   ${chalk.green('"edges"')}: [],                ${chalk.dim('// Optional: event relationships')} ${chalk.dim('│')}
 ${chalk.dim('│')}   ${chalk.green('"pv"')}: {                                                          ${chalk.dim('│')}
 ${chalk.dim('│')}     ${chalk.yellow('"name"')}: "Feature Name",  ${chalk.dim('// Feature name (NOT "...Canvas")')} ${chalk.dim('│')}
@@ -96,10 +93,24 @@ ${chalk.dim('│')}   }                                                         
 ${chalk.dim('│')} }                                                                      ${chalk.dim('│')}
 ${chalk.dim('└────────────────────────────────────────────────────────────────────┘')}
 
+${chalk.bold('Semantic Node Types for .otel.canvas:')}
+
+  ${chalk.green('otel-event')}            Event schema definition
+  ${chalk.green('otel-span-convention')}  Span convention (operation type)
+  ${chalk.green('otel-scope')}            Instrumentation scope
+  ${chalk.green('otel-resource')}         Resource definition
+  ${chalk.green('otel-boundary')}         Boundary marker
+
 ${chalk.bold('Node Required Fields:')}
 
-  ${chalk.green('pv.status')}  ${chalk.dim('string')}   "draft" | "approved" | "implemented"
-  ${chalk.green('pv.event')}   ${chalk.dim('object')}   Event schema with name and attributes
+  ${chalk.green('type')}         ${chalk.dim('string')}   "otel-event" (semantic node type)
+  ${chalk.green('label')}        ${chalk.dim('string')}   Human-readable display name
+  ${chalk.green('event')}        ${chalk.dim('object')}   Event schema with name and attributes (top-level)
+  ${chalk.green('otel.status')}  ${chalk.dim('string')}   "draft" | "approved" | "implemented"
+
+${chalk.bold('Alternative: Event Reference')}
+Instead of inline ${chalk.yellow('event')}, you can use ${chalk.yellow('eventRef')} to reference a library event:
+  ${chalk.green('"eventRef"')}: "library.event.name"  ${chalk.dim('// Reference event from library')}
 
 ${chalk.bold('Note on Colors:')} Event nodes do ${chalk.bold('NOT')} require a color field.
 Colors are derived at render time from:
@@ -111,7 +122,7 @@ ${chalk.bold('Event Schema Format:')}
 ${chalk.red.bold('IMPORTANT:')} The "event" field must be an ${chalk.bold('object')}, not a string!
 
 ${chalk.dim('┌─────────────────────────────────────────────────────────────────┐')}
-${chalk.dim('│')} ${chalk.green('"event"')}: {                                                    ${chalk.dim('│')}
+${chalk.dim('│')} ${chalk.green('"event"')}: {                        ${chalk.dim('// Top-level, NOT inside pv')} ${chalk.dim('│')}
 ${chalk.dim('│')}   ${chalk.yellow('"name"')}: "validation.started",     ${chalk.dim('// Event name')}         ${chalk.dim('│')}
 ${chalk.dim('│')}   ${chalk.yellow('"attributes"')}: {                   ${chalk.dim('// Attribute definitions')} ${chalk.dim('│')}
 ${chalk.dim('│')}     "input.recordCount": {                                        ${chalk.dim('│')}
@@ -123,7 +134,15 @@ ${chalk.dim('│')}   }                                                         
 ${chalk.dim('│')} }                                                                 ${chalk.dim('│')}
 ${chalk.dim('└─────────────────────────────────────────────────────────────────┘')}
 
-${chalk.red.bold('DEPRECATED:')} ${chalk.yellow('"sources"')} - Use ${chalk.green('"references"')} instead
+${chalk.red.bold('DEPRECATED FORMATS:')}
+  ${chalk.yellow('type: "text" with pv.event')} - Use ${chalk.green('type: "otel-event" with top-level event')}
+  ${chalk.yellow('pv.status')} - Use ${chalk.green('otel.status')} at top level
+  ${chalk.yellow('pv.references')} - Use ${chalk.green('otel.files')} at top level
+  ${chalk.yellow('"sources"')} - Use ${chalk.green('"otel.files"')} instead
+
+${chalk.bold('Migration:')}
+  Run ${chalk.cyan('npx @principal-ai/principal-view-cli migrate-nodes')} to auto-migrate
+  legacy format files to the semantic format.
 
 ${chalk.bold('Edge Required Fields:')}
 
@@ -847,102 +866,90 @@ ${chalk.yellow('.principal-views/data-validator.otel.canvas')}
   "nodes": [
     {
       "id": "validation-started",
-      "type": "text",
-      "text": "Validation Started",
+      ${chalk.green('"type": "otel-event"')},           ${chalk.dim('// Semantic node type')}
+      ${chalk.green('"label"')}: "Validation Started",  ${chalk.dim('// Display label (not "text")')}
       "x": 0, "y": 0, "width": 200, "height": 100,
-      ${chalk.green('"color": "#4CAF50"')},
-      "pv": {
-        ${chalk.green('"status": "draft"')},
-        ${chalk.green('"event"')}: {
-          ${chalk.green('"name"')}: "validation.started",
-          ${chalk.green('"attributes"')}: {
-            "input.recordCount": {
-              "type": "integer",
-              "description": "Number of records to validate",
-              "required": true
-            },
-            "input.source": {
-              "type": "string",
-              "description": "Source of the data",
-              "required": false
-            }
+      ${chalk.green('"event"')}: {                      ${chalk.dim('// Top-level, NOT inside pv')}
+        ${chalk.green('"name"')}: "validation.started",
+        ${chalk.green('"attributes"')}: {
+          "input.recordCount": {
+            "type": "integer",
+            "description": "Number of records to validate",
+            "required": true
+          },
+          "input.source": {
+            "type": "string",
+            "description": "Source of the data",
+            "required": false
           }
-        },
-        ${chalk.green('"references"')}: ["src/validator.ts"],
-        "otel": {
-          "kind": "event",
-          "category": "lifecycle"
         }
+      },
+      ${chalk.green('"otel"')}: {                       ${chalk.dim('// Top-level OTEL metadata')}
+        ${chalk.green('"status"')}: "draft",            ${chalk.dim('// Required status')}
+        "scope": "validation",
+        "files": ["src/validator.ts"]
       }
     },
     {
       "id": "validation-complete",
-      "type": "text",
-      "text": "Validation Complete",
+      "type": "otel-event",
+      "label": "Validation Complete",
       "x": 250, "y": 0, "width": 200, "height": 100,
-      "color": "#2196F3",
-      "pv": {
-        "status": "draft",
-        "event": {
-          "name": "validation.complete",
-          "attributes": {
-            "result.validCount": {
-              "type": "integer",
-              "description": "Number of valid records",
-              "required": true
-            },
-            "result.invalidCount": {
-              "type": "integer",
-              "description": "Number of invalid records",
-              "required": true
-            },
-            "duration.ms": {
-              "type": "number",
-              "description": "Validation duration in milliseconds",
-              "required": false
-            }
+      "event": {
+        "name": "validation.complete",
+        "attributes": {
+          "result.validCount": {
+            "type": "integer",
+            "description": "Number of valid records",
+            "required": true
+          },
+          "result.invalidCount": {
+            "type": "integer",
+            "description": "Number of invalid records",
+            "required": true
+          },
+          "duration.ms": {
+            "type": "number",
+            "description": "Validation duration in milliseconds",
+            "required": false
           }
-        },
-        "references": ["src/validator.ts"],
-        "otel": {
-          "kind": "event",
-          "category": "lifecycle"
         }
+      },
+      "otel": {
+        "status": "draft",
+        "scope": "validation",
+        "files": ["src/validator.ts"]
       }
     },
     {
       "id": "validation-error",
-      "type": "text",
-      "text": "Validation Error",
+      "type": "otel-event",
+      "label": "Validation Error",
       "x": 500, "y": 0, "width": 200, "height": 100,
-      "color": "#F44336",
-      "pv": {
-        "status": "draft",
-        "event": {
-          "name": "validation.error",
-          "attributes": {
-            "error.type": {
-              "type": "string",
-              "description": "Type of error that occurred",
-              "required": true
-            },
-            "error.message": {
-              "type": "string",
-              "description": "Error message",
-              "required": true
-            },
-            "error.stage": {
-              "type": "string",
-              "description": "Stage where error occurred",
-              "required": false
-            }
+      "event": {
+        "name": "validation.error",
+        "attributes": {
+          "error.type": {
+            "type": "string",
+            "description": "Type of error that occurred",
+            "required": true
+          },
+          "error.message": {
+            "type": "string",
+            "description": "Error message",
+            "required": true
+          },
+          "error.stage": {
+            "type": "string",
+            "description": "Stage where error occurred",
+            "required": false
           }
-        },
-        "references": ["src/validator.ts"],
-        "otel": {
-          "kind": "event",
-          "category": "error"
         }
+      },
+      "otel": {
+        "status": "draft",
+        "scope": "validation",
+        "files": ["src/validator.ts"]
       }
     }
   ],
