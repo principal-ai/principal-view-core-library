@@ -316,7 +316,7 @@ function SequenceDiagramInner({
   showBackground = false, // Default to false since swimlanes provide visual structure
 }: SequenceDiagramRendererProps) {
   // Extract layout params
-  const { laneWidth = 200, headerHeight = 60, arrowCentric = false } = layoutOptions;
+  const { laneWidth = 200, headerHeight = 60 } = layoutOptions;
 
   // Merge custom node/edge types with sequence defaults
   const nodeTypes = useMemo(
@@ -328,11 +328,11 @@ function SequenceDiagramInner({
     [customEdgeTypes]
   );
 
-  // Compute layout (pass arrowCentric through layoutOptions)
+  // Compute layout
   const { nodes, edges, swimlanes, totalHeight } = useSequenceLayout(
     events,
     sequenceEdges,
-    { ...layoutOptions, arrowCentric }
+    layoutOptions
   );
 
   // Handle node click

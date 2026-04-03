@@ -218,7 +218,7 @@ export const WithCollapseToggle: Story = {
 };
 
 /**
- * Custom layout options
+ * Custom layout options - wider lanes and more spacing
  */
 export const CustomLayout: Story = {
   args: {
@@ -229,38 +229,6 @@ export const CustomLayout: Story = {
       laneWidth: 250,
       laneGap: 80,
       eventSpacing: 100,
-      nodeWidth: 220,
-      nodeHeight: 60,
-    },
-  },
-};
-
-/**
- * Arrow-centric mode: minimal markers with labels on arrows
- * This is the traditional UML sequence diagram style
- */
-export const ArrowCentric: Story = {
-  args: {
-    events: simpleAuthFlow.events,
-    edges: simpleAuthFlow.edges,
-    height: 500,
-    layoutOptions: {
-      arrowCentric: true,
-    },
-  },
-};
-
-/**
- * Arrow-centric with complex multi-actor flow
- */
-export const ArrowCentricComplex: Story = {
-  args: {
-    events: complexOrderFlow.events,
-    edges: complexOrderFlow.edges,
-    height: 700,
-    layoutOptions: {
-      arrowCentric: true,
-      eventSpacing: 60,
     },
   },
 };
@@ -276,9 +244,7 @@ export const CompactLayout: Story = {
     layoutOptions: {
       laneWidth: 150,
       laneGap: 30,
-      eventSpacing: 60,
-      nodeWidth: 130,
-      nodeHeight: 40,
+      eventSpacing: 50,
     },
   },
 };

@@ -103,22 +103,16 @@ export interface UseSequenceLayoutOptions {
   headerHeight?: number;
 
   /**
-   * Node width (marker width in arrow-centric mode)
-   * @default 180 (or 12 in arrow-centric mode)
+   * Node marker width
+   * @default 14
    */
   nodeWidth?: number;
 
   /**
-   * Node height (marker height in arrow-centric mode)
-   * @default 50 (or 12 in arrow-centric mode)
+   * Node marker height
+   * @default 14
    */
   nodeHeight?: number;
-
-  /**
-   * Arrow-centric mode: minimal node markers with labels on edges
-   * @default false
-   */
-  arrowCentric?: boolean;
 
   /**
    * Namespaces to collapse (show as single lane)
@@ -217,12 +211,9 @@ export function useSequenceLayout(
     eventSpacing = 80,
     headerHeight = 60,
     collapsedNamespaces = [],
-    arrowCentric = false,
+    nodeWidth = 14,
+    nodeHeight = 14,
   } = options;
-
-  // In arrow-centric mode, use small markers; otherwise use full-size nodes
-  const nodeWidth = options.nodeWidth ?? (arrowCentric ? 14 : 180);
-  const nodeHeight = options.nodeHeight ?? (arrowCentric ? 14 : 50);
 
   return useMemo(() => {
     if (events.length === 0) {
@@ -327,14 +318,11 @@ export function useSequenceLayout(
       // Global Y position based on event order (time layer)
       const y = headerHeight + i * eventSpacing;
 
-      // In arrow-centric mode, center the marker on the lifeline
-      const xOffset = arrowCentric ? 0 : nodeWidth / 2;
-
       nodes.push({
         id: event.id,
-        type: arrowCentric ? 'sequenceMarker' : (event.type || 'default'),
+        type: 'sequenceMarker',
         position: {
-          x: lane.x - xOffset - nodeWidth / 2,
+          x: lane.x - nodeWidth / 2,
           y: y - nodeHeight / 2, // Center vertically on the time layer
         },
         data: {
@@ -343,7 +331,6 @@ export function useSequenceLayout(
           namespace: originalNamespace,
           visibleNamespace,
           timeLayer: i,
-          arrowCentric,
           ...event.data,
         },
         style: {
@@ -353,7 +340,7 @@ export function useSequenceLayout(
       });
     }
 
-    // Step 5: Create edges
+    // Step 5: Create edges with labels derived from target event
     const edges: Edge[] = sequenceEdges.map((edge) => {
       const sourceNamespace = eventNamespaces.get(edge.fromEvent);
       const targetNamespace = eventNamespaces.get(edge.toEvent);
@@ -361,25 +348,21 @@ export function useSequenceLayout(
         namespaceToVisible.get(sourceNamespace!) !==
         namespaceToVisible.get(targetNamespace!);
 
-      // In arrow-centric mode, use target event's label for the edge
       const targetEvent = eventById.get(edge.toEvent);
-      const edgeLabel = arrowCentric
-        ? (edge.label || targetEvent?.label || targetEvent?.name.split('.').pop() || '')
-        : edge.label;
+      const edgeLabel = edge.label || targetEvent?.label || targetEvent?.name.split('.').pop() || '';
 
       return {
         id: edge.id,
         source: edge.fromEvent,
         target: edge.toEvent,
-        type: arrowCentric ? 'sequenceArrow' : (edge.type || 'default'),
+        type: 'sequenceArrow',
         label: edgeLabel,
-        labelStyle: arrowCentric ? { fontSize: 12, fontWeight: 500 } : undefined,
-        labelBgStyle: arrowCentric ? { fill: 'white', fillOpacity: 0.8 } : undefined,
+        labelStyle: { fontSize: 12, fontWeight: 500 },
+        labelBgStyle: { fill: 'white', fillOpacity: 0.8 },
         data: {
           crossesLanes,
           sourceNamespace,
           targetNamespace,
-          arrowCentric,
         },
       };
     });
@@ -408,6 +391,5 @@ export function useSequenceLayout(
     nodeWidth,
     nodeHeight,
     collapsedNamespaces,
-    arrowCentric,
   ]);
 }
