@@ -120,7 +120,7 @@ export interface ReferencedSpan {
  * Discovered workflow file within a storyboard
  */
 export interface DiscoveredWorkflow {
-  /** Unique ID with package prefix (e.g., "core/checkout-flow/checkout" or "checkout-flow/checkout") */
+  /** Workflow basename ID (e.g., "checkout" for checkout.workflow.json) */
   id: string;
   /** Display name (Title Case from basename) */
   name: string;

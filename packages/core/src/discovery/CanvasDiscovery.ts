@@ -461,10 +461,8 @@ export class CanvasDiscovery {
       // Determine package context
       const packageInfo = this.findPackageForPath(path, packageMap);
 
-      // Generate unique ID
-      const id = packageInfo
-        ? `${packageInfo.packageData.name}/${storyboardName}/${basename}`
-        : `${storyboardName}/${basename}`;
+      // Generate unique ID (basename only - storyboard context is in storyboardId)
+      const id = basename;
 
       // Discover test traces co-located in the same directory as workflow.json
       const workflowTestTraces = await this.discoverTestTracesInWorkflowDir(
