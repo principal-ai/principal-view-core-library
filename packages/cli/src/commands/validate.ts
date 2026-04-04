@@ -22,6 +22,7 @@ import type {
   ExecutionData,
   ComponentLibrary as CoreComponentLibrary,
   DashboardDefinition,
+  DashboardValidationContext,
 } from '@principal-ai/principal-view-core';
 import {
   createExecutionValidator,
@@ -2563,7 +2564,11 @@ The workflow's 'canvas' field should point to the canvas this trace validates ag
 /**
  * Validate a .dashboard.json file
  */
-function validateDashboard(filePath: string, repositoryPath: string): ValidationResult {
+function validateDashboard(
+  filePath: string,
+  repositoryPath: string,
+  context?: DashboardValidationContext
+): ValidationResult {
   const relativePath = relative(repositoryPath, filePath);
 
   if (!existsSync(filePath)) {
@@ -2579,9 +2584,9 @@ function validateDashboard(filePath: string, repositoryPath: string): Validation
     const content = readFileSync(filePath, 'utf8');
     const data = JSON.parse(content);
 
-    // Validate using dashboard validator
+    // Validate using dashboard validator with optional cross-reference context
     const validator = createDashboardValidator();
-    const result = validator.validate(data, relativePath);
+    const result = validator.validate(data, relativePath, context);
 
     // Convert dashboard validation result to validation issues
     const issues: ValidationIssue[] = [
@@ -3406,10 +3411,22 @@ export function createValidateCommand(): Command {
             }
           }
 
+          // Build dashboard validation context from discovered storyboards
+          // This enables cross-reference validation of source storyboard/workflow references
+          const dashboardContext: DashboardValidationContext = {
+            storyboards: discoveryResult.storyboards.map((sb) => sb.basename),
+            workflows: Object.fromEntries(
+              discoveryResult.storyboards.map((sb) => [
+                sb.basename,
+                sb.workflows.map((wf) => wf.name),
+              ])
+            ),
+          };
+
           // Validate dashboard files from .principal-views/dashboards/
           for (const dashboard of dashboards) {
             const absolutePath = resolve(repositoryPath, dashboard.path);
-            const validationResult = validateDashboard(absolutePath, repositoryPath);
+            const validationResult = validateDashboard(absolutePath, repositoryPath, dashboardContext);
             results.push(validationResult);
           }
         }
