@@ -52,28 +52,39 @@ export function MetricPanel({
   // Render error state
   if (data.error) {
     return (
-      <div
-        style={{
-          backgroundColor: theme.colors.surface || theme.colors.background,
-          border: `1px solid ${theme.colors.error}`,
-          borderRadius: theme.radii?.[2] || 8,
-          padding: theme.space?.[3] || 16,
-          fontFamily: theme.fonts.body,
-        }}
-      >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div
           style={{
-            color: theme.colors.error,
-            marginBottom: theme.space?.[2] || 8,
-            fontSize: theme.fontSizes[1],
-            fontWeight: theme.fontWeights.medium,
+            backgroundColor: theme.colors.surface || theme.colors.background,
+            border: `1px solid ${theme.colors.error}`,
+            borderRadius: theme.radii?.[2] || 8,
+            padding: theme.space?.[3] || 16,
+            fontFamily: theme.fonts.body,
           }}
         >
-          {metric.name}
+          <div
+            style={{
+              color: theme.colors.error,
+              marginBottom: theme.space?.[2] || 8,
+              fontSize: theme.fontSizes[1],
+              fontWeight: theme.fontWeights.medium,
+            }}
+          >
+            {metric.name}
+          </div>
+          <div style={{ color: theme.colors.textSecondary, fontSize: theme.fontSizes[0] }}>
+            {data.error}
+          </div>
         </div>
-        <div style={{ color: theme.colors.textSecondary, fontSize: theme.fontSizes[0] }}>
-          {data.error}
-        </div>
+
+        {/* Source links - show even in error state for navigation to workflows */}
+        {metric.sources && metric.sources.length > 0 && onSourceClick && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {metric.sources.map((source, i) => (
+              <SourceLink key={i} source={source} onClick={onSourceClick} />
+            ))}
+          </div>
+        )}
       </div>
     );
   }
