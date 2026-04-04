@@ -441,10 +441,10 @@ export class DashboardValidator {
         severity: 'error',
       });
     } else if (context?.storyboards && !context.storyboards.includes(s.storyboard)) {
-      warnings.push({
+      errors.push({
         path: `${path}.storyboard`,
         message: `Unknown storyboard: "${s.storyboard}"`,
-        severity: 'warning',
+        severity: 'error',
         suggestion: `Known storyboards: ${context.storyboards.join(', ')}`,
       });
     }
@@ -468,10 +468,13 @@ export class DashboardValidator {
       context.workflows[s.storyboard] &&
       !context.workflows[s.storyboard].includes(s.workflow)
     ) {
-      warnings.push({
+      errors.push({
         path: `${path}.workflow`,
         message: `Unknown workflow "${s.workflow}" in storyboard "${s.storyboard}"`,
-        severity: 'warning',
+        severity: 'error',
+        suggestion: context.workflows[s.storyboard].length > 0
+          ? `Known workflows in "${s.storyboard}": ${context.workflows[s.storyboard].join(', ')}`
+          : `No workflows found in storyboard "${s.storyboard}"`,
       });
     }
 
