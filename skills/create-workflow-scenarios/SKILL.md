@@ -59,20 +59,17 @@ A .workflow.json file contains metadata, rendering configuration, and multiple s
   "name": "Order Processing",
   "description": "Order processing execution scenarios",
   "spanPattern": "order.processing",
-  "mode": "span-tree",
-  "scenarioSelection": "first-match",
-  "showLogsPerSpan": true,
   "scenarios": [
     {
       "id": "success",
       "priority": 1,
       "description": "Successful order completion",
       "template": {
-        "introduction": "✅ Order Processing Complete",
+        "introduction": "Order Processing Complete",
         "events": {
-          "order.started": "📦 Order {{order.id}} received",
-          "payment.completed": "💳 Payment processed: ${{payment.amount}}",
-          "order.completed": "✅ Order completed successfully"
+          "order.started": "Order {{order.id}} received",
+          "payment.completed": "Payment processed: ${{payment.amount}}",
+          "order.completed": "Order completed successfully"
         },
         "summary": "Order {{order.id}} completed in {{duration.ms}}ms"
       }
@@ -93,17 +90,6 @@ A .workflow.json file contains metadata, rendering configuration, and multiple s
 - `spanPattern` (string, required) - Exact span name this workflow applies to (e.g., "order.processing", "payment.authorize")
   - Must be unique across all workflow files
   - Used to match workflows to spans in OTEL traces
-
-### Rendering Configuration
-- `mode` (string, required) - Either `"span-tree"` or `"timeline"`
-  - `"span-tree"` - Follow OTEL span hierarchy (parent-child relationships)
-  - `"timeline"` - Chronological order (sorted by timestamp)
-- `scenarioSelection` (string, optional) - Either `"first-match"` (default) or `"manual"`
-
-### Optional Configuration
-- `showLogsPerSpan` (boolean) - Show logs grouped by span (span-tree mode)
-- `interleaveSignals` (boolean) - Mix spans/logs by timestamp (timeline mode)
-- `formatting` (object) - Display formatting options
 
 ### Scenarios
 - `scenarios` (array, required) - List of scenario definitions (see below)
@@ -136,8 +122,8 @@ Each scenario consists of three parts:
 {
   "template": {
     "events": {
-      "order.started": "📦 Order started",
-      "order.completed": "✅ Order completed"
+      "order.started": "Order started",
+      "order.completed": "Order completed"
     }
   }
 }
@@ -147,7 +133,7 @@ This scenario matches when BOTH `order.started` AND `order.completed` events are
 **Scenarios must be mutually exclusive:**
 Validation enforces that no scenario's events can be a strict subset of another scenario's events.
 
-❌ **Invalid** (subset violation):
+**Invalid** (subset violation):
 ```json
 {
   "scenarios": [
@@ -173,7 +159,7 @@ Validation enforces that no scenario's events can be a strict subset of another 
 ```
 The `partial` scenario is a strict subset of `complete` - both would match when `order.started` and `order.completed` are present.
 
-✅ **Valid** (mutually exclusive):
+**Valid** (mutually exclusive):
 ```json
 {
   "scenarios": [
@@ -209,12 +195,12 @@ Opening text shown before events:
 ```json
 {
   "template": {
-    "introduction": "✅ Order Processing Complete\n━━━━━━━━━━━━━━━━━━━━━━"
+    "introduction": "Order Processing Complete"
   }
 }
 ```
 
-Use `\n` for line breaks, emojis for visual cues.
+Use `\n` for line breaks.
 
 #### Events (required for meaningful output)
 Map event names to template strings:
@@ -222,11 +208,11 @@ Map event names to template strings:
 {
   "template": {
     "events": {
-      "order.started": "📦 Order {{order.id}} received from {{customer.name}}",
-      "payment.initiated": "💳 Processing payment: ${{payment.amount}}",
-      "payment.completed": "✅ Payment confirmed: {{payment.method}}",
-      "shipping.scheduled": "🚚 Shipping via {{shipping.carrier}} - tracking: {{tracking.number}}",
-      "order.completed": "✅ Order completed successfully"
+      "order.started": "Order {{order.id}} received from {{customer.name}}",
+      "payment.initiated": "Processing payment: ${{payment.amount}}",
+      "payment.completed": "Payment confirmed: {{payment.method}}",
+      "shipping.scheduled": "Shipping via {{shipping.carrier}} - tracking: {{tracking.number}}",
+      "order.completed": "Order completed successfully"
     }
   }
 }
@@ -239,7 +225,7 @@ Closing text shown after all events:
 ```json
 {
   "template": {
-    "summary": "━━━━━━━━━━━━━━━━━━━━━━\n\n✅ SUCCESS\n\nOrder {{order.id}} completed in {{duration.ms}}ms"
+    "summary": "Order {{order.id}} completed in {{duration.ms}}ms"
   }
 }
 ```
@@ -274,47 +260,6 @@ If a variable isn't found, it remains as-is: `{{missing.var}}`
 
 A warning banner appears in the UI when variables can't be resolved.
 
-### Span-Tree Mode Specific Fields
-
-When using `"mode": "span-tree"`, you can add:
-
-#### Span Template
-How to render span nodes:
-```json
-{
-  "template": {
-    "span": "→ {{span.name}}"
-  }
-}
-```
-
-#### Children Handling
-```json
-{
-  "template": {
-    "span": "→ {{span.name}}",
-    "children": "recurse"  // or "ignore"
-  }
-}
-```
-
-#### Log Templates by Severity
-```json
-{
-  "template": {
-    "logs": {
-      "trace": "🔍 {{log.body}}",
-      "debug": "🔍 {{log.body}}",
-      "info": "ℹ️  {{log.body}}",
-      "warn": "⚠️  {{log.body}}",
-      "error": "❌ {{log.body}}",
-      "fatal": "💀 {{log.body}}",
-      "default": "📝 {{log.body}}"
-    }
-  }
-}
-```
-
 ## Complete Examples
 
 ### Success Scenario
@@ -324,15 +269,15 @@ How to render span nodes:
   "priority": 1,
   "description": "Successful order completion",
   "template": {
-    "introduction": "✅ Order Processing Complete\n━━━━━━━━━━━━━━━━━━━━━━",
+    "introduction": "Order Processing Complete",
     "events": {
-      "order.started": "📦 Order {{order.id}} received",
-      "inventory.checked": "📊 Inventory verified: {{inventory.available}} units",
-      "payment.completed": "💳 Payment processed: ${{payment.amount}}",
-      "shipping.scheduled": "🚚 Shipping via {{shipping.carrier}}",
-      "order.completed": "✅ Order completed successfully"
+      "order.started": "Order {{order.id}} received",
+      "inventory.checked": "Inventory verified: {{inventory.available}} units",
+      "payment.completed": "Payment processed: ${{payment.amount}}",
+      "shipping.scheduled": "Shipping via {{shipping.carrier}}",
+      "order.completed": "Order completed successfully"
     },
-    "summary": "━━━━━━━━━━━━━━━━━━━━━━\n\n✅ SUCCESS\n\nOrder {{order.id}} completed\nTotal: ${{order.total}}\nDuration: {{duration.ms}}ms"
+    "summary": "Order {{order.id}} completed\nTotal: ${{order.total}}\nDuration: {{duration.ms}}ms"
   }
 }
 ```
@@ -345,13 +290,13 @@ How to render span nodes:
   "priority": 2,
   "description": "Order failed due to payment error",
   "template": {
-    "introduction": "❌ Order Processing Failed\n━━━━━━━━━━━━━━━━━━━━━━",
+    "introduction": "Order Processing Failed",
     "events": {
-      "order.started": "📦 Order {{order.id}} received",
-      "payment.failed": "❌ Payment failed: {{error.message}}",
-      "order.failed": "❌ Order processing failed"
+      "order.started": "Order {{order.id}} received",
+      "payment.failed": "Payment failed: {{error.message}}",
+      "order.failed": "Order processing failed"
     },
-    "summary": "━━━━━━━━━━━━━━━━━━━━━━\n\n❌ FAILED\n\nOrder {{order.id}}\nError: {{error.message}}\nType: {{error.type}}"
+    "summary": "Order {{order.id}}\nError: {{error.message}}\nType: {{error.type}}"
   }
 }
 ```
@@ -365,12 +310,12 @@ How to render span nodes:
   "priority": 3,
   "description": "Processing exceeded timeout limit",
   "template": {
-    "introduction": "⚠️ Order Processing Timeout\n━━━━━━━━━━━━━━━━━━━━━━",
+    "introduction": "Order Processing Timeout",
     "events": {
-      "order.started": "📦 Order {{order.id}} received",
-      "timeout.exceeded": "⚠️ Processing exceeded 30s timeout"
+      "order.started": "Order {{order.id}} received",
+      "timeout.exceeded": "Processing exceeded 30s timeout"
     },
-    "summary": "━━━━━━━━━━━━━━━━━━━━━━\n\n⚠️ TIMEOUT\n\nOrder {{order.id}}\nDuration: {{duration.ms}}ms\nStatus: Pending retry"
+    "summary": "Order {{order.id}}\nDuration: {{duration.ms}}ms\nStatus: Pending retry"
   }
 }
 ```
@@ -384,14 +329,14 @@ How to render span nodes:
   "priority": 4,
   "description": "Order partially completed",
   "template": {
-    "introduction": "⚠️ Order Partially Completed\n━━━━━━━━━━━━━━━━━━━━━━",
+    "introduction": "Order Partially Completed",
     "events": {
-      "order.started": "📦 Order {{order.id}} with {{items.total}} items",
-      "items.processed": "✅ {{items.succeeded}} items succeeded",
-      "items.failed": "❌ {{items.failed}} items failed",
-      "order.completed": "⚠️ Order completed with failures"
+      "order.started": "Order {{order.id}} with {{items.total}} items",
+      "items.processed": "{{items.succeeded}} items succeeded",
+      "items.failed": "{{items.failed}} items failed",
+      "order.completed": "Order completed with failures"
     },
-    "summary": "━━━━━━━━━━━━━━━━━━━━━━\n\n⚠️ PARTIAL SUCCESS\n\nSucceeded: {{items.succeeded}}\nFailed: {{items.failed}}\nReason: {{failure.reason}}"
+    "summary": "Succeeded: {{items.succeeded}}\nFailed: {{items.failed}}\nReason: {{failure.reason}}"
   }
 }
 ```
@@ -422,7 +367,7 @@ When creating a .workflow.json file:
    - Timeout: `duration.ms > 30000`
 
 5. **Design workflow templates** - How should each read?
-   - Use emojis for visual cues (✅ ❌ ⚠️ 📋 →)
+   - Use visual indicators for status (SUCCESS, FAILED, WARNING, etc.)
    - Extract meaningful values with `{{variables}}`
    - Keep it concise and scannable
 
@@ -450,22 +395,19 @@ When creating a .workflow.json file:
 ## Template Best Practices
 
 ### Use Visual Indicators
-- ✅ Success actions
-- ❌ Failed actions
-- ⚠️ Warnings, timeouts, partial failures
-- 📋 Generic/informational
-- 📦 Order/item operations
-- 💳 Payment operations
-- 🚚 Shipping operations
-- → Flow arrows (for span-tree templates)
+- [SUCCESS] for successful actions
+- [FAILED] for failed actions
+- [WARNING] for warnings, timeouts, partial failures
+- [INFO] for generic/informational
+- Descriptive prefixes for domain operations (Order:, Payment:, Shipping:)
 
 ### Keep It Scannable
 ```json
 // Good - Clear event-based flow
 "events": {
-  "payment.completed": "💳 Payment: ${{amount}}",
-  "inventory.reserved": "📊 Reserved: {{quantity}} units",
-  "shipping.scheduled": "🚚 Carrier: {{carrier}}"
+  "payment.completed": "Payment: ${{amount}}",
+  "inventory.reserved": "Reserved: {{quantity}} units",
+  "shipping.scheduled": "Carrier: {{carrier}}"
 }
 
 // Bad - Long template strings
@@ -495,7 +437,7 @@ When creating a .workflow.json file:
 ```json
 // Good - Shows actionable details
 "events": {
-  "order.failed": "❌ Failed: {{error.message}} ({{error.code}})"
+  "order.failed": "[FAILED] {{error.message}} ({{error.code}})"
 }
 
 // Bad - Generic
@@ -513,20 +455,20 @@ privu workflow validate path/to/workflow.json
 ```
 
 The validator checks:
-- ✅ JSON syntax is valid
-- ✅ Required fields present (`version`, `canvas`, `name`, `description`, `spanPattern`, `mode`, `scenarios`)
-- ✅ Canvas file exists
-- ✅ `spanPattern` is unique (no duplicate spanPatterns across workflows)
-- ✅ Scenario structure valid (`id`, `priority`, `template`)
-- ✅ **No deprecated fields** (`condition` is no longer supported)
-- ✅ Template uses valid fields (`introduction`, `events`, `logs`, `summary`, `span`, `children`)
-- ✅ Priorities are unique
-- ✅ Scenarios are mutually exclusive (no scenario's events are a strict subset of another's)
-- ✅ Template syntax valid (balanced braces)
+- JSON syntax is valid
+- Required fields present (`version`, `canvas`, `name`, `description`, `spanPattern`, `scenarios`)
+- Canvas file exists
+- `spanPattern` is unique (no duplicate spanPatterns across workflows)
+- Scenario structure valid (`id`, `priority`, `template`)
+- **No deprecated fields** (`condition` is no longer supported)
+- Template uses valid fields (`introduction`, `events`, `logs`, `summary`, `span`, `children`)
+- Priorities are unique
+- Scenarios are mutually exclusive (no scenario's events are a strict subset of another's)
+- Template syntax valid (balanced braces)
 
 **Common Validation Errors:**
 
-### ❌ Missing spanPattern field
+### Missing spanPattern field
 ```json
 // Wrong - Missing required field
 {
@@ -544,7 +486,7 @@ The validator checks:
 }
 ```
 
-### ❌ Deprecated condition field
+### Deprecated condition field
 ```json
 // Wrong - condition field is no longer supported
 {
@@ -572,7 +514,7 @@ The validator checks:
 }
 ```
 
-### ❌ Scenario subset violation
+### Scenario subset violation
 ```json
 // Wrong - "started" is a strict subset of "complete"
 {
@@ -622,7 +564,7 @@ The validator checks:
 }
 ```
 
-### ❌ Duplicate spanPattern
+### Duplicate spanPattern
 ```json
 // Wrong - Multiple workflows with same spanPattern
 // File: payment-success.workflow.json
@@ -662,11 +604,11 @@ privu workflow test workflow.json execution.otel.json
 ```
 
 **Verification checklist:**
-- ✅ Correct scenario selected
-- ✅ All `{{variables}}` populated
-- ✅ No `{{missing.vars}}` shown
-- ✅ Workflow is readable and helpful
-- ✅ Events appear in logical order
+- Correct scenario selected
+- All `{{variables}}` populated
+- No `{{missing.vars}}` shown
+- Workflow is readable and helpful
+- Events appear in logical order
 
 If variables show as `{{missing.var}}`:
 1. Run `privu workflow inspect execution.otel.json`
@@ -735,10 +677,10 @@ See working examples at:
 
 ## Common Pitfalls
 
-### ❌ Don't: Use legacy format
+### Don't: Use legacy format
 The old format with `steps`, `details`, `event`, `attributes` is no longer supported.
 
-### ❌ Don't: Hardcode values
+### Don't: Hardcode values
 ```json
 {
   "events": {
@@ -747,7 +689,7 @@ The old format with `steps`, `details`, `event`, `attributes` is no longer suppo
 }
 ```
 
-### ✅ Do: Use variables
+### Do: Use variables
 ```json
 {
   "events": {
@@ -756,13 +698,10 @@ The old format with `steps`, `details`, `event`, `attributes` is no longer suppo
 }
 ```
 
-### ❌ Don't: Forget mode and scenarioSelection
-These are required fields.
-
-### ❌ Don't: Use duplicate priorities
+### Don't: Use duplicate priorities
 Each scenario must have a unique priority value.
 
-### ❌ Don't: Create subset scenarios
+### Don't: Create subset scenarios
 Ensure each scenario has at least one unique event that distinguishes it from others.
 
 ## Type Definitions Reference
