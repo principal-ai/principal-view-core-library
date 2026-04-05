@@ -28,7 +28,7 @@ import {
   type NodeTypes,
   type Connection,
 } from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
+// CSS import removed - consumers should import '@xyflow/react/dist/style.css' in their app
 import type {
   GraphConfiguration,
   NodeState,

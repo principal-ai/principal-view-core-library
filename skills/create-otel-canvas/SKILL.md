@@ -251,82 +251,6 @@ For resource nodes that should match based on OTEL resource attributes:
 }
 ```
 
-### Success Validation Node
-```json
-{
-  "id": "success-validation",
-  "type": "text",
-  "text": "Feature Success Validation\n\nConfirms feature worked:\n✓ forge.function.invocation exists\n✓ success = 'true'\n✓ duration_ms < 5000\n✓ forge.claude.correlation exists\n✓ SessionId matches between events\n\nQuery:\nSELECT count(*) FROM otel_logs\nWHERE LogAttributes['forge.issue.key'] = 'SHIP-10'\n  AND LogAttributes['success'] = 'true'",
-  "x": 900,
-  "y": 200,
-  "width": 200,
-  "height": 200,
-  "color": "#D4EDDA",
-  "pv": {
-    "nodeType": "integration",
-    "name": "Success Validation Signals",
-    "description": "Telemetry signals that confirm the feature executed successfully"
-  }
-}
-```
-
-### Error Telemetry Node
-```json
-{
-  "id": "error-telemetry",
-  "type": "text",
-  "text": "Error Telemetry\n\nEvent: forge.function.invocation\nSeverity: ERROR\n\nError Attributes:\n• success = 'false'\n• error.type: TypeError, NetworkError\n• error.message: Detailed error\n\nCommon Errors:\n• API timeout\n• Permission denied\n• Resource not found",
-  "x": 900,
-  "y": 530,
-  "width": 200,
-  "height": 200,
-  "color": "#F8D7DA",
-  "pv": {
-    "nodeType": "integration",
-    "name": "Error Event Telemetry",
-    "description": "Events emitted when the feature fails"
-  }
-}
-```
-
-### Correlation Mechanism Node
-```json
-{
-  "id": "correlation-join",
-  "type": "text",
-  "text": "Event Correlation\n\nJOIN Key: gen_ai.session.id\n\nExample:\nForge: session_1704067200_abc\nClaude: session_1704067200_abc\n\nResult:\nIssue SHIP-10 → $0.42 cost",
-  "x": 500,
-  "y": 380,
-  "width": 150,
-  "height": 100,
-  "color": "#F0FFF0",
-  "pv": {
-    "nodeType": "clickhouse",
-    "name": "Session-based Correlation",
-    "description": "How Forge and Claude events are linked via session_id"
-  }
-}
-```
-
-### Resource/Enrichment Attributes Node
-```json
-{
-  "id": "enrichment-attributes",
-  "type": "text",
-  "text": "Shiprail API Enrichment\n(Auto-added by API)\n\n• shiprail.organization.id: org_123\n• shiprail.team.id: team_456\n• shiprail.user.id: user_789",
-  "x": 500,
-  "y": 20,
-  "width": 150,
-  "height": 100,
-  "color": "#E6F3FF",
-  "pv": {
-    "nodeType": "fastifyApi",
-    "name": "Shiprail Enrichment Attributes",
-    "description": "Multi-tenant metadata injected by shiprail API"
-  }
-}
-```
-
 ## Edge Structure
 
 ```json
@@ -472,8 +396,7 @@ All .otel.canvas files must use the storyboard structure:
   └── <storyboard-name>/
       ├── <storyboard-name>.otel.canvas     ← Canvas at storyboard root
       └── <workflow-name>/                   ← Workflow folders
-          ├── <workflow-name>.workflow.json
-          └── <execution>.otel.json
+          └── <workflow-name>.workflow.json
 ```
 
 The flat structure (files directly in `.principal-views/`) is deprecated.
@@ -501,34 +424,6 @@ Common validation fixes:
 - Capitalize icon names (e.g., "GitBranch" not "gitBranch")
 - Use .otel.canvas extension for files with OTEL features
 
-## Integration with Code
-
-### Type Generation
-Event schemas in .otel.canvas files can generate TypeScript types:
-
-```typescript
-// Generated from canvas event schema (event field on otel-event nodes)
-type ConversionStartedAttributes = {
-  'config.nodeTypes': number;
-  'config.edgeTypes': number;
-};
-```
-
-### Runtime Validation
-Use event schemas for type-safe event emission:
-
-```typescript
-import { createValidatedSpanEmitter } from '@principal-ai/principal-view-core';
-
-const emit = createValidatedSpanEmitter(canvas, 'graph-converter', span);
-
-// Validates against schema at runtime
-emit('conversion.started', {
-  'config.nodeTypes': 2,
-  'config.edgeTypes': 1
-});
-```
-
 ## Tips
 
 1. **Start with the user action**: "When a user does X, what telemetry fires?"
@@ -546,14 +441,6 @@ emit('conversion.started', {
 10. **Validate early**: Use CLI validation to catch issues
 11. **Use markdown in text**: Format node text with headers, lists, bullet points
 
-## Shape Reference
-
-Common shapes for nodes:
-- `rectangle`: Default, general purpose
-- `hexagon`: Services, processors
-- `diamond`: Decision points, matchers
-- `ellipse`: Start/end points
-
 ## Icon Reference
 
 Common Lucide icons:
@@ -570,19 +457,6 @@ Common Lucide icons:
 - `Target`: Match criteria
 - `Code`: Operators, code
 - `CheckCircle`: Results, success
-
-## Color Reference
-
-Suggested color palette:
-- `#4A90E2`: Blue - Types, data structures
-- `#7ED321`: Green - Services, processors
-- `#3b82f6`: Blue - Converters, transformers
-- `#9B59B6`: Purple - Filters, scopes
-- `#10b981`: Green - Validators
-- `#8b5cf6`: Purple - Outputs, results
-- `#F5A623`: Orange - Operators, logic
-- `#00BCD4`: Cyan - Canvas nodes
-- `#D0021B`: Red - Errors, warnings
 
 ## References
 

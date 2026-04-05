@@ -24,7 +24,7 @@ import {
   type NodeProps,
   type EdgeProps,
 } from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
+// CSS import removed - consumers should import '@xyflow/react/dist/style.css' in their app
 import {
   useSequenceLayout,
   type SequenceEvent,
