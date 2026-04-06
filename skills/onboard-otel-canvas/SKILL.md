@@ -247,10 +247,9 @@ Use the `create-otel-canvas` skill to create a canvas for this feature:
 
    **REQUIRED CANVAS-LEVEL FIELDS:**
 
-   The canvas `pv` extension requires:
-   - `pv.name` - Feature name
-   - `pv.version` - Schema version
-   - `pv.markdown` - Path to documentation file (e.g., `".principal-views/feature.md"`)
+   The canvas requires these top-level fields:
+   - `name` - Feature name (top-level)
+   - `markdown` - Path to documentation file (top-level, e.g., `".principal-views/feature.md"`)
 
    **Format reference**: Run `npx @principal-ai/principal-view-cli formats canvas` to see full format documentation, or look at existing `.otel.canvas` files in `.principal-views/` directory.
 
@@ -479,8 +478,8 @@ After completing onboarding, user should have:
 **One working canvas** (.otel.canvas)
 - Event schemas that capture the shape of the code (as many as needed)
 - All nodes have required fields: `type: "otel-event"`, `color`, `otel.status`, `event` (object format)
-- Canvas has required `pv.markdown` field
-- Edges have `pv.edgeType` referencing defined edge types
+- Canvas has required top-level `name` and `markdown` fields
+- Edges have `edgeType` field referencing defined edge types
 - Validates with CLI
 - Documents real feature
 

@@ -125,7 +125,6 @@ export interface EdgeActivationTrigger {
 export interface PathBasedGraphConfiguration {
   metadata: {
     name: string;
-    version: string;
     description?: string;
   };
 

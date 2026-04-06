@@ -191,13 +191,12 @@ Canvas files can include optional `pv` (Principal View) extensions for enhanced 
 
 ```json
 {
+  "name": "System Architecture",
+  "markdown": ".principal-views/architecture-overview.md",
   "nodes": [...],
   "edges": [...],
   "pv": {
-    "version": "1.0",
-    "name": "System Architecture",
     "description": "Overview of system components",
-    "markdown": ".principal-views/architecture-overview.md",
     "display": {
       "layout": "manual",
       "theme": {
@@ -210,11 +209,10 @@ Canvas files can include optional `pv` (Principal View) extensions for enhanced 
 ```
 
 Key fields:
-- `version` - Schema version (use "1.0")
-- `name` - Display name for the canvas
-- `description` - Brief description
-- `markdown` - **REQUIRED**: Path to associated markdown documentation (relative to repo root)
-- `display.layout` - Layout algorithm: `"manual"` (use canvas positions), `"hierarchical"`, `"force-directed"`, `"circular"`
+- `name` - **REQUIRED**: Display name for the canvas (top-level)
+- `markdown` - **REQUIRED**: Path to associated markdown documentation (top-level, relative to repo root)
+- `pv.description` - Brief description
+- `pv.display.layout` - Layout algorithm: `"manual"` (use canvas positions), `"hierarchical"`, `"force-directed"`, `"circular"`
 
 ### Node Extensions
 
@@ -263,19 +261,14 @@ Available shapes:
   "id": "edge-1",
   "fromNode": "node-1",
   "toNode": "node-2",
+  "fromSide": "right",
+  "toSide": "left",
   "label": "HTTP Request",
-  "pv": {
-    "edgeType": "api-call",
-    "style": "solid",
-    "width": 2,
-    "animation": {
-      "type": "flow",
-      "duration": 2000,
-      "color": "#22c55e"
-    }
-  }
+  "edgeType": "api-call"
 }
 ```
+
+The `edgeType` field is at the top level of the edge object. Edge types should be defined in `pv.edgeTypes` at the canvas level.
 
 Available styles:
 - `solid` - Solid line
@@ -296,6 +289,8 @@ Animation types:
 
 ```json
 {
+  "name": "System Architecture",
+  "markdown": ".principal-views/system-architecture.md",
   "nodes": [
     {
       "id": "client",
@@ -351,13 +346,7 @@ Animation types:
       "fromSide": "right",
       "toSide": "left",
       "label": "HTTPS",
-      "pv": {
-        "edgeType": "api-call",
-        "animation": {
-          "type": "flow",
-          "duration": 2000
-        }
-      }
+      "edgeType": "api-call"
     },
     {
       "id": "api-to-db",
@@ -366,16 +355,11 @@ Animation types:
       "fromSide": "right",
       "toSide": "left",
       "label": "SQL",
-      "pv": {
-        "edgeType": "data-access"
-      }
+      "edgeType": "data-access"
     }
   ],
   "pv": {
-    "version": "1.0",
-    "name": "System Architecture",
     "description": "High-level system architecture overview",
-    "markdown": ".principal-views/system-architecture.md",
     "display": {
       "layout": "manual"
     }
@@ -389,6 +373,8 @@ Animation types:
 
 ```json
 {
+  "name": "Checkout Flow",
+  "markdown": ".principal-views/checkout-flow.md",
   "nodes": [
     {
       "id": "start",
@@ -483,10 +469,7 @@ Animation types:
     }
   ],
   "pv": {
-    "version": "1.0",
-    "name": "Checkout Flow",
     "description": "User checkout process flow",
-    "markdown": ".principal-views/checkout-flow.md",
     "display": {
       "layout": "manual"
     }
@@ -500,6 +483,8 @@ Animation types:
 
 ```json
 {
+  "name": "Component Structure",
+  "markdown": "packages/react/.principal-views/component-structure.md",
   "nodes": [
     {
       "id": "app",
@@ -569,10 +554,7 @@ Animation types:
     }
   ],
   "pv": {
-    "version": "1.0",
-    "name": "Component Structure",
     "description": "React component hierarchy",
-    "markdown": "packages/react/.principal-views/component-structure.md",
     "display": {
       "layout": "hierarchical"
     }
@@ -631,13 +613,14 @@ for product search. PostgreSQL provides both with excellent performance.
 - **Service Timeout**: Circuit breaker trips, fallback to degraded mode
 ```
 
-Reference the markdown file in the canvas:
+Reference the markdown file at the top level of the canvas:
 
 ```json
 {
-  "pv": {
-    "markdown": ".principal-views/system-architecture.md"
-  }
+  "name": "System Architecture",
+  "markdown": ".principal-views/system-architecture.md",
+  "nodes": [...],
+  "edges": [...]
 }
 ```
 
@@ -663,7 +646,7 @@ The markdown should answer:
 3. **Create the canvas file** - Place in `.principal-views/filename.canvas`
 4. **Design the layout** - Add nodes and edges following JSON Canvas spec
 5. **Add PV extensions (optional)** - Enhance with icons, shapes, animations
-6. **Reference the markdown** - Add `pv.markdown` field pointing to your markdown file
+6. **Reference the markdown** - Add top-level `markdown` field pointing to your markdown file
 7. **Validate the canvas** - Run `pv validate` to check structure, syntax, and markdown
 8. **Test rendering** - View in React component or Obsidian
 
@@ -727,7 +710,7 @@ The Principal View extensions (`pv` field) are ignored by Obsidian, allowing rou
 
 ### 5. Add Documentation (REQUIRED)
 - **Always create an associated `.md` file** - This is mandatory, not optional
-- Reference it in `pv.markdown`
+- Reference it in the top-level `markdown` field
 - Explain WHAT the feature does and WHY, not HOW the canvas is structured
 - Focus on: problem solved, operations available, design choices, workflows, error handling
 

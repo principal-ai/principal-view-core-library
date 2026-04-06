@@ -60,7 +60,6 @@ export interface GraphConfiguration {
   /** Metadata about the system being visualized */
   metadata: {
     name: string;
-    version: string;
     description?: string;
   };
 

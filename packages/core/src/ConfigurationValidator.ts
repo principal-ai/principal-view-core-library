@@ -34,14 +34,6 @@ export class ConfigurationValidator {
       });
     }
 
-    if (!config.metadata?.version) {
-      errors.push({
-        type: 'error',
-        message: 'Configuration must have a version',
-        path: 'metadata.version',
-      });
-    }
-
     // Validate nodeTypes
     if (!config.nodeTypes || Object.keys(config.nodeTypes).length === 0) {
       errors.push({

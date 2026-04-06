@@ -571,9 +571,23 @@ function validateIconName(iconValue: unknown, path: string, issues: ValidationIs
  * Allowed fields for canvas validation
  */
 const ALLOWED_CANVAS_FIELDS = {
-  root: ['nodes', 'edges', 'pv'],
+  // Top-level canvas fields (all pv fields moved to root)
+  root: [
+    'nodes',
+    'edges',
+    'name',
+    'markdown',
+    'description',
+    'nodeTypes',
+    'edgeTypes',
+    'pathConfig',
+    'display',
+    'scope',
+    'audit',
+    'pv', // deprecated - kept for error reporting
+  ],
+  // pv is fully deprecated - all fields moved to root
   pv: [
-    'version',
     'name',
     'description',
     'markdown',
@@ -656,7 +670,7 @@ const ALLOWED_CANVAS_FIELDS = {
   nodePvAction: ['pattern', 'event', 'state', 'metadata', 'triggerEdges'],
   nodePvDataSchemaField: ['type', 'required', 'displayInLabel', 'description', 'placeholder'],
   nodePvLayout: ['layer', 'cluster'],
-  // Edge fields
+  // Edge fields (edgeType moved from pv to top-level)
   edge: [
     'id',
     'fromNode',
@@ -667,8 +681,10 @@ const ALLOWED_CANVAS_FIELDS = {
     'toEnd',
     'color',
     'label',
-    'pv',
+    'edgeType', // moved from pv.edgeType
+    'pv', // deprecated
   ],
+  // edgePv is deprecated - edgeType moved to top-level
   edgePv: ['edgeType', 'style', 'width', 'animation', 'activatedBy'],
   edgePvAnimation: ['type', 'duration', 'color'],
   edgePvActivatedBy: ['action', 'animation', 'direction', 'duration'],
@@ -1011,12 +1027,9 @@ function hasOtelFeatures(canvas: unknown): boolean {
 
   const c = canvas as Record<string, unknown>;
 
-  // Check for canvas-level scope or audit config
-  if (c.pv && typeof c.pv === 'object') {
-    const pv = c.pv as Record<string, unknown>;
-    if (pv.scope !== undefined || pv.audit !== undefined) {
-      return true;
-    }
+  // Check for canvas-level scope or audit config (top-level)
+  if (c.scope !== undefined || c.audit !== undefined) {
+    return true;
   }
 
   // Check nodes for OTEL features
@@ -1091,121 +1104,110 @@ function validateCanvas(
   const libraryNodeTypes = library ? Object.keys(library.nodeComponents) : [];
   const libraryEdgeTypes = library ? Object.keys(library.edgeComponents) : [];
 
-  // Check pv extension (REQUIRED for strict validation)
+  // Validate top-level canvas fields (name is required)
   let canvasEdgeTypes: string[] = [];
   let canvasNodeTypes: string[] = [];
-  if (c.pv === undefined) {
+
+  // Check for deprecated pv field at canvas level
+  if (c.pv !== undefined) {
     issues.push({
       type: 'error',
-      message: 'Canvas must have a "pv" extension with name and version',
+      message: 'The "pv" field is fully deprecated. All fields have been moved to top-level.',
       path: 'pv',
-      suggestion: 'Add: "pv": { "name": "My Graph", "version": "1.0.0" }',
+      suggestion:
+        'Move all pv fields to top-level: name, markdown, description, nodeTypes, edgeTypes, display, pathConfig, scope, audit. Then remove the pv field entirely.',
     });
-  } else if (typeof c.pv !== 'object') {
-    issues.push({ type: 'error', message: '"pv" extension must be an object' });
-  } else {
-    const pv = c.pv as Record<string, unknown>;
+  }
 
-    // Check unknown fields in pv extension
-    checkUnknownFields(pv, ALLOWED_CANVAS_FIELDS.pv, 'pv', issues);
+  // Require top-level name field
+  if (typeof c.name !== 'string' || !c.name) {
+    issues.push({
+      type: 'error',
+      message: 'Canvas must have a top-level "name" field',
+      path: 'name',
+      suggestion: 'Add: "name": "My Graph"',
+    });
+  }
 
-    if (typeof pv.version !== 'string' || !pv.version) {
-      issues.push({
-        type: 'error',
-        message: 'pv.version is required',
-        path: 'pv.version',
-        suggestion: 'Add: "version": "1.0.0"',
-      });
-    }
-    if (typeof pv.name !== 'string' || !pv.name) {
-      issues.push({
-        type: 'error',
-        message: 'pv.name is required',
-        path: 'pv.name',
-        suggestion: 'Add: "name": "My Graph"',
-      });
-    }
+  // Validate top-level pathConfig if present
+  if (c.pathConfig && typeof c.pathConfig === 'object') {
+    checkUnknownFields(
+      c.pathConfig as Record<string, unknown>,
+      ALLOWED_CANVAS_FIELDS.pvPathConfig,
+      'pathConfig',
+      issues
+    );
+  }
 
-    // Validate pv.pathConfig if present
-    if (pv.pathConfig && typeof pv.pathConfig === 'object') {
+  // Validate top-level display if present
+  if (c.display && typeof c.display === 'object') {
+    const display = c.display as Record<string, unknown>;
+    checkUnknownFields(display, ALLOWED_CANVAS_FIELDS.pvDisplay, 'display', issues);
+
+    if (display.theme && typeof display.theme === 'object') {
       checkUnknownFields(
-        pv.pathConfig as Record<string, unknown>,
-        ALLOWED_CANVAS_FIELDS.pvPathConfig,
-        'pv.pathConfig',
+        display.theme as Record<string, unknown>,
+        ALLOWED_CANVAS_FIELDS.pvDisplayTheme,
+        'display.theme',
         issues
       );
     }
+    if (display.animations && typeof display.animations === 'object') {
+      checkUnknownFields(
+        display.animations as Record<string, unknown>,
+        ALLOWED_CANVAS_FIELDS.pvDisplayAnimations,
+        'display.animations',
+        issues
+      );
+    }
+  }
 
-    // Validate pv.display if present
-    if (pv.display && typeof pv.display === 'object') {
-      const display = pv.display as Record<string, unknown>;
-      checkUnknownFields(display, ALLOWED_CANVAS_FIELDS.pvDisplay, 'pv.display', issues);
-
-      if (display.theme && typeof display.theme === 'object') {
+  // Collect and validate defined node types (top-level)
+  if (c.nodeTypes && typeof c.nodeTypes === 'object') {
+    canvasNodeTypes = Object.keys(c.nodeTypes as Record<string, unknown>);
+    for (const [typeId, typeDef] of Object.entries(c.nodeTypes as Record<string, unknown>)) {
+      if (typeDef && typeof typeDef === 'object') {
         checkUnknownFields(
-          display.theme as Record<string, unknown>,
-          ALLOWED_CANVAS_FIELDS.pvDisplayTheme,
-          'pv.display.theme',
+          typeDef as Record<string, unknown>,
+          ALLOWED_CANVAS_FIELDS.pvNodeType,
+          `nodeTypes.${typeId}`,
           issues
         );
-      }
-      if (display.animations && typeof display.animations === 'object') {
-        checkUnknownFields(
-          display.animations as Record<string, unknown>,
-          ALLOWED_CANVAS_FIELDS.pvDisplayAnimations,
-          'pv.display.animations',
-          issues
-        );
+        // Validate icon name format
+        const nodeType = typeDef as Record<string, unknown>;
+        validateIconName(nodeType.icon, `nodeTypes.${typeId}.icon`, issues);
       }
     }
+  }
 
-    // Collect and validate defined node types
-    if (pv.nodeTypes && typeof pv.nodeTypes === 'object') {
-      canvasNodeTypes = Object.keys(pv.nodeTypes as Record<string, unknown>);
-      for (const [typeId, typeDef] of Object.entries(pv.nodeTypes as Record<string, unknown>)) {
-        if (typeDef && typeof typeDef === 'object') {
+  // Collect and validate defined edge types (top-level)
+  if (c.edgeTypes && typeof c.edgeTypes === 'object') {
+    canvasEdgeTypes = Object.keys(c.edgeTypes as Record<string, unknown>);
+    for (const [typeId, typeDef] of Object.entries(c.edgeTypes as Record<string, unknown>)) {
+      if (typeDef && typeof typeDef === 'object') {
+        const edgeTypeDef = typeDef as Record<string, unknown>;
+        checkUnknownFields(
+          edgeTypeDef,
+          ALLOWED_CANVAS_FIELDS.pvEdgeType,
+          `edgeTypes.${typeId}`,
+          issues
+        );
+
+        if (edgeTypeDef.animation && typeof edgeTypeDef.animation === 'object') {
           checkUnknownFields(
-            typeDef as Record<string, unknown>,
-            ALLOWED_CANVAS_FIELDS.pvNodeType,
-            `pv.nodeTypes.${typeId}`,
+            edgeTypeDef.animation as Record<string, unknown>,
+            ALLOWED_CANVAS_FIELDS.pvEdgeTypeAnimation,
+            `edgeTypes.${typeId}.animation`,
             issues
           );
-          // Validate icon name format
-          const nodeType = typeDef as Record<string, unknown>;
-          validateIconName(nodeType.icon, `pv.nodeTypes.${typeId}.icon`, issues);
         }
-      }
-    }
-
-    // Collect and validate defined edge types
-    if (pv.edgeTypes && typeof pv.edgeTypes === 'object') {
-      canvasEdgeTypes = Object.keys(pv.edgeTypes as Record<string, unknown>);
-      for (const [typeId, typeDef] of Object.entries(pv.edgeTypes as Record<string, unknown>)) {
-        if (typeDef && typeof typeDef === 'object') {
-          const edgeTypeDef = typeDef as Record<string, unknown>;
+        if (edgeTypeDef.labelConfig && typeof edgeTypeDef.labelConfig === 'object') {
           checkUnknownFields(
-            edgeTypeDef,
-            ALLOWED_CANVAS_FIELDS.pvEdgeType,
-            `pv.edgeTypes.${typeId}`,
+            edgeTypeDef.labelConfig as Record<string, unknown>,
+            ALLOWED_CANVAS_FIELDS.pvEdgeTypeLabelConfig,
+            `edgeTypes.${typeId}.labelConfig`,
             issues
           );
-
-          if (edgeTypeDef.animation && typeof edgeTypeDef.animation === 'object') {
-            checkUnknownFields(
-              edgeTypeDef.animation as Record<string, unknown>,
-              ALLOWED_CANVAS_FIELDS.pvEdgeTypeAnimation,
-              `pv.edgeTypes.${typeId}.animation`,
-              issues
-            );
-          }
-          if (edgeTypeDef.labelConfig && typeof edgeTypeDef.labelConfig === 'object') {
-            checkUnknownFields(
-              edgeTypeDef.labelConfig as Record<string, unknown>,
-              ALLOWED_CANVAS_FIELDS.pvEdgeTypeLabelConfig,
-              `pv.edgeTypes.${typeId}.labelConfig`,
-              issues
-            );
-          }
         }
       }
     }
@@ -1320,17 +1322,14 @@ function validateCanvas(
           const nodeTypeName = nodePv.nodeType as string;
 
           if (typeof nodeTypeName === 'string' && nodeTypeName) {
-            // Check if nodeType has a color defined in canvas pv.nodeTypes
-            if (c.pv && typeof c.pv === 'object') {
-              const canvasPv = c.pv as Record<string, unknown>;
-              if (canvasPv.nodeTypes && typeof canvasPv.nodeTypes === 'object') {
-                const nodeTypes = canvasPv.nodeTypes as Record<string, unknown>;
-                const nodeTypeDef = nodeTypes[nodeTypeName];
-                if (nodeTypeDef && typeof nodeTypeDef === 'object') {
-                  const typeDef = nodeTypeDef as Record<string, unknown>;
-                  if (typeof typeDef.color === 'string' && typeDef.color) {
-                    hasNodeTypeColor = true;
-                  }
+            // Check if nodeType has a color defined in canvas nodeTypes
+            if (c.nodeTypes && typeof c.nodeTypes === 'object') {
+              const nodeTypes = c.nodeTypes as Record<string, unknown>;
+              const nodeTypeDef = nodeTypes[nodeTypeName];
+              if (nodeTypeDef && typeof nodeTypeDef === 'object') {
+                const typeDef = nodeTypeDef as Record<string, unknown>;
+                if (typeof typeDef.color === 'string' && typeDef.color) {
+                  hasNodeTypeColor = true;
                 }
               }
             }
@@ -2203,27 +2202,29 @@ The display name will be shown large on the node, and the event name will appear
         });
       }
 
-      // Validate pv extension is present with edgeType
-      if (!e.pv || typeof e.pv !== 'object') {
+      // Check for deprecated pv field on edge
+      if (e.pv !== undefined) {
         issues.push({
           type: 'error',
-          message: `Edge "${edgeLabel}" must have a "pv" extension with edgeType`,
+          message: `Edge "${edgeLabel}" has deprecated "pv" field. Use top-level "edgeType" instead.`,
           path: `${edgePath}.pv`,
-          suggestion: 'Add: "pv": { "edgeType": "your-edge-type" }',
+          suggestion:
+            'Move pv.edgeType to top-level "edgeType" and remove the "pv" field. ' +
+            'Example: { "id": "e1", "fromNode": "a", "toNode": "b", "edgeType": "data-flow" }',
         });
-      } else {
-        const edgePv = e.pv as Record<string, unknown>;
-        if (typeof edgePv.edgeType !== 'string' || !edgePv.edgeType) {
-          issues.push({
-            type: 'error',
-            message: `Edge "${edgeLabel}" must have a "pv.edgeType" field`,
-            path: `${edgePath}.pv.edgeType`,
-            suggestion:
-              allDefinedEdgeTypes.length > 0
-                ? `Available types: ${allDefinedEdgeTypes.join(', ')}`
-                : 'Define edge types in canvas pv.edgeTypes or library.yaml edgeComponents',
-          });
-        }
+      }
+
+      // Validate top-level edgeType is present
+      if (typeof e.edgeType !== 'string' || !e.edgeType) {
+        issues.push({
+          type: 'error',
+          message: `Edge "${edgeLabel}" must have an "edgeType" field`,
+          path: `${edgePath}.edgeType`,
+          suggestion:
+            allDefinedEdgeTypes.length > 0
+              ? `Available types: ${allDefinedEdgeTypes.join(', ')}`
+              : 'Define edge types in canvas pv.edgeTypes or library.yaml edgeComponents',
+        });
       }
 
       // Validate edge pv extension fields
@@ -2256,36 +2257,37 @@ The display name will be shown large on the node, and the event name will appear
           });
         }
 
-        // Validate edge type references
-        if (edgePv.edgeType && typeof edgePv.edgeType === 'string') {
-          if (allDefinedEdgeTypes.length === 0) {
-            issues.push({
-              type: 'error',
-              message: `Edge "${edgeLabel}" uses edgeType "${edgePv.edgeType}" but no edge types are defined`,
-              path: `${edgePath}.pv.edgeType`,
-              suggestion: 'Define edge types in canvas pv.edgeTypes or library.yaml edgeComponents',
-            });
-          } else if (!allDefinedEdgeTypes.includes(edgePv.edgeType)) {
-            // Build a helpful suggestion showing where types can be defined
-            const sources: string[] = [];
-            if (canvasEdgeTypes.length > 0) {
-              sources.push(`canvas pv.edgeTypes: ${canvasEdgeTypes.join(', ')}`);
-            }
-            if (libraryEdgeTypes.length > 0) {
-              sources.push(`library.yaml edgeComponents: ${libraryEdgeTypes.join(', ')}`);
-            }
-            const suggestion =
-              sources.length > 0
-                ? `Available types from ${sources.join(' | ')}`
-                : 'Define edge types in canvas pv.edgeTypes or library.yaml edgeComponents';
+      }
 
-            issues.push({
-              type: 'error',
-              message: `Edge "${edgeLabel}" uses undefined edgeType "${edgePv.edgeType}"`,
-              path: `${edgePath}.pv.edgeType`,
-              suggestion,
-            });
+      // Validate edge type references (using top-level edgeType)
+      if (e.edgeType && typeof e.edgeType === 'string') {
+        if (allDefinedEdgeTypes.length === 0) {
+          issues.push({
+            type: 'error',
+            message: `Edge "${edgeLabel}" uses edgeType "${e.edgeType}" but no edge types are defined`,
+            path: `${edgePath}.edgeType`,
+            suggestion: 'Define edge types in canvas pv.edgeTypes or library.yaml edgeComponents',
+          });
+        } else if (!allDefinedEdgeTypes.includes(e.edgeType as string)) {
+          // Build a helpful suggestion showing where types can be defined
+          const sources: string[] = [];
+          if (canvasEdgeTypes.length > 0) {
+            sources.push(`canvas pv.edgeTypes: ${canvasEdgeTypes.join(', ')}`);
           }
+          if (libraryEdgeTypes.length > 0) {
+            sources.push(`library.yaml edgeComponents: ${libraryEdgeTypes.join(', ')}`);
+          }
+          const suggestion =
+            sources.length > 0
+              ? `Available types from ${sources.join(' | ')}`
+              : 'Define edge types in canvas pv.edgeTypes or library.yaml edgeComponents';
+
+          issues.push({
+            type: 'error',
+            message: `Edge "${edgeLabel}" uses undefined edgeType "${e.edgeType}"`,
+            path: `${edgePath}.edgeType`,
+            suggestion,
+          });
         }
       }
     });
@@ -2312,13 +2314,12 @@ The display name will be shown large on the node, and the event name will appear
     });
   }
 
-  // Validate markdown field for all canvas files
-  const pv = c.pv as Record<string, unknown> | undefined;
-  if (!pv || typeof pv.markdown !== 'string' || !pv.markdown) {
+  // Validate markdown field for all canvas files (now at top level)
+  if (typeof c.markdown !== 'string' || !c.markdown) {
     issues.push({
       type: 'error',
-      message: 'Canvas files must have a "pv.markdown" field pointing to documentation',
-      path: 'pv.markdown',
+      message: 'Canvas files must have a top-level "markdown" field pointing to documentation',
+      path: 'markdown',
       suggestion: `Add: "markdown": ".principal-views/graph-name.md"
 
 The markdown file should explain the FEATURE, not the canvas itself.
@@ -2345,12 +2346,12 @@ The canvas is visual documentation. The markdown supplements it with context.`,
   } else {
     // Validate that the markdown file exists (if repository path is provided)
     if (repositoryPath) {
-      const markdownPath = resolve(repositoryPath, pv.markdown as string);
+      const markdownPath = resolve(repositoryPath, c.markdown as string);
       if (!existsSync(markdownPath)) {
         issues.push({
           type: 'error',
-          message: `Referenced markdown file does not exist: ${pv.markdown}`,
-          path: 'pv.markdown',
+          message: `Referenced markdown file does not exist: ${c.markdown}`,
+          path: 'markdown',
           suggestion: `Create the markdown file at: ${markdownPath}
 
 The markdown should explain the FEATURE (what it does, why it exists), not describe the canvas itself.

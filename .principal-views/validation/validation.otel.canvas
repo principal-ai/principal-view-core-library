@@ -1,4 +1,44 @@
 {
+  "name": "Validation Pipeline",
+  "markdown": ".principal-views/validation.md",
+  "description": "Complete validation workflow from codebase composition analysis through validation to results",
+  "nodeTypes": {
+    "event": {
+      "label": "Event",
+      "description": "An OpenTelemetry event emitted during validation",
+      "color": "#9C27B0"
+    }
+  },
+  "edgeTypes": {
+    "sequence": {
+      "label": "Then",
+      "style": "solid",
+      "color": "#666",
+      "width": 2,
+      "directed": true
+    },
+    "discovery": {
+      "label": "Discover",
+      "style": "dashed",
+      "color": "#FF9800",
+      "width": 2,
+      "directed": true
+    },
+    "branch": {
+      "label": "Route",
+      "style": "dashed",
+      "color": "#9C27B0",
+      "width": 2,
+      "directed": true
+    },
+    "error-path": {
+      "label": "Error",
+      "style": "dashed",
+      "color": "#F44336",
+      "width": 2,
+      "directed": true
+    }
+  },
   "nodes": [
     {
       "id": "analysis-started",
@@ -673,9 +713,7 @@
       "toNode": "filetree-built",
       "fromSide": "bottom",
       "toSide": "top",
-      "pv": {
-        "edgeType": "sequence"
-      }
+      "edgeType": "sequence"
     },
     {
       "id": "filetree-to-packages",
@@ -683,9 +721,7 @@
       "toNode": "packages-discovered",
       "fromSide": "bottom",
       "toSide": "top",
-      "pv": {
-        "edgeType": "sequence"
-      }
+      "edgeType": "sequence"
     },
     {
       "id": "packages-to-canvases",
@@ -693,9 +729,7 @@
       "toNode": "canvases-discovered",
       "fromSide": "right",
       "toSide": "left",
-      "pv": {
-        "edgeType": "discovery"
-      }
+      "edgeType": "discovery"
     },
     {
       "id": "packages-to-executions",
@@ -703,9 +737,7 @@
       "toNode": "executions-discovered",
       "fromSide": "right",
       "toSide": "left",
-      "pv": {
-        "edgeType": "discovery"
-      }
+      "edgeType": "discovery"
     },
     {
       "id": "packages-to-library",
@@ -713,9 +745,7 @@
       "toNode": "library-loaded",
       "fromSide": "right",
       "toSide": "left",
-      "pv": {
-        "edgeType": "discovery"
-      }
+      "edgeType": "discovery"
     },
     {
       "id": "canvases-to-complete",
@@ -723,9 +753,7 @@
       "toNode": "discovery-complete",
       "fromSide": "left",
       "toSide": "right",
-      "pv": {
-        "edgeType": "sequence"
-      }
+      "edgeType": "sequence"
     },
     {
       "id": "executions-to-complete",
@@ -733,9 +761,7 @@
       "toNode": "discovery-complete",
       "fromSide": "left",
       "toSide": "right",
-      "pv": {
-        "edgeType": "sequence"
-      }
+      "edgeType": "sequence"
     },
     {
       "id": "library-to-complete",
@@ -743,9 +769,7 @@
       "toNode": "discovery-complete",
       "fromSide": "left",
       "toSide": "right",
-      "pv": {
-        "edgeType": "sequence"
-      }
+      "edgeType": "sequence"
     },
     {
       "id": "discovery-to-validation",
@@ -753,9 +777,7 @@
       "toNode": "validation-started",
       "fromSide": "bottom",
       "toSide": "top",
-      "pv": {
-        "edgeType": "sequence"
-      }
+      "edgeType": "sequence"
     },
     {
       "id": "validation-to-parse",
@@ -763,9 +785,7 @@
       "toNode": "file-parsed",
       "fromSide": "bottom",
       "toSide": "top",
-      "pv": {
-        "edgeType": "sequence"
-      }
+      "edgeType": "sequence"
     },
     {
       "id": "parse-to-detect",
@@ -773,9 +793,7 @@
       "toNode": "type-detected",
       "fromSide": "bottom",
       "toSide": "top",
-      "pv": {
-        "edgeType": "sequence"
-      }
+      "edgeType": "sequence"
     },
     {
       "id": "detect-to-canvas",
@@ -784,9 +802,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "canvas",
-      "pv": {
-        "edgeType": "branch"
-      }
+      "edgeType": "branch"
     },
     {
       "id": "detect-to-workflow",
@@ -795,9 +811,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "workflow",
-      "pv": {
-        "edgeType": "branch"
-      }
+      "edgeType": "branch"
     },
     {
       "id": "detect-to-execution",
@@ -806,9 +820,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "execution",
-      "pv": {
-        "edgeType": "branch"
-      }
+      "edgeType": "branch"
     },
     {
       "id": "detect-to-library",
@@ -817,9 +829,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "library",
-      "pv": {
-        "edgeType": "branch"
-      }
+      "edgeType": "branch"
     },
     {
       "id": "detect-to-rules",
@@ -828,9 +838,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "lint",
-      "pv": {
-        "edgeType": "branch"
-      }
+      "edgeType": "branch"
     },
     {
       "id": "canvas-to-aggregate",
@@ -838,9 +846,7 @@
       "toNode": "results-aggregated",
       "fromSide": "left",
       "toSide": "right",
-      "pv": {
-        "edgeType": "sequence"
-      }
+      "edgeType": "sequence"
     },
     {
       "id": "workflow-to-aggregate",
@@ -848,9 +854,7 @@
       "toNode": "results-aggregated",
       "fromSide": "left",
       "toSide": "right",
-      "pv": {
-        "edgeType": "sequence"
-      }
+      "edgeType": "sequence"
     },
     {
       "id": "execution-to-aggregate",
@@ -858,9 +862,7 @@
       "toNode": "results-aggregated",
       "fromSide": "left",
       "toSide": "right",
-      "pv": {
-        "edgeType": "sequence"
-      }
+      "edgeType": "sequence"
     },
     {
       "id": "library-to-aggregate",
@@ -868,9 +870,7 @@
       "toNode": "results-aggregated",
       "fromSide": "left",
       "toSide": "right",
-      "pv": {
-        "edgeType": "sequence"
-      }
+      "edgeType": "sequence"
     },
     {
       "id": "rules-to-aggregate",
@@ -878,9 +878,7 @@
       "toNode": "results-aggregated",
       "fromSide": "left",
       "toSide": "right",
-      "pv": {
-        "edgeType": "sequence"
-      }
+      "edgeType": "sequence"
     },
     {
       "id": "aggregate-to-complete",
@@ -888,9 +886,7 @@
       "toNode": "validation-complete",
       "fromSide": "bottom",
       "toSide": "top",
-      "pv": {
-        "edgeType": "sequence"
-      }
+      "edgeType": "sequence"
     },
     {
       "id": "parse-to-error",
@@ -899,9 +895,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "parse failure",
-      "pv": {
-        "edgeType": "error-path"
-      }
+      "edgeType": "error-path"
     },
     {
       "id": "canvas-to-error",
@@ -910,9 +904,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "validation failure",
-      "pv": {
-        "edgeType": "error-path"
-      }
+      "edgeType": "error-path"
     },
     {
       "id": "workflow-to-error",
@@ -921,9 +913,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "validation failure",
-      "pv": {
-        "edgeType": "error-path"
-      }
+      "edgeType": "error-path"
     },
     {
       "id": "execution-to-error",
@@ -932,9 +922,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "validation failure",
-      "pv": {
-        "edgeType": "error-path"
-      }
+      "edgeType": "error-path"
     },
     {
       "id": "library-to-error",
@@ -943,9 +931,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "validation failure",
-      "pv": {
-        "edgeType": "error-path"
-      }
+      "edgeType": "error-path"
     },
     {
       "id": "rules-to-error",
@@ -954,52 +940,7 @@
       "fromSide": "right",
       "toSide": "left",
       "label": "rule violations",
-      "pv": {
-        "edgeType": "error-path"
-      }
+      "edgeType": "error-path"
     }
-  ],
-  "pv": {
-    "version": "1.0.0",
-    "name": "Validation Pipeline",
-    "description": "Complete validation workflow from codebase composition analysis through validation to results",
-    "markdown": ".principal-views/validation.md",
-    "nodeTypes": {
-      "event": {
-        "label": "Event",
-        "description": "An OpenTelemetry event emitted during validation",
-        "color": "#9C27B0"
-      }
-    },
-    "edgeTypes": {
-      "sequence": {
-        "label": "Then",
-        "style": "solid",
-        "color": "#666",
-        "width": 2,
-        "directed": true
-      },
-      "discovery": {
-        "label": "Discover",
-        "style": "dashed",
-        "color": "#FF9800",
-        "width": 2,
-        "directed": true
-      },
-      "branch": {
-        "label": "Route",
-        "style": "dashed",
-        "color": "#9C27B0",
-        "width": 2,
-        "directed": true
-      },
-      "error-path": {
-        "label": "Error",
-        "style": "dashed",
-        "color": "#F44336",
-        "width": 2,
-        "directed": true
-      }
-    }
-  }
+  ]
 }

@@ -20,9 +20,6 @@ export interface ConfigurationSelectorProps {
   /** Whether to show description */
   showDescription?: boolean;
 
-  /** Whether to show version */
-  showVersion?: boolean;
-
   /** Label text for the selector */
   label?: string;
 }
@@ -49,7 +46,6 @@ export const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
   className,
   style,
   showDescription = false,
-  showVersion = false,
   label = 'Graph Configuration',
 }) => {
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -123,23 +119,13 @@ export const ConfigurationSelector: React.FC<ConfigurationSelectorProps> = ({
         {configurations.map((config) => (
           <option key={config.name} value={config.name}>
             {config.config.metadata.name}
-            {showVersion &&
-              config.config.metadata.version &&
-              ` (v${config.config.metadata.version})`}
           </option>
         ))}
       </select>
 
-      {selectedConfigData && (showDescription || showVersion) && (
+      {selectedConfigData && showDescription && selectedConfigData.config.metadata.description && (
         <div style={infoStyle}>
-          {showVersion && selectedConfigData.config.metadata.version && (
-            <div style={{ marginBottom: '4px' }}>
-              <strong>Version:</strong> {selectedConfigData.config.metadata.version}
-            </div>
-          )}
-          {showDescription && selectedConfigData.config.metadata.description && (
-            <div>{selectedConfigData.config.metadata.description}</div>
-          )}
+          <div>{selectedConfigData.config.metadata.description}</div>
         </div>
       )}
     </div>

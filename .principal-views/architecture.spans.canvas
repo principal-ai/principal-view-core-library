@@ -1,13 +1,10 @@
 {
-  "pv": {
-    "name": "Principal View CLI Span Conventions",
-    "version": "1.0.0",
-    "markdown": ".principal-views/architecture.spans.md",
-    "nodeTypes": {
-      "span-convention": {
-        "label": "Span Convention",
-        "description": "A span convention defining an operation type"
-      }
+  "name": "Principal View CLI Span Conventions",
+  "markdown": ".principal-views/architecture.spans.md",
+  "nodeTypes": {
+    "span-convention": {
+      "label": "Span Convention",
+      "description": "A span convention defining an operation type"
     }
   },
   "nodes": [
@@ -94,9 +91,7 @@
       "fromSide": "right",
       "toNode": "validate",
       "toSide": "left",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "e2",
@@ -104,9 +99,7 @@
       "fromSide": "right",
       "toNode": "discover",
       "toSide": "left",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "e3",
@@ -114,9 +107,7 @@
       "fromSide": "right",
       "toNode": "parse",
       "toSide": "left",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "e4",
@@ -124,9 +115,7 @@
       "fromSide": "bottom",
       "toNode": "discover",
       "toSide": "top",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "e5",
@@ -134,9 +123,7 @@
       "fromSide": "bottom",
       "toNode": "parse",
       "toSide": "top",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "e6",
@@ -144,9 +131,7 @@
       "fromSide": "right",
       "toNode": "file",
       "toSide": "left",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "e7",
@@ -154,9 +139,7 @@
       "fromSide": "right",
       "toNode": "file",
       "toSide": "left",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     }
   ]
 }

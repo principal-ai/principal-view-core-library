@@ -2634,9 +2634,9 @@ function useCanvasToLegacy(
       }
     }
 
-    // Next, add node types from canvas vv.nodeTypes (overrides library)
-    if (canvas.pv?.nodeTypes) {
-      for (const [id, def] of Object.entries(canvas.pv.nodeTypes)) {
+    // Next, add node types from canvas nodeTypes (overrides library)
+    if (canvas.nodeTypes) {
+      for (const [id, def] of Object.entries(canvas.nodeTypes)) {
         nodeTypes[id] = {
           description: def.description,
           shape: def.shape || 'rectangle',
@@ -2683,9 +2683,9 @@ function useCanvasToLegacy(
       }
     }
 
-    // Extract edge types from canvas vv.edgeTypes
-    if (canvas.pv?.edgeTypes) {
-      for (const [id, def] of Object.entries(canvas.pv.edgeTypes)) {
+    // Extract edge types from canvas edgeTypes
+    if (canvas.edgeTypes) {
+      for (const [id, def] of Object.entries(canvas.edgeTypes)) {
         edgeTypes[id] = {
           style: def.style || 'solid',
           color: def.color,
@@ -2700,14 +2700,13 @@ function useCanvasToLegacy(
     // Build allowed connections from edges
     const allowedConnections: GraphConfiguration['allowedConnections'] = [];
     for (const edge of canvas.edges || []) {
-      const edgeType = edge.pv?.edgeType || 'default';
+      const edgeType = edge.edgeType || 'default';
 
       // Ensure edge type exists
       if (!edgeTypes[edgeType]) {
         edgeTypes[edgeType] = {
-          style: edge.pv?.style || 'solid',
+          style: 'solid',
           color: typeof edge.color === 'string' ? edge.color : undefined,
-          width: edge.pv?.width,
           directed: true,
         };
       }
@@ -2721,19 +2720,18 @@ function useCanvasToLegacy(
     }
 
     // Build display config with required layout field
-    const display: GraphConfiguration['display'] = canvas.pv?.display
+    const display: GraphConfiguration['display'] = canvas.display
       ? {
-          layout: canvas.pv.display.layout || 'manual',
-          theme: canvas.pv.display.theme,
-          animations: canvas.pv.display.animations,
+          layout: canvas.display.layout || 'manual',
+          theme: canvas.display.theme,
+          animations: canvas.display.animations,
         }
       : { layout: 'manual' };
 
     const configuration: GraphConfiguration = {
       metadata: {
-        name: canvas.pv?.name || 'Untitled',
-        version: canvas.pv?.version || '1.0.0',
-        description: canvas.pv?.description,
+        name: canvas.name || 'Untitled',
+        description: canvas.description,
       },
       nodeTypes,
       edgeTypes,

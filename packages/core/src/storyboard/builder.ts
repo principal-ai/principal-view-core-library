@@ -263,8 +263,8 @@ export function buildStoryboardContext(
     supportingFiles.push(workflow.path);
   }
   // Add markdown doc if canvas has one
-  if (canvas.pv?.markdown) {
-    supportingFiles.push(canvas.pv.markdown);
+  if (canvas.markdown) {
+    supportingFiles.push(canvas.markdown);
   }
   supportingFiles.push(...additionalSupportingFiles);
 

@@ -77,13 +77,12 @@ A canvas is considered an "OTEL canvas" if it contains ANY of these dedicated no
 
 ```json
 {
+  "name": "Canvas Name",
+  "markdown": ".principal-views/my-feature.md",
   "nodes": [/* array of otel-event and other nodes */],
-  "edges": [/* array of edges with pv metadata */],
+  "edges": [/* array of edges with edgeType */],
   "pv": {
-    "version": "1.0.0",
-    "name": "Canvas Name",
-    "description": "Canvas description",
-    "markdown": ".principal-views/my-feature.md"
+    "description": "Canvas description"
   }
 }
 ```
@@ -261,10 +260,7 @@ For resource nodes that should match based on OTEL resource attributes:
   "fromSide": "right",        // "top" | "right" | "bottom" | "left"
   "toSide": "left",
   "label": "data flow",
-  "pv": {
-    "edgeType": "data-flow",
-    "style": "solid"           // or "dashed"
-  }
+  "edgeType": "data-flow"     // edge type at top level
 }
 ```
 
@@ -274,43 +270,45 @@ For resource nodes that should match based on OTEL resource attributes:
 - **db-query**: Database or data access
 - **event-emission**: Event publication
 
-## Canvas-Level Metadata (pv)
+## Canvas-Level Metadata
 
-**REQUIRED Fields:**
-- **pv.name**: Canvas display name
-- **pv.version**: Schema version (e.g., "1.0.0")
-- **pv.markdown**: Path to documentation file (e.g., ".principal-views/feature.md")
+**REQUIRED Top-Level Fields:**
+- **name**: Canvas display name
+- **markdown**: Path to documentation file (e.g., ".principal-views/feature.md")
 
-**Optional Fields:**
+**Optional pv Fields:**
 - **pv.description**: Description of what this canvas shows
 - **pv.nodeTypes**: Custom node type definitions
 - **pv.edgeTypes**: Custom edge type definitions (required if edges use custom types)
 
 ```json
-"pv": {
-  "version": "1.0.0",
+{
   "name": "Canvas Display Name",
   "markdown": ".principal-views/my-feature.md",
-  "description": "Description of what this canvas shows",
-  "nodeTypes": {
-    "service": {
-      "label": "Service",
-      "description": "System service component",
-      "shape": "hexagon"
-    }
-  },
-  "edgeTypes": {
-    "sequence": {
-      "label": "Flow",
-      "style": "solid",
-      "color": "#666",
-      "directed": true
+  "nodes": [...],
+  "edges": [...],
+  "pv": {
+    "description": "Description of what this canvas shows",
+    "nodeTypes": {
+      "service": {
+        "label": "Service",
+        "description": "System service component",
+        "shape": "hexagon"
+      }
+    },
+    "edgeTypes": {
+      "sequence": {
+        "label": "Flow",
+        "style": "solid",
+        "color": "#666",
+        "directed": true
+      }
     }
   }
 }
 ```
 
-**IMPORTANT:** Edges must have `pv.edgeType` that references a type defined in `pv.edgeTypes`.
+**IMPORTANT:** Edges must have an `edgeType` field that references a type defined in `pv.edgeTypes`.
 
 ## Event Schema Best Practices
 

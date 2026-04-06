@@ -11,7 +11,6 @@ import { globby } from 'globby';
 interface CanvasInfo {
   file: string;
   name: string;
-  version?: string;
   nodeCount: number;
   edgeCount: number;
   modified: Date;
@@ -26,8 +25,7 @@ function getCanvasInfo(filePath: string): CanvasInfo | null {
 
     return {
       file: relative(process.cwd(), absolutePath),
-      name: canvas.pv?.name || 'Untitled',
-      version: canvas.pv?.version,
+      name: canvas.name || canvas.pv?.name || 'Untitled',
       nodeCount: Array.isArray(canvas.nodes) ? canvas.nodes.length : 0,
       edgeCount: Array.isArray(canvas.edges) ? canvas.edges.length : 0,
       modified: stats.mtime,
@@ -79,9 +77,8 @@ export function createListCommand(): Command {
           console.log(chalk.bold(`\nFound ${canvasInfos.length} canvas file(s):\n`));
 
           for (const info of canvasInfos) {
-            const version = info.version ? chalk.dim(` v${info.version}`) : '';
             console.log(`  ${chalk.cyan(info.file)}`);
-            console.log(`    ${chalk.bold(info.name)}${version}`);
+            console.log(`    ${chalk.bold(info.name)}`);
             console.log(chalk.dim(`    ${info.nodeCount} nodes, ${info.edgeCount} edges`));
             console.log('');
           }

@@ -143,11 +143,8 @@ For each service:
 
 ```json
 {
-  "pv": {
-    "name": "Service Resources",
-    "version": "1.0.0",
-    "markdown": ".principal-views/resources.md"
-  },
+  "name": "Service Resources",
+  "markdown": ".principal-views/resources.md",
   "nodes": [
     {
       "id": "my-service-resource",
@@ -177,7 +174,7 @@ For each service:
       "fromSide": "bottom",
       "toNode": "my-service-scope",
       "toSide": "top",
-      "pv": { "edgeType": "data-flow" }
+      "edgeType": "data-flow"
     }
   ]
 }
@@ -241,11 +238,8 @@ Rules:
 
 ```json
 {
-  "pv": {
-    "name": "Span Conventions",
-    "version": "1.0.0",
-    "markdown": ".principal-views/architecture.spans.md"
-  },
+  "name": "Span Conventions",
+  "markdown": ".principal-views/architecture.spans.md",
   "nodes": [
     {
       "id": "http-request",
@@ -303,7 +297,7 @@ Rules:
       "fromSide": "right",
       "toNode": "validate",
       "toSide": "left",
-      "pv": { "edgeType": "data-flow" }
+      "edgeType": "data-flow"
     },
     {
       "id": "e2",
@@ -311,7 +305,7 @@ Rules:
       "fromSide": "right",
       "toNode": "db-query",
       "toSide": "left",
-      "pv": { "edgeType": "data-flow" }
+      "edgeType": "data-flow"
     }
   ]
 }
@@ -392,11 +386,8 @@ Each owned scope needs a node with:
 
 ```json
 {
-  "pv": {
-    "name": "Instrumentation Scopes",
-    "version": "1.0.0",
-    "markdown": ".principal-views/architecture.scopes.md"
-  },
+  "name": "Instrumentation Scopes",
+  "markdown": ".principal-views/architecture.scopes.md",
   "nodes": [
     {
       "id": "api-scope",

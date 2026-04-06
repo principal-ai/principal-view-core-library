@@ -4,8 +4,11 @@
  * This module defines types that extend the JSON Canvas spec (https://jsoncanvas.org/spec/1.0/)
  * with Principal View Framework extensions.
  *
- * Design principle: All extensions are placed in a `pv` (Principal View) field,
- * which is ignored by standard canvas tools (like Obsidian) but used by our React Flow renderer.
+ * Design principle: Extensions use top-level fields where possible (name, markdown, edgeType)
+ * for simplicity. Node-level extensions use a `pv` field for complex metadata.
+ *
+ * DEPRECATION: Canvas-level `pv` field and edge-level `pv` field are deprecated.
+ * Use top-level `name`, `markdown` fields on canvas, and `edgeType` field on edges.
  *
  * This allows:
  * 1. Authoring layouts visually in Obsidian or other canvas tools
@@ -817,57 +820,40 @@ export interface PVEdgeTypeDefinition {
 
 /**
  * Canvas-level Principal View extensions
+ *
+ * @deprecated The `pv` field is fully deprecated. All fields have been moved to top-level.
+ * This interface will be removed in a future version.
+ *
+ * Migration - move all fields to top-level:
+ * - `pv.name` → `name`
+ * - `pv.markdown` → `markdown`
+ * - `pv.description` → `description`
+ * - `pv.nodeTypes` → `nodeTypes`
+ * - `pv.edgeTypes` → `edgeTypes`
+ * - `pv.display` → `display`
+ * - `pv.pathConfig` → `pathConfig`
+ * - `pv.scope` → `scope`
+ * - `pv.audit` → `audit`
+ * - `pv.version` → removed (not used)
  */
 export interface PVCanvasExtension {
-  /** Schema version */
-  version: string;
-  /** Graph name */
-  name: string;
-  /** Description */
+  /** @deprecated Use top-level `name` field instead */
+  name?: string;
+  /** @deprecated Use top-level `description` field instead */
   description?: string;
-
-  /**
-   * Associated markdown documentation file
-   *
-   * For .otel.canvas files, this field is required and must point to a markdown file
-   * that documents the canvas. The path must be relative to the git repository root.
-   *
-   * @example ".principal-views/graph-converter-execution.md"
-   * @example "docs/architecture/execution-flow.md"
-   */
+  /** @deprecated Use top-level `markdown` field instead */
   markdown?: string;
-
-  /** Node type definitions (shared across nodes) */
+  /** @deprecated Use top-level `nodeTypes` field instead */
   nodeTypes?: Record<string, PVNodeTypeDefinition>;
-  /** Edge type definitions (shared across edges) */
+  /** @deprecated Use top-level `edgeTypes` field instead */
   edgeTypes?: Record<string, PVEdgeTypeDefinition>;
-  /** Path-based configuration */
+  /** @deprecated Use top-level `pathConfig` field instead */
   pathConfig?: PVPathConfig;
-  /** Display configuration */
+  /** @deprecated Use top-level `display` field instead */
   display?: PVDisplayConfig;
-
-  /**
-   * Canvas scope for log filtering
-   *
-   * Only logs matching this scope will be considered for node routing.
-   * If not specified, all logs are in scope.
-   *
-   * @example
-   * ```typescript
-   * scope: {
-   *   'deployment.environment': 'production',
-   *   'service.namespace': 'checkout'
-   * }
-   * ```
-   */
+  /** @deprecated Use top-level `scope` field instead */
   scope?: CanvasScope;
-
-  /**
-   * Audit configuration for log coverage tracking
-   *
-   * When enabled, tracks which logs are routed vs orphaned,
-   * detects silent nodes, and generates coverage reports.
-   */
+  /** @deprecated Use top-level `audit` field instead */
   audit?: CanvasAuditConfig;
 }
 
@@ -1091,6 +1077,30 @@ export type ExtendedCanvasNode =
  * Extended edge with PV extensions
  */
 export interface ExtendedCanvasEdge extends CanvasEdge {
+  /**
+   * Custom edge type identifier
+   *
+   * Used to categorize edges (e.g., "data-flow", "control-flow", "dependency").
+   * Replaces the deprecated `pv.edgeType` field.
+   *
+   * @example "data-flow"
+   * @example "control-flow"
+   */
+  edgeType?: string;
+
+  /**
+   * @deprecated Use top-level `edgeType` field instead.
+   * Validation will error if this field is present.
+   *
+   * Migration:
+   * ```json
+   * // Before (deprecated):
+   * { "id": "e1", "fromNode": "a", "toNode": "b", "pv": { "edgeType": "data-flow" } }
+   *
+   * // After:
+   * { "id": "e1", "fromNode": "a", "toNode": "b", "edgeType": "data-flow" }
+   * ```
+   */
   pv?: PVEdgeExtension;
 }
 
@@ -1104,11 +1114,92 @@ export interface ExtendedCanvasEdge extends CanvasEdge {
  * Standard canvas tools will only recognize the JSON Canvas node types.
  */
 export interface ExtendedCanvas {
+  /**
+   * Canvas display name
+   *
+   * Human-readable name for this canvas, shown in UIs and listings.
+   *
+   * @example "Service Resources"
+   * @example "Checkout Flow"
+   */
+  name?: string;
+
+  /**
+   * Associated markdown documentation file
+   *
+   * Path to a markdown file that documents this canvas.
+   * For .otel.canvas files, this field is required.
+   * The path must be relative to the git repository root.
+   *
+   * Convention: If not specified, defaults to same basename as canvas file.
+   * e.g., `resources.canvas` → `resources.md`
+   *
+   * @example ".principal-views/resources.md"
+   * @example "docs/architecture/checkout-flow.md"
+   */
+  markdown?: string;
+
+  /** Canvas description */
+  description?: string;
+
+  /** Node type definitions (shared across nodes) */
+  nodeTypes?: Record<string, PVNodeTypeDefinition>;
+
+  /** Edge type definitions (shared across edges) */
+  edgeTypes?: Record<string, PVEdgeTypeDefinition>;
+
+  /** Path-based configuration */
+  pathConfig?: PVPathConfig;
+
+  /** Display configuration */
+  display?: PVDisplayConfig;
+
+  /**
+   * Canvas scope for log filtering
+   *
+   * Only logs matching this scope will be considered for node routing.
+   * If not specified, all logs are in scope.
+   *
+   * @example
+   * ```typescript
+   * scope: {
+   *   'deployment.environment': 'production',
+   *   'service.namespace': 'checkout'
+   * }
+   * ```
+   */
+  scope?: CanvasScope;
+
+  /**
+   * Audit configuration for log coverage tracking
+   *
+   * When enabled, tracks which logs are routed vs orphaned,
+   * detects silent nodes, and generates coverage reports.
+   */
+  audit?: CanvasAuditConfig;
+
   /** Nodes - JSON Canvas types and/or OTEL node types */
   nodes?: ExtendedCanvasNode[];
+
   /** Edges with optional PV extensions */
   edges?: ExtendedCanvasEdge[];
-  /** Canvas-level PV configuration */
+
+  /**
+   * @deprecated The `pv` field is fully deprecated. All fields have been moved to top-level.
+   * Validation will error if this field is present.
+   *
+   * Migration:
+   * - `pv.name` → `name` (top-level)
+   * - `pv.markdown` → `markdown` (top-level)
+   * - `pv.description` → `description` (top-level)
+   * - `pv.nodeTypes` → `nodeTypes` (top-level)
+   * - `pv.edgeTypes` → `edgeTypes` (top-level)
+   * - `pv.display` → `display` (top-level)
+   * - `pv.pathConfig` → `pathConfig` (top-level)
+   * - `pv.scope` → `scope` (top-level)
+   * - `pv.audit` → `audit` (top-level)
+   * - `pv.version` → removed (not used)
+   */
   pv?: PVCanvasExtension;
 }
 

@@ -152,12 +152,9 @@ export function mergeCanvases(
 
   // Create merged canvas - group nodes first so they render behind
   const mergedCanvas: ExtendedCanvas = {
+    name: 'Multi-Canvas View',
     nodes: [...groupNodes, ...mergedNodes],
     edges: mergedEdges,
-    pv: {
-      version: '1.0.0',
-      name: 'Multi-Canvas View',
-    },
   };
 
   return mergedCanvas;

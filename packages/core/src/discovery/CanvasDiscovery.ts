@@ -698,9 +698,9 @@ export class CanvasDiscovery {
           const canvasWithContent = canvas as DiscoveredCanvasWithContent;
           canvasWithContent.content = parsedContent;
 
-          // Extract markdown path from canvas pv metadata if it exists
-          if (parsedContent.pv?.markdown) {
-            canvas.markdownPath = parsedContent.pv.markdown;
+          // Extract markdown path from canvas metadata if it exists
+          if (parsedContent.markdown) {
+            canvas.markdownPath = parsedContent.markdown;
           }
         } catch (error) {
           errors.push({

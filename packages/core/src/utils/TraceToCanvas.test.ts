@@ -294,14 +294,15 @@ describe('TraceToCanvas', () => {
   });
 
   describe('canvas metadata', () => {
-    test('includes pv extensions', () => {
+    test('includes canvas extensions', () => {
       const span = createSpan();
       const traceExport = createExport([span]);
 
       const result = traceToCanvas(traceExport);
 
-      expect(result.canvas.pv?.version).toBe('1.0.0');
-      expect(result.canvas.pv?.name).toContain('Trace:');
+      // Name is now at top level
+      expect(result.canvas.name).toContain('Trace:');
+      // Other metadata remains in pv
       expect(result.canvas.pv?.nodeTypes).toBeDefined();
       expect(result.canvas.pv?.edgeTypes).toBeDefined();
     });

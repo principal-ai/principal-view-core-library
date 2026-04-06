@@ -1,10 +1,6 @@
 {
-  "pv": {
-    "name": "Principal View CLI Scopes",
-    "version": "1.0.0",
-    "description": "Instrumentation scopes for the Principal View CLI",
-    "markdown": ".principal-views/architecture.scopes.md"
-  },
+  "name": "Principal View CLI Scopes",
+  "markdown": ".principal-views/architecture.scopes.md",
   "nodes": [
     {
       "id": "scope-cli",
@@ -39,9 +35,7 @@
       "fromSide": "right",
       "toNode": "operations",
       "toSide": "left",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     }
   ]
 }

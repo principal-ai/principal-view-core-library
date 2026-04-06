@@ -46,18 +46,6 @@ export const requiredMetadata: GraphRule = {
       });
     }
 
-    if (!configuration.metadata.version) {
-      violations.push({
-        ruleId: 'required-metadata',
-        severity: 'error',
-        file: configPath,
-        path: 'metadata.version',
-        message: 'Configuration metadata is missing required "version" field',
-        impact: 'Cannot track configuration versions',
-        suggestion: 'Add a version field (e.g., "1.0.0") to metadata',
-        fixable: false,
-      });
-    }
 
     return violations;
   },

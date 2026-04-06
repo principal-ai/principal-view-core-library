@@ -499,14 +499,13 @@ export class CanvasConverter {
   static reactFlowToCanvas(
     nodes: ReactFlowNode[],
     edges: ReactFlowEdge[],
-    metadata?: { name?: string; version?: string; description?: string }
+    metadata?: { name?: string; description?: string }
   ): ExtendedCanvas {
     const canvas: ExtendedCanvas = {
+      name: metadata?.name || 'Untitled',
       nodes: [],
       edges: [],
       pv: {
-        version: metadata?.version || '1.0.0',
-        name: metadata?.name || 'Untitled',
         description: metadata?.description,
         edgeTypes: {},
       },

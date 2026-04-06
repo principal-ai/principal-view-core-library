@@ -1,4 +1,7 @@
 {
+  "name": "Matching Logic - Current State",
+  "markdown": ".principal-views/matching-logic-current-state.md",
+  "description": "Documents what exists vs what needs to be implemented for the OTLP trace matching logic",
   "nodes": [
     {
       "id": "otlp-trace",
@@ -253,9 +256,7 @@
       "toNode": "scope-extraction",
       "fromSide": "bottom",
       "toSide": "top",
-      "pv": {
-        "edgeType": "data-flow"
-      }
+      "edgeType": "data-flow"
     },
     {
       "id": "scope-to-registry",
@@ -263,9 +264,7 @@
       "toNode": "registry-lookup",
       "fromSide": "bottom",
       "toSide": "top",
-      "pv": {
-        "edgeType": "missing-flow"
-      }
+      "edgeType": "missing-flow"
     },
     {
       "id": "registry-to-version",
@@ -273,9 +272,7 @@
       "toNode": "version-registry",
       "fromSide": "right",
       "toSide": "left",
-      "pv": {
-        "edgeType": "query"
-      }
+      "edgeType": "query"
     },
     {
       "id": "registry-to-event",
@@ -283,9 +280,7 @@
       "toNode": "event-registry",
       "fromSide": "right",
       "toSide": "bottom",
-      "pv": {
-        "edgeType": "query"
-      }
+      "edgeType": "query"
     },
     {
       "id": "registry-to-orchestrator",
@@ -293,9 +288,7 @@
       "toNode": "orchestrator",
       "fromSide": "bottom",
       "toSide": "top",
-      "pv": {
-        "edgeType": "missing-flow"
-      }
+      "edgeType": "missing-flow"
     },
     {
       "id": "orchestrator-to-span-matcher",
@@ -303,9 +296,7 @@
       "toNode": "span-matcher",
       "fromSide": "bottom",
       "toSide": "top",
-      "pv": {
-        "edgeType": "missing-flow"
-      }
+      "edgeType": "missing-flow"
     },
     {
       "id": "orchestrator-to-scenario-matcher",
@@ -313,9 +304,7 @@
       "toNode": "scenario-matcher",
       "fromSide": "bottom",
       "toSide": "top",
-      "pv": {
-        "edgeType": "missing-flow"
-      }
+      "edgeType": "missing-flow"
     },
     {
       "id": "orchestrator-to-aggregation",
@@ -323,9 +312,7 @@
       "toNode": "trace-aggregation",
       "fromSide": "right",
       "toSide": "bottom",
-      "pv": {
-        "edgeType": "missing-flow"
-      }
+      "edgeType": "missing-flow"
     },
     {
       "id": "orchestrator-to-categorizer",
@@ -333,9 +320,7 @@
       "toNode": "result-categorizer",
       "fromSide": "right",
       "toSide": "top",
-      "pv": {
-        "edgeType": "missing-flow"
-      }
+      "edgeType": "missing-flow"
     },
     {
       "id": "categorizer-to-output",
@@ -343,9 +328,7 @@
       "toNode": "registered-trace-output",
       "fromSide": "bottom",
       "toSide": "right",
-      "pv": {
-        "edgeType": "missing-flow"
-      }
+      "edgeType": "missing-flow"
     },
     {
       "id": "types-to-output",
@@ -353,9 +336,7 @@
       "toNode": "registered-trace-output",
       "fromSide": "bottom",
       "toSide": "top",
-      "pv": {
-        "edgeType": "type-definition"
-      }
+      "edgeType": "type-definition"
     },
     {
       "id": "storyboard-to-scenario",
@@ -363,9 +344,7 @@
       "toNode": "scenario-matcher",
       "fromSide": "left",
       "toSide": "right",
-      "pv": {
-        "edgeType": "supports"
-      }
+      "edgeType": "supports"
     },
     {
       "id": "workflow-to-span",
@@ -373,15 +352,7 @@
       "toNode": "span-matcher",
       "fromSide": "left",
       "toSide": "right",
-      "pv": {
-        "edgeType": "supports"
-      }
+      "edgeType": "supports"
     }
-  ],
-  "pv": {
-    "name": "Matching Logic - Current State",
-    "version": "1.0.0",
-    "description": "Documents what exists vs what needs to be implemented for the OTLP trace matching logic",
-    "markdown": ".principal-views/matching-logic-current-state.md"
-  }
+  ]
 }

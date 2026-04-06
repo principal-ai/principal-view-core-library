@@ -1,9 +1,6 @@
 {
-  "pv": {
-    "name": "Principal View Resources",
-    "version": "1.0.0",
-    "markdown": ".principal-views/resources.md"
-  },
+  "name": "Principal View Resources",
+  "markdown": ".principal-views/resources.md",
   "nodes": [
     {
       "id": "pv-cli-resource",
@@ -33,7 +30,7 @@
       "fromSide": "bottom",
       "toNode": "pv-cli-scope",
       "toSide": "top",
-      "pv": { "edgeType": "data-flow" }
+      "edgeType": "data-flow"
     }
   ]
 }

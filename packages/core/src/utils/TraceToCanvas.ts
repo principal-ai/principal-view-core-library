@@ -397,12 +397,9 @@ export function traceToCanvas(
   if (spans.length === 0) {
     return {
       canvas: {
+        name: 'Empty Trace',
         nodes: [],
         edges: [],
-        pv: {
-          version: '1.0.0',
-          name: 'Empty Trace',
-        },
       },
       stats: {
         traceCount: 0,
@@ -458,11 +455,10 @@ export function traceToCanvas(
 
   // Build canvas
   const canvas: ExtendedCanvas = {
+    name: `Trace: ${traceExport.serviceName}`,
     nodes: [...serviceGroups, ...spanNodes],
     edges,
     pv: {
-      version: '1.0.0',
-      name: `Trace: ${traceExport.serviceName}`,
       description: `Exported at ${traceExport.exportedAt}`,
       nodeTypes: {
         span: {
