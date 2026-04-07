@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
+import '@xyflow/react/dist/style.css';
 import { GraphRenderer } from '../components/GraphRenderer';
 import type { GraphRendererHandle, PendingChanges } from '../components/GraphRenderer';
 import type { ExtendedCanvas, PVEventSchema } from '@principal-ai/principal-view-core';
@@ -84,30 +85,27 @@ const sampleCanvas: ExtendedCanvas = {
       id: 'edge-1',
       fromNode: 'node-1',
       toNode: 'node-2',
-      pv: { edgeType: 'dataflow' },
+      edgeType: 'dataflow',
     },
     {
       id: 'edge-2',
       fromNode: 'node-2',
       toNode: 'node-3',
-      pv: { edgeType: 'dataflow' },
+      edgeType: 'dataflow',
     },
   ],
-  pv: {
-    version: '1.0.0',
-    name: 'Sample Validation Graph',
-    description: 'Example graph configuration',
-    edgeTypes: {
-      dataflow: {
-        style: 'solid',
-        color: '#50E3C2',
-        directed: true,
-      },
-      dependency: {
-        style: 'dashed',
-        color: '#F5A623',
-        directed: true,
-      },
+  name: 'Sample Validation Graph',
+  description: 'Example graph configuration',
+  edgeTypes: {
+    dataflow: {
+      style: 'solid',
+      color: '#50E3C2',
+      directed: true,
+    },
+    dependency: {
+      style: 'dashed',
+      color: '#F5A623',
+      directed: true,
     },
   },
 };
@@ -118,11 +116,8 @@ const sampleCanvas: ExtendedCanvas = {
 const emptyCanvas: ExtendedCanvas = {
   nodes: [],
   edges: [],
-  pv: {
-    version: '1.0.0',
-    name: 'Empty Graph',
-    edgeTypes: {},
-  },
+  name: 'Empty Graph',
+  edgeTypes: {},
 };
 
 /**
@@ -147,11 +142,8 @@ const singleNodeCanvas: ExtendedCanvas = {
     },
   ],
   edges: [],
-  pv: {
-    version: '1.0.0',
-    name: 'Single Node',
-    edgeTypes: {},
-  },
+  name: 'Single Node',
+  edgeTypes: {},
 };
 
 /**
@@ -240,36 +232,33 @@ const largeCanvas: ExtendedCanvas = {
       id: 'edge-1',
       fromNode: 'node-1',
       toNode: 'node-2',
-      pv: { edgeType: 'dataflow' },
+      edgeType: 'dataflow',
     },
     {
       id: 'edge-2',
       fromNode: 'node-2',
       toNode: 'node-3',
-      pv: { edgeType: 'dataflow' },
+      edgeType: 'dataflow',
     },
     {
       id: 'edge-3',
       fromNode: 'node-1',
       toNode: 'node-4',
-      pv: { edgeType: 'dataflow' },
+      edgeType: 'dataflow',
     },
     {
       id: 'edge-4',
       fromNode: 'node-4',
       toNode: 'node-5',
-      pv: { edgeType: 'dataflow' },
+      edgeType: 'dataflow',
     },
   ],
-  pv: {
-    version: '1.0.0',
-    name: 'Large Graph',
-    edgeTypes: {
-      dataflow: {
-        style: 'solid',
-        color: '#50E3C2',
-        directed: true,
-      },
+  name: 'Large Graph',
+  edgeTypes: {
+    dataflow: {
+      style: 'solid',
+      color: '#50E3C2',
+      directed: true,
     },
   },
 };
@@ -380,49 +369,44 @@ const serviceArchitectureCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'GET/SET',
-      pv: {
-        edgeType: 'cache-access',
-      },
+      edgeType: 'cache-access',
     },
   ],
-  pv: {
-    version: '1.0.0',
-    name: 'Simple Service Architecture',
-    description: 'A basic client-server architecture with caching',
-    edgeTypes: {
-      'http-request': {
-        style: 'solid',
-        color: '#3b82f6',
-        width: 3,
-        directed: true,
-        animation: {
-          type: 'flow',
-          duration: 1500,
-        },
-      },
-      'db-query': {
-        style: 'dashed',
-        color: '#22c55e',
-        width: 2,
-        directed: true,
-      },
-      'cache-access': {
-        style: 'dotted',
-        color: '#f97316',
-        width: 2,
-        directed: true,
-        animation: {
-          type: 'pulse',
-          duration: 1000,
-        },
+  name: 'Simple Service Architecture',
+  description: 'A basic client-server architecture with caching',
+  edgeTypes: {
+    'http-request': {
+      style: 'solid',
+      color: '#3b82f6',
+      width: 3,
+      directed: true,
+      animation: {
+        type: 'flow',
+        duration: 1500,
       },
     },
-    display: {
-      layout: 'manual',
-      animations: {
-        enabled: true,
-        speed: 1.0,
+    'db-query': {
+      style: 'dashed',
+      color: '#22c55e',
+      width: 2,
+      directed: true,
+    },
+    'cache-access': {
+      style: 'dotted',
+      color: '#f97316',
+      width: 2,
+      directed: true,
+      animation: {
+        type: 'pulse',
+        duration: 1000,
       },
+    },
+  },
+  display: {
+    layout: 'manual',
+    animations: {
+      enabled: true,
+      speed: 1.0,
     },
   },
 };
@@ -917,7 +901,7 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
       fromSide: 'right',
       toSide: 'left',
       label: 'route()',
-      pv: { edgeType: 'http-request' },
+      edgeType: 'http-request',
     },
     {
       id: 'router-checks-scope',
@@ -926,7 +910,7 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
       fromSide: 'top',
       toSide: 'bottom',
       label: 'isInScope()',
-      pv: { edgeType: 'http-request' },
+      edgeType: 'http-request',
     },
     {
       id: 'router-uses-matcher',
@@ -935,7 +919,7 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'match()',
-      pv: { edgeType: 'http-request' },
+      edgeType: 'http-request',
     },
     {
       id: 'matcher-uses-match',
@@ -944,7 +928,7 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
       fromSide: 'right',
       toSide: 'left',
       label: 'criteria',
-      pv: { edgeType: 'db-query' },
+      edgeType: 'db-query',
     },
     {
       id: 'match-has-operator',
@@ -953,7 +937,7 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'operators',
-      pv: { edgeType: 'db-query' },
+      edgeType: 'db-query',
     },
     {
       id: 'router-to-node',
@@ -962,7 +946,7 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
       fromSide: 'right',
       toSide: 'left',
       label: 'routed',
-      pv: { edgeType: 'http-request' },
+      edgeType: 'http-request',
     },
     {
       id: 'router-returns-result',
@@ -971,7 +955,7 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
       fromSide: 'right',
       toSide: 'left',
       label: 'returns',
-      pv: { edgeType: 'http-request' },
+      edgeType: 'http-request',
     },
     {
       id: 'result-to-audit',
@@ -980,7 +964,7 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
       fromSide: 'right',
       toSide: 'left',
       label: 'track()',
-      pv: { edgeType: 'http-request' },
+      edgeType: 'http-request',
     },
     {
       id: 'audit-tracks-orphans',
@@ -989,7 +973,7 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
       fromSide: 'right',
       toSide: 'left',
       label: 'unmatched',
-      pv: { edgeType: 'db-query' },
+      edgeType: 'db-query',
     },
     {
       id: 'audit-generates-report',
@@ -998,7 +982,7 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
       fromSide: 'right',
       toSide: 'left',
       label: 'generate()',
-      pv: { edgeType: 'db-query' },
+      edgeType: 'db-query',
     },
     {
       id: 'node-has-match',
@@ -1007,7 +991,7 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'resourceMatch',
-      pv: { edgeType: 'db-query' },
+      edgeType: 'db-query',
     },
     {
       id: 'log-has-resource',
@@ -1016,43 +1000,40 @@ const otelLogAssociationCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'resource',
-      pv: { edgeType: 'db-query' },
+      edgeType: 'db-query',
     },
   ],
-  pv: {
-    version: '1.0.0',
-    name: 'OTEL Log Association Architecture',
-    description: 'Shows how OtelLog flows through LogRouter to Canvas Nodes, with audit tracking',
-    nodeTypes: {
-      service: {
-        label: 'Component',
-        description: 'System component',
-        shape: 'hexagon',
-      },
-      'otel-type': {
-        label: 'Type',
-        description: 'TypeScript type or interface representing OTEL concepts',
-        shape: 'rectangle',
-      },
-      'otel-service': {
-        label: 'Service',
-        description: 'Runtime service component for OTEL processing',
-        shape: 'hexagon',
-      },
+  name: 'OTEL Log Association Architecture',
+  description: 'Shows how OtelLog flows through LogRouter to Canvas Nodes, with audit tracking',
+  nodeTypes: {
+    service: {
+      label: 'Component',
+      description: 'System component',
+      shape: 'hexagon',
     },
-    edgeTypes: {
-      'http-request': {
-        label: 'Flow',
-        style: 'solid',
-        color: '#4A90E2',
-        directed: true,
-      },
-      'db-query': {
-        label: 'Reference',
-        style: 'dashed',
-        color: '#999',
-        directed: true,
-      },
+    'otel-type': {
+      label: 'Type',
+      description: 'TypeScript type or interface representing OTEL concepts',
+      shape: 'rectangle',
+    },
+    'otel-service': {
+      label: 'Service',
+      description: 'Runtime service component for OTEL processing',
+      shape: 'hexagon',
+    },
+  },
+  edgeTypes: {
+    'http-request': {
+      label: 'Flow',
+      style: 'solid',
+      color: '#4A90E2',
+      directed: true,
+    },
+    'db-query': {
+      label: 'Reference',
+      style: 'dashed',
+      color: '#999',
+      directed: true,
     },
   },
 };
@@ -1196,7 +1177,7 @@ const sourcesTooltipCanvas: ExtendedCanvas = {
       fromSide: 'right',
       toSide: 'left',
       label: 'validates',
-      pv: { edgeType: 'dataflow' },
+      edgeType: 'dataflow',
     },
     {
       id: 'user-to-db',
@@ -1205,7 +1186,7 @@ const sourcesTooltipCanvas: ExtendedCanvas = {
       fromSide: 'right',
       toSide: 'left',
       label: 'queries',
-      pv: { edgeType: 'dataflow' },
+      edgeType: 'dataflow',
     },
     {
       id: 'auth-to-cache',
@@ -1214,7 +1195,7 @@ const sourcesTooltipCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'stores tokens',
-      pv: { edgeType: 'dataflow' },
+      edgeType: 'dataflow',
     },
     {
       id: 'user-to-cache',
@@ -1223,7 +1204,7 @@ const sourcesTooltipCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'caches',
-      pv: { edgeType: 'dataflow' },
+      edgeType: 'dataflow',
     },
     {
       id: 'auth-to-logger',
@@ -1232,7 +1213,7 @@ const sourcesTooltipCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'logs',
-      pv: { edgeType: 'logging' },
+      edgeType: 'logging',
     },
     {
       id: 'user-to-logger',
@@ -1241,7 +1222,7 @@ const sourcesTooltipCanvas: ExtendedCanvas = {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'logs',
-      pv: { edgeType: 'logging' },
+      edgeType: 'logging',
     },
   ],
   pv: {
@@ -1496,19 +1477,19 @@ const selectionStylingCanvas: ExtendedCanvas = {
       id: 'edge-1',
       fromNode: 'node-1',
       toNode: 'node-2',
-      pv: { edgeType: 'dataflow' },
+      edgeType: 'dataflow',
     },
     {
       id: 'edge-2',
       fromNode: 'node-2',
       toNode: 'node-3',
-      pv: { edgeType: 'dataflow' },
+      edgeType: 'dataflow',
     },
     {
       id: 'edge-3',
       fromNode: 'node-1',
       toNode: 'node-4',
-      pv: { edgeType: 'dataflow' },
+      edgeType: 'dataflow',
     },
   ],
   pv: {
@@ -1792,21 +1773,18 @@ All of these actions update \`highlightedNodeId\`, which now automatically shows
  * Real production canvas showing version registration workflows
  */
 const versionRegistryCanvas: ExtendedCanvas = {
-  "pv": {
-    "name": "Version Registry",
-    "version": "1.0.0",
-    "description": "Maps customer version strings (semver, git SHA, build numbers) to git commit SHAs for contract-based observability",
-    "markdown": ".principal-views/version-registry/version-registry.md",
-    "edgeTypes": {
-      "flow": {
-        "label": "Flow"
-      },
-      "error": {
-        "label": "Error Path"
-      },
-      "cache": {
-        "label": "Cache Path"
-      }
+  "name": "Version Registry",
+  "description": "Maps customer version strings (semver, git SHA, build numbers) to git commit SHAs for contract-based observability",
+  "markdown": ".principal-views/version-registry/version-registry.md",
+  "edgeTypes": {
+    "flow": {
+      "label": "Flow"
+    },
+    "error": {
+      "label": "Error Path"
+    },
+    "cache": {
+      "label": "Cache Path"
     }
   },
   "nodes": [
@@ -2500,9 +2478,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "fromSide": "bottom",
       "toNode": "registration-validated",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "edge-reg-validate-to-s3",
@@ -2510,9 +2486,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "fromSide": "bottom",
       "toNode": "registration-s3-stored",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "edge-reg-s3-to-schematic-fetching",
@@ -2520,9 +2494,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "fromSide": "bottom",
       "toNode": "schematic-fetching",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "edge-schematic-fetching-to-fetched",
@@ -2530,9 +2502,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "fromSide": "bottom",
       "toNode": "schematic-fetched",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "edge-schematic-fetched-to-stored",
@@ -2540,9 +2510,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "fromSide": "bottom",
       "toNode": "schematic-stored",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "edge-schematic-stored-to-complete",
@@ -2550,9 +2518,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "fromSide": "bottom",
       "toNode": "registration-complete",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "edge-schematic-fetching-to-error",
@@ -2561,9 +2527,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "toNode": "registration-error",
       "toSide": "left",
       "label": "schematic fetch failed",
-      "pv": {
-        "edgeType": "error"
-      }
+      "edgeType": "error"
     },
     {
       "id": "edge-schematic-stored-to-error",
@@ -2572,9 +2536,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "toNode": "registration-error",
       "toSide": "left",
       "label": "storage failed",
-      "pv": {
-        "edgeType": "error"
-      }
+      "edgeType": "error"
     },
     {
       "id": "edge-reg-start-to-error",
@@ -2583,9 +2545,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "toNode": "registration-error",
       "toSide": "left",
       "label": "validation error",
-      "pv": {
-        "edgeType": "error"
-      }
+      "edgeType": "error"
     },
     {
       "id": "edge-reg-validate-to-error",
@@ -2594,9 +2554,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "toNode": "registration-error",
       "toSide": "left",
       "label": "storage error",
-      "pv": {
-        "edgeType": "error"
-      }
+      "edgeType": "error"
     },
     {
       "id": "edge-lookup-start-to-s3",
@@ -2604,9 +2562,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "fromSide": "bottom",
       "toNode": "lookup-s3-retrieved",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "edge-lookup-s3-to-complete",
@@ -2614,9 +2570,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "fromSide": "bottom",
       "toNode": "lookup-complete",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "edge-lookup-start-to-not-found",
@@ -2625,9 +2579,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "toNode": "lookup-not-found",
       "toSide": "left",
       "label": "not registered",
-      "pv": {
-        "edgeType": "error"
-      }
+      "edgeType": "error"
     },
     {
       "id": "edge-lookup-start-to-error",
@@ -2636,9 +2588,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "toNode": "lookup-error",
       "toSide": "left",
       "label": "storage error",
-      "pv": {
-        "edgeType": "error"
-      }
+      "edgeType": "error"
     },
     {
       "id": "edge-list-start-to-s3",
@@ -2646,9 +2596,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "fromSide": "bottom",
       "toNode": "list-s3-retrieved",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "edge-list-s3-to-complete",
@@ -2656,9 +2604,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "fromSide": "bottom",
       "toNode": "list-complete",
       "toSide": "top",
-      "pv": {
-        "edgeType": "flow"
-      }
+      "edgeType": "flow"
     },
     {
       "id": "edge-list-start-to-error",
@@ -2667,9 +2613,7 @@ const versionRegistryCanvas: ExtendedCanvas = {
       "toNode": "list-error",
       "toSide": "left",
       "label": "storage error",
-      "pv": {
-        "edgeType": "error"
-      }
+      "edgeType": "error"
     }
   ]
 };
@@ -3179,8 +3123,8 @@ const elkEditableCanvas: ExtendedCanvas = {
     },
   ],
   edges: [
-    { id: 'e1', fromNode: 'a', toNode: 'b', fromSide: 'right', toSide: 'left', pv: { edgeType: 'flow' } },
-    { id: 'e2', fromNode: 'a', toNode: 'c', fromSide: 'bottom', toSide: 'left', pv: { edgeType: 'flow' } },
+    { id: 'e1', fromNode: 'a', toNode: 'b', fromSide: 'right', toSide: 'left', edgeType: 'flow' },
+    { id: 'e2', fromNode: 'a', toNode: 'c', fromSide: 'bottom', toSide: 'left', edgeType: 'flow' },
   ],
   pv: {
     version: '1.0.0',

@@ -1,4 +1,30 @@
 {
+  "name": "Trace: principal-view-core-tests",
+  "description": "Exported at 2025-12-26T01:11:11.110Z",
+  "nodeTypes": {
+    "span": {
+      "description": "OpenTelemetry span from trace",
+      "shape": "rectangle"
+    },
+    "service": {
+      "description": "Service grouping",
+      "icon": "server",
+      "shape": "rectangle"
+    }
+  },
+  "edgeTypes": {
+    "span-child": {
+      "label": "Child span",
+      "directed": true
+    }
+  },
+  "display": {
+    "layout": "manual",
+    "animations": {
+      "enabled": true,
+      "speed": 1
+    }
+  },
   "nodes": [
     {
       "id": "service-principal-view-core-tests",
@@ -211,34 +237,5 @@
       }
     }
   ],
-  "edges": [],
-  "pv": {
-    "version": "1.0.0",
-    "name": "Trace: principal-view-core-tests",
-    "description": "Exported at 2025-12-26T01:11:11.110Z",
-    "nodeTypes": {
-      "span": {
-        "description": "OpenTelemetry span from trace",
-        "shape": "rectangle"
-      },
-      "service": {
-        "description": "Service grouping",
-        "icon": "server",
-        "shape": "rectangle"
-      }
-    },
-    "edgeTypes": {
-      "span-child": {
-        "label": "Child span",
-        "directed": true
-      }
-    },
-    "display": {
-      "layout": "manual",
-      "animations": {
-        "enabled": true,
-        "speed": 1
-      }
-    }
-  }
+  "edges": []
 }

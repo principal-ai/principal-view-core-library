@@ -685,19 +685,17 @@ export const EdgeTypeDefinitions: Story = {
         story: `
 **Edge Type Definitions (PV Extension)**
 
-Define reusable edge types at the canvas level in \`pv.edgeTypes\`:
+Define reusable edge types at the canvas level in \`edgeTypes\`:
 
 \`\`\`json
 {
-  "pv": {
-    "edgeTypes": {
-      "depends-on": {
-        "label": "Dependency",
-        "style": "solid",
-        "color": "#ef4444",
-        "width": 2,
-        "directed": true
-      }
+  "edgeTypes": {
+    "depends-on": {
+      "label": "Dependency",
+      "style": "solid",
+      "color": "#ef4444",
+      "width": 2,
+      "directed": true
     }
   }
 }
@@ -917,23 +915,21 @@ const EdgeFieldsComparisonTemplate = () => {
       >
         <pre style={{ margin: 0 }}>
           {`{
-  "pv": {
-    "edgeTypes": {
-      "depends-on": {
-        "label": "Dependency",      // Display name
-        "style": "solid",           // solid | dashed | dotted | animated
-        "color": "#ef4444",         // Hex color
-        "width": 2,                 // Line width in pixels
-        "directed": true,           // Show arrow head
-        "animation": {              // Optional animation
-          "type": "flow",           // flow | pulse | particle | glow
-          "duration": 1000,         // Duration in ms
-          "color": "#ff0000"        // Animation color
-        },
-        "labelConfig": {            // Label positioning
-          "field": "weight",        // Data field to display
-          "position": "middle"      // start | middle | end
-        }
+  "edgeTypes": {
+    "depends-on": {
+      "label": "Dependency",      // Display name
+      "style": "solid",           // solid | dashed | dotted | animated
+      "color": "#ef4444",         // Hex color
+      "width": 2,                 // Line width in pixels
+      "directed": true,           // Show arrow head
+      "animation": {              // Optional animation
+        "type": "flow",           // flow | pulse | particle | glow
+        "duration": 1000,         // Duration in ms
+        "color": "#ff0000"        // Animation color
+      },
+      "labelConfig": {            // Label positioning
+        "field": "weight",        // Data field to display
+        "position": "middle"      // start | middle | end
       }
     }
   }

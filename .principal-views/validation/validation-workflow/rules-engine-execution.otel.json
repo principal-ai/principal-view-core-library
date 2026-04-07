@@ -1,7 +1,7 @@
 {
   "metadata": {
     "canvasName": "Rules Engine Execution",
-    "exportedAt": "2026-04-02T22:30:30.628Z",
+    "exportedAt": "2026-04-06T15:58:07.191Z",
     "source": "test:rules-engine",
     "framework": "bun",
     "status": "success"
@@ -10,7 +10,7 @@
     {
       "id": "span-1",
       "name": "rules.lint.with.violations",
-      "startTime": 1775169030624,
+      "startTime": 1775491087185,
       "attributes": {
         "span.kind": "test.case",
         "test.name": "rules.lint.with.violations",
@@ -19,7 +19,7 @@
       },
       "events": [
         {
-          "time": 1775169030624,
+          "time": 1775491087186,
           "name": "test.started",
           "attributes": {
             "code.filepath": "rules-engine-instrumented.test.ts",
@@ -29,7 +29,7 @@
           }
         },
         {
-          "time": 1775169030624,
+          "time": 1775491087186,
           "name": "engine.creating",
           "attributes": {
             "code.filepath": "rules-engine-instrumented.test.ts",
@@ -38,7 +38,7 @@
           }
         },
         {
-          "time": 1775169030624,
+          "time": 1775491087186,
           "name": "engine.created",
           "attributes": {
             "code.filepath": "rules-engine-instrumented.test.ts",
@@ -47,7 +47,7 @@
           }
         },
         {
-          "time": 1775169030624,
+          "time": 1775491087186,
           "name": "lint.starting",
           "attributes": {
             "code.filepath": "rules-engine-instrumented.test.ts",
@@ -58,7 +58,7 @@
           }
         },
         {
-          "time": 1775169030627,
+          "time": 1775491087189,
           "name": "lint.completed",
           "attributes": {
             "code.filepath": "rules-engine-instrumented.test.ts",
@@ -70,7 +70,7 @@
           }
         },
         {
-          "time": 1775169030627,
+          "time": 1775491087190,
           "name": "violations.analyzed",
           "attributes": {
             "code.filepath": "rules-engine-instrumented.test.ts",
@@ -82,13 +82,13 @@
         }
       ],
       "status": "OK",
-      "endTime": 1775169030627,
-      "duration": 3
+      "endTime": 1775491087190,
+      "duration": 5
     },
     {
       "id": "span-2",
       "name": "rules.lint.valid.config",
-      "startTime": 1775169030627,
+      "startTime": 1775491087190,
       "attributes": {
         "span.kind": "test.case",
         "test.name": "rules.lint.valid.config",
@@ -97,7 +97,7 @@
       },
       "events": [
         {
-          "time": 1775169030627,
+          "time": 1775491087190,
           "name": "test.started",
           "attributes": {
             "code.filepath": "rules-engine-instrumented.test.ts",
@@ -108,7 +108,7 @@
           }
         },
         {
-          "time": 1775169030627,
+          "time": 1775491087190,
           "name": "lint.starting",
           "attributes": {
             "code.filepath": "rules-engine-instrumented.test.ts",
@@ -118,7 +118,7 @@
           }
         },
         {
-          "time": 1775169030627,
+          "time": 1775491087190,
           "name": "lint.completed",
           "attributes": {
             "code.filepath": "rules-engine-instrumented.test.ts",
@@ -130,13 +130,13 @@
         }
       ],
       "status": "OK",
-      "endTime": 1775169030627,
+      "endTime": 1775491087190,
       "duration": 0
     },
     {
       "id": "span-3",
       "name": "rules.lint.severity.override",
-      "startTime": 1775169030627,
+      "startTime": 1775491087190,
       "attributes": {
         "span.kind": "test.case",
         "test.name": "rules.lint.severity.override",
@@ -145,7 +145,7 @@
       },
       "events": [
         {
-          "time": 1775169030627,
+          "time": 1775491087190,
           "name": "test.started",
           "attributes": {
             "code.filepath": "rules-engine-instrumented.test.ts",
@@ -155,7 +155,7 @@
           }
         },
         {
-          "time": 1775169030627,
+          "time": 1775491087190,
           "name": "lint.starting",
           "attributes": {
             "code.filepath": "rules-engine-instrumented.test.ts",
@@ -165,7 +165,7 @@
           }
         },
         {
-          "time": 1775169030628,
+          "time": 1775491087191,
           "name": "lint.completed",
           "attributes": {
             "code.filepath": "rules-engine-instrumented.test.ts",
@@ -176,13 +176,13 @@
         }
       ],
       "status": "OK",
-      "endTime": 1775169030628,
+      "endTime": 1775491087191,
       "duration": 1
     },
     {
       "id": "span-4",
       "name": "rules.lint.disabled.rules",
-      "startTime": 1775169030628,
+      "startTime": 1775491087191,
       "attributes": {
         "span.kind": "test.case",
         "test.name": "rules.lint.disabled.rules",
@@ -191,7 +191,7 @@
       },
       "events": [
         {
-          "time": 1775169030628,
+          "time": 1775491087191,
           "name": "test.started",
           "attributes": {
             "code.filepath": "rules-engine-instrumented.test.ts",
@@ -201,7 +201,7 @@
           }
         },
         {
-          "time": 1775169030628,
+          "time": 1775491087191,
           "name": "lint.starting",
           "attributes": {
             "code.filepath": "rules-engine-instrumented.test.ts",
@@ -210,7 +210,7 @@
           }
         },
         {
-          "time": 1775169030628,
+          "time": 1775491087191,
           "name": "lint.completed",
           "attributes": {
             "code.filepath": "rules-engine-instrumented.test.ts",
@@ -222,7 +222,7 @@
         }
       ],
       "status": "OK",
-      "endTime": 1775169030628,
+      "endTime": 1775491087191,
       "duration": 0
     }
   ]

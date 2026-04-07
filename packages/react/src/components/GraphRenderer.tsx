@@ -2567,6 +2567,18 @@ function useCanvasToLegacy(
 
     const { nodes, edges } = CanvasConverter.canvasToGraph(canvas);
 
+    // Fix edge types: published core doesn't support top-level edgeType yet
+    // Re-map edge types from canvas to support both old (pv.edgeType) and new (edgeType) formats
+    const canvasEdgeMap = new Map(canvas.edges?.map(e => [e.id, e]) || []);
+    for (const edge of edges) {
+      const canvasEdge = canvasEdgeMap.get(edge.id);
+      if (canvasEdge) {
+        // Support both top-level edgeType (new) and pv.edgeType (deprecated)
+        const edgeType = canvasEdge.edgeType || canvasEdge.pv?.edgeType || 'default';
+        edge.type = edgeType;
+      }
+    }
+
     // Build scope color map from library scopes (for border colors)
     const scopeColorMap = buildScopeColorMap(library);
 
@@ -2683,9 +2695,10 @@ function useCanvasToLegacy(
       }
     }
 
-    // Extract edge types from canvas edgeTypes
-    if (canvas.edgeTypes) {
-      for (const [id, def] of Object.entries(canvas.edgeTypes)) {
+    // Extract edge types from canvas edgeTypes (new) or pv.edgeTypes (deprecated)
+    const canvasEdgeTypes = canvas.edgeTypes || canvas.pv?.edgeTypes;
+    if (canvasEdgeTypes) {
+      for (const [id, def] of Object.entries(canvasEdgeTypes)) {
         edgeTypes[id] = {
           style: def.style || 'solid',
           color: def.color,
@@ -2700,7 +2713,8 @@ function useCanvasToLegacy(
     // Build allowed connections from edges
     const allowedConnections: GraphConfiguration['allowedConnections'] = [];
     for (const edge of canvas.edges || []) {
-      const edgeType = edge.edgeType || 'default';
+      // Support both top-level edgeType (new) and pv.edgeType (deprecated)
+      const edgeType = edge.edgeType || edge.pv?.edgeType || 'default';
 
       // Ensure edge type exists
       if (!edgeTypes[edgeType]) {

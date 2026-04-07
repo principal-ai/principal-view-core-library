@@ -285,7 +285,11 @@ export class CanvasConverter {
    */
   private static convertEdge(edge: ExtendedCanvasEdge, canvas: ExtendedCanvas): ReactFlowEdge {
     const pv = edge.pv;
-    const edgeTypeDef = pv?.edgeType ? canvas.pv?.edgeTypes?.[pv.edgeType] : undefined;
+    // Support both top-level edgeType (new) and pv.edgeType (deprecated)
+    const edgeType = edge.edgeType || pv?.edgeType;
+    // Support both top-level edgeTypes (new) and pv.edgeTypes (deprecated)
+    const edgeTypes = canvas.edgeTypes || canvas.pv?.edgeTypes;
+    const edgeTypeDef = edgeType ? edgeTypes?.[edgeType] : undefined;
     const color = resolveCanvasColor(edge.color) || edgeTypeDef?.color;
 
     const rfEdge: ReactFlowEdge = {
@@ -296,7 +300,7 @@ export class CanvasConverter {
       targetHandle: sideToHandle(edge.toSide),
       label: edge.label,
       data: {
-        edgeType: pv?.edgeType || 'default',
+        edgeType: edgeType || 'default',
         style: pv?.style || edgeTypeDef?.style || 'solid',
         color,
         width: pv?.width || edgeTypeDef?.width || 2,
@@ -457,9 +461,14 @@ export class CanvasConverter {
 
     // Convert edges
     if (canvas.edges) {
+      // Support both top-level edgeTypes (new) and pv.edgeTypes (deprecated)
+      const edgeTypes = canvas.edgeTypes || canvas.pv?.edgeTypes;
+
       for (const edge of canvas.edges) {
         const pv = edge.pv;
-        const edgeTypeDef = pv?.edgeType ? canvas.pv?.edgeTypes?.[pv.edgeType] : undefined;
+        // Support both top-level edgeType (new) and pv.edgeType (deprecated)
+        const edgeType = edge.edgeType || pv?.edgeType;
+        const edgeTypeDef = edgeType ? edgeTypes?.[edgeType] : undefined;
 
         // Build data object, filtering out undefined values
         const edgeData: Record<string, JsonValue> = {
@@ -480,7 +489,7 @@ export class CanvasConverter {
 
         edges.push({
           id: edge.id,
-          type: pv?.edgeType || 'default',
+          type: edgeType || 'default',
           from: edge.fromNode,
           to: edge.toNode,
           data: edgeData,

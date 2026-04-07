@@ -53,12 +53,6 @@ export function createValidateCommand(): Command {
                 const scopes = (attrs as Record<string, unknown>)['owned-scopes'] as OwnedScopes | undefined;
                 const scopeNames = getScopeNames(scopes);
                 ownedScopes.push(...scopeNames);
-
-                // Also add service name as a valid scope
-                const serviceName = (attrs as Record<string, unknown>)['service.name'];
-                if (typeof serviceName === 'string') {
-                  ownedScopes.push(serviceName);
-                }
               }
             }
 
