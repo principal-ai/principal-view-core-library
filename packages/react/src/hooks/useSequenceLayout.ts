@@ -86,7 +86,7 @@ export interface UseSequenceLayoutOptions {
 
   /**
    * Gap between swimlanes
-   * @default 50
+   * @default 10
    */
   laneGap?: number;
 
@@ -207,7 +207,7 @@ export function useSequenceLayout(
   const {
     namespaceStrategy = 'all-but-last',
     laneWidth = 200,
-    laneGap = 50,
+    laneGap = 10,
     eventSpacing = 80,
     headerHeight = 60,
     collapsedNamespaces = [],
@@ -316,7 +316,8 @@ export function useSequenceLayout(
       const lane = swimlaneByNamespace.get(visibleNamespace)!;
 
       // Global Y position based on event order (time layer)
-      const y = headerHeight + i * eventSpacing;
+      // Start first event closer to header with small offset
+      const y = headerHeight + 40 + i * eventSpacing;
 
       nodes.push({
         id: event.id,
@@ -369,9 +370,37 @@ export function useSequenceLayout(
 
     // Step 6: Compute total dimensions
     const totalWidth =
-      swimlanes.length * (laneWidth + laneGap) - laneGap + laneWidth;
+      swimlanes.length * laneWidth + (swimlanes.length - 1) * laneGap;
     // Total height based on number of events (time layers)
-    const totalHeight = headerHeight + events.length * eventSpacing + eventSpacing;
+    const totalHeight = headerHeight + 40 + events.length * eventSpacing;
+
+    // Step 7: Add invisible boundary nodes to ensure fitView includes full diagram width
+    if (swimlanes.length > 0) {
+      const leftmostLane = swimlanes[0];
+      const rightmostLane = swimlanes[swimlanes.length - 1];
+
+      // Add boundary nodes at the corners
+      nodes.push(
+        {
+          id: '__boundary_left__',
+          type: 'default',
+          position: { x: leftmostLane.x - laneWidth / 2, y: 0 },
+          data: {},
+          style: { width: 1, height: 1, opacity: 0 },
+          draggable: false,
+          selectable: false,
+        },
+        {
+          id: '__boundary_right__',
+          type: 'default',
+          position: { x: rightmostLane.x + laneWidth / 2, y: totalHeight },
+          data: {},
+          style: { width: 1, height: 1, opacity: 0 },
+          draggable: false,
+          selectable: false,
+        }
+      );
+    }
 
     return {
       nodes,

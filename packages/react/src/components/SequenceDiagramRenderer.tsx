@@ -24,6 +24,7 @@ import {
   type NodeProps,
   type EdgeProps,
 } from '@xyflow/react';
+import { useTheme } from '@principal-ade/industry-theme';
 // CSS import removed - consumers should import '@xyflow/react/dist/style.css' in their app
 import {
   useSequenceLayout,
@@ -77,6 +78,8 @@ function SequenceArrowEdge({
   label,
   data,
 }: EdgeProps) {
+  const { theme } = useTheme();
+
   // Use a straight line for same-lane, bezier for cross-lane
   const isSameLane = !data?.crossesLanes;
 
@@ -96,7 +99,7 @@ function SequenceArrowEdge({
         id={id}
         path={edgePath}
         style={{
-          stroke: 'var(--sequence-arrow-color, #4169E1)',
+          stroke: theme.colors.primary,
           strokeWidth: 2,
         }}
         markerEnd="url(#sequence-arrow)"
@@ -107,13 +110,14 @@ function SequenceArrowEdge({
             style={{
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-              background: 'var(--sequence-label-bg, rgba(255, 255, 255, 0.95))',
+              background: theme.colors.background,
               padding: '2px 8px',
               borderRadius: 4,
-              fontSize: 12,
-              fontWeight: 500,
-              color: 'var(--sequence-label-text, #333)',
-              border: '1px solid var(--sequence-label-border, #ddd)',
+              fontSize: theme.fontSizes[0],
+              fontWeight: theme.fontWeights.medium,
+              fontFamily: theme.fonts.body,
+              color: theme.colors.text,
+              border: `1px solid ${theme.colors.border}`,
               pointerEvents: 'all',
               whiteSpace: 'nowrap',
             }}
@@ -160,12 +164,12 @@ function SwimlaneLayer({
   laneWidth,
   headerHeight,
   totalHeight,
-  onToggleCollapse,
 }: SwimlaneLayerProps) {
   const { x, y, zoom } = useViewport();
+  const { theme } = useTheme();
 
-  // Calculate the visible area height (use a large value to ensure lanes extend)
-  const extendedHeight = Math.max(totalHeight, 2000);
+  // Add a small buffer to ensure lanes extend slightly beyond the last event
+  const extendedHeight = totalHeight + 20;
 
   return (
     <div
@@ -192,14 +196,57 @@ function SwimlaneLayer({
               width: laneWidth,
               height: extendedHeight,
               backgroundColor: isEven
-                ? 'var(--sequence-lane-even, rgba(100, 149, 237, 0.08))'
-                : 'var(--sequence-lane-odd, rgba(100, 149, 237, 0.03))',
-              borderRight: '1px solid var(--sequence-lane-border, rgba(100, 149, 237, 0.2))',
+                ? theme.colors.muted
+                : theme.colors.background,
+              borderRight: `1px solid ${theme.colors.border}`,
             }}
           />
         );
       })}
 
+      {/* Vertical lifelines */}
+      {swimlanes.map((lane) => (
+        <div
+          key={`lifeline-${lane.namespace}`}
+          style={{
+            position: 'absolute',
+            left: lane.x,
+            top: headerHeight,
+            width: 2,
+            height: extendedHeight - headerHeight,
+            backgroundColor: theme.colors.border,
+            transform: 'translateX(-1px)',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Swimlane headers layer that renders on top of nodes for clickability
+ */
+function SwimlaneHeadersLayer({
+  swimlanes,
+  laneWidth,
+  headerHeight,
+  onToggleCollapse,
+}: SwimlaneLayerProps) {
+  const { x, y, zoom } = useViewport();
+  const { theme } = useTheme();
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        transformOrigin: '0 0',
+        transform: `translate(${x}px, ${y}px) scale(${zoom})`,
+        pointerEvents: 'none',
+        zIndex: 10,
+      }}
+    >
       {/* Lane headers */}
       {swimlanes.map((lane) => {
         const hasChildren = lane.children.length > 0;
@@ -215,11 +262,12 @@ function SwimlaneLayer({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: 'var(--sequence-header-bg, rgba(100, 149, 237, 0.15))',
-              borderBottom: '2px solid var(--sequence-header-border, rgba(100, 149, 237, 0.4))',
-              fontWeight: 600,
-              fontSize: 13,
-              color: 'var(--sequence-header-text, #333)',
+              backgroundColor: theme.colors.muted,
+              borderBottom: `2px solid ${theme.colors.border}`,
+              fontWeight: theme.fontWeights.semibold,
+              fontSize: theme.fontSizes[2],
+              fontFamily: theme.fonts.heading,
+              color: theme.colors.text,
               pointerEvents: 'auto',
               cursor: hasChildren ? 'pointer' : 'default',
               userSelect: 'none',
@@ -228,34 +276,13 @@ function SwimlaneLayer({
           >
             {hasChildren && (
               <span style={{ marginRight: 6, fontSize: 10 }}>
-                {lane.isCollapsed ? '▶' : '▼'}
+                {lane.isCollapsed ? '▼' : '▶'}
               </span>
             )}
             <span>{lane.label}</span>
-            {lane.eventIds.length > 1 && (
-              <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.6 }}>
-                ({lane.eventIds.length})
-              </span>
-            )}
           </div>
         );
       })}
-
-      {/* Vertical lifelines */}
-      {swimlanes.map((lane) => (
-        <div
-          key={`lifeline-${lane.namespace}`}
-          style={{
-            position: 'absolute',
-            left: lane.x,
-            top: headerHeight,
-            width: 2,
-            height: extendedHeight - headerHeight,
-            backgroundColor: 'var(--sequence-lifeline, rgba(100, 149, 237, 0.3))',
-            transform: 'translateX(-1px)',
-          }}
-        />
-      ))}
     </div>
   );
 }
@@ -315,6 +342,8 @@ function SequenceDiagramInner({
   showControls = true,
   showBackground = false, // Default to false since swimlanes provide visual structure
 }: SequenceDiagramRendererProps) {
+  const { theme } = useTheme();
+
   // Extract layout params
   const { laneWidth = 200, headerHeight = 60 } = layoutOptions;
 
@@ -352,7 +381,7 @@ function SequenceDiagramInner({
       onNodeClick={handleNodeClick}
       fitView
       fitViewOptions={{
-        padding: 0.2,
+        padding: 0.1,
         minZoom: 0.5,
         maxZoom: 1.5,
       }}
@@ -363,6 +392,7 @@ function SequenceDiagramInner({
       elementsSelectable={true}
       panOnScroll
       zoomOnScroll
+      style={{ background: theme.colors.background }}
     >
       {/* SVG defs for arrow marker */}
       <svg style={{ position: 'absolute', width: 0, height: 0 }}>
@@ -378,7 +408,7 @@ function SequenceDiagramInner({
           >
             <path
               d="M 0 0 L 10 5 L 0 10 z"
-              fill="var(--sequence-arrow-color, #4169E1)"
+              fill={theme.colors.primary}
             />
           </marker>
         </defs>
@@ -395,6 +425,14 @@ function SequenceDiagramInner({
         laneWidth={laneWidth}
         headerHeight={headerHeight}
         totalHeight={totalHeight}
+      />
+
+      {/* Swimlane headers layer - renders on top for clickability */}
+      <SwimlaneHeadersLayer
+        swimlanes={swimlanes}
+        laneWidth={laneWidth}
+        headerHeight={headerHeight}
+        totalHeight={totalHeight}
         onToggleCollapse={onToggleCollapse}
       />
 
@@ -403,12 +441,13 @@ function SequenceDiagramInner({
         <Panel position="top-right">
           <div
             style={{
-              background: 'var(--sequence-panel-bg, rgba(255, 255, 255, 0.95))',
-              border: '1px solid var(--sequence-panel-border, #ddd)',
+              background: theme.colors.background,
+              border: `1px solid ${theme.colors.border}`,
               borderRadius: 4,
               padding: '6px 10px',
-              fontSize: 11,
-              color: '#666',
+              fontSize: theme.fontSizes[0],
+              fontFamily: theme.fonts.body,
+              color: theme.colors.textSecondary,
             }}
           >
             Click lane headers to expand/collapse
