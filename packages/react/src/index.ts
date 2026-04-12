@@ -164,3 +164,39 @@ export type {
   SourceLinkProps,
   TimeRangeSelectorProps,
 } from './components/dashboard';
+
+// State View components for event-driven state visualization
+export { PipelineView, useStateView } from './components/state-view';
+export type {
+  // Core types
+  StateEvent,
+  EventSource,
+  StateReducer,
+  StateDiff,
+  TransitionDefinition,
+  ActiveAnimation,
+  AnimationType,
+  ReplayControls,
+  StateViewDefinition,
+  // Pipeline view types
+  PipelineState,
+  PipelineStage,
+  PipelineRepoState,
+  PipelineEvent,
+  PipelineEventType,
+  // Activity view types
+  ActivityState,
+  RoomState,
+  ActivityEvent,
+  ActivityEventType,
+  // Quota view types
+  QuotaDistributionState,
+  UserQuotaState,
+  QuotaEvent,
+  QuotaEventType,
+  // Hook types
+  UseStateViewOptions,
+  UseStateViewResult,
+  // Component props
+  PipelineViewProps,
+} from './components/state-view';
