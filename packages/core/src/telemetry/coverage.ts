@@ -104,10 +104,16 @@ function getEventName(node: ExtendedCanvasNode): string | null {
 }
 
 /**
- * Extract instrumentation file paths from a canvas node (pv.otel.files only)
+ * Extract instrumentation file paths from a canvas node
+ * Supports both new format (node.otel.files) and legacy format (pv.otel.files)
  */
 function getInstrumentationFiles(node: ExtendedCanvasNode): string[] {
-  // Only check pv.otel.files - explicit instrumentation locations
+  // Check new format first (otel-event nodes)
+  const otelNode = node as { otel?: { files?: string[] } };
+  if (otelNode.otel?.files) {
+    return otelNode.otel.files;
+  }
+  // Fallback to legacy format (pv.otel.files)
   return node.pv?.otel?.files || [];
 }
 
@@ -129,9 +135,25 @@ async function fileContainsEvent(
 
 /**
  * Get the status of a node (returns undefined if not specified)
+ * Supports both new format (node.otel.status) and legacy format (pv.status)
  */
 function getNodeStatus(node: ExtendedCanvasNode): 'draft' | 'approved' | 'implemented' | undefined {
+  // Check new format first (otel-event nodes)
+  const otelNode = node as { otel?: { status?: 'draft' | 'approved' | 'implemented' } };
+  if (otelNode.otel?.status) {
+    return otelNode.otel.status;
+  }
+  // Fallback to legacy format (pv.status)
   return node.pv?.status;
+}
+
+/**
+ * Get the scope from a node
+ * Only supports new format (node.otel.scope). Legacy format (pv.otel.scope) is rejected.
+ */
+function getNodeScope(node: ExtendedCanvasNode): string | undefined {
+  const otelNode = node as { otel?: { scope?: string } };
+  return otelNode.otel?.scope;
 }
 
 /**
@@ -249,14 +271,25 @@ function validateNodes(
         });
       }
 
-      // Validate approved and implemented nodes have pv.otel.scope
-      const scope = node.pv?.otel?.scope;
-      if ((status === 'approved' || status === 'implemented') && !scope) {
+      // Error if using deprecated pv.otel.scope
+      const legacyScope = node.pv?.otel?.scope;
+      if (legacyScope) {
         errors.push({
           nodeId: node.id,
           canvasPath: canvas.path,
           status,
-          error: `Node with status="${status}" must have pv.otel.scope specified (e.g., "terminal-activity", "auth")`,
+          error: `Node uses deprecated "pv.otel.scope" field. Use new format: convert to type: "otel-event" with top-level "otel.scope" field instead. Run: npx @principal-ai/principal-view-cli migrate-nodes`,
+        });
+      }
+
+      // Require scope for ALL event nodes (using new format)
+      const scope = getNodeScope(node);
+      if (!scope) {
+        errors.push({
+          nodeId: node.id,
+          canvasPath: canvas.path,
+          status,
+          error: `Event node must have otel.scope specified. Scope defines which instrumentation library emits this event (e.g., "terminal-activity", "auth"). Define scopes in library.yaml and document them in architecture.scopes.canvas.`,
         });
       }
     }

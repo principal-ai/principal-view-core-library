@@ -113,14 +113,15 @@ export const OtelSpanConventionNode: React.FC<
   const nodeOpacity = isHidden ? 0.4 : isActive ? 1 : 0.1;
 
   // Color resolution
+  const scopeColor = nodeData.scopeColor as string | undefined;
   const spanColor = nodeData.spanColor as string | undefined;
   const nodeDataColor = nodeData.color as string | undefined;
-  const baseFillColor = spanColor || nodeDataColor || typeDefinition.color || '#8b5cf6';
+  // Fill color priority: explicit color > scope color > type definition color > default purple
+  const baseFillColor = nodeDataColor || scopeColor || typeDefinition.color || '#8b5cf6';
   const fillColor = baseFillColor;
-
-  const scopeColor = nodeData.scopeColor as string | undefined;
+  // Stroke color priority: explicit stroke > span color (workflow context) > fill color
   const nodeDataStroke = nodeData.stroke as string | undefined;
-  const strokeColor = nodeDataStroke || scopeColor || fillColor;
+  const strokeColor = nodeDataStroke || spanColor || fillColor;
 
   // Get display info
   const displayName = nodeProps.name;

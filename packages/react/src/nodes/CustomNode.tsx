@@ -442,8 +442,8 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = (props) => 
   }
 
   // Color Contract:
-  // - scopeColor: Used as BORDER color (from library.yaml owned-scopes)
-  // - spanColor: Used as FILL color (from .spans.canvas based on workflow context)
+  // - scopeColor: Used as FILL/background color (from library.yaml scopes)
+  // - spanColor: Used as BORDER color in workflow context (from .spans.canvas)
   // - For non-event canvases, falls back to legacy behavior (node color or type color)
 
   // Get colors from node data (injected by GraphRenderer)
@@ -458,15 +458,15 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = (props) => 
   const stateColor =
     state && (nodeDataStates?.[state]?.color || typeDefinition.states?.[state]?.color);
 
-  // Fill color priority: state color > span color > node data color > type definition color > default
-  // spanColor is the new primary source for fill (from .spans.canvas)
-  const baseFillColor = spanColor || nodeDataColor || typeDefinition.color || '#888';
+  // Fill color priority: state color > node data color > scope color > type definition color > default
+  // scopeColor provides background color from the scope definition in library.yaml
+  const baseFillColor = nodeDataColor || scopeColor || typeDefinition.color || '#888';
   const fillColor = stateColor || baseFillColor;
 
-  // Stroke/border color priority: explicit stroke > scope color > fill color
-  // scopeColor is now the primary source for border (from library.yaml owned-scopes)
+  // Stroke/border color priority: explicit stroke > span color (workflow context) > fill color
+  // spanColor provides border color in workflow context (from .spans.canvas)
   const nodeDataStroke = nodeData.stroke as string | undefined;
-  const baseStrokeColor = nodeDataStroke || scopeColor || fillColor;
+  const baseStrokeColor = nodeDataStroke || spanColor || fillColor;
 
   // Apply status-based border styling
   const status = nodeData?.status as 'draft' | 'approved' | 'implemented' | undefined;

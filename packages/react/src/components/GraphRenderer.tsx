@@ -2579,26 +2579,26 @@ function useCanvasToLegacy(
       }
     }
 
-    // Build scope color map from library scopes (for border colors)
+    // Build scope color map from library scopes (for fill colors)
     const scopeColorMap = buildScopeColorMap(library);
 
-    // Build span color map from spans canvas (for fill colors)
+    // Build span color map from spans canvas (for border colors in workflow context)
     const spanColorMap = buildSpanColorMap(spansCanvas);
 
     // Resolve span color for current workflow context
     const spanColor = resolveEventSpanColor(workflowSpanPattern, spanColorMap);
 
     // Inject scope and span colors into nodes
-    // - scopeColor: border color (from pv.otel.scope → library.yaml)
-    // - spanColor: fill color (from workflow spanPattern → spans.canvas)
+    // - scopeColor: fill/background color (from otel.scope → library.yaml scopes)
+    // - spanColor: border color in workflow context (from workflow spanPattern → spans.canvas)
     for (const node of nodes) {
       const otel = node.data?.otel as { scope?: string } | undefined;
       const scope = otel?.scope;
 
-      // Determine scope color (for border)
+      // Determine scope color (for fill/background)
       let nodeScopeColor: string;
       if (scope && scopeColorMap[scope]) {
-        // Node has a scope with a defined color - use it
+        // Node has a scope with a defined color - use it as fill color
         nodeScopeColor = scopeColorMap[scope];
       } else {
         // Draft nodes or nodes without scope get the draft color

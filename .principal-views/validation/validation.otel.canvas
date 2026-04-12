@@ -67,7 +67,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -97,7 +98,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -132,7 +134,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -172,7 +175,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -202,7 +206,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -242,7 +247,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -272,7 +278,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -302,7 +309,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -337,7 +345,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -367,7 +376,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -417,7 +427,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -457,7 +468,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -497,7 +509,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -532,7 +545,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -577,7 +591,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -617,7 +632,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -657,7 +673,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     },
     {
@@ -702,7 +719,8 @@
         }
       },
       "otel": {
-        "status": "draft"
+        "status": "draft",
+        "scope": "principal-view.cli"
       }
     }
   ],

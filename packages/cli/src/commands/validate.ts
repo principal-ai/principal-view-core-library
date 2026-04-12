@@ -64,6 +64,7 @@ interface ValidationResult {
 interface LoadedLibrary {
   nodeComponents: Record<string, unknown>;
   edgeComponents: Record<string, unknown>;
+  scopes?: Record<string, unknown>;
   raw: Record<string, unknown>;
   path: string;
 }
@@ -89,13 +90,16 @@ function loadLibrary(principalViewsDir: string): LoadedLibrary | null {
             edgeComponents:
               ((library as Record<string, unknown>).edgeComponents as Record<string, unknown>) ||
               {},
+            scopes:
+              ((library as Record<string, unknown>).scopes as Record<string, unknown>) ||
+              undefined,
             raw: library as Record<string, unknown>,
             path: libraryPath,
           };
         }
       } catch {
         // Library exists but failed to parse - return empty to avoid false positives
-        return { nodeComponents: {}, edgeComponents: {}, raw: {}, path: libraryPath };
+        return { nodeComponents: {}, edgeComponents: {}, scopes: undefined, raw: {}, path: libraryPath };
       }
     }
   }
@@ -1466,6 +1470,33 @@ function validateCanvas(
                 'Add an event schema: event: { name: "your.event.name", attributes: {...} } or reference a library event: eventRef: "library.event.name". If migrating from legacy format, run: npx @principal-ai/principal-view-cli migrate-nodes',
             });
           }
+
+          // otel-event nodes MUST have otel.scope
+          const otel = n.otel as Record<string, unknown> | undefined;
+          const scope = otel?.scope as string | undefined;
+          if (!scope) {
+            issues.push({
+              type: 'error',
+              message: `OTEL event node "${n.id}" is missing required "otel.scope" field`,
+              path: `${nodePath}.otel.scope`,
+              suggestion:
+                'Add otel.scope to specify which instrumentation library emits this event. Example: otel: { scope: "my-service" }. Define scopes in library.yaml and document them in architecture.scopes.canvas.',
+            });
+          } else if (library && library.scopes) {
+            // Validate that scope exists in library.yaml scopes
+            if (!library.scopes[scope]) {
+              const availableScopes = Object.keys(library.scopes);
+              issues.push({
+                type: 'error',
+                message: `OTEL event node "${n.id}" references undefined scope "${scope}"`,
+                path: `${nodePath}.otel.scope`,
+                suggestion:
+                  availableScopes.length > 0
+                    ? `Scope must be defined in library.yaml. Available scopes: ${availableScopes.join(', ')}. Add the scope to library.yaml or use an existing scope.`
+                    : `Scope "${scope}" is not defined in library.yaml. Add it under the "scopes" section with a color and description.`,
+              });
+            }
+          }
         }
 
         // otel-span-convention nodes must have spanPattern in otel
@@ -1809,6 +1840,18 @@ The display name will be shown large on the node, and the event name will appear
                   path: `${nodePath}.pv.otel.files`,
                   suggestion:
                     'Add file paths where this event is instrumented, e.g.: "otel": { "files": ["src/app/api/route.ts"] }. For external/auto-instrumented events, set "origin": "external" instead.',
+                });
+              }
+
+              // Validate scope is specified for ALL event nodes (deprecated pv.otel.scope format)
+              const legacyScope = (nodePv.otel as Record<string, unknown> | undefined)?.scope;
+              if (legacyScope) {
+                issues.push({
+                  type: 'error',
+                  message: `Node "${nodeLabel}" uses deprecated "pv.otel.scope" field`,
+                  path: `${nodePath}.pv.otel.scope`,
+                  suggestion:
+                    'Use new format: convert to type: "otel-event" with top-level "otel.scope" field instead. Run: npx @principal-ai/principal-view-cli migrate-nodes',
                 });
               }
 
