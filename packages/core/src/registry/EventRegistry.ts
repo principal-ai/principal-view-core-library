@@ -7,6 +7,7 @@
 
 import type { ComponentLibrary } from '../types/library';
 import type { ExtendedCanvas, PVEventSchema } from '../types/canvas';
+import { isOtelEventNode, isStandardCanvasNode } from '../types/canvas';
 
 /**
  * Describes where an event is defined
@@ -81,27 +82,50 @@ export class EventRegistry {
       if (!canvas.nodes) continue;
 
       for (const node of canvas.nodes) {
-        if (!node.pv) continue;
-
-        // Inline event definition (pv.event)
-        if (node.pv.event && typeof node.pv.event === 'object' && node.pv.event.name) {
-          registry.addEvent(node.pv.event.name, {
-            type: 'canvas',
-            path: canvasPath,
-            eventSchema: node.pv.event,
-          });
-        }
-
-        // Event reference (pv.eventRef) - note: these should resolve to library
-        // but we track them as canvas sources too for completeness
-        if (node.pv.eventRef && typeof node.pv.eventRef === 'string') {
-          // Only add if not already in registry (library takes priority)
-          if (!registry.hasEvent(node.pv.eventRef)) {
-            registry.addEvent(node.pv.eventRef, {
+        // Handle OTEL event nodes (top-level event/eventRef)
+        if (isOtelEventNode(node)) {
+          // Inline event definition
+          if (node.event && typeof node.event === 'object' && node.event.name) {
+            registry.addEvent(node.event.name, {
               type: 'canvas',
               path: canvasPath,
-              // No schema available - it's just a reference
+              eventSchema: node.event,
             });
+          }
+
+          // Event reference
+          if (node.eventRef && typeof node.eventRef === 'string') {
+            // Only add if not already in registry (library takes priority)
+            if (!registry.hasEvent(node.eventRef)) {
+              registry.addEvent(node.eventRef, {
+                type: 'canvas',
+                path: canvasPath,
+                // No schema available - it's just a reference
+              });
+            }
+          }
+        }
+        // Handle standard nodes with pv.event/pv.eventRef
+        else if (isStandardCanvasNode(node) && node.pv) {
+          // Inline event definition (pv.event)
+          if (node.pv.event && typeof node.pv.event === 'object' && node.pv.event.name) {
+            registry.addEvent(node.pv.event.name, {
+              type: 'canvas',
+              path: canvasPath,
+              eventSchema: node.pv.event,
+            });
+          }
+
+          // Event reference (pv.eventRef)
+          if (node.pv.eventRef && typeof node.pv.eventRef === 'string') {
+            // Only add if not already in registry (library takes priority)
+            if (!registry.hasEvent(node.pv.eventRef)) {
+              registry.addEvent(node.pv.eventRef, {
+                type: 'canvas',
+                path: canvasPath,
+                // No schema available - it's just a reference
+              });
+            }
           }
         }
       }

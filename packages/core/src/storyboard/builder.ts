@@ -6,6 +6,7 @@
  */
 
 import type { ExtendedCanvas, ExtendedCanvasNode } from '../types/canvas';
+import { isOtelEventNode, isStandardCanvasNode } from '../types/canvas';
 import type { WorkflowTemplate, WorkflowScenario } from '../workflow/types';
 import type {
   StoryboardReference,
@@ -102,11 +103,17 @@ export function getNodeEventName(node: ExtendedCanvasNode): string | undefined {
   const topLevelEvent = (node as { event?: { name?: string } }).event?.name;
   if (topLevelEvent) return topLevelEvent;
 
-  const topLevelEventRef = (node as { eventRef?: string }).eventRef;
-  if (topLevelEventRef) return topLevelEventRef;
+  // Check OTEL event node (top-level event/eventRef)
+  if (isOtelEventNode(node)) {
+    return node.event?.name || node.eventRef;
+  }
 
-  // 2. PVNodeExtension format (inside node.pv)
-  return node.pv?.event?.name || node.pv?.eventRef;
+  // Check standard node with pv.event/pv.eventRef
+  if (isStandardCanvasNode(node)) {
+    return node.pv?.event?.name || node.pv?.eventRef;
+  }
+
+  return undefined;
 }
 
 /**

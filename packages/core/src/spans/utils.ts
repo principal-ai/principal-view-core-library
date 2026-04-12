@@ -6,6 +6,7 @@
  */
 
 import type { ExtendedCanvas, ExtendedCanvasNode } from '../types/canvas';
+import { isOtelSpanConventionNode, isStandardCanvasNode } from '../types/canvas';
 
 /** Default color for spans without a defined color */
 export const DEFAULT_SPAN_COLOR = '#9CA3AF'; // gray-400
@@ -32,6 +33,27 @@ export interface NormalizedSpanConvention {
  * Extract span convention from a canvas node
  */
 export function extractSpanConvention(node: ExtendedCanvasNode): NormalizedSpanConvention | null {
+  // Handle OTEL span convention nodes (top-level otel field)
+  if (isOtelSpanConventionNode(node)) {
+    const spanPattern = node.otel?.spanPattern;
+    if (!spanPattern) return null;
+
+    const color = node.color as string | undefined;
+    if (!color) return null;
+
+    return {
+      id: node.id,
+      spanPattern,
+      color,
+      icon: node.icon,
+      description: node.description,
+      status: node.otel?.status,
+    };
+  }
+
+  // Handle standard nodes with pv.nodeType === 'span-convention'
+  if (!isStandardCanvasNode(node)) return null;
+
   const pv = node.pv;
   if (!pv) return null;
 

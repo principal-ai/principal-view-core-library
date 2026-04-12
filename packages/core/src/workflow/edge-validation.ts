@@ -8,6 +8,7 @@
  */
 
 import type { ExtendedCanvas, ExtendedCanvasNode } from '../types/canvas';
+import { isOtelSpanConventionNode, isStandardCanvasNode } from '../types/canvas';
 import type { DerivedEdge } from './edge-derivation';
 import { minimatch } from 'minimatch';
 
@@ -145,12 +146,20 @@ export function extractSpanNodes(canvas: ExtendedCanvas): SpanNodeInfo[] {
   const spanNodes: SpanNodeInfo[] = [];
 
   for (const node of canvas.nodes) {
-    const spanPattern = (node as ExtendedCanvasNode).pv?.otel?.spanPattern;
-    if (spanPattern) {
+    // Check OTEL span convention nodes (top-level otel.spanPattern)
+    if (isOtelSpanConventionNode(node) && node.otel?.spanPattern) {
       spanNodes.push({
         nodeId: node.id,
-        spanPattern,
-        name: (node as ExtendedCanvasNode).pv?.name,
+        spanPattern: node.otel.spanPattern,
+        name: node.label,
+      });
+    }
+    // Check standard nodes (pv.otel.spanPattern)
+    else if (isStandardCanvasNode(node) && node.pv?.otel?.spanPattern) {
+      spanNodes.push({
+        nodeId: node.id,
+        spanPattern: node.pv.otel.spanPattern,
+        name: node.pv.name,
       });
     }
   }

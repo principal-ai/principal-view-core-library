@@ -12,7 +12,8 @@
  * - Zod: runtime validation with TypeScript inference
  */
 
-import type { ExtendedCanvas, PVEventSchema, PVEventFieldSchema } from '../types/canvas';
+import type { ExtendedCanvas, PVEventSchema, PVEventFieldSchema, ExtendedCanvasNode } from '../types/canvas';
+import { isOtelEventNode, isStandardCanvasNode } from '../types/canvas';
 import type { ComponentLibrary } from '../types/library';
 
 /**
@@ -103,18 +104,32 @@ export class TypeScriptGenerator implements CodeGenerator {
       for (const node of canvas.nodes) {
         let eventSchema: PVEventSchema | undefined;
 
-        // Check for inline event definition
-        if (node.pv?.event) {
-          eventSchema = node.pv.event;
+        // Check for OTEL event node (top-level event/eventRef fields)
+        if (isOtelEventNode(node)) {
+          if (node.event) {
+            eventSchema = node.event;
+          } else if (node.eventRef) {
+            eventSchema = this.resolveLibraryEvent(node.eventRef, library);
+            if (!eventSchema) {
+              console.warn(
+                `Node '${node.id}' references unknown library event '${node.eventRef}'`
+              );
+              continue;
+            }
+          }
         }
-        // Check for library event reference
-        else if (node.pv?.eventRef) {
-          eventSchema = this.resolveLibraryEvent(node.pv.eventRef, library);
-          if (!eventSchema) {
-            console.warn(
-              `Node '${node.id}' references unknown library event '${node.pv.eventRef}'`
-            );
-            continue;
+        // Check for standard node with pv.event/pv.eventRef
+        else if (isStandardCanvasNode(node)) {
+          if (node.pv?.event) {
+            eventSchema = node.pv.event;
+          } else if (node.pv?.eventRef) {
+            eventSchema = this.resolveLibraryEvent(node.pv.eventRef, library);
+            if (!eventSchema) {
+              console.warn(
+                `Node '${node.id}' references unknown library event '${node.pv.eventRef}'`
+              );
+              continue;
+            }
           }
         }
 
@@ -308,15 +323,26 @@ export class TypeScriptGenerator implements CodeGenerator {
 
     if (canvas.nodes) {
       for (const node of canvas.nodes) {
-        // Check for inline event definition
-        if (node.pv?.event?.name) {
-          allEventNames.add(node.pv.event.name);
+        // Check for OTEL event node (top-level event/eventRef fields)
+        if (isOtelEventNode(node)) {
+          if (node.event?.name) {
+            allEventNames.add(node.event.name);
+          } else if (node.eventRef) {
+            const eventSchema = this.resolveLibraryEvent(node.eventRef, library);
+            if (eventSchema) {
+              allEventNames.add(eventSchema.name);
+            }
+          }
         }
-        // Check for library event reference
-        else if (node.pv?.eventRef) {
-          const eventSchema = this.resolveLibraryEvent(node.pv.eventRef, library);
-          if (eventSchema) {
-            allEventNames.add(eventSchema.name);
+        // Check for standard node with pv.event/pv.eventRef
+        else if (isStandardCanvasNode(node)) {
+          if (node.pv?.event?.name) {
+            allEventNames.add(node.pv.event.name);
+          } else if (node.pv?.eventRef) {
+            const eventSchema = this.resolveLibraryEvent(node.pv.eventRef, library);
+            if (eventSchema) {
+              allEventNames.add(eventSchema.name);
+            }
           }
         }
       }

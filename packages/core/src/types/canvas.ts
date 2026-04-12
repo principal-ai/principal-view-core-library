@@ -911,12 +911,6 @@ export interface OtelNodeBase extends CanvasNodeBase {
   stroke?: string;
   /** Visual shape */
   shape?: PVNodeShape;
-  /**
-   * Legacy PV extension field for backward compatibility during migration.
-   * New OTEL nodes should use top-level fields instead.
-   * @deprecated Use top-level fields (label, icon, etc.) instead
-   */
-  pv?: PVNodeExtension;
 }
 
 /**
@@ -1300,6 +1294,15 @@ export function isOtelNode(node: ExtendedCanvasNode): node is OtelNode {
     node.type === 'otel-resource' ||
     node.type === 'otel-boundary'
   );
+}
+
+/**
+ * Type guard for standard canvas nodes (that may have pv extensions)
+ */
+export function isStandardCanvasNode(
+  node: ExtendedCanvasNode
+): node is ExtendedCanvasTextNode | ExtendedCanvasFileNode | ExtendedCanvasLinkNode | ExtendedCanvasGroupNode {
+  return !isOtelNode(node);
 }
 
 /**

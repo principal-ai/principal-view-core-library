@@ -6,6 +6,7 @@
  */
 
 import type { ExtendedCanvas, PVEventSchema } from '../types/canvas';
+import { isOtelEventNode, isStandardCanvasNode } from '../types/canvas';
 import type { ComponentLibrary } from '../types/library';
 import type { JsonValue, JsonObject } from '../types';
 
@@ -54,18 +55,32 @@ export class EventValidator {
     for (const node of canvas.nodes) {
       let eventSchema: PVEventSchema | undefined;
 
-      // Check for inline event definition
-      if (node.pv?.event) {
-        eventSchema = node.pv.event;
+      // Check OTEL event node (top-level event/eventRef)
+      if (isOtelEventNode(node)) {
+        if (node.event) {
+          eventSchema = node.event;
+        } else if (node.eventRef) {
+          eventSchema = this.resolveLibraryEvent(node.eventRef);
+          if (!eventSchema) {
+            console.warn(
+              `Node '${node.id}' references unknown library event '${node.eventRef}'`
+            );
+            continue;
+          }
+        }
       }
-      // Check for library event reference
-      else if (node.pv?.eventRef) {
-        eventSchema = this.resolveLibraryEvent(node.pv.eventRef);
-        if (!eventSchema) {
-          console.warn(
-            `Node '${node.id}' references unknown library event '${node.pv.eventRef}'`
-          );
-          continue;
+      // Check standard node (pv.event/pv.eventRef)
+      else if (isStandardCanvasNode(node)) {
+        if (node.pv?.event) {
+          eventSchema = node.pv.event;
+        } else if (node.pv?.eventRef) {
+          eventSchema = this.resolveLibraryEvent(node.pv.eventRef);
+          if (!eventSchema) {
+            console.warn(
+              `Node '${node.id}' references unknown library event '${node.pv.eventRef}'`
+            );
+            continue;
+          }
         }
       }
 

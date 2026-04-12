@@ -9,6 +9,7 @@
  */
 
 import type { ExtendedCanvas, PVOtelExtension } from '../types/canvas';
+import { isOtelNode, isStandardCanvasNode } from '../types/canvas';
 import type { OtelSpanData, OtelResourceData } from '../types/otel';
 import {
   getAttributeValue,
@@ -89,9 +90,17 @@ export class SpanMatcher {
     if (!canvas.nodes) return rules;
 
     for (const node of canvas.nodes) {
-      if (!node.pv?.otel) continue;
+      // Get OTEL metadata from either OTEL nodes (top-level) or standard nodes (pv.otel)
+      let otel: PVOtelExtension | undefined;
 
-      const otel = node.pv.otel as PVOtelExtension;
+      if (isOtelNode(node) && node.otel) {
+        otel = node.otel as PVOtelExtension;
+      } else if (isStandardCanvasNode(node) && node.pv?.otel) {
+        otel = node.pv.otel as PVOtelExtension;
+      }
+
+      if (!otel) continue;
+
       const rule: CompiledMatchRule = {
         nodeId: node.id,
         resourceMatchers: [],

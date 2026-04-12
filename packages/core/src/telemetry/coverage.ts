@@ -12,6 +12,7 @@ import type { FileTree } from '@principal-ai/repository-abstraction';
 import { CanvasDiscovery } from '../discovery/CanvasDiscovery';
 import type { DiscoveredCanvasWithContent } from '../discovery/types';
 import type { ExtendedCanvasNode } from '../types/canvas';
+import { isOtelNode, isStandardCanvasNode } from '../types/canvas';
 import { getNodeEventName } from '../storyboard/builder';
 import {
   ImplementationFileLayerModule,
@@ -108,13 +109,15 @@ function getEventName(node: ExtendedCanvasNode): string | null {
  * Supports both new format (node.otel.files) and legacy format (pv.otel.files)
  */
 function getInstrumentationFiles(node: ExtendedCanvasNode): string[] {
-  // Check new format first (otel-event nodes)
-  const otelNode = node as { otel?: { files?: string[] } };
-  if (otelNode.otel?.files) {
-    return otelNode.otel.files;
+  // Check OTEL nodes (top-level otel field)
+  if (isOtelNode(node) && node.otel?.files) {
+    return node.otel.files;
   }
-  // Fallback to legacy format (pv.otel.files)
-  return node.pv?.otel?.files || [];
+  // Check standard nodes (pv.otel.files)
+  if (isStandardCanvasNode(node) && node.pv?.otel?.files) {
+    return node.pv.otel.files;
+  }
+  return [];
 }
 
 /**
@@ -138,13 +141,15 @@ async function fileContainsEvent(
  * Supports both new format (node.otel.status) and legacy format (pv.status)
  */
 function getNodeStatus(node: ExtendedCanvasNode): 'draft' | 'approved' | 'implemented' | undefined {
-  // Check new format first (otel-event nodes)
-  const otelNode = node as { otel?: { status?: 'draft' | 'approved' | 'implemented' } };
-  if (otelNode.otel?.status) {
-    return otelNode.otel.status;
+  // Check OTEL nodes (otel.status)
+  if (isOtelNode(node) && node.otel?.status) {
+    return node.otel.status;
   }
-  // Fallback to legacy format (pv.status)
-  return node.pv?.status;
+  // Check standard nodes (pv.status)
+  if (isStandardCanvasNode(node) && node.pv?.status) {
+    return node.pv.status;
+  }
+  return undefined;
 }
 
 /**
@@ -234,7 +239,12 @@ function validateNodes(
       }
 
       // Get references for grounding validation
-      const references = node.pv?.references || [];
+      let references: string[] = [];
+      if (isOtelNode(node) && node.otel?.references) {
+        references = node.otel.references;
+      } else if (isStandardCanvasNode(node) && node.pv?.references) {
+        references = node.pv.references;
+      }
       const hasReferences = references.length > 0;
 
       // Count by status
@@ -271,8 +281,11 @@ function validateNodes(
         });
       }
 
-      // Error if using deprecated pv.otel.scope
-      const legacyScope = node.pv?.otel?.scope;
+      // Error if using deprecated pv.otel.scope (only for standard nodes)
+      let legacyScope: string | undefined;
+      if (isStandardCanvasNode(node)) {
+        legacyScope = node.pv?.otel?.scope;
+      }
       if (legacyScope) {
         errors.push({
           nodeId: node.id,

@@ -8,6 +8,9 @@ import type {
   ExtendedCanvas,
   ExtendedCanvasNode,
   ExtendedCanvasTextNode,
+  ExtendedCanvasFileNode,
+  ExtendedCanvasLinkNode,
+  ExtendedCanvasGroupNode,
   ExtendedCanvasEdge,
   PVEdgeTypeDefinition,
   PVNodeShape,
@@ -18,6 +21,7 @@ import type {
   PVOtelExtension,
   PVEventSchema,
   PVBoundaryExtension,
+  OtelNode,
 } from '../types/canvas';
 import type { JsonValue } from '../types';
 import { resolveCanvasColor, isOtelNode } from '../types/canvas';
@@ -160,6 +164,74 @@ export class CanvasConverter {
    * Convert a single canvas node to React Flow node
    */
   private static convertNode(node: ExtendedCanvasNode, _canvas: ExtendedCanvas): ReactFlowNode {
+    // Handle OTEL nodes separately (they never use pv field)
+    if (isOtelNode(node)) {
+      return this.convertOtelNode(node);
+    }
+
+    // Handle standard JSON Canvas nodes (may use pv extensions)
+    return this.convertStandardNode(node);
+  }
+
+  /**
+   * Convert an OTEL node to React Flow node
+   * OTEL nodes use top-level fields (label, otel, event, etc.) and never use pv
+   */
+  private static convertOtelNode(node: OtelNode): ReactFlowNode {
+    const color = resolveCanvasColor(node.color);
+
+    const data: ReactFlowNode['data'] = {
+      name: node.label,
+      nodeType: node.type,
+      canvasType: node.type,
+      shape: node.shape || 'rectangle',
+      icon: node.icon,
+      color: node.fill || color,
+      width: node.width,
+      height: node.height,
+    };
+
+    if ('description' in node && node.description) data.description = node.description;
+
+    // Add OTEL-specific data from top-level fields
+    if ('otel' in node && node.otel) {
+      (data as Record<string, unknown>).otel = node.otel;
+      if (node.otel.status) data.status = node.otel.status;
+      if (node.otel.references) data.references = node.otel.references;
+    }
+    if ('event' in node && node.event) {
+      (data as Record<string, unknown>).event = node.event;
+    }
+    if ('eventRef' in node && node.eventRef) {
+      (data as Record<string, unknown>).eventRef = node.eventRef;
+    }
+    if ('dataSchema' in node && node.dataSchema) {
+      data.dataSchema = node.dataSchema;
+    }
+    if ('boundary' in node && node.boundary) {
+      (data as Record<string, unknown>).boundary = node.boundary;
+    }
+    if ('workflowChips' in node && node.workflowChips) {
+      (data as Record<string, unknown>).workflowChips = node.workflowChips;
+    }
+
+    return {
+      id: node.id,
+      type: node.shape || 'default',
+      position: { x: node.x, y: node.y },
+      data,
+      style: {
+        width: node.width,
+        height: node.height,
+      },
+    };
+  }
+
+  /**
+   * Convert a standard JSON Canvas node to React Flow node
+   * Standard nodes (text/file/link/group) may use pv extensions
+   */
+  private static convertStandardNode(node: ExtendedCanvasTextNode | ExtendedCanvasFileNode | ExtendedCanvasLinkNode | ExtendedCanvasGroupNode): ReactFlowNode {
     const pv = node.pv;
     const color = resolveCanvasColor(node.color);
 
@@ -178,25 +250,17 @@ export class CanvasConverter {
       case 'group':
         nodeName = node.label || 'Group';
         break;
-      // OTEL node types use the label field directly
-      case 'otel-event':
-      case 'otel-span-convention':
-      case 'otel-scope':
-      case 'otel-resource':
-      case 'otel-boundary':
-        nodeName = node.label;
+      default:
+        nodeName = (node as { id: string }).id;
         break;
     }
 
-    // Build the data object based on canvas node type
-    // For OTEL nodes, use the node type directly; for standard canvas types, use pv or default
-    const isOtelType = isOtelNode(node);
     const data: ReactFlowNode['data'] = {
       name: nodeName,
-      nodeType: isOtelType ? node.type : (pv?.nodeType || node.type),
+      nodeType: pv?.nodeType || node.type,
       canvasType: node.type,
-      shape: isOtelType ? (node.shape || 'rectangle') : (pv?.shape || 'rectangle'),
-      icon: isOtelType ? node.icon : pv?.icon,
+      shape: pv?.shape || 'rectangle',
+      icon: pv?.icon,
       color: pv?.states?.idle?.color || color,
       width: node.width,
       height: node.height,
@@ -211,48 +275,8 @@ export class CanvasConverter {
       data.url = node.url;
     }
 
-    // Handle OTEL node types (new format with top-level fields)
-    if (
-      node.type === 'otel-event' ||
-      node.type === 'otel-span-convention' ||
-      node.type === 'otel-scope' ||
-      node.type === 'otel-resource' ||
-      node.type === 'otel-boundary'
-    ) {
-      // OTEL nodes use top-level fields, not pv wrapper
-      data.nodeType = node.type;
-      if (node.icon) data.icon = node.icon;
-      if (node.fill) data.color = node.fill;
-      if (node.shape) data.shape = node.shape;
-      if ('description' in node && node.description) data.description = node.description;
-
-      // Add OTEL-specific data
-      if ('otel' in node && node.otel) {
-        (data as Record<string, unknown>).otel = node.otel;
-        if (node.otel.status) data.status = node.otel.status;
-        if (node.otel.references) data.references = node.otel.references;
-      }
-      if ('event' in node && node.event) {
-        (data as Record<string, unknown>).event = node.event;
-      }
-      if ('eventRef' in node && node.eventRef) {
-        (data as Record<string, unknown>).eventRef = node.eventRef;
-      }
-      if ('dataSchema' in node && node.dataSchema) {
-        data.dataSchema = node.dataSchema;
-      }
-      if ('boundary' in node && node.boundary) {
-        (data as Record<string, unknown>).boundary = node.boundary;
-      }
-      // Pass through workflow chips if present (for span convention nodes)
-      if ('workflowChips' in node && node.workflowChips) {
-        (data as Record<string, unknown>).workflowChips = node.workflowChips;
-      }
-    }
-
-    // Add PV extensions if present (for standard canvas nodes only)
-    // OTEL nodes use top-level fields, not pv wrapper
-    if (pv && !isOtelType) {
+    // Add PV extensions if present
+    if (pv) {
       if (pv.states) data.states = pv.states;
       if (pv.sources) data.sources = pv.sources; // deprecated, use references
       if (pv.references) data.references = pv.references;
@@ -260,17 +284,9 @@ export class CanvasConverter {
       if (pv.dataSchema) data.dataSchema = pv.dataSchema;
     }
 
-    // Determine React Flow node type from shape
-    let reactFlowType = 'default';
-    if (isOtelType && node.shape) {
-      reactFlowType = node.shape;
-    } else if (pv?.shape) {
-      reactFlowType = pv.shape;
-    }
-
     return {
       id: node.id,
-      type: reactFlowType,
+      type: pv?.shape || 'default',
       position: { x: node.x, y: node.y },
       data,
       style: {
@@ -340,122 +356,12 @@ export class CanvasConverter {
     // Convert nodes
     if (canvas.nodes) {
       for (const node of canvas.nodes) {
-        const pv = node.pv;
-        // Get name and description based on node type
-        // For text nodes: line 1 = name, rest = description
-        let nodeName: string;
-        let nodeDescription: string | undefined;
-        switch (node.type) {
-          case 'text': {
-            const lines = node.text?.split('\n') || [];
-            nodeName = lines[0]?.replace(/^#+ /, '').substring(0, 50) || 'Text';
-            // Description is everything after the first line, trimmed
-            nodeDescription = lines.slice(1).join('\n').trim() || undefined;
-            break;
-          }
-          case 'file':
-            nodeName = node.file?.split('/').pop() || node.file || 'File';
-            break;
-          case 'link':
-            nodeName = node.url || 'Link';
-            break;
-          case 'group':
-            nodeName = node.label || 'Group';
-            break;
-          // OTEL node types use the label field directly
-          case 'otel-event':
-          case 'otel-span-convention':
-          case 'otel-scope':
-          case 'otel-resource':
-          case 'otel-boundary':
-            nodeName = node.label;
-            break;
-          default:
-            // For unknown custom types, use node id
-            nodeName = (node as { id: string }).id;
-            break;
-        }
-
-        // pv.name takes priority over parsed name from text
-        const finalName = pv?.name || nodeName;
-        // pv.description takes priority over parsed description from text
-        const finalDescription = pv?.description || nodeDescription;
-
-        // Check if this is an OTEL node type
-        const isOtelType = isOtelNode(node);
-
-        // Build data object, filtering out undefined values
-        const nodeData: Record<string, JsonValue> = {
-          description: finalDescription || '',
-          shape: isOtelType ? (node.shape || 'rectangle') : (pv?.shape || 'rectangle'),
-          color: isOtelType ? (node.fill || resolveCanvasColor(node.color) || '') : (pv?.fill || resolveCanvasColor(node.color) || ''),
-          width: node.width,
-          height: node.height,
-          sources: pv?.sources || [], // deprecated, use references
-          references: pv?.references || [],
-          canvasType: node.type,
-        };
-
-        // Add optional pv properties for standard canvas nodes only
-        // Note: pv.otel and pv.resourceMatch are removed - use otel-* node types instead
-        if (!isOtelType && pv) {
-          if (pv.icon) nodeData.icon = pv.icon;
-          if (pv.stroke) nodeData.stroke = pv.stroke;
-          if (pv.states) nodeData.states = pv.states as JsonValue;
-          if (pv.status) nodeData.status = pv.status;
-        }
-
-        // Add type-specific data
-        if (node.type === 'text' && node.text) nodeData.text = node.text;
-        if (node.type === 'file' && node.file) nodeData.file = node.file;
-        if (node.type === 'link' && node.url) nodeData.url = node.url;
-
-        // Handle OTEL node types (new format with top-level fields)
+        // Handle OTEL nodes separately (they never use pv field)
         if (isOtelNode(node)) {
-          nodeData.nodeType = node.type;
-          if (node.icon) nodeData.icon = node.icon;
-          if (node.fill) nodeData.color = node.fill;
-          if (node.shape) nodeData.shape = node.shape;
-          if ('description' in node && node.description) nodeData.description = node.description;
-
-          // Add OTEL-specific data from top-level fields
-          if ('otel' in node && node.otel) {
-            nodeData.otel = node.otel as JsonValue;
-            if (node.otel.status) nodeData.status = node.otel.status;
-            if (node.otel.references) nodeData.references = node.otel.references;
-          }
-          if ('event' in node && node.event) {
-            nodeData.event = node.event as unknown as JsonValue;
-          }
-          if ('eventRef' in node && node.eventRef) {
-            nodeData.eventRef = node.eventRef;
-          }
-          if ('dataSchema' in node && node.dataSchema) {
-            nodeData.dataSchema = node.dataSchema as JsonValue;
-          }
-          if ('boundary' in node && node.boundary) {
-            nodeData.boundary = node.boundary as unknown as JsonValue;
-          }
-          // Pass through workflow chips if present (for span convention nodes)
-          if ('workflowChips' in node && node.workflowChips) {
-            nodeData.workflowChips = node.workflowChips as unknown as JsonValue;
-          }
+          nodes.push(this.convertOtelNodeToGraph(node, now));
+        } else {
+          nodes.push(this.convertStandardNodeToGraph(node, now));
         }
-
-        nodes.push({
-          id: node.id,
-          type: pv?.nodeType || node.type,
-          name: finalName,
-          data: nodeData,
-          position: { x: node.x, y: node.y },
-          // Persist node dimensions at top level for xyflow
-          width: node.width,
-          height: node.height,
-          // Don't set a default state - only show state labels when explicitly set via events
-          state: undefined,
-          createdAt: now,
-          updatedAt: now,
-        });
       }
     }
 
@@ -503,6 +409,136 @@ export class CanvasConverter {
   }
 
   /**
+   * Convert an OTEL node to NodeState format
+   * OTEL nodes use top-level fields and never use pv
+   */
+  private static convertOtelNodeToGraph(node: OtelNode, now: number): NodeState {
+    const nodeData: Record<string, JsonValue> = {
+      description: ('description' in node && node.description) || '',
+      shape: node.shape || 'rectangle',
+      color: node.fill || resolveCanvasColor(node.color) || '',
+      width: node.width,
+      height: node.height,
+      sources: [], // not used for OTEL nodes
+      references: [],
+      canvasType: node.type,
+      nodeType: node.type,
+    };
+
+    if (node.icon) nodeData.icon = node.icon;
+    if (node.stroke) nodeData.stroke = node.stroke;
+
+    // Add OTEL-specific data from top-level fields
+    if ('otel' in node && node.otel) {
+      nodeData.otel = node.otel as JsonValue;
+      if (node.otel.status) nodeData.status = node.otel.status;
+      if (node.otel.references) nodeData.references = node.otel.references;
+    }
+    if ('event' in node && node.event) {
+      nodeData.event = node.event as unknown as JsonValue;
+    }
+    if ('eventRef' in node && node.eventRef) {
+      nodeData.eventRef = node.eventRef;
+    }
+    if ('dataSchema' in node && node.dataSchema) {
+      nodeData.dataSchema = node.dataSchema as JsonValue;
+    }
+    if ('boundary' in node && node.boundary) {
+      nodeData.boundary = node.boundary as unknown as JsonValue;
+    }
+    if ('workflowChips' in node && node.workflowChips) {
+      nodeData.workflowChips = node.workflowChips as unknown as JsonValue;
+    }
+
+    return {
+      id: node.id,
+      type: node.type,
+      name: node.label,
+      data: nodeData,
+      position: { x: node.x, y: node.y },
+      width: node.width,
+      height: node.height,
+      state: undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  /**
+   * Convert a standard JSON Canvas node to NodeState format
+   * Standard nodes may use pv extensions
+   */
+  private static convertStandardNodeToGraph(node: ExtendedCanvasTextNode | ExtendedCanvasFileNode | ExtendedCanvasLinkNode | ExtendedCanvasGroupNode, now: number): NodeState {
+    const pv = node.pv;
+
+    // Get name and description based on node type
+    let nodeName: string;
+    let nodeDescription: string | undefined;
+
+    switch (node.type) {
+      case 'text': {
+        const lines = node.text?.split('\n') || [];
+        nodeName = lines[0]?.replace(/^#+ /, '').substring(0, 50) || 'Text';
+        nodeDescription = lines.slice(1).join('\n').trim() || undefined;
+        break;
+      }
+      case 'file':
+        nodeName = node.file?.split('/').pop() || node.file || 'File';
+        break;
+      case 'link':
+        nodeName = node.url || 'Link';
+        break;
+      case 'group':
+        nodeName = node.label || 'Group';
+        break;
+      default:
+        nodeName = (node as { id: string }).id;
+        break;
+    }
+
+    // pv.name/description take priority over parsed values
+    const finalName = pv?.name || nodeName;
+    const finalDescription = pv?.description || nodeDescription;
+
+    const nodeData: Record<string, JsonValue> = {
+      description: finalDescription || '',
+      shape: pv?.shape || 'rectangle',
+      color: pv?.fill || resolveCanvasColor(node.color) || '',
+      width: node.width,
+      height: node.height,
+      sources: pv?.sources || [],
+      references: pv?.references || [],
+      canvasType: node.type,
+    };
+
+    // Add optional pv properties
+    if (pv) {
+      if (pv.icon) nodeData.icon = pv.icon;
+      if (pv.stroke) nodeData.stroke = pv.stroke;
+      if (pv.states) nodeData.states = pv.states as JsonValue;
+      if (pv.status) nodeData.status = pv.status;
+    }
+
+    // Add type-specific data
+    if (node.type === 'text' && node.text) nodeData.text = node.text;
+    if (node.type === 'file' && node.file) nodeData.file = node.file;
+    if (node.type === 'link' && node.url) nodeData.url = node.url;
+
+    return {
+      id: node.id,
+      type: pv?.nodeType || node.type,
+      name: finalName,
+      data: nodeData,
+      position: { x: node.x, y: node.y },
+      width: node.width,
+      height: node.height,
+      state: undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  /**
    * Convert React Flow nodes/edges back to Extended Canvas format
    */
   static reactFlowToCanvas(
@@ -540,9 +576,10 @@ export class CanvasConverter {
         canvasNode.color = node.data.color;
       }
 
-      // Add PV extension if there's custom data
-      if (node.data.nodeType || node.data.shape || node.data.sources?.length || node.data.references?.length) {
-        canvasNode.pv = {
+      // Add PV extension if there's custom data (only for standard canvas nodes)
+      if (!isOtelNode(canvasNode as ExtendedCanvasNode) &&
+          (node.data.nodeType || node.data.shape || node.data.sources?.length || node.data.references?.length)) {
+        (canvasNode as ExtendedCanvasTextNode).pv = {
           nodeType: (node.data.nodeType as string) || node.id,
           shape: node.data.shape as PVNodeShape | undefined,
           icon: node.data.icon as string | undefined,
