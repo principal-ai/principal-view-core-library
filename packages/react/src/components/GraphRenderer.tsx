@@ -48,6 +48,7 @@ import {
   resolveEventSpanColor,
   DRAFT_NODE_COLOR,
   DEFAULT_SPAN_COLOR,
+  isStandardCanvasNode,
 } from '@principal-ai/principal-view-core';
 import { useTheme } from '@principal-ade/industry-theme';
 import { CustomNode } from '../nodes/CustomNode';
@@ -2660,7 +2661,12 @@ function useCanvasToLegacy(
     }
 
     // Then extract node types from canvas nodes (for nodes that define their own types)
+    // Only process standard canvas nodes (OTEL nodes have their types defined separately)
     for (const node of canvas.nodes || []) {
+      if (!isStandardCanvasNode(node)) {
+        continue;
+      }
+
       const vv = node.pv;
       const nodeType = vv?.nodeType || node.type;
 

@@ -16,6 +16,7 @@ import {
   isLinkNode,
   isGroupNode,
   hasPVExtension,
+  isStandardCanvasNode,
   CANVAS_COLOR_PRESETS,
   resolveCanvasColor,
 } from './types/canvas';
@@ -113,6 +114,7 @@ export {
   isLinkNode,
   isGroupNode,
   hasPVExtension,
+  isStandardCanvasNode,
   CANVAS_COLOR_PRESETS,
   resolveCanvasColor,
 };
