@@ -398,6 +398,28 @@ export interface ComponentLibrary {
 
   /** Optional connection rules (which nodes can connect via which edges) */
   connectionRules?: LibraryConnectionRule[];
+
+  /**
+   * Global state definitions for OTEL nodes
+   *
+   * Defines reusable states that can be applied to OTEL event and span nodes.
+   * States provide visual indicators (colors) for different statuses.
+   *
+   * @example
+   * ```yaml
+   * states:
+   *   draft:
+   *     color: "#f59e0b"
+   *     label: "Draft"
+   *   approved:
+   *     color: "#10b981"
+   *     label: "Approved"
+   *   implemented:
+   *     color: "#6366f1"
+   *     label: "Implemented"
+   * ```
+   */
+  states?: Record<string, PVNodeState>;
 }
 
 // ============================================================================
