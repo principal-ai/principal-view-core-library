@@ -17,6 +17,13 @@ import {
   isGroupNode,
   hasPVExtension,
   isStandardCanvasNode,
+  isOtelEventNode,
+  isOtelSpanConventionNode,
+  isOtelScopeNode,
+  isOtelResourceNode,
+  isOtelBoundaryNode,
+  isOtelNode,
+  getOtelNodeIdentifier,
   CANVAS_COLOR_PRESETS,
   resolveCanvasColor,
 } from './types/canvas';
@@ -103,6 +110,15 @@ export type {
   ExtendedCanvasNode,
   ExtendedCanvasEdge,
   ExtendedCanvas,
+  // OTEL Node types
+  OtelNodeBase,
+  OtelMetadata,
+  OtelEventNode,
+  OtelSpanConventionNode,
+  OtelScopeNode,
+  OtelResourceNode,
+  OtelBoundaryNode,
+  OtelNode,
   // Workflow chip type (for span convention nodes)
   WorkflowChip,
 } from './types/canvas';
@@ -115,6 +131,13 @@ export {
   isGroupNode,
   hasPVExtension,
   isStandardCanvasNode,
+  isOtelEventNode,
+  isOtelSpanConventionNode,
+  isOtelScopeNode,
+  isOtelResourceNode,
+  isOtelBoundaryNode,
+  isOtelNode,
+  getOtelNodeIdentifier,
   CANVAS_COLOR_PRESETS,
   resolveCanvasColor,
 };
