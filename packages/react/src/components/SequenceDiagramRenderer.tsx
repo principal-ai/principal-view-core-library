@@ -36,6 +36,7 @@ import {
 
 /**
  * Minimal marker node for arrow-centric sequence diagrams
+ * Invisible - just used for positioning, all rendering done by edges
  */
 function SequenceMarkerNode({ data }: NodeProps) {
   return (
@@ -43,10 +44,7 @@ function SequenceMarkerNode({ data }: NodeProps) {
       style={{
         width: '100%',
         height: '100%',
-        backgroundColor: 'var(--sequence-marker-bg, #6495ED)',
-        borderRadius: '50%',
-        border: '2px solid var(--sequence-marker-border, #4169E1)',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+        opacity: 0,
       }}
       title={data.fullName as string}
     >
@@ -65,7 +63,7 @@ function SequenceMarkerNode({ data }: NodeProps) {
 }
 
 /**
- * Sequence arrow edge with label
+ * Sequence arrow edge with label (dot to dot)
  */
 function SequenceArrowEdge({
   id,
@@ -132,6 +130,146 @@ function SequenceArrowEdge({
 }
 
 /**
+ * Participant-to-participant arrow edge (or activation bar for same-lane)
+ * Draws from source participant lifeline to target participant lifeline
+ */
+function SequenceArrowParticipantEdge({
+  id,
+  sourceY,
+  targetY,
+  label,
+  data,
+}: EdgeProps) {
+  const { theme } = useTheme();
+
+  // Use participant X positions from data (swimlane centers)
+  const sourceX = (data?.sourceParticipantX ?? 0) as number;
+  const targetX = (data?.targetParticipantX ?? 0) as number;
+  const safeSourceY = (sourceY ?? 0) as number;
+  const safeTargetY = (targetY ?? 0) as number;
+
+  // Check if this is same-lane (activation bar) or cross-lane (arrow)
+  const isSameLane = sourceX === targetX;
+  const isLastEvent = data?.isLastEvent === true;
+
+  // Style based on whether it's a move event (IPC) or transform event (internal)
+  const isMoveEvent = data?.isMoveEvent === true;
+  const strokeColor = isMoveEvent ? (theme.colors.accent || '#f48771') : theme.colors.primary;
+
+  // Same lane: render as activation bar
+  if (isSameLane) {
+    const barWidth = 12;
+    const eventSpacing = (data?.eventSpacing ?? 80) as number;
+
+    // For last event, use half the event spacing for bar height
+    let barHeight: number;
+    let barY: number;
+
+    if (isLastEvent) {
+      barHeight = eventSpacing / 2;
+      barY = safeSourceY; // Start at the event position
+    } else {
+      // Normal case: bar from source to target
+      const calculatedHeight = Math.abs(safeTargetY - safeSourceY);
+      // Ensure minimum height if events are at same position
+      barHeight = calculatedHeight > 0 ? calculatedHeight : eventSpacing / 2;
+      barY = Math.min(safeSourceY, safeTargetY);
+    }
+
+    const barX = sourceX - barWidth / 2;
+
+    return (
+      <>
+        {/* Activation bar */}
+        <svg>
+          <rect
+            x={barX}
+            y={barY}
+            width={barWidth}
+            height={barHeight}
+            fill={strokeColor}
+            fillOpacity={0.15}
+            stroke={strokeColor}
+            strokeWidth={2}
+            rx={2}
+          />
+        </svg>
+        {label && (
+          <EdgeLabelRenderer>
+            <div
+              style={{
+                position: 'absolute',
+                transform: `translate(0, -50%) translate(${sourceX + 15}px,${barY + barHeight / 2}px)`,
+                background: theme.colors.background,
+                padding: '2px 8px',
+                borderRadius: 4,
+                fontSize: theme.fontSizes[0],
+                fontWeight: theme.fontWeights.medium,
+                fontFamily: theme.fonts.body,
+                color: strokeColor,
+                border: `1px solid ${strokeColor}`,
+                pointerEvents: 'all',
+                whiteSpace: 'nowrap',
+              }}
+              className="nodrag nopan"
+            >
+              {label}
+            </div>
+          </EdgeLabelRenderer>
+        )}
+      </>
+    );
+  }
+
+  // Cross-lane: render as horizontal arrow at midpoint
+  const strokeWidth = isMoveEvent ? 2.5 : 2;
+  const markerEnd = isMoveEvent ? 'url(#sequence-arrow-move)' : 'url(#sequence-arrow)';
+
+  // Draw horizontal arrow at the midpoint between source and target Y positions
+  const arrowY = (safeSourceY + safeTargetY) / 2;
+  const path = `M ${sourceX} ${arrowY} L ${targetX} ${arrowY}`;
+  const labelX = (sourceX + targetX) / 2;
+  const labelY = arrowY;
+
+  return (
+    <>
+      <BaseEdge
+        id={id}
+        path={path}
+        style={{
+          stroke: strokeColor,
+          strokeWidth: strokeWidth,
+        }}
+        markerEnd={markerEnd}
+      />
+      {label && (
+        <EdgeLabelRenderer>
+          <div
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 12}px)`,
+              background: theme.colors.background,
+              padding: isMoveEvent ? '3px 10px' : '2px 8px',
+              borderRadius: 4,
+              fontSize: theme.fontSizes[0],
+              fontWeight: isMoveEvent ? theme.fontWeights.bold : theme.fontWeights.medium,
+              fontFamily: theme.fonts.body,
+              color: strokeColor,
+              border: isMoveEvent ? `2px solid ${strokeColor}` : `1px solid ${strokeColor}`,
+              pointerEvents: 'all',
+              whiteSpace: 'nowrap',
+            }}
+            className="nodrag nopan"
+          >
+            {label}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+}
+
+/**
  * Default node types including sequence marker
  */
 const defaultSequenceNodeTypes: NodeTypes = {
@@ -139,10 +277,11 @@ const defaultSequenceNodeTypes: NodeTypes = {
 };
 
 /**
- * Default edge types including sequence arrow
+ * Default edge types including sequence arrow and participant arrow
  */
 const defaultSequenceEdgeTypes: EdgeTypes = {
   sequenceArrow: SequenceArrowEdge,
+  sequenceArrowParticipant: SequenceArrowParticipantEdge,
 };
 
 /**
@@ -394,9 +533,10 @@ function SequenceDiagramInner({
       zoomOnScroll
       style={{ background: theme.colors.background }}
     >
-      {/* SVG defs for arrow marker */}
+      {/* SVG defs for arrow markers */}
       <svg style={{ position: 'absolute', width: 0, height: 0 }}>
         <defs>
+          {/* Standard arrow for transform events */}
           <marker
             id="sequence-arrow"
             viewBox="0 0 10 10"
@@ -409,6 +549,21 @@ function SequenceDiagramInner({
             <path
               d="M 0 0 L 10 5 L 0 10 z"
               fill={theme.colors.primary}
+            />
+          </marker>
+          {/* Accent arrow for move events (IPC calls) */}
+          <marker
+            id="sequence-arrow-move"
+            viewBox="0 0 10 10"
+            refX="8"
+            refY="5"
+            markerWidth="7"
+            markerHeight="7"
+            orient="auto-start-reverse"
+          >
+            <path
+              d="M 0 0 L 10 5 L 0 10 z"
+              fill={theme.colors.accent || '#f48771'}
             />
           </marker>
         </defs>

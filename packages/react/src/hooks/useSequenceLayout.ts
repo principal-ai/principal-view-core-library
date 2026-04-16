@@ -19,6 +19,10 @@ export interface SequenceEvent {
   label?: string;
   /** Optional event type for styling */
   type?: string;
+  /** Whether this is a move event (crosses participant boundaries) */
+  moveEvent?: boolean;
+  /** Participant this event belongs to (for move events, this is the target) */
+  participant?: string;
   /** Additional data to pass through to the node */
   data?: Record<string, unknown>;
 }
@@ -306,9 +310,6 @@ export function useSequenceLayout(
     // This creates horizontal "time layers" across all swimlanes
     const nodes: Node[] = [];
 
-    // Build event lookup for edge label resolution
-    const eventById = new Map(events.map((e) => [e.id, e]));
-
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
       const originalNamespace = eventNamespaces.get(event.id)!;
@@ -332,6 +333,7 @@ export function useSequenceLayout(
           namespace: originalNamespace,
           visibleNamespace,
           timeLayer: i,
+          isMoveEvent: event.moveEvent === true,
           ...event.data,
         },
         style: {
@@ -341,32 +343,75 @@ export function useSequenceLayout(
       });
     }
 
-    // Step 5: Create edges with labels derived from target event
-    const edges: Edge[] = sequenceEdges.map((edge) => {
-      const sourceNamespace = eventNamespaces.get(edge.fromEvent);
-      const targetNamespace = eventNamespaces.get(edge.toEvent);
-      const crossesLanes =
-        namespaceToVisible.get(sourceNamespace!) !==
-        namespaceToVisible.get(targetNamespace!);
+    // Step 5: Create edges - one per event, showing how to get to the NEXT event
+    // Each edge looks forward to determine what to render
+    const edges: Edge[] = [];
 
-      const targetEvent = eventById.get(edge.toEvent);
-      const edgeLabel = edge.label || targetEvent?.label || targetEvent?.name.split('.').pop() || '';
+    for (let i = 0; i < events.length; i++) {
+      const currentEvent = events[i];
+      const currentNamespace = eventNamespaces.get(currentEvent.id)!;
+      const currentVisibleNs = namespaceToVisible.get(currentNamespace)!;
+      const currentLane = swimlaneByNamespace.get(currentVisibleNs)!;
 
-      return {
-        id: edge.id,
-        source: edge.fromEvent,
-        target: edge.toEvent,
-        type: 'sequenceArrow',
-        label: edgeLabel,
-        labelStyle: { fontSize: 12, fontWeight: 500 },
-        labelBgStyle: { fill: 'white', fillOpacity: 0.8 },
-        data: {
-          crossesLanes,
-          sourceNamespace,
-          targetNamespace,
-        },
-      };
-    });
+      // Look at the next event (if any)
+      if (i < events.length - 1) {
+        const nextEvent = events[i + 1];
+        const nextNamespace = eventNamespaces.get(nextEvent.id)!;
+        const nextVisibleNs = namespaceToVisible.get(nextNamespace)!;
+        const nextLane = swimlaneByNamespace.get(nextVisibleNs)!;
+        const nextIsMoveEvent = nextEvent.moveEvent === true;
+        const crossesLanes = currentVisibleNs !== nextVisibleNs;
+
+        // Label is from the CURRENT event (the one creating this edge)
+        const edgeLabel = currentEvent.label || currentEvent.name.split('.').pop() || currentEvent.name;
+
+        edges.push({
+          id: `edge-${currentEvent.id}-to-${nextEvent.id}`,
+          source: currentEvent.id,
+          target: nextEvent.id,
+          type: 'sequenceArrowParticipant',
+          label: edgeLabel,
+          labelStyle: { fontSize: 12, fontWeight: 500 },
+          labelBgStyle: { fill: 'white', fillOpacity: 0.8 },
+          data: {
+            crossesLanes,
+            sourceNamespace: currentNamespace,
+            targetNamespace: nextNamespace,
+            isMoveEvent: nextIsMoveEvent,
+            sourceEvent: currentEvent,
+            targetEvent: nextEvent,
+            sourceParticipantX: currentLane.x,
+            targetParticipantX: nextLane.x,
+          },
+        });
+      } else {
+        // Last event - render small activation bar to show it exists
+        const currentIsMoveEvent = currentEvent.moveEvent === true;
+        const edgeLabel = currentEvent.label || currentEvent.name.split('.').pop() || currentEvent.name;
+
+        edges.push({
+          id: `edge-${currentEvent.id}-end`,
+          source: currentEvent.id,
+          target: currentEvent.id,
+          type: 'sequenceArrowParticipant',
+          label: edgeLabel,
+          labelStyle: { fontSize: 12, fontWeight: 500 },
+          labelBgStyle: { fill: 'white', fillOpacity: 0.8 },
+          data: {
+            crossesLanes: false,
+            sourceNamespace: currentNamespace,
+            targetNamespace: currentNamespace,
+            isMoveEvent: currentIsMoveEvent,
+            sourceEvent: currentEvent,
+            targetEvent: currentEvent,
+            sourceParticipantX: currentLane.x,
+            targetParticipantX: currentLane.x,
+            isLastEvent: true,
+            eventSpacing,
+          },
+        });
+      }
+    }
 
     // Step 6: Compute total dimensions
     const totalWidth =
