@@ -40,6 +40,9 @@ export type {
 export { SequenceDiagramRenderer } from './components/SequenceDiagramRenderer';
 export type { SequenceDiagramRendererProps } from './components/SequenceDiagramRenderer';
 
+export { WorkflowSequenceDiagram } from './components/WorkflowSequenceDiagram';
+export type { WorkflowSequenceDiagramProps } from './components/WorkflowSequenceDiagram';
+
 export { useSequenceLayout } from './hooks/useSequenceLayout';
 export type {
   SequenceEvent,
