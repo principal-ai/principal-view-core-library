@@ -2628,7 +2628,7 @@ function useCanvasToLegacy(
           color: component.color,
           size: component.size,
           dataSchema: component.dataSchema || {},
-          states: component.states,
+          states: component.states || library.states, // Fallback to global library states
           layout: component.layout,
         };
       }
@@ -2757,6 +2757,7 @@ function useCanvasToLegacy(
       edgeTypes,
       allowedConnections,
       display,
+      states: library?.states, // Add global states from library as fallback
     };
 
     return { configuration, nodes, edges };

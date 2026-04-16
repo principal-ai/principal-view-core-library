@@ -17,11 +17,24 @@ export function convertToXYFlowNodes(
   violations: Violation[] = []
 ): Node<CustomNodeData>[] {
   return nodes.map((node) => {
-    const typeDefinition = configuration.nodeTypes[node.type];
+    let typeDefinition = configuration.nodeTypes[node.type];
 
     // Warn if node type is not defined in configuration
     if (!typeDefinition) {
       console.warn(`Node type "${node.type}" not found in configuration for node "${node.id}"`);
+      // Provide minimal typeDefinition with global states fallback to prevent undefined errors
+      typeDefinition = {
+        description: '',
+        shape: 'rectangle',
+        dataSchema: {},
+        states: configuration.states,
+      };
+    } else if (!typeDefinition.states && configuration.states) {
+      // If typeDefinition exists but has no states, use global states as fallback
+      typeDefinition = {
+        ...typeDefinition,
+        states: configuration.states,
+      };
     }
 
     const hasViolations = violations.some((v) => v.context?.nodeId === node.id);

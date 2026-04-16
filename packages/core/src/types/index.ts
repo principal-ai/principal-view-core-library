@@ -77,6 +77,16 @@ export interface GraphConfiguration {
 
   /** Display preferences */
   display?: DisplayConfiguration;
+
+  /** Global state definitions (fallback for nodes without specific states) */
+  states?: Record<
+    string,
+    {
+      color?: string;
+      icon?: string;
+      label?: string;
+    }
+  >;
 }
 
 export interface NodeTypeDefinition {
