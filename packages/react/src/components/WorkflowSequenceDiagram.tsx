@@ -6,7 +6,7 @@
  * model where participants are scopes and events are move/transform operations.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import type { WorkflowScenario, Canvas, ExtendedCanvas } from '@principal-ai/principal-view-core';
 import { SequenceDiagramRenderer } from './SequenceDiagramRenderer';
 import type { SequenceEvent, SequenceEdge } from '../hooks/useSequenceLayout';
@@ -39,6 +39,15 @@ export interface WorkflowSequenceDiagramProps {
 
   /** Optional class name */
   className?: string;
+
+  /** Callback when an event node is clicked - receives the event index (0-based) */
+  onEventIndexChange?: (eventIndex: number) => void;
+
+  /** Currently selected event index (0-based) for visual highlighting */
+  selectedEventIndex?: number;
+
+  /** Whether to show event labels on nodes (default: false, labels already shown on edges) */
+  showEventLabels?: boolean;
 }
 
 /**
@@ -180,12 +189,36 @@ export function WorkflowSequenceDiagram({
   showControls = true,
   showBackground = false,
   className,
+  onEventIndexChange,
+  selectedEventIndex,
+  showEventLabels = false, // Default to false - labels already on edges
 }: WorkflowSequenceDiagramProps) {
   // Convert workflow to sequence format
   const { events, edges } = useMemo(
     () => convertWorkflowToSequence(scenario, canvas),
     [scenario, canvas]
   );
+
+  // Handle node clicks - map sequence node ID back to event index
+  const handleNodeClick = useCallback(
+    (nodeId: string) => {
+      if (!onEventIndexChange) return;
+
+      // Node IDs are in format "event-{index}"
+      const match = nodeId.match(/^event-(\d+)$/);
+      if (match) {
+        const eventIndex = parseInt(match[1], 10);
+        onEventIndexChange(eventIndex);
+      }
+    },
+    [onEventIndexChange]
+  );
+
+  // Convert selected event index to node ID
+  const selectedNodeId = useMemo(() => {
+    if (selectedEventIndex === undefined || selectedEventIndex === null) return undefined;
+    return `event-${selectedEventIndex}`;
+  }, [selectedEventIndex]);
 
   // If no events, show empty state
   if (events.length === 0) {
@@ -217,6 +250,9 @@ export function WorkflowSequenceDiagram({
       showControls={showControls}
       showBackground={showBackground}
       className={className}
+      onNodeClick={onEventIndexChange ? handleNodeClick : undefined}
+      selectedNodeId={selectedNodeId}
+      showEventLabels={showEventLabels}
     />
   );
 }

@@ -36,15 +36,71 @@ import {
 
 /**
  * Minimal marker node for arrow-centric sequence diagrams
- * Invisible - just used for positioning, all rendering done by edges
+ * Invisible - just used for positioning, selection is shown on edge labels
+ * Can optionally show a label for better clickability
  */
-function SequenceMarkerNode({ data }: NodeProps) {
+function SequenceMarkerNode({ data, selected }: NodeProps) {
+  const { theme } = useTheme();
+  const showLabel = data.showEventLabels === true; // Only show if explicitly enabled
+  const label = data.label as string | undefined;
+
+  // If labels are shown on nodes, render them
+  if (showLabel && label) {
+    return (
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          position: 'relative',
+          cursor: 'pointer',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        title={data.fullName as string}
+      >
+        <div
+          style={{
+            padding: '6px 12px',
+            background: selected ? theme.colors.primary : theme.colors.background,
+            color: selected ? theme.colors.background : theme.colors.text,
+            border: `2px solid ${selected ? theme.colors.primary : theme.colors.border}`,
+            borderRadius: 4,
+            fontSize: theme.fontSizes[1],
+            fontWeight: selected ? theme.fontWeights.bold : theme.fontWeights.medium,
+            fontFamily: theme.fonts.body,
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            userSelect: 'none',
+            transition: 'all 0.2s ease',
+            boxShadow: selected ? `0 2px 8px ${theme.colors.primary}40` : 'none',
+          }}
+        >
+          {label}
+        </div>
+        <Handle
+          type="target"
+          position={Position.Top}
+          style={{ visibility: 'hidden' }}
+        />
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          style={{ visibility: 'hidden' }}
+        />
+      </div>
+    );
+  }
+
+  // Default: invisible node (selection shown on edge labels)
   return (
     <div
       style={{
         width: '100%',
         height: '100%',
         opacity: 0,
+        cursor: 'pointer',
       }}
       title={data.fullName as string}
     >
@@ -80,6 +136,7 @@ function SequenceArrowEdge({
 
   // Use a straight line for same-lane, bezier for cross-lane
   const isSameLane = !data?.crossesLanes;
+  const isSourceSelected = data?.isSourceSelected === true;
 
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
@@ -108,16 +165,19 @@ function SequenceArrowEdge({
             style={{
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-              background: theme.colors.background,
-              padding: '2px 8px',
+              background: isSourceSelected ? theme.colors.primary : theme.colors.background,
+              padding: isSourceSelected ? '4px 10px' : '2px 8px',
               borderRadius: 4,
               fontSize: theme.fontSizes[0],
-              fontWeight: theme.fontWeights.medium,
+              fontWeight: isSourceSelected ? theme.fontWeights.bold : theme.fontWeights.medium,
               fontFamily: theme.fonts.body,
-              color: theme.colors.text,
-              border: `1px solid ${theme.colors.border}`,
+              color: isSourceSelected ? theme.colors.background : theme.colors.text,
+              border: `${isSourceSelected ? 2 : 1}px solid ${isSourceSelected ? theme.colors.primary : theme.colors.border}`,
               pointerEvents: 'all',
               whiteSpace: 'nowrap',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: isSourceSelected ? `0 2px 8px ${theme.colors.primary}60` : 'none',
             }}
             className="nodrag nopan"
           >
@@ -154,6 +214,7 @@ function SequenceArrowParticipantEdge({
 
   // Style based on whether it's a move event (IPC) or transform event (internal)
   const isMoveEvent = data?.isMoveEvent === true;
+  const isSourceSelected = data?.isSourceSelected === true;
   const strokeColor = isMoveEvent ? (theme.colors.accent || '#f48771') : theme.colors.primary;
 
   // Same lane: render as activation bar
@@ -200,16 +261,19 @@ function SequenceArrowParticipantEdge({
               style={{
                 position: 'absolute',
                 transform: `translate(0, -50%) translate(${sourceX + 15}px,${barY + barHeight / 2}px)`,
-                background: theme.colors.background,
-                padding: '2px 8px',
+                background: isSourceSelected ? strokeColor : theme.colors.background,
+                padding: isSourceSelected ? '4px 10px' : '2px 8px',
                 borderRadius: 4,
                 fontSize: theme.fontSizes[0],
-                fontWeight: theme.fontWeights.medium,
+                fontWeight: isSourceSelected ? theme.fontWeights.bold : theme.fontWeights.medium,
                 fontFamily: theme.fonts.body,
-                color: strokeColor,
-                border: `1px solid ${strokeColor}`,
+                color: isSourceSelected ? theme.colors.background : strokeColor,
+                border: `${isSourceSelected ? 2 : 1}px solid ${strokeColor}`,
                 pointerEvents: 'all',
                 whiteSpace: 'nowrap',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: isSourceSelected ? `0 2px 8px ${strokeColor}60` : 'none',
               }}
               className="nodrag nopan"
             >
@@ -248,16 +312,19 @@ function SequenceArrowParticipantEdge({
             style={{
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 12}px)`,
-              background: theme.colors.background,
-              padding: isMoveEvent ? '3px 10px' : '2px 8px',
+              background: isSourceSelected ? strokeColor : theme.colors.background,
+              padding: isSourceSelected ? '5px 12px' : (isMoveEvent ? '3px 10px' : '2px 8px'),
               borderRadius: 4,
               fontSize: theme.fontSizes[0],
-              fontWeight: isMoveEvent ? theme.fontWeights.bold : theme.fontWeights.medium,
+              fontWeight: isSourceSelected ? theme.fontWeights.bold : (isMoveEvent ? theme.fontWeights.bold : theme.fontWeights.medium),
               fontFamily: theme.fonts.body,
-              color: strokeColor,
-              border: isMoveEvent ? `2px solid ${strokeColor}` : `1px solid ${strokeColor}`,
+              color: isSourceSelected ? theme.colors.background : strokeColor,
+              border: `${isSourceSelected ? 3 : (isMoveEvent ? 2 : 1)}px solid ${strokeColor}`,
               pointerEvents: 'all',
               whiteSpace: 'nowrap',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: isSourceSelected ? `0 4px 12px ${strokeColor}60` : 'none',
             }}
             className="nodrag nopan"
           >
@@ -293,6 +360,7 @@ interface SwimlaneLayerProps {
   headerHeight: number;
   totalHeight: number;
   onToggleCollapse?: (namespace: string) => void;
+  stickyHeaders?: boolean;
 }
 
 /**
@@ -370,9 +438,14 @@ function SwimlaneHeadersLayer({
   laneWidth,
   headerHeight,
   onToggleCollapse,
+  stickyHeaders = true,
 }: SwimlaneLayerProps) {
   const { x, y, zoom } = useViewport();
   const { theme } = useTheme();
+
+  // When sticky headers are enabled, compensate for vertical viewport panning
+  // to keep headers at the top of the screen
+  const headerTop = stickyHeaders ? -y / zoom : 0;
 
   return (
     <div
@@ -395,7 +468,7 @@ function SwimlaneHeadersLayer({
             style={{
               position: 'absolute',
               left: lane.x - laneWidth / 2,
-              top: 0,
+              top: headerTop,
               width: laneWidth,
               height: headerHeight,
               display: 'flex',
@@ -451,6 +524,9 @@ export interface SequenceDiagramRendererProps {
   /** Callback when a node is clicked */
   onNodeClick?: (nodeId: string, event: React.MouseEvent) => void;
 
+  /** ID of the currently selected node (for visual highlighting) */
+  selectedNodeId?: string;
+
   /** Optional class name */
   className?: string;
 
@@ -465,6 +541,12 @@ export interface SequenceDiagramRendererProps {
 
   /** Whether to show background grid */
   showBackground?: boolean;
+
+  /** Whether swimlane headers should stick to the top when scrolling vertically (default: true) */
+  stickyHeaders?: boolean;
+
+  /** Whether to show event labels on nodes (default: false, labels already shown on edges) */
+  showEventLabels?: boolean;
 }
 
 /**
@@ -480,6 +562,9 @@ function SequenceDiagramInner({
   onNodeClick,
   showControls = true,
   showBackground = false, // Default to false since swimlanes provide visual structure
+  stickyHeaders = true,
+  selectedNodeId,
+  showEventLabels = false, // Default to false - labels already shown on edges
 }: SequenceDiagramRendererProps) {
   const { theme } = useTheme();
 
@@ -497,11 +582,34 @@ function SequenceDiagramInner({
   );
 
   // Compute layout
-  const { nodes, edges, swimlanes, totalHeight } = useSequenceLayout(
+  const { nodes: layoutNodes, edges, swimlanes, totalHeight } = useSequenceLayout(
     events,
     sequenceEdges,
     layoutOptions
   );
+
+  // Mark selected node and add showEventLabels to node data
+  const nodes = useMemo(() => {
+    return layoutNodes.map(node => ({
+      ...node,
+      selected: node.id === selectedNodeId,
+      data: {
+        ...node.data,
+        showEventLabels,
+      },
+    }));
+  }, [layoutNodes, selectedNodeId, showEventLabels]);
+
+  // Add selectedNodeId to edge data so edges can highlight their labels
+  const edgesWithSelection = useMemo(() => {
+    return edges.map(edge => ({
+      ...edge,
+      data: {
+        ...edge.data,
+        isSourceSelected: edge.source === selectedNodeId,
+      },
+    }));
+  }, [edges, selectedNodeId]);
 
   // Handle node click
   const handleNodeClick = useCallback(
@@ -511,19 +619,63 @@ function SequenceDiagramInner({
     [onNodeClick]
   );
 
-  return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      nodeTypes={nodeTypes}
-      edgeTypes={edgeTypes}
-      onNodeClick={handleNodeClick}
-      fitView
-      fitViewOptions={{
+  // Handle edge click - extract source event from edge and trigger node selection
+  const handleEdgeClick = useCallback(
+    (_event: React.MouseEvent, edge: { id: string; source: string; target: string }) => {
+      // When clicking an edge, select the source event (the label describes the source)
+      // The edge label comes from the source event, so clicking it should select that event
+      onNodeClick?.(edge.source, _event);
+    },
+    [onNodeClick]
+  );
+
+  // When sticky headers are enabled, limit upward panning to prevent headers from disconnecting
+  // from swimlane backgrounds. Allow downward panning to see all content.
+  const translateExtent = useMemo(() => {
+    if (!stickyHeaders) {
+      // No restrictions when sticky headers are disabled
+      return undefined;
+    }
+
+    // Prevent panning up past the header area (y >= 0)
+    // Allow panning down to see all content (y can be positive up to totalHeight)
+    // Allow full horizontal panning
+    return [
+      [-Infinity, 0],
+      [Infinity, totalHeight + 1000],
+    ] as [[number, number], [number, number]];
+  }, [stickyHeaders, totalHeight]);
+
+  // When sticky headers are enabled, use defaultViewport to ensure we start at y=0
+  // This prevents the snap-to-position issue on initial load
+  const viewportConfig = useMemo(() => {
+    if (stickyHeaders) {
+      // Start with top-aligned view (y=0) and reasonable zoom
+      return {
+        fitView: false,
+        defaultViewport: { x: 0, y: 0, zoom: 0.8 },
+      };
+    }
+    // Use fitView for non-sticky mode
+    return {
+      fitView: true,
+      fitViewOptions: {
         padding: 0.1,
         minZoom: 0.5,
         maxZoom: 1.5,
-      }}
+      },
+    };
+  }, [stickyHeaders]);
+
+  return (
+    <ReactFlow
+      nodes={nodes}
+      edges={edgesWithSelection}
+      nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
+      onNodeClick={handleNodeClick}
+      onEdgeClick={handleEdgeClick}
+      {...viewportConfig}
       minZoom={0.1}
       maxZoom={2}
       nodesDraggable={false}
@@ -531,6 +683,7 @@ function SequenceDiagramInner({
       elementsSelectable={true}
       panOnScroll
       zoomOnScroll
+      translateExtent={translateExtent}
       style={{ background: theme.colors.background }}
     >
       {/* SVG defs for arrow markers */}
@@ -589,6 +742,7 @@ function SequenceDiagramInner({
         headerHeight={headerHeight}
         totalHeight={totalHeight}
         onToggleCollapse={onToggleCollapse}
+        stickyHeaders={stickyHeaders}
       />
 
       {/* Collapse toggle panel (for namespaces with children) */}
