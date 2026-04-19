@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import React from 'react';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 import { GraphRenderer } from '../components/GraphRenderer';
-import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
+import type { ExtendedCanvas, ComponentLibrary } from '@principal-ai/principal-view-core';
 
 /**
  * =============================================================================
@@ -143,6 +143,24 @@ const proposedNewFormat = {
     name: 'New OTEL Node Types Prototype',
     description: 'Demonstrates the proposed new node type format',
   },
+};
+
+// =============================================================================
+// LIBRARY: Define scopes for scope-based coloring
+// =============================================================================
+
+const libraryWithScopes: ComponentLibrary = {
+  version: '1.0.0',
+  name: 'OTEL Node Types Library',
+  description: 'Scope definitions for OTEL node types',
+  scopes: {
+    validation: {
+      description: 'Validation instrumentation scope',
+      color: '#8b5cf6', // purple - matches otel-scope node type
+    },
+  },
+  nodeComponents: {},
+  edgeComponents: {},
 };
 
 // =============================================================================
@@ -413,7 +431,7 @@ export const AllNodeTypes: StoryObj = {
     return (
       <ThemeProvider theme={defaultEditorTheme}>
         <div style={{ width: '100%', height: '800px' }}>
-          <GraphRenderer canvas={canvas} initialViewport={{ x: 50, y: 20, zoom: 1 }} />
+          <GraphRenderer canvas={canvas} library={libraryWithScopes} initialViewport={{ x: 50, y: 20, zoom: 1 }} />
         </div>
       </ThemeProvider>
     );
@@ -780,7 +798,7 @@ export const WorkflowExample: StoryObj = {
     return (
       <ThemeProvider theme={defaultEditorTheme}>
         <div style={{ width: '100%', height: '400px' }}>
-          <GraphRenderer canvas={workflowCanvas} initialViewport={{ x: 20, y: 50, zoom: 1 }} />
+          <GraphRenderer canvas={workflowCanvas} library={libraryWithScopes} initialViewport={{ x: 20, y: 50, zoom: 1 }} />
         </div>
       </ThemeProvider>
     );
