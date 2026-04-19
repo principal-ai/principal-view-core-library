@@ -24,7 +24,7 @@ import type {
   OtelNode,
 } from '../types/canvas';
 import type { JsonValue } from '../types';
-import { resolveCanvasColor, isOtelNode } from '../types/canvas';
+import { resolveCanvasColor, isOtelNode, isOtelEventNode } from '../types/canvas';
 import type { NodeState, EdgeState } from '../types';
 import type { ResourceMatch } from '../types/resource-match';
 
@@ -175,10 +175,15 @@ export class CanvasConverter {
 
   /**
    * Convert an OTEL node to React Flow node
-   * OTEL nodes use top-level fields (label, otel, event, etc.) and never use pv
+   * Note: OTEL event nodes (otel-event) do not support explicit fill/color fields.
+   * Event node colors are determined by scope (library.yaml) and injected by GraphRenderer.
+   * Other OTEL node types (scopes, spans, resources, boundaries) can use fill/color.
    */
   private static convertOtelNode(node: OtelNode): ReactFlowNode {
-    const color = resolveCanvasColor(node.color);
+    // For otel-event nodes: skip explicit colors (use scope-based coloring)
+    // For other OTEL nodes: allow explicit fill/color
+    const color = isOtelEventNode(node) ? undefined : resolveCanvasColor(node.color);
+    const fillColor = isOtelEventNode(node) ? undefined : (node.fill || color);
 
     const data: ReactFlowNode['data'] = {
       name: node.label,
@@ -186,7 +191,7 @@ export class CanvasConverter {
       canvasType: node.type,
       shape: node.shape || 'rectangle',
       icon: node.icon,
-      color: node.fill || color,
+      color: fillColor,
       width: node.width,
       height: node.height,
     };
@@ -410,13 +415,18 @@ export class CanvasConverter {
 
   /**
    * Convert an OTEL node to NodeState format
-   * OTEL nodes use top-level fields and never use pv
+   * Note: OTEL event nodes (otel-event) do not support explicit fill/color fields.
+   * Event node colors are determined by scope (library.yaml) and injected by GraphRenderer.
+   * Other OTEL node types (scopes, spans, resources, boundaries) can use fill/color.
    */
   private static convertOtelNodeToGraph(node: OtelNode, now: number): NodeState {
+    // For otel-event nodes: skip explicit colors (use scope-based coloring)
+    // For other OTEL nodes: allow explicit fill/color
+    const color = isOtelEventNode(node) ? undefined : (node.fill || resolveCanvasColor(node.color) || undefined);
+
     const nodeData: Record<string, JsonValue> = {
       description: ('description' in node && node.description) || '',
       shape: node.shape || 'rectangle',
-      color: node.fill || resolveCanvasColor(node.color) || '',
       width: node.width,
       height: node.height,
       sources: [], // not used for OTEL nodes
@@ -424,6 +434,11 @@ export class CanvasConverter {
       canvasType: node.type,
       nodeType: node.type,
     };
+
+    // Only add color if it's defined (skip for otel-event nodes)
+    if (color !== undefined) {
+      nodeData.color = color;
+    }
 
     if (node.icon) nodeData.icon = node.icon;
     if (node.stroke) nodeData.stroke = node.stroke;
