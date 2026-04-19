@@ -17,32 +17,6 @@ import {
   OtelBoundaryNode,
 } from './otel';
 
-/**
- * Converts a hex color to a lighter/tinted version (opaque, not transparent)
- * @param hexColor - Hex color string (e.g., "#FF5733" or "#888")
- * @param lightness - How much to lighten (0-1), defaults to 0.88 (88% white mixed in)
- * @returns hex color string
- */
-function hexToLightColor(hexColor: string, lightness = 0.88): string {
-  // Remove # if present
-  const hex = hexColor.replace('#', '');
-
-  // Parse hex to RGB
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-
-  // Mix with white based on lightness factor
-  // lightness of 0.88 means 88% white + 12% original color
-  const newR = Math.round(r + (255 - r) * lightness);
-  const newG = Math.round(g + (255 - g) * lightness);
-  const newB = Math.round(b + (255 - b) * lightness);
-
-  // Convert back to hex
-  const toHex = (n: number) => n.toString(16).padStart(2, '0');
-  return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`;
-}
-
 export interface CustomNodeData extends Record<string, unknown> {
   name: string;
   typeDefinition: NodeTypeDefinition;
