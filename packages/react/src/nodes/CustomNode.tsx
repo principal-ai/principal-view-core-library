@@ -579,7 +579,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = (props) => 
     const borderStyle = status === 'draft' ? 'dotted' : status === 'approved' ? 'dashed' : 'solid';
     const baseStyles = {
       padding: '12px 16px',
-      backgroundColor: isGroup ? 'rgba(255, 255, 255, 0.7)' : hexToLightColor(fillColor),
+      backgroundColor: isGroup ? 'rgba(255, 255, 255, 0.7)' : fillColor,
       color: '#000',
       border: `2px ${borderStyle} ${hasViolations ? '#D0021B' : strokeColor}`,
       fontSize: theme.fontSizes[0],
@@ -696,7 +696,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = (props) => 
         right: hexagonBorderWidth,
         bottom: hexagonBorderWidth,
         clipPath: hexagonClipPath,
-        backgroundColor: hexToLightColor(fillColor),
+        backgroundColor: fillColor,
         color: '#000',
         display: 'flex',
         flexDirection: 'column',
@@ -742,7 +742,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = (props) => 
         right: diamondBorderWidth,
         bottom: diamondBorderWidth,
         clipPath: diamondClipPath,
-        backgroundColor: hexToLightColor(fillColor),
+        backgroundColor: fillColor,
         color: '#000',
         display: 'flex',
         flexDirection: 'column',
