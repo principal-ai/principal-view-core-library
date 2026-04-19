@@ -99,9 +99,11 @@ export const OtelEventNode: React.FC<NodeProps<Node<OtelEventNodeData>>> = ({
   // Color resolution
   const scopeColor = nodeData.scopeColor as string | undefined;
   const spanColor = nodeData.spanColor as string | undefined;
-  const nodeDataColor = nodeData.color as string | undefined;
-  // Fill color priority: explicit color > scope color > type definition color > default blue
-  const baseFillColor = nodeDataColor || scopeColor || typeDefinition.color || '#3b82f6';
+
+  // OTEL nodes use scope-based coloring exclusively
+  // Priority: scopeColor (from library.yaml) → typeDefinition.color → default
+  // Note: node.fill and node.color fields are intentionally ignored (validation enforces this)
+  const baseFillColor = scopeColor || typeDefinition.color || '#3b82f6';
   const fillColor = baseFillColor;
   // Stroke color priority: explicit stroke > span color (workflow context) > fill color
   const nodeDataStroke = nodeData.stroke as string | undefined;
@@ -140,7 +142,7 @@ export const OtelEventNode: React.FC<NodeProps<Node<OtelEventNodeData>>> = ({
 
   const rectangleStyle: React.CSSProperties = {
     padding: '12px 16px',
-    backgroundColor: hexToLightColor(fillColor),
+    backgroundColor: fillColor,
     color: '#000',
     border: `2px ${borderStyle} ${hasViolations ? '#D0021B' : strokeColor}`,
     fontSize: theme.fontSizes[0],
