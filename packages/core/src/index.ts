@@ -357,6 +357,15 @@ export type {
   NormalizedScope,
 } from './scopes';
 
+// Export events module (event namespace canvas validation)
+export { EventsCanvasValidator } from './events';
+export type {
+  EventNamespaceNode,
+  EventsCanvasValidationContext,
+  EventsCanvasViolation,
+  EventsCanvasValidationResult,
+} from './events';
+
 // Export spans module (span conventions + span color utilities)
 export {
   DEFAULT_SPAN_COLOR,

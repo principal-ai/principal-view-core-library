@@ -23,6 +23,7 @@ import type {
 import { deriveWorkflowEdges } from '../workflow/edge-derivation';
 import type { ExtendedCanvas } from '../types/canvas';
 import { isOtelSpanConventionNode, isOtelScopeNode } from '../types/canvas';
+import { OtelCanvasValidator } from '../validation/OtelCanvasValidator';
 
 /** Info about a span convention extracted from spans.canvas */
 interface SpanInfo {
@@ -698,6 +699,19 @@ export class CanvasDiscovery {
           const canvasWithContent = canvas as DiscoveredCanvasWithContent;
           canvasWithContent.content = parsedContent;
 
+          // Validate OTEL canvas nodes for explicit color usage (only for .otel.canvas files)
+          if (metadata.type === 'otel') {
+            const otelValidator = new OtelCanvasValidator();
+            const violations = otelValidator.validate(parsedContent, path);
+
+            for (const violation of violations) {
+              errors.push({
+                path: violation.file,
+                error: `[${violation.ruleId}] ${violation.message}. ${violation.impact} ${violation.suggestion}`,
+              });
+            }
+          }
+
           // Extract markdown path from canvas metadata if it exists
           if (parsedContent.markdown) {
             canvas.markdownPath = parsedContent.markdown;
@@ -778,6 +792,14 @@ export class CanvasDiscovery {
       };
     }
 
+    // Check for .events.canvas (must come before .canvas check)
+    if (filename.endsWith('.events.canvas')) {
+      return {
+        basename: filename.replace(/\.events\.canvas$/, ''),
+        type: 'events',
+      };
+    }
+
     // Check for .otel.canvas (must come before .canvas check)
     if (filename.endsWith('.otel.canvas')) {
       return {
@@ -786,7 +808,7 @@ export class CanvasDiscovery {
       };
     }
 
-    // Check for .canvas (but not .otel.canvas, .scopes.canvas, .resources.canvas, or .spans.canvas)
+    // Check for .canvas (but not .otel.canvas, .scopes.canvas, .resources.canvas, .spans.canvas, or .events.canvas)
     if (filename.endsWith('.canvas')) {
       const basename = filename.replace(/\.canvas$/, '');
 
@@ -800,6 +822,9 @@ export class CanvasDiscovery {
       }
       if (basename === 'scopes') {
         return { basename, type: 'scopes' };
+      }
+      if (basename === 'events') {
+        return { basename, type: 'events' };
       }
 
       return { basename, type: 'regular' };

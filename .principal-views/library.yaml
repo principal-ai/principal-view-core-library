@@ -24,6 +24,7 @@ resources:
   pv-cli:
     service.name: "principal-view.cli"
     service.version: "${VERSION}"
+    deployment.environment: "${ENVIRONMENT:-local}"
     owned-scopes:
       - "principal-view.cli"
 

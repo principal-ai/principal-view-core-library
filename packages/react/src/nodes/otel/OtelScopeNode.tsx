@@ -1,7 +1,7 @@
 /**
  * OTEL Scope Node
  *
- * Renders scope nodes as circles with:
+ * Renders scope nodes as rounded rectangles with:
  * - Scope name identifier
  * - Status, sources, and references badges
  */
@@ -15,18 +15,6 @@ import type { OtelInfo } from '../../components/NodeTooltip';
 import { NodeBadges } from './shared/NodeBadges';
 import { NodeContent } from './shared/NodeContent';
 import { useNodeBehavior } from './shared/useNodeBehavior';
-
-function hexToLightColor(hexColor: string, lightness = 0.88): string {
-  const hex = hexColor.replace('#', '');
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  const newR = Math.round(r + (255 - r) * lightness);
-  const newG = Math.round(g + (255 - g) * lightness);
-  const newB = Math.round(b + (255 - b) * lightness);
-  const toHex = (n: number) => n.toString(16).padStart(2, '0');
-  return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`;
-}
 
 export interface OtelScopeNodeData extends Record<string, unknown> {
   name: string;
@@ -137,7 +125,7 @@ export const OtelScopeNode: React.FC<NodeProps<Node<OtelScopeNodeData>>> = ({
 
   const circleStyle: React.CSSProperties = {
     padding: '8px',
-    backgroundColor: hexToLightColor(fillColor),
+    backgroundColor: fillColor,
     color: '#000',
     border: `2px ${borderStyle} ${hasViolations ? '#D0021B' : strokeColor}`,
     fontSize: theme.fontSizes[0],
@@ -161,7 +149,7 @@ export const OtelScopeNode: React.FC<NodeProps<Node<OtelScopeNodeData>>> = ({
     transition: 'box-shadow 0.2s ease, opacity 0.3s ease',
     animationDuration: animationType ? `${animationDuration}ms` : undefined,
     boxSizing: 'border-box',
-    borderRadius: '50%',
+    borderRadius: '12px',
   };
 
   const handleStyle = editable
@@ -176,7 +164,7 @@ export const OtelScopeNode: React.FC<NodeProps<Node<OtelScopeNodeData>>> = ({
           isVisible={selected}
           minWidth={40}
           minHeight={40}
-          keepAspectRatio={true}
+          keepAspectRatio={false}
           onResizeEnd={handleResizeEnd}
           handleStyle={{ width: 8, height: 8, borderRadius: 2, zIndex: 20 }}
           lineStyle={{ borderWidth: 1, zIndex: 20 }}
@@ -196,7 +184,7 @@ export const OtelScopeNode: React.FC<NodeProps<Node<OtelScopeNodeData>>> = ({
         onMouseLeave={handleMouseLeave}
       >
         <NodeBadges
-          shape="circle"
+          shape="rectangle"
           status={status}
           sourceFiles={sourceFiles}
           references={references}

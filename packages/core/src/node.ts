@@ -219,3 +219,14 @@ export type {
   ScopesCanvasViolation,
   NormalizedScope,
 } from './scopes';
+
+// Export events module (canvas validation)
+export { EventsCanvasValidator, ScopeEventsValidator } from './events';
+export type {
+  EventsCanvasValidationContext,
+  EventsCanvasValidationResult,
+  EventsCanvasViolation,
+  ScopeEventsValidationContext,
+  ScopeEventsValidationResult,
+  ScopeEventsViolation,
+} from './events';

@@ -941,6 +941,15 @@ export interface OtelMetadata {
  * Represents a telemetry event emitted during workflow execution.
  * The event schema defines the structure of the telemetry data.
  */
+/**
+ * OTEL Event Node - represents a telemetry event
+ *
+ * @remarks
+ * IMPORTANT: Event nodes should NOT use fill or color fields.
+ * Event nodes use scope-based coloring exclusively for consistency.
+ * Set the scope in otel.scope and define scope colors in library.yaml.
+ * Using fill or color fields will cause validation errors.
+ */
 export interface OtelEventNode extends OtelNodeBase {
   type: 'otel-event';
   /** Inline event schema definition */

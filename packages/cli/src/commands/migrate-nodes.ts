@@ -238,7 +238,11 @@ function migrateCanvas(filePath: string, options: MigrateOptions): MigrationResu
       if (changed) {
         result.nodesTransformed++;
         if (options.verbose) {
-          console.log(chalk.gray(`  • Transformed node "${node.id}" from text+${node.pv?.nodeType} to ${transformed.type}`));
+          // If changed, we know it was a text node with pv.nodeType
+          const oldType = (node.type === 'text' && 'pv' in node && node.pv?.nodeType)
+            ? `text+${node.pv.nodeType}`
+            : node.type;
+          console.log(chalk.gray(`  • Transformed node "${node.id}" from ${oldType} to ${transformed.type}`));
         }
       } else {
         result.nodesSkipped++;

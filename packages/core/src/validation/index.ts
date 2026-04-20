@@ -10,3 +10,8 @@ export {
   type LibraryValidationErrorType,
   type LibraryValidationResult,
 } from './libraryValidation';
+
+export {
+  OtelCanvasValidator,
+  type OtelCanvasViolation,
+} from './OtelCanvasValidator';

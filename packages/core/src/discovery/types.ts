@@ -12,12 +12,13 @@ import type { WorkflowTemplate } from '../workflow/types';
  * - 'scopes': Scopes canvas (.scopes.canvas) for documenting instrumentation scopes
  * - 'resources': Resources canvas (.resources.canvas) for documenting OTel resources
  * - 'spans': Spans canvas (.spans.canvas) for documenting span conventions
+ * - 'events': Events canvas (.events.canvas) for documenting event namespaces and adjacency
  * - 'regular': Regular canvas (.canvas) for documentation/architecture diagrams
  *
  * Note: Dashboards (.dashboard.json) are NOT canvases - they live in .principal-views/dashboards/
  * and are discovered separately as DiscoveredDashboard.
  */
-export type CanvasType = 'otel' | 'scopes' | 'resources' | 'spans' | 'regular';
+export type CanvasType = 'otel' | 'scopes' | 'resources' | 'spans' | 'events' | 'regular';
 
 /**
  * Test trace file type discriminator based on extension

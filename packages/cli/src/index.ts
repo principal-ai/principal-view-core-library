@@ -20,6 +20,7 @@ import { createWorkflowCommand } from './commands/workflow/index.js';
 import { createMigrationCommand } from './commands/migration.js';
 import { createMigrateNodesCommand } from './commands/migrate-nodes.js';
 import { createScopesCommand } from './commands/scopes/index.js';
+import { createEventsCommand } from './commands/events/index.js';
 import { createCollectorCommand } from './commands/collector/index.js';
 import { createTraceCommand } from './commands/trace/index.js';
 
@@ -48,6 +49,7 @@ program.addCommand(createHooksCommand());
 program.addCommand(createCoverageCommand());
 program.addCommand(createWorkflowCommand());
 program.addCommand(createScopesCommand());
+program.addCommand(createEventsCommand());
 program.addCommand(createCollectorCommand());
 program.addCommand(createTraceCommand());
 

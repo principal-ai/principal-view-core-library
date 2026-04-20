@@ -18,21 +18,6 @@ import { NodeContent } from './shared/NodeContent';
 import { useNodeBehavior } from './shared/useNodeBehavior';
 import type { WorkflowChip } from './shared/types';
 
-/**
- * Converts a hex color to a lighter/tinted version
- */
-function hexToLightColor(hexColor: string, lightness = 0.88): string {
-  const hex = hexColor.replace('#', '');
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  const newR = Math.round(r + (255 - r) * lightness);
-  const newG = Math.round(g + (255 - g) * lightness);
-  const newB = Math.round(b + (255 - b) * lightness);
-  const toHex = (n: number) => n.toString(16).padStart(2, '0');
-  return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`;
-}
-
 export interface OtelSpanConventionNodeData extends Record<string, unknown> {
   name: string;
   typeDefinition: {
@@ -190,7 +175,7 @@ export const OtelSpanConventionNode: React.FC<
     right: hexagonBorderWidth,
     bottom: hexagonBorderWidth,
     clipPath: hexagonClipPath,
-    backgroundColor: hexToLightColor(fillColor),
+    backgroundColor: fillColor,
     color: '#000',
     display: 'flex',
     flexDirection: 'column',

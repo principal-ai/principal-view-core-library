@@ -1,0 +1,879 @@
+{
+  "name": "Validation Events Vocabulary",
+  "description": "Event namespace canvas showing all event namespaces used during validation workflows and their adjacency relationships",
+  "type": "event-namespace",
+  "markdown": ".principal-views/architecture.events.md",
+  "nodeTypes": {
+    "event-namespace": {
+      "label": "Namespace",
+      "description": "An event namespace grouping related events",
+      "color": "#9C27B0"
+    }
+  },
+  "edgeTypes": {
+    "adjacency": {
+      "label": "adjacent to",
+      "description": "Events from these namespaces appear adjacent in workflow scenarios",
+      "style": "solid",
+      "color": "#666",
+      "width": 2,
+      "directed": true
+    }
+  },
+  "nodes": [
+    {
+      "id": "analysis",
+      "type": "event-namespace",
+      "x": 100,
+      "y": 100,
+      "width": 250,
+      "height": 150,
+      "color": "#4CAF50",
+      "namespace": {
+        "name": "analysis",
+        "description": "Analysis pipeline lifecycle events",
+        "events": [
+          {
+            "name": "analysis.started",
+            "severity": "INFO",
+            "description": "Analysis pipeline has started",
+            "attributes": {
+              "repository.path": {
+                "type": "string",
+                "required": true,
+                "description": "Repository root path"
+              },
+              "analysis.type": {
+                "type": "string",
+                "required": true,
+                "description": "Type of analysis (discovery, validation, full)"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "filetree",
+      "type": "event-namespace",
+      "x": 100,
+      "y": 300,
+      "width": 250,
+      "height": 150,
+      "color": "#2196F3",
+      "namespace": {
+        "name": "filetree",
+        "description": "File tree construction events",
+        "events": [
+          {
+            "name": "filetree.built",
+            "severity": "INFO",
+            "description": "File tree has been constructed from repository",
+            "attributes": {
+              "files.total": {
+                "type": "integer",
+                "required": true,
+                "description": "Total files in repository"
+              },
+              "filetree.sha": {
+                "type": "string",
+                "required": true,
+                "description": "Content hash for caching"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "packages",
+      "type": "event-namespace",
+      "x": 100,
+      "y": 500,
+      "width": 250,
+      "height": 150,
+      "color": "#FF9800",
+      "namespace": {
+        "name": "packages",
+        "description": "Package discovery events",
+        "events": [
+          {
+            "name": "packages.discovered",
+            "severity": "INFO",
+            "description": "Packages found in repository",
+            "attributes": {
+              "packages.count": {
+                "type": "integer",
+                "required": true,
+                "description": "Number of packages found"
+              },
+              "packages.names": {
+                "type": "string[]",
+                "required": false,
+                "description": "Package names"
+              },
+              "repository.type": {
+                "type": "string",
+                "required": true,
+                "description": "Repository type (monorepo, single-package)"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "canvases",
+      "type": "event-namespace",
+      "x": 450,
+      "y": 400,
+      "width": 250,
+      "height": 150,
+      "color": "#9C27B0",
+      "namespace": {
+        "name": "canvases",
+        "description": "Canvas file discovery events",
+        "events": [
+          {
+            "name": "canvases.discovered",
+            "severity": "INFO",
+            "description": "Canvas files discovered in repository",
+            "attributes": {
+              "canvases.total": {
+                "type": "integer",
+                "required": true,
+                "description": "Total canvas files found"
+              },
+              "canvases.regular": {
+                "type": "integer",
+                "required": true,
+                "description": "Regular .canvas files"
+              },
+              "canvases.otel": {
+                "type": "integer",
+                "required": true,
+                "description": "OTEL .otel.canvas files"
+              },
+              "canvases.byPackage": {
+                "type": "object",
+                "required": false,
+                "description": "Canvas count per package"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "executions",
+      "type": "event-namespace",
+      "x": 450,
+      "y": 600,
+      "width": 250,
+      "height": 150,
+      "color": "#9C27B0",
+      "namespace": {
+        "name": "executions",
+        "description": "Execution file discovery events",
+        "events": [
+          {
+            "name": "executions.discovered",
+            "severity": "INFO",
+            "description": "Execution trace files discovered",
+            "attributes": {
+              "executions.total": {
+                "type": "integer",
+                "required": true,
+                "description": "Total execution files found"
+              },
+              "executions.byCanvas": {
+                "type": "object",
+                "required": false,
+                "description": "Execution count per canvas"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "library",
+      "type": "event-namespace",
+      "x": 450,
+      "y": 800,
+      "width": 250,
+      "height": 200,
+      "color": "#673AB7",
+      "namespace": {
+        "name": "library",
+        "description": "Component library events",
+        "events": [
+          {
+            "name": "library.loaded",
+            "severity": "INFO",
+            "description": "Component library loaded",
+            "attributes": {
+              "library.found": {
+                "type": "boolean",
+                "required": true,
+                "description": "Whether library file exists"
+              },
+              "library.path": {
+                "type": "string",
+                "required": false,
+                "description": "Path to library file"
+              },
+              "nodeComponents.count": {
+                "type": "integer",
+                "required": false,
+                "description": "Number of node component types"
+              },
+              "edgeComponents.count": {
+                "type": "integer",
+                "required": false,
+                "description": "Number of edge component types"
+              }
+            }
+          },
+          {
+            "name": "library.validated",
+            "severity": "INFO",
+            "description": "Component library validation completed",
+            "attributes": {
+              "nodeComponents.count": {
+                "type": "integer",
+                "required": true,
+                "description": "Number of node components"
+              },
+              "edgeComponents.count": {
+                "type": "integer",
+                "required": true,
+                "description": "Number of edge components"
+              },
+              "issues.count": {
+                "type": "integer",
+                "required": true,
+                "description": "Total issues found"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "discovery",
+      "type": "event-namespace",
+      "x": 100,
+      "y": 700,
+      "width": 250,
+      "height": 150,
+      "color": "#FF9800",
+      "namespace": {
+        "name": "discovery",
+        "description": "Discovery phase completion events",
+        "events": [
+          {
+            "name": "discovery.complete",
+            "severity": "INFO",
+            "description": "Discovery phase completed",
+            "attributes": {
+              "discovery.duration": {
+                "type": "number",
+                "required": false,
+                "description": "Discovery duration in milliseconds"
+              },
+              "items.discovered": {
+                "type": "integer",
+                "required": true,
+                "description": "Total items discovered"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "validation",
+      "type": "event-namespace",
+      "x": 100,
+      "y": 900,
+      "width": 250,
+      "height": 220,
+      "color": "#4CAF50",
+      "namespace": {
+        "name": "validation",
+        "description": "Validation lifecycle events",
+        "events": [
+          {
+            "name": "validation.started",
+            "severity": "INFO",
+            "description": "Validation phase started",
+            "attributes": {
+              "validation.type": {
+                "type": "string",
+                "required": true,
+                "description": "Type of validation (canvas, workflow, execution, library, config, rules, event)"
+              },
+              "input.fileCount": {
+                "type": "integer",
+                "required": false,
+                "description": "Number of files to validate"
+              }
+            }
+          },
+          {
+            "name": "validation.complete",
+            "severity": "INFO",
+            "description": "Validation pipeline completed successfully",
+            "attributes": {
+              "result.valid": {
+                "type": "boolean",
+                "required": true,
+                "description": "Overall validation result"
+              },
+              "result.validCount": {
+                "type": "integer",
+                "required": true,
+                "description": "Number of valid items"
+              },
+              "result.invalidCount": {
+                "type": "integer",
+                "required": true,
+                "description": "Number of invalid items"
+              },
+              "duration.ms": {
+                "type": "number",
+                "required": false,
+                "description": "Total validation duration"
+              }
+            }
+          },
+          {
+            "name": "validation.error",
+            "severity": "ERROR",
+            "description": "Validation error occurred",
+            "attributes": {
+              "error.type": {
+                "type": "string",
+                "required": true,
+                "description": "Error type (parse, schema, reference, structure)"
+              },
+              "error.message": {
+                "type": "string",
+                "required": true,
+                "description": "Error message"
+              },
+              "error.stage": {
+                "type": "string",
+                "required": true,
+                "description": "Stage where error occurred"
+              },
+              "error.file": {
+                "type": "string",
+                "required": false,
+                "description": "File that caused the error"
+              },
+              "error.line": {
+                "type": "integer",
+                "required": false,
+                "description": "Line number where error occurred"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "file",
+      "type": "event-namespace",
+      "x": 100,
+      "y": 1170,
+      "width": 250,
+      "height": 150,
+      "color": "#2196F3",
+      "namespace": {
+        "name": "file",
+        "description": "File parsing events",
+        "events": [
+          {
+            "name": "file.parsed",
+            "severity": "INFO",
+            "description": "File successfully parsed",
+            "attributes": {
+              "file.path": {
+                "type": "string",
+                "required": true,
+                "description": "Path to parsed file"
+              },
+              "file.format": {
+                "type": "string",
+                "required": true,
+                "description": "File format (json, yaml)"
+              },
+              "file.size": {
+                "type": "integer",
+                "required": false,
+                "description": "File size in bytes"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "type",
+      "type": "event-namespace",
+      "x": 100,
+      "y": 1370,
+      "width": 250,
+      "height": 150,
+      "color": "#FF9800",
+      "namespace": {
+        "name": "type",
+        "description": "Type detection events",
+        "events": [
+          {
+            "name": "type.detected",
+            "severity": "INFO",
+            "description": "Validation type detected for file",
+            "attributes": {
+              "detected.type": {
+                "type": "string",
+                "required": true,
+                "description": "Detected validation type"
+              },
+              "detection.method": {
+                "type": "string",
+                "required": false,
+                "description": "How type was detected (file extension, content, explicit)"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "canvas",
+      "type": "event-namespace",
+      "x": 500,
+      "y": 1200,
+      "width": 250,
+      "height": 150,
+      "color": "#9C27B0",
+      "namespace": {
+        "name": "canvas",
+        "description": "Canvas validation events",
+        "events": [
+          {
+            "name": "canvas.validated",
+            "severity": "INFO",
+            "description": "Canvas validation completed",
+            "attributes": {
+              "canvas.type": {
+                "type": "string",
+                "required": true,
+                "description": "Canvas type (standard, otel)"
+              },
+              "checks.total": {
+                "type": "integer",
+                "required": true,
+                "description": "Total validation checks performed"
+              },
+              "checks.passed": {
+                "type": "integer",
+                "required": true,
+                "description": "Checks that passed"
+              },
+              "checks.failed": {
+                "type": "integer",
+                "required": true,
+                "description": "Checks that failed"
+              },
+              "nodes.count": {
+                "type": "integer",
+                "required": false,
+                "description": "Number of nodes validated"
+              },
+              "edges.count": {
+                "type": "integer",
+                "required": false,
+                "description": "Number of edges validated"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "workflow",
+      "type": "event-namespace",
+      "x": 500,
+      "y": 1400,
+      "width": 250,
+      "height": 150,
+      "color": "#9C27B0",
+      "namespace": {
+        "name": "workflow",
+        "description": "Workflow validation events",
+        "events": [
+          {
+            "name": "workflow.validated",
+            "severity": "INFO",
+            "description": "Workflow validation completed",
+            "attributes": {
+              "scenarios.count": {
+                "type": "integer",
+                "required": true,
+                "description": "Number of scenarios validated"
+              },
+              "violations.count": {
+                "type": "integer",
+                "required": true,
+                "description": "Total violations found"
+              },
+              "errors.count": {
+                "type": "integer",
+                "required": true,
+                "description": "Error violations"
+              },
+              "warnings.count": {
+                "type": "integer",
+                "required": true,
+                "description": "Warning violations"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "execution",
+      "type": "event-namespace",
+      "x": 500,
+      "y": 1600,
+      "width": 250,
+      "height": 150,
+      "color": "#9C27B0",
+      "namespace": {
+        "name": "execution",
+        "description": "Execution trace validation events",
+        "events": [
+          {
+            "name": "execution.validated",
+            "severity": "INFO",
+            "description": "Execution trace validation completed",
+            "attributes": {
+              "format": {
+                "type": "string",
+                "required": true,
+                "description": "Format detected (OTLP, ExecutionData)"
+              },
+              "spans.count": {
+                "type": "integer",
+                "required": true,
+                "description": "Number of spans validated"
+              },
+              "events.count": {
+                "type": "integer",
+                "required": true,
+                "description": "Total events across all spans"
+              },
+              "errors.count": {
+                "type": "integer",
+                "required": true,
+                "description": "Validation errors found"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "rules",
+      "type": "event-namespace",
+      "x": 500,
+      "y": 1800,
+      "width": 250,
+      "height": 150,
+      "color": "#9C27B0",
+      "namespace": {
+        "name": "rules",
+        "description": "Linting rules execution events",
+        "events": [
+          {
+            "name": "rules.executed",
+            "severity": "INFO",
+            "description": "Linting rules executed",
+            "attributes": {
+              "rules.count": {
+                "type": "integer",
+                "required": true,
+                "description": "Number of rules executed"
+              },
+              "violations.total": {
+                "type": "integer",
+                "required": true,
+                "description": "Total violations found"
+              },
+              "violations.error": {
+                "type": "integer",
+                "required": true,
+                "description": "Error-level violations"
+              },
+              "violations.warning": {
+                "type": "integer",
+                "required": true,
+                "description": "Warning-level violations"
+              },
+              "fixable.count": {
+                "type": "integer",
+                "required": false,
+                "description": "Auto-fixable violations"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "results",
+      "type": "event-namespace",
+      "x": 100,
+      "y": 1600,
+      "width": 250,
+      "height": 150,
+      "color": "#FF9800",
+      "namespace": {
+        "name": "results",
+        "description": "Result aggregation events",
+        "events": [
+          {
+            "name": "results.aggregated",
+            "severity": "INFO",
+            "description": "Validation results aggregated",
+            "attributes": {
+              "total.files": {
+                "type": "integer",
+                "required": true,
+                "description": "Total files validated"
+              },
+              "total.errors": {
+                "type": "integer",
+                "required": true,
+                "description": "Total errors across all validations"
+              },
+              "total.warnings": {
+                "type": "integer",
+                "required": true,
+                "description": "Total warnings across all validations"
+              },
+              "validations.performed": {
+                "type": "string[]",
+                "required": true,
+                "description": "Types of validations performed"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "fromNode": "analysis",
+      "toNode": "filetree",
+      "edgeType": "adjacency",
+      "description": "analysis.started → filetree.built"
+    },
+    {
+      "id": "edge-2",
+      "fromNode": "filetree",
+      "toNode": "packages",
+      "edgeType": "adjacency",
+      "description": "filetree.built → packages.discovered"
+    },
+    {
+      "id": "edge-3",
+      "fromNode": "packages",
+      "toNode": "canvases",
+      "edgeType": "adjacency",
+      "description": "packages.discovered → canvases.discovered"
+    },
+    {
+      "id": "edge-4",
+      "fromNode": "packages",
+      "toNode": "executions",
+      "edgeType": "adjacency",
+      "description": "packages.discovered → executions.discovered"
+    },
+    {
+      "id": "edge-5",
+      "fromNode": "packages",
+      "toNode": "library",
+      "edgeType": "adjacency",
+      "description": "packages.discovered → library.loaded"
+    },
+    {
+      "id": "edge-6",
+      "fromNode": "canvases",
+      "toNode": "discovery",
+      "edgeType": "adjacency",
+      "description": "canvases.discovered → discovery.complete"
+    },
+    {
+      "id": "edge-7",
+      "fromNode": "executions",
+      "toNode": "discovery",
+      "edgeType": "adjacency",
+      "description": "executions.discovered → discovery.complete"
+    },
+    {
+      "id": "edge-8",
+      "fromNode": "library",
+      "toNode": "discovery",
+      "edgeType": "adjacency",
+      "description": "library.loaded → discovery.complete"
+    },
+    {
+      "id": "edge-9",
+      "fromNode": "discovery",
+      "toNode": "validation",
+      "edgeType": "adjacency",
+      "description": "discovery.complete → validation.started"
+    },
+    {
+      "id": "edge-10",
+      "fromNode": "validation",
+      "toNode": "file",
+      "edgeType": "adjacency",
+      "description": "validation.started → file.parsed"
+    },
+    {
+      "id": "edge-11",
+      "fromNode": "file",
+      "toNode": "type",
+      "edgeType": "adjacency",
+      "description": "file.parsed → type.detected"
+    },
+    {
+      "id": "edge-12",
+      "fromNode": "file",
+      "toNode": "validation",
+      "edgeType": "adjacency",
+      "description": "file.parsed → validation.error"
+    },
+    {
+      "id": "edge-13",
+      "fromNode": "type",
+      "toNode": "canvas",
+      "edgeType": "adjacency",
+      "description": "type.detected → canvas.validated"
+    },
+    {
+      "id": "edge-14",
+      "fromNode": "type",
+      "toNode": "workflow",
+      "edgeType": "adjacency",
+      "description": "type.detected → workflow.validated"
+    },
+    {
+      "id": "edge-15",
+      "fromNode": "type",
+      "toNode": "execution",
+      "edgeType": "adjacency",
+      "description": "type.detected → execution.validated"
+    },
+    {
+      "id": "edge-16",
+      "fromNode": "type",
+      "toNode": "library",
+      "edgeType": "adjacency",
+      "description": "type.detected → library.validated"
+    },
+    {
+      "id": "edge-17",
+      "fromNode": "type",
+      "toNode": "rules",
+      "edgeType": "adjacency",
+      "description": "type.detected → rules.executed"
+    },
+    {
+      "id": "edge-18",
+      "fromNode": "canvas",
+      "toNode": "results",
+      "edgeType": "adjacency",
+      "description": "canvas.validated → results.aggregated"
+    },
+    {
+      "id": "edge-19",
+      "fromNode": "canvas",
+      "toNode": "validation",
+      "edgeType": "adjacency",
+      "description": "canvas.validated → validation.error"
+    },
+    {
+      "id": "edge-20",
+      "fromNode": "workflow",
+      "toNode": "results",
+      "edgeType": "adjacency",
+      "description": "workflow.validated → results.aggregated"
+    },
+    {
+      "id": "edge-21",
+      "fromNode": "workflow",
+      "toNode": "validation",
+      "edgeType": "adjacency",
+      "description": "workflow.validated → validation.error"
+    },
+    {
+      "id": "edge-22",
+      "fromNode": "execution",
+      "toNode": "results",
+      "edgeType": "adjacency",
+      "description": "execution.validated → results.aggregated"
+    },
+    {
+      "id": "edge-23",
+      "fromNode": "execution",
+      "toNode": "validation",
+      "edgeType": "adjacency",
+      "description": "execution.validated → validation.error"
+    },
+    {
+      "id": "edge-24",
+      "fromNode": "library",
+      "toNode": "results",
+      "edgeType": "adjacency",
+      "description": "library.validated → results.aggregated"
+    },
+    {
+      "id": "edge-25",
+      "fromNode": "library",
+      "toNode": "validation",
+      "edgeType": "adjacency",
+      "description": "library.validated → validation.error"
+    },
+    {
+      "id": "edge-26",
+      "fromNode": "rules",
+      "toNode": "results",
+      "edgeType": "adjacency",
+      "description": "rules.executed → results.aggregated"
+    },
+    {
+      "id": "edge-27",
+      "fromNode": "rules",
+      "toNode": "validation",
+      "edgeType": "adjacency",
+      "description": "rules.executed → validation.error"
+    },
+    {
+      "id": "edge-28",
+      "fromNode": "results",
+      "toNode": "validation",
+      "edgeType": "adjacency",
+      "description": "results.aggregated → validation.complete"
+    }
+  ]
+}

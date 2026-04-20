@@ -35,6 +35,7 @@ import {
   createWorkflowValidator,
   EventRegistry,
   WorkflowValidator,
+  ScopeEventsValidator,
 } from '@principal-ai/principal-view-core/node';
 import type { ComponentLibrary } from '@principal-ai/principal-view-core';
 import {
@@ -385,6 +386,7 @@ const OTEL_NODE_TYPES = [
   'otel-scope',
   'otel-resource',
   'otel-boundary',
+  'event-namespace',
 ] as const;
 
 // ============================================================================
@@ -582,6 +584,7 @@ const ALLOWED_CANVAS_FIELDS = {
     'name',
     'markdown',
     'description',
+    'type', // For event-namespace canvases
     'nodeTypes',
     'edgeTypes',
     'pathConfig',
@@ -615,6 +618,7 @@ const ALLOWED_CANVAS_FIELDS = {
   pvNodeType: ['label', 'description', 'color', 'icon', 'shape'],
   pvEdgeType: [
     'label',
+    'description',
     'style',
     'color',
     'width',
@@ -644,6 +648,7 @@ const ALLOWED_CANVAS_FIELDS = {
     'eventRef',
     'dataSchema',
     'boundary',
+    'namespace',
   ],
   // Node pv extension
   nodePv: [
@@ -686,6 +691,7 @@ const ALLOWED_CANVAS_FIELDS = {
     'color',
     'label',
     'edgeType', // moved from pv.edgeType
+    'description', // for event-namespace canvases
     'pv', // deprecated
   ],
   // edgePv is deprecated - edgeType moved to top-level
@@ -1085,12 +1091,14 @@ function hasOtelFeatures(canvas: unknown): boolean {
  * - Node types reference defined types in pv.nodeTypes or library.nodeComponents
  * - Canvas has pv extension with name and version
  * - OTEL nodes have source file references and the files exist
+ * - Scopes used in OTEL canvases are documented in scopes canvas
  */
 function validateCanvas(
   canvas: unknown,
   filePath: string,
   library: LoadedLibrary | null,
-  repositoryPath?: string
+  repositoryPath?: string,
+  scopesCanvas?: ExtendedCanvas
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
@@ -1421,40 +1429,42 @@ function validateCanvas(
 
       // Validate OTEL node types have required fields
       if (isOtelType) {
-        // OTEL nodes must have a label
-        if (typeof n.label !== 'string' || !n.label) {
-          issues.push({
-            type: 'error',
-            message: `OTEL node "${n.id || index}" must have a "label" field`,
-            path: `${nodePath}.label`,
-            suggestion:
-              'Add a human-readable label for display (e.g., "User Login", "Process Payment")',
-          });
-        } else if (n.label === n.id) {
-          // Label should not be the same as ID
-          const suggestedLabel = idToHumanReadable(n.id as string);
-          issues.push({
-            type: 'error',
-            message: `OTEL node "${n.id}" has label identical to its ID`,
-            path: `${nodePath}.label`,
-            suggestion: `Labels must be human-readable, not technical identifiers. Try: "${suggestedLabel}"`,
-          });
-        } else if (typeof n.label === 'string' && /[*_#`\[\]]/.test(n.label)) {
-          // Label should not contain markdown formatting
-          const cleanLabel = (n.label as string)
-            .replace(/\*\*/g, '')
-            .replace(/\*/g, '')
-            .replace(/_/g, ' ')
-            .replace(/^#+\s*/, '')
-            .replace(/`/g, '')
-            .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-            .trim();
-          issues.push({
-            type: 'error',
-            message: `OTEL node "${n.id}" has markdown formatting in label`,
-            path: `${nodePath}.label`,
-            suggestion: `Labels should be plain text without markdown. Try: "${cleanLabel}"`,
-          });
+        // OTEL nodes must have a label (except event-namespace which uses namespace.name)
+        if (nodeType !== 'event-namespace') {
+          if (typeof n.label !== 'string' || !n.label) {
+            issues.push({
+              type: 'error',
+              message: `OTEL node "${n.id || index}" must have a "label" field`,
+              path: `${nodePath}.label`,
+              suggestion:
+                'Add a human-readable label for display (e.g., "User Login", "Process Payment")',
+            });
+          } else if (n.label === n.id) {
+            // Label should not be the same as ID
+            const suggestedLabel = idToHumanReadable(n.id as string);
+            issues.push({
+              type: 'error',
+              message: `OTEL node "${n.id}" has label identical to its ID`,
+              path: `${nodePath}.label`,
+              suggestion: `Labels must be human-readable, not technical identifiers. Try: "${suggestedLabel}"`,
+            });
+          } else if (typeof n.label === 'string' && /[*_#`\[\]]/.test(n.label)) {
+            // Label should not contain markdown formatting
+            const cleanLabel = (n.label as string)
+              .replace(/\*\*/g, '')
+              .replace(/\*/g, '')
+              .replace(/_/g, ' ')
+              .replace(/^#+\s*/, '')
+              .replace(/`/g, '')
+              .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+              .trim();
+            issues.push({
+              type: 'error',
+              message: `OTEL node "${n.id}" has markdown formatting in label`,
+              path: `${nodePath}.label`,
+              suggestion: `Labels should be plain text without markdown. Try: "${cleanLabel}"`,
+            });
+          }
         }
 
         // otel-event nodes must have event or eventRef
@@ -1513,8 +1523,8 @@ function validateCanvas(
           }
         }
 
-        // Semantic OTEL nodes must have valid otel.status
-        if (OTEL_NODE_TYPES.includes(nodeType as (typeof OTEL_NODE_TYPES)[number])) {
+        // Semantic OTEL nodes must have valid otel.status (except event-namespace)
+        if (OTEL_NODE_TYPES.includes(nodeType as (typeof OTEL_NODE_TYPES)[number]) && nodeType !== 'event-namespace') {
           const otel = n.otel as Record<string, unknown> | undefined;
           const validStatuses = ['draft', 'approved', 'implemented'];
 
@@ -2208,41 +2218,63 @@ The display name will be shown large on the node, and the event name will appear
         });
       }
 
-      // Validate fromSide and toSide are present and valid
+      // Validate fromSide and toSide are present and valid (optional for event-namespace canvases)
+      const isEventNamespaceCanvas = c.type === 'event-namespace';
       const VALID_SIDES = ['top', 'right', 'bottom', 'left'] as const;
-      if (typeof e.fromSide !== 'string') {
-        issues.push({
-          type: 'error',
-          message: `Edge "${edgeLabel}" must have a "fromSide" field`,
-          path: `${edgePath}.fromSide`,
-          suggestion: `Specify which side of the source node the edge starts from: ${VALID_SIDES.join(
-            ', '
-          )}`,
-        });
-      } else if (!VALID_SIDES.includes(e.fromSide as (typeof VALID_SIDES)[number])) {
-        issues.push({
-          type: 'error',
-          message: `Edge "${edgeLabel}" has invalid fromSide "${e.fromSide}"`,
-          path: `${edgePath}.fromSide`,
-          suggestion: `Valid values: ${VALID_SIDES.join(', ')}`,
-        });
-      }
-      if (typeof e.toSide !== 'string') {
-        issues.push({
-          type: 'error',
-          message: `Edge "${edgeLabel}" must have a "toSide" field`,
-          path: `${edgePath}.toSide`,
-          suggestion: `Specify which side of the target node the edge connects to: ${VALID_SIDES.join(
-            ', '
-          )}`,
-        });
-      } else if (!VALID_SIDES.includes(e.toSide as (typeof VALID_SIDES)[number])) {
-        issues.push({
-          type: 'error',
-          message: `Edge "${edgeLabel}" has invalid toSide "${e.toSide}"`,
-          path: `${edgePath}.toSide`,
-          suggestion: `Valid values: ${VALID_SIDES.join(', ')}`,
-        });
+
+      if (!isEventNamespaceCanvas) {
+        if (typeof e.fromSide !== 'string') {
+          issues.push({
+            type: 'error',
+            message: `Edge "${edgeLabel}" must have a "fromSide" field`,
+            path: `${edgePath}.fromSide`,
+            suggestion: `Specify which side of the source node the edge starts from: ${VALID_SIDES.join(
+              ', '
+            )}`,
+          });
+        } else if (!VALID_SIDES.includes(e.fromSide as (typeof VALID_SIDES)[number])) {
+          issues.push({
+            type: 'error',
+            message: `Edge "${edgeLabel}" has invalid fromSide "${e.fromSide}"`,
+            path: `${edgePath}.fromSide`,
+            suggestion: `Valid values: ${VALID_SIDES.join(', ')}`,
+          });
+        }
+        if (typeof e.toSide !== 'string') {
+          issues.push({
+            type: 'error',
+            message: `Edge "${edgeLabel}" must have a "toSide" field`,
+            path: `${edgePath}.toSide`,
+            suggestion: `Specify which side of the target node the edge connects to: ${VALID_SIDES.join(
+              ', '
+            )}`,
+          });
+        } else if (!VALID_SIDES.includes(e.toSide as (typeof VALID_SIDES)[number])) {
+          issues.push({
+            type: 'error',
+            message: `Edge "${edgeLabel}" has invalid toSide "${e.toSide}"`,
+            path: `${edgePath}.toSide`,
+            suggestion: `Valid values: ${VALID_SIDES.join(', ')}`,
+          });
+        }
+      } else if (e.fromSide || e.toSide) {
+        // If sides are provided in event-namespace canvas, they must be valid
+        if (e.fromSide && !VALID_SIDES.includes(e.fromSide as (typeof VALID_SIDES)[number])) {
+          issues.push({
+            type: 'error',
+            message: `Edge "${edgeLabel}" has invalid fromSide "${e.fromSide}"`,
+            path: `${edgePath}.fromSide`,
+            suggestion: `Valid values: ${VALID_SIDES.join(', ')}`,
+          });
+        }
+        if (e.toSide && !VALID_SIDES.includes(e.toSide as (typeof VALID_SIDES)[number])) {
+          issues.push({
+            type: 'error',
+            message: `Edge "${edgeLabel}" has invalid toSide "${e.toSide}"`,
+            path: `${edgePath}.toSide`,
+            suggestion: `Valid values: ${VALID_SIDES.join(', ')}`,
+          });
+        }
       }
 
       // Check for deprecated pv field on edge
@@ -2341,14 +2373,16 @@ The display name will be shown large on the node, and the event name will appear
   const isOtelCanvas = filePath.endsWith('.otel.canvas');
   const isScopesCanvas = filePath.endsWith('.scopes.canvas');
   const isSpansCanvas = filePath.endsWith('.spans.canvas');
+  const isEventsCanvas = filePath.endsWith('.events.canvas');
+  const isEventNamespaceCanvas = (canvas as Record<string, unknown>).type === 'event-namespace';
 
-  if (hasOtel && !isOtelCanvas && !isScopesCanvas && !isSpansCanvas) {
+  if (hasOtel && !isOtelCanvas && !isScopesCanvas && !isSpansCanvas && !isEventsCanvas) {
     issues.push({
       type: 'error',
       message: 'Canvas contains OTEL features but does not use .otel.canvas naming convention',
       suggestion: 'Rename file to use .otel.canvas extension (e.g., "graph-name.otel.canvas")',
     });
-  } else if (!hasOtel && isOtelCanvas) {
+  } else if (!hasOtel && isOtelCanvas && !isEventNamespaceCanvas) {
     issues.push({
       type: 'warning',
       message: 'Canvas uses .otel.canvas naming but does not contain any OTEL features',
@@ -2387,20 +2421,35 @@ Include:
 The canvas is visual documentation. The markdown supplements it with context.`,
     });
   } else {
-    // Validate that the markdown file exists (if repository path is provided)
+    // Validate that the markdown file exists
+    // Try to resolve relative to repository root, or relative to canvas directory if no repository path
+    let markdownPath: string;
     if (repositoryPath) {
-      const markdownPath = resolve(repositoryPath, c.markdown as string);
-      if (!existsSync(markdownPath)) {
-        issues.push({
-          type: 'error',
-          message: `Referenced markdown file does not exist: ${c.markdown}`,
-          path: 'markdown',
-          suggestion: `Create the markdown file at: ${markdownPath}
+      markdownPath = resolve(repositoryPath, c.markdown as string);
+    } else {
+      // If no repository path, try to find the repository root by looking for .principal-views parent
+      const canvasDir = dirname(filePath);
+      const principalViewsIndex = canvasDir.lastIndexOf('.principal-views');
+      if (principalViewsIndex !== -1) {
+        const repoRoot = canvasDir.substring(0, principalViewsIndex);
+        markdownPath = resolve(repoRoot, c.markdown as string);
+      } else {
+        // Fallback: resolve relative to canvas directory
+        markdownPath = resolve(canvasDir, c.markdown as string);
+      }
+    }
+
+    if (!existsSync(markdownPath)) {
+      issues.push({
+        type: 'error',
+        message: `Referenced markdown file does not exist: ${c.markdown}`,
+        path: 'markdown',
+        suggestion: `Create the markdown file at: ${markdownPath}
 
 The markdown should explain the FEATURE (what it does, why it exists), not describe the canvas itself.
 The canvas shows HOW ${
-            isOtelCanvas ? 'we instrument it' : 'it works'
-          }. The markdown explains WHAT the feature does and WHY.
+          isOtelCanvas ? 'we instrument it' : 'it works'
+        }. The markdown explains WHAT the feature does and WHY.
 
 Example structure:
 - What problem does this feature solve?
@@ -2408,6 +2457,54 @@ Example structure:
 - What design choices were made and why?
 - Common workflow patterns
 - Error scenarios and recovery`,
+      });
+    }
+  }
+
+  // Validate that scopes used in OTEL canvas are documented in scopes canvas
+  if (filePath.endsWith('.otel.canvas') && scopesCanvas) {
+    // Extract scopes documented in scopes canvas
+    const documentedScopes = new Set<string>();
+    if (Array.isArray(scopesCanvas.nodes)) {
+      for (const node of scopesCanvas.nodes) {
+        if (node.type === 'otel-scope' && (node as any).otel?.scope) {
+          documentedScopes.add((node as any).otel.scope);
+        }
+      }
+    }
+
+    // Extract scopes used in this canvas
+    const usedScopes = new Set<string>();
+    if (Array.isArray(c.nodes)) {
+      for (const node of c.nodes as Array<Record<string, unknown>>) {
+        // Check OTEL nodes with otel.scope
+        if (node.type && typeof node.type === 'string' && node.type.startsWith('otel-')) {
+          const otelScope = (node.otel as Record<string, unknown> | undefined)?.scope;
+          if (typeof otelScope === 'string') {
+            usedScopes.add(otelScope);
+          }
+        }
+      }
+    }
+
+    // Check for undocumented scopes
+    for (const scope of usedScopes) {
+      if (!documentedScopes.has(scope)) {
+        issues.push({
+          type: 'error',
+          message: `Scope "${scope}" is used in this canvas but not documented in architecture.scopes.canvas`,
+          path: 'nodes[].otel.scope',
+          suggestion: `Add a node to architecture.scopes.canvas with:
+{
+  "type": "otel-scope",
+  "label": "${scope.split('.').pop() || scope}",
+  "otel": {
+    "scope": "${scope}",
+    "status": "implemented"
+  }
+}
+
+All scopes must be documented in architecture.scopes.canvas before being used in workflow canvases.`,
         });
       }
     }
@@ -2670,10 +2767,11 @@ function validateDashboard(
 function validateFile(
   filePath: string,
   library: LoadedLibrary | null,
-  repositoryPath?: string
+  repositoryPath?: string,
+  scopesCanvas?: ExtendedCanvas
 ): ValidationResult {
-  const absolutePath = resolve(filePath);
-  const relativePath = relative(process.cwd(), absolutePath);
+  const absolutePath = repositoryPath ? resolve(repositoryPath, filePath) : resolve(filePath);
+  const relativePath = relative(repositoryPath || process.cwd(), absolutePath);
 
   if (!existsSync(absolutePath)) {
     return {
@@ -2687,7 +2785,7 @@ function validateFile(
   try {
     const content = readFileSync(absolutePath, 'utf8');
     const canvas = JSON.parse(content);
-    const issues = validateCanvas(canvas, relativePath, library, repositoryPath);
+    const issues = validateCanvas(canvas, relativePath, library, repositoryPath, scopesCanvas);
     const hasErrors = issues.some((i) => i.type === 'error');
 
     return {
@@ -3050,6 +3148,35 @@ export function createValidateCommand(): Command {
           // PHASE 6: Validate library
           if (libraryFile && library) {
             const libraryIssues = validateLibrary(library);
+
+            // Validate scope events canvases (check against scopes canvas)
+            // Look for architecture.scopes.canvas in .principal-views
+            const scopesCanvasPath = resolve(repositoryPath, '.principal-views/architecture.scopes.canvas');
+            if (existsSync(scopesCanvasPath)) {
+              try {
+                const scopesCanvasData = readFileSync(scopesCanvasPath, 'utf-8');
+                const scopesCanvasContent = JSON.parse(scopesCanvasData) as ExtendedCanvas;
+
+                const scopeEventsValidator = new ScopeEventsValidator();
+                const scopeEventsResult = await scopeEventsValidator.validate({
+                  scopesCanvas: scopesCanvasContent,
+                  scopesCanvasPath: '.principal-views/architecture.scopes.canvas',
+                  basePath: repositoryPath,
+                });
+
+                for (const violation of scopeEventsResult.violations) {
+                  libraryIssues.push({
+                    type: violation.severity === 'error' ? 'error' : 'warning',
+                    message: violation.message,
+                    path: violation.expectedPath,
+                    suggestion: violation.suggestion,
+                  });
+                }
+              } catch {
+                // Skip if we can't load the scopes canvas
+              }
+            }
+
             const libraryHasErrors = libraryIssues.some((i) => i.type === 'error');
             results.push({
               file: relative(repositoryPath, library.path),
@@ -3225,6 +3352,38 @@ export function createValidateCommand(): Command {
                 suggestion:
                   'Create a .scopes.canvas file (e.g., architecture.scopes.canvas) with nodes for each scope.',
               });
+            }
+          }
+
+          // Validate scope events canvases (check against scopes canvas)
+          const scopesCanvas = discoveryResult.canvases.find(c => c.type === 'scopes');
+          if (scopesCanvas) {
+            // Load the scopes canvas content
+            let scopesCanvasContent: ExtendedCanvas | undefined;
+            try {
+              const scopesCanvasPath = resolve(repositoryPath, scopesCanvas.path);
+              const scopesCanvasData = readFileSync(scopesCanvasPath, 'utf-8');
+              scopesCanvasContent = JSON.parse(scopesCanvasData) as ExtendedCanvas;
+            } catch {
+              // Skip if we can't load the scopes canvas
+            }
+
+            if (scopesCanvasContent) {
+              const scopeEventsValidator = new ScopeEventsValidator();
+              const scopeEventsResult = await scopeEventsValidator.validate({
+                scopesCanvas: scopesCanvasContent,
+                scopesCanvasPath: scopesCanvas.path,
+                basePath: repositoryPath,
+              });
+
+              for (const violation of scopeEventsResult.violations) {
+                libraryIssues.push({
+                  type: violation.severity === 'error' ? 'error' : 'warning',
+                  message: violation.message,
+                  path: violation.expectedPath,
+                  suggestion: violation.suggestion,
+                });
+              }
             }
           }
 
@@ -3437,6 +3596,18 @@ export function createValidateCommand(): Command {
         // PHASE 2: Validate all canvas files and collect parsed canvases
         const parsedCanvases = new Map<string, ExtendedCanvas>();
 
+        // Load scopes canvas for cross-validation
+        let scopesCanvasContent: ExtendedCanvas | undefined;
+        const scopesCanvasPath = resolve(repositoryPath, '.principal-views/architecture.scopes.canvas');
+        if (existsSync(scopesCanvasPath)) {
+          try {
+            const scopesCanvasData = readFileSync(scopesCanvasPath, 'utf-8');
+            scopesCanvasContent = JSON.parse(scopesCanvasData) as ExtendedCanvas;
+          } catch {
+            // Skip if we can't load the scopes canvas
+          }
+        }
+
         if (validateCanvases) {
           for (const canvas of discoveryResult.canvases) {
             // Check if we already have a result for this canvas (from discovery errors)
@@ -3446,7 +3617,7 @@ export function createValidateCommand(): Command {
               continue;
             }
 
-            const validationResult = validateFile(canvas.path, library, repositoryPath);
+            const validationResult = validateFile(canvas.path, library, repositoryPath, scopesCanvasContent);
             results.push(validationResult);
 
             // Collect parsed canvas for EventRegistry
@@ -3636,12 +3807,13 @@ export function createValidateCommand(): Command {
 
             // Extract span conventions from nodes
             for (const node of canvas.nodes) {
-              if (!node.pv) continue;
-              const nodePv = node.pv as unknown as Record<string, unknown>;
-              const nodeOtel = nodePv.otel as Record<string, unknown> | undefined;
-              const spanPattern = nodeOtel?.spanPattern as string | undefined;
-              const status = nodePv.status as string | undefined;
-              const nodeLabel = node.id || 'unknown';
+              // Only process OTEL span convention nodes (new format)
+              if (node.type !== 'otel-span-convention') continue;
+
+              const spanNode = node as { type: 'otel-span-convention'; label: string; otel?: { spanPattern?: string; status?: string } };
+              const spanPattern = spanNode.otel?.spanPattern;
+              const status = spanNode.otel?.status;
+              const nodeLabel = spanNode.label || node.id || 'unknown';
 
               if (!spanPattern) continue; // Skip nodes without spanPattern
 
