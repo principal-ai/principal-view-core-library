@@ -23,9 +23,6 @@ export { deadEndStates, type DeadEndStatesOptions } from './dead-end-states';
 // Pattern rules
 export { validActionPatterns, type ValidActionPatternsOptions } from './valid-action-patterns';
 
-// Library rules
-export { libraryNodeTypeMatch, type LibraryNodeTypeMatchOptions } from './library-node-type-match';
-
 import type { GraphRule } from '../types';
 import { requiredMetadata } from './required-metadata';
 import { validNodeTypes } from './valid-node-types';
@@ -40,7 +37,6 @@ import { orphanedEdgeTypes } from './orphaned-edge-types';
 import { unreachableStates } from './unreachable-states';
 import { deadEndStates } from './dead-end-states';
 import { validActionPatterns } from './valid-action-patterns';
-import { libraryNodeTypeMatch } from './library-node-type-match';
 
 /**
  * All built-in rules
@@ -67,7 +63,4 @@ export const builtinRules: GraphRule[] = [
 
   // Pattern rules (1)
   validActionPatterns as unknown as GraphRule,
-
-  // Library rules (1)
-  libraryNodeTypeMatch as unknown as GraphRule,
 ];

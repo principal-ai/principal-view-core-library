@@ -148,116 +148,6 @@ export interface ResourceAttributes {
   [key: string]: string | string[] | undefined;
 }
 
-// ============================================================================
-// Library Component Types
-// ============================================================================
-
-/**
- * A reusable node component definition in the library.
- * Contains all the information needed to create a canvas node.
- */
-export interface LibraryNodeComponent {
-  /** Human-readable description for the library UI (required) */
-  description: string;
-
-  /** Tags for filtering/categorizing in the library UI */
-  tags?: string[];
-
-  /** Default label/text for the node when added to canvas */
-  defaultLabel?: string;
-
-  /** Visual shape (optional - only needed for canvas rendering) */
-  shape?: PVNodeShape;
-
-  /** Icon identifier (Lucide icons) */
-  icon?: string;
-
-  /** Default color */
-  color?: string;
-
-  /** Default size */
-  size?: { width: number; height: number };
-
-  /** State definitions */
-  states?: Record<string, PVNodeState>;
-
-  /** Source file patterns for log association */
-  sources?: string[];
-
-  /** Data schema for typed fields */
-  dataSchema?: Record<
-    string,
-    {
-      type: 'string' | 'number' | 'boolean' | 'object' | 'array';
-      required?: boolean;
-      displayInLabel?: boolean;
-    }
-  >;
-
-  /** Layout hints */
-  layout?: {
-    layer?: number;
-    cluster?: string;
-  };
-}
-
-/**
- * A reusable edge type definition in the library.
- */
-export interface LibraryEdgeComponent {
-  /** Human-readable description for the library UI */
-  description?: string;
-
-  /** Tags for filtering/categorizing in the library UI */
-  tags?: string[];
-
-  /** Line style (optional - only needed for canvas rendering) */
-  style?: PVEdgeStyle;
-
-  /** Line color */
-  color?: string;
-
-  /** Line width in pixels */
-  width?: number;
-
-  /** Whether edge is directed (has arrow) */
-  directed?: boolean;
-
-  /** Default animation */
-  animation?: {
-    type: PVAnimationType;
-    duration?: number;
-    color?: string;
-  };
-
-  /** Label configuration */
-  label?: {
-    field?: string;
-    position?: 'start' | 'middle' | 'end';
-  };
-}
-
-/**
- * Connection rule template for the library.
- * Defines which node types can connect via which edge types.
- */
-export interface LibraryConnectionRule {
-  /** Source node type (key from nodeComponents) */
-  from: string;
-
-  /** Target node type (key from nodeComponents) */
-  to: string;
-
-  /** Edge type to use (key from edgeComponents) */
-  via: string;
-
-  /** Optional constraints */
-  constraints?: {
-    maxInstances?: number;
-    bidirectional?: boolean;
-    exclusive?: boolean;
-  };
-}
 
 // ============================================================================
 // Component Library Root Type
@@ -269,46 +159,35 @@ export interface LibraryConnectionRule {
  * Example library.yaml:
  * ```yaml
  * version: "1.0.0"
- * name: "My Project Components"
- * description: "Reusable components for my microservices project"
+ * name: "My Service"
+ * description: "OTEL instrumentation configuration"
  *
- * nodeComponents:
- *   postgres-db:
- *     description: "PostgreSQL database"
- *     tags: ["database", "storage"]
- *     shape: circle
- *     icon: Database
- *     color: "#336791"
- *     states:
- *       connected: { color: "#22c55e", label: "Connected" }
- *       disconnected: { color: "#ef4444", label: "Disconnected" }
- *     sources:
- *       - "src/database/**\/*.ts"
+ * scopes:
+ *   auth-flow:
+ *     color: "#DC2626"
+ *     description: "Authentication flow instrumentation"
+ *   checkout-flow:
+ *     color: "#059669"
+ *     description: "Checkout process instrumentation"
  *
- *   rest-api:
- *     description: "REST API endpoint"
- *     tags: ["api", "http"]
- *     shape: rectangle
- *     icon: Globe
- *     color: "#4A90E2"
- *     sources:
- *       - "src/api/**\/*.ts"
+ * resources:
+ *   auth-service:
+ *     service.name: "auth-service"
+ *     service.version: "1.0.0"
+ *     deployment.environment: "production"
+ *     owned-scopes:
+ *       - "auth-flow"
  *
- * edgeComponents:
- *   http-request:
- *     description: "HTTP request between services"
- *     tags: ["http"]
- *     style: solid
- *     color: "#4A90E2"
- *     directed: true
- *     animation:
- *       type: flow
- *       duration: 1000
- *
- * connectionRules:
- *   - from: rest-api
- *     to: postgres-db
- *     via: db-query
+ * eventSchemas:
+ *   user.login.success:
+ *     description: "User successfully logged in"
+ *     attributes:
+ *       user.id:
+ *         type: string
+ *         required: true
+ *       session.id:
+ *         type: string
+ *         required: true
  * ```
  */
 export interface ComponentLibrary {
@@ -370,12 +249,6 @@ export interface ComponentLibrary {
    */
   resources?: Record<string, ResourceAttributes>;
 
-  /** Reusable node component definitions */
-  nodeComponents: Record<string, LibraryNodeComponent>;
-
-  /** Reusable edge type definitions */
-  edgeComponents: Record<string, LibraryEdgeComponent>;
-
   /**
    * Reusable event schema definitions
    *
@@ -395,31 +268,6 @@ export interface ComponentLibrary {
    * ```
    */
   eventSchemas?: Record<string, Omit<PVEventSchema, 'name'>>;
-
-  /** Optional connection rules (which nodes can connect via which edges) */
-  connectionRules?: LibraryConnectionRule[];
-
-  /**
-   * Global state definitions for OTEL nodes
-   *
-   * Defines reusable states that can be applied to OTEL event and span nodes.
-   * States provide visual indicators (colors) for different statuses.
-   *
-   * @example
-   * ```yaml
-   * states:
-   *   draft:
-   *     color: "#f59e0b"
-   *     label: "Draft"
-   *   approved:
-   *     color: "#10b981"
-   *     label: "Approved"
-   *   implemented:
-   *     color: "#6366f1"
-   *     label: "Implemented"
-   * ```
-   */
-  states?: Record<string, PVNodeState>;
 }
 
 // ============================================================================

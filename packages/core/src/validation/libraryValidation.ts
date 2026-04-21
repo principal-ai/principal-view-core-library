@@ -83,22 +83,6 @@ export function validateLibraryStructure(library: ComponentLibrary): LibraryVali
     ));
   }
 
-  if (!library.nodeComponents || typeof library.nodeComponents !== 'object') {
-    errors.push(schemaError(
-      'Missing or invalid "nodeComponents" field',
-      'nodeComponents',
-      'Add: nodeComponents: {} (can be empty but must be present)'
-    ));
-  }
-
-  if (!library.edgeComponents || typeof library.edgeComponents !== 'object') {
-    errors.push(schemaError(
-      'Missing or invalid "edgeComponents" field',
-      'edgeComponents',
-      'Add: edgeComponents: {} (can be empty but must be present)'
-    ));
-  }
-
   // Validate event schemas if present
   if (library.eventSchemas !== undefined) {
     if (typeof library.eventSchemas !== 'object' || library.eventSchemas === null) {
@@ -172,42 +156,6 @@ export function validateLibraryStructure(library: ComponentLibrary): LibraryVali
               'Add a color: "#RRGGBB" or use external: true for scopes defined in other libraries'
             ));
           }
-        }
-      }
-    }
-  }
-
-  // Validate connection rules if present
-  if (library.connectionRules) {
-    for (const [index, rule] of library.connectionRules.entries()) {
-      if (!rule.from || !rule.to || !rule.via) {
-        errors.push(schemaError(
-          `Connection rule at index ${index} is missing required fields`,
-          `connectionRules[${index}]`,
-          'Connection rules require: from, to, via'
-        ));
-      } else {
-        // Check that referenced types exist
-        if (library.nodeComponents && !library.nodeComponents[rule.from]) {
-          errors.push(schemaError(
-            `Connection rule references unknown node type "${rule.from}"`,
-            `connectionRules[${index}].from`,
-            `Define "${rule.from}" in nodeComponents`
-          ));
-        }
-        if (library.nodeComponents && !library.nodeComponents[rule.to]) {
-          errors.push(schemaError(
-            `Connection rule references unknown node type "${rule.to}"`,
-            `connectionRules[${index}].to`,
-            `Define "${rule.to}" in nodeComponents`
-          ));
-        }
-        if (library.edgeComponents && !library.edgeComponents[rule.via]) {
-          errors.push(schemaError(
-            `Connection rule references unknown edge type "${rule.via}"`,
-            `connectionRules[${index}].via`,
-            `Define "${rule.via}" in edgeComponents`
-          ));
         }
       }
     }

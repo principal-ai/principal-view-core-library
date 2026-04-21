@@ -62,8 +62,6 @@ export const VALID_RULE_IDS = [
   'dead-end-states',
   // Pattern rules
   'valid-action-patterns',
-  // Library rules
-  'library-node-type-match',
 ] as const;
 
 export type ValidRuleId = (typeof VALID_RULE_IDS)[number];
@@ -75,7 +73,6 @@ export const RULE_OPTIONS_SCHEMA: Record<string, string[]> = {
   'minimum-node-sources': ['minimum', 'excludeNodeTypes'],
   'dead-end-states': ['terminalStates'],
   'valid-action-patterns': ['strictMode'],
-  'library-node-type-match': ['allowExtra'],
 };
 
 // ============================================================================

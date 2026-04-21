@@ -24,8 +24,6 @@ export type {
   ConfigurationLoadResult,
   // Library types for loading .principal-views/library.yaml
   ComponentLibrary,
-  LibraryNodeComponent,
-  LibraryEdgeComponent,
 } from '@principal-ai/principal-view-core';
 
 // Export components

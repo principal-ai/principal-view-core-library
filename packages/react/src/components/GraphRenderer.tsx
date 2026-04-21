@@ -2618,36 +2618,7 @@ function useCanvasToLegacy(
     const nodeTypes: GraphConfiguration['nodeTypes'] = {};
     const edgeTypes: GraphConfiguration['edgeTypes'] = {};
 
-    // First, add node types from library (lowest priority - can be overridden by canvas)
-    if (library?.nodeComponents) {
-      for (const [id, component] of Object.entries(library.nodeComponents)) {
-        nodeTypes[id] = {
-          description: component.description,
-          shape: component.shape || 'rectangle',
-          icon: component.icon,
-          color: component.color,
-          size: component.size,
-          dataSchema: component.dataSchema || {},
-          states: component.states || library.states, // Fallback to global library states
-          layout: component.layout,
-        };
-      }
-    }
-
-    // Then, add edge types from library
-    if (library?.edgeComponents) {
-      for (const [id, component] of Object.entries(library.edgeComponents)) {
-        edgeTypes[id] = {
-          style: component.style || 'solid',
-          color: component.color,
-          width: component.width,
-          directed: component.directed,
-          animation: component.animation,
-        };
-      }
-    }
-
-    // Next, add node types from canvas nodeTypes (overrides library)
+    // Add node types from canvas nodeTypes
     if (canvas.nodeTypes) {
       for (const [id, def] of Object.entries(canvas.nodeTypes)) {
         nodeTypes[id] = {
@@ -2757,7 +2728,6 @@ function useCanvasToLegacy(
       edgeTypes,
       allowedConnections,
       display,
-      states: library?.states, // Add global states from library as fallback
     };
 
     return { configuration, nodes, edges };

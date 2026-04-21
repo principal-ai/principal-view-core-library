@@ -311,8 +311,8 @@ describe('GraphRulesEngine', () => {
 });
 
 describe('builtinRules', () => {
-  it('should have 14 rules', () => {
-    expect(builtinRules.length).toBe(14);
+  it('should have 13 rules', () => {
+    expect(builtinRules.length).toBe(13);
   });
 
   it('should have unique IDs', () => {

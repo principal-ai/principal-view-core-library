@@ -74,13 +74,10 @@ export {
   deadEndStates,
   // Pattern rules
   validActionPatterns,
-  // Library rules
-  libraryNodeTypeMatch,
   // Rule option types
   type MinimumNodeSourcesOptions,
   type DeadEndStatesOptions,
   type ValidActionPatternsOptions,
-  type LibraryNodeTypeMatchOptions,
 } from './implementations';
 
 // Convenience factory that creates an engine with all built-in rules

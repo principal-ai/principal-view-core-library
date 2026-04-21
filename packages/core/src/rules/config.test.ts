@@ -264,8 +264,8 @@ describe('formatConfigErrors', () => {
 });
 
 describe('VALID_RULE_IDS', () => {
-  it('should contain all 14 rule IDs', () => {
-    expect(VALID_RULE_IDS.length).toBe(14);
+  it('should contain all 13 rule IDs', () => {
+    expect(VALID_RULE_IDS.length).toBe(13);
   });
 
   it('should include expected rules', () => {
@@ -273,6 +273,5 @@ describe('VALID_RULE_IDS', () => {
     expect(VALID_RULE_IDS).toContain('no-unknown-fields');
     expect(VALID_RULE_IDS).toContain('minimum-node-sources');
     expect(VALID_RULE_IDS).toContain('valid-action-patterns');
-    expect(VALID_RULE_IDS).toContain('library-node-type-match');
   });
 });

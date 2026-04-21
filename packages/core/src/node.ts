@@ -109,8 +109,6 @@ export type { YamlParseResult } from './utils/YamlParser';
 
 // Export component library support (Node.js only - file system)
 export { LibraryLoader } from './LibraryLoader';
-export { LibraryConverter } from './utils/LibraryConverter';
-export type { CreateNodeOptions, CreateEdgeOptions } from './utils/LibraryConverter';
 
 // Export event registry (for cross-canvas event lookup)
 export { EventRegistry } from './registry/EventRegistry';

@@ -47,8 +47,6 @@ export type {
   ValidationResult,
   EventStream,
   ConnectionRule,
-  LibraryNodeComponent,
-  LibraryEdgeComponent,
   ComponentActivityEvent,
   ComponentActionEvent,
   EdgeAnimationEvent,
@@ -444,8 +442,6 @@ export type {
 
 // Export component library support (browser-safe - uses FileSystemAdapter abstraction)
 export { LibraryLoader } from './LibraryLoader';
-export { LibraryConverter } from './utils/LibraryConverter';
-export type { CreateNodeOptions, CreateEdgeOptions } from './utils/LibraryConverter';
 export type { ResourceAttributes, ScopeDefinition, OwnedScopes } from './types/library';
 
 // Export library validation (browser-safe - standalone validation functions)
