@@ -6,6 +6,8 @@
  */
 
 import type { OwnedScopes, ScopeDefinition } from '../types/library';
+import type { ExtendedCanvas, OtelScopeNode } from '../types/canvas';
+import { isOtelScopeNode, resolveCanvasColor } from '../types/canvas';
 
 /** Default color for scopes without a defined color */
 export const DEFAULT_SCOPE_COLOR = '#6B7280'; // gray-500
@@ -87,22 +89,17 @@ export function getScopeIcon(
 }
 
 /**
- * Build a scope color map from library scopes
+ * Build a scope color map from .scopes.canvas
  * Returns a simple name -> color mapping for fast lookups
- * External scopes (without color) use the default color
+ *
+ * @deprecated The library.scopes parameter has been removed. Use scopesCanvas instead.
+ * @param scopesCanvas - Canvas containing scope definitions with colors
+ * @returns Map of scope name to color (hex format)
  */
 export function buildScopeColorMap(
-  library: { scopes?: Record<string, ScopeDefinition> } | undefined
+  scopesCanvas: ExtendedCanvas | undefined
 ): Record<string, string> {
-  const colorMap: Record<string, string> = {};
-
-  if (library?.scopes) {
-    for (const [name, def] of Object.entries(library.scopes)) {
-      colorMap[name] = def.color ?? DEFAULT_SCOPE_COLOR;
-    }
-  }
-
-  return colorMap;
+  return buildScopeColorMapFromCanvas(scopesCanvas);
 }
 
 /**
@@ -113,4 +110,73 @@ export function getAllScopeNames(
 ): string[] {
   if (!library?.scopes) return [];
   return Object.keys(library.scopes);
+}
+
+/**
+ * Build scope color map from .scopes.canvas nodes
+ * Extracts color from otel-scope nodes only
+ *
+ * @param scopesCanvas - Canvas containing scope definitions
+ * @returns Map of scope name to color (hex format)
+ */
+export function buildScopeColorMapFromCanvas(
+  scopesCanvas: ExtendedCanvas | undefined
+): Record<string, string> {
+  const colorMap: Record<string, string> = {};
+
+  if (!scopesCanvas?.nodes) return colorMap;
+
+  for (const node of scopesCanvas.nodes) {
+    // Only process otel-scope nodes
+    if (!isOtelScopeNode(node)) continue;
+
+    const scopeName = node.otel?.scope;
+    if (!scopeName) continue;
+
+    // Get color from node.color field and resolve presets to hex
+    const resolvedColor = resolveCanvasColor(node.color);
+    if (resolvedColor) {
+      colorMap[scopeName] = resolvedColor;
+    } else {
+      // Use default color if no color specified
+      colorMap[scopeName] = DEFAULT_SCOPE_COLOR;
+    }
+  }
+
+  return colorMap;
+}
+
+/**
+ * Extract all scope names from a scopes canvas
+ *
+ * @param scopesCanvas - Canvas containing scope definitions
+ * @returns Array of scope names
+ */
+export function getScopeNamesFromCanvas(
+  scopesCanvas: ExtendedCanvas | undefined
+): string[] {
+  if (!scopesCanvas?.nodes) return [];
+
+  return scopesCanvas.nodes
+    .filter(isOtelScopeNode)
+    .map(node => node.otel?.scope)
+    .filter((scope): scope is string => !!scope);
+}
+
+/**
+ * Get scope node by scope name
+ *
+ * @param scopesCanvas - Canvas containing scope definitions
+ * @param scopeName - Name of the scope to find
+ * @returns The scope node, or undefined if not found
+ */
+export function getScopeNodeFromCanvas(
+  scopesCanvas: ExtendedCanvas | undefined,
+  scopeName: string
+): OtelScopeNode | undefined {
+  if (!scopesCanvas?.nodes) return undefined;
+
+  return scopesCanvas.nodes.find(
+    node => isOtelScopeNode(node) && node.otel?.scope === scopeName
+  ) as OtelScopeNode | undefined;
 }

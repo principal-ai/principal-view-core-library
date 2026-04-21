@@ -352,20 +352,15 @@ function validateLibrary(library: LoadedLibrary): ValidationIssue[] {
   }
 
   // 4. CLI-specific: Validate scopes section for unknown fields and icon names
+  // Check for deprecated scopes section (breaking change)
   if (lib.scopes && typeof lib.scopes === 'object' && !Array.isArray(lib.scopes)) {
-    const scopes = lib.scopes as Record<string, unknown>;
-
-    for (const [scopeId, scopeDef] of Object.entries(scopes)) {
-      if (scopeDef && typeof scopeDef === 'object') {
-        const scope = scopeDef as Record<string, unknown>;
-
-        // Check for unknown fields
-        checkUnknownFields(scope, ALLOWED_LIBRARY_FIELDS.scope, `scopes.${scopeId}`, issues);
-
-        // Validate icon name format (must be PascalCase for Lucide icons)
-        validateIconName(scope.icon, `scopes.${scopeId}.icon`, issues);
-      }
-    }
+    const scopeCount = Object.keys(lib.scopes).length;
+    issues.push({
+      type: 'error',
+      message: `The 'scopes' section in library.yaml is no longer supported (${scopeCount} scope(s) found)`,
+      path: `library.yaml:scopes`,
+      suggestion: `Run "pv migrate scopes-to-canvas" to migrate to .scopes.canvas format, then remove the scopes section from library.yaml. Scope visual metadata (colors, icons, descriptions) is now defined in .scopes.canvas files. The "owned-scopes" field in resources is still used for telemetry routing.`,
+    });
   }
 
   return issues;
@@ -1490,22 +1485,8 @@ function validateCanvas(
               message: `OTEL event node "${n.id}" is missing required "otel.scope" field`,
               path: `${nodePath}.otel.scope`,
               suggestion:
-                'Add otel.scope to specify which instrumentation library emits this event. Example: otel: { scope: "my-service" }. Define scopes in library.yaml and document them in architecture.scopes.canvas.',
+                'Add otel.scope to specify which instrumentation library emits this event. Example: otel: { scope: "my-service" }. Document scopes in your .scopes.canvas file with otel-scope nodes.',
             });
-          } else if (library && library.scopes) {
-            // Validate that scope exists in library.yaml scopes
-            if (!library.scopes[scope]) {
-              const availableScopes = Object.keys(library.scopes);
-              issues.push({
-                type: 'error',
-                message: `OTEL event node "${n.id}" references undefined scope "${scope}"`,
-                path: `${nodePath}.otel.scope`,
-                suggestion:
-                  availableScopes.length > 0
-                    ? `Scope must be defined in library.yaml. Available scopes: ${availableScopes.join(', ')}. Add the scope to library.yaml or use an existing scope.`
-                    : `Scope "${scope}" is not defined in library.yaml. Add it under the "scopes" section with a color and description.`,
-              });
-            }
           }
         }
 

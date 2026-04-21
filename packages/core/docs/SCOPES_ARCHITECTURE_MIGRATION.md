@@ -1,14 +1,48 @@
 # Scopes Architecture Migration
 
-**Status**: Planning
+**Status**: Ready for Implementation
 **Created**: 2026-04-20
-**Target**: v0.28.0
+**Type**: Breaking Change
 
 ## Problem Statement
 
-Currently, scope information exists in **two separate places**, creating redundancy and confusion:
+### Important: Two Different "Scopes" Concepts
 
-1. **`library.yaml` → `scopes:` section** - Defines scope colors for event node rendering
+This migration is specifically about **scope visual metadata** (colors, icons, descriptions). It does **NOT** affect the `owned-scopes` field in resources, which is used for **telemetry routing and registry lookup**.
+
+**What's NOT Changing:**
+- `resources.*.owned-scopes` arrays in library.yaml - These declare which instrumentation scopes belong to each service for registry routing
+- The telemetry routing mechanism that uses owned-scopes to map incoming OTLP traces to the correct workspace/library
+
+**What IS Changing:**
+- Top-level `scopes:` section in library.yaml - Visual metadata for those scope names
+
+#### Background: Owned Scopes for Registry Routing
+
+The `owned-scopes` field in resources is critical for telemetry routing:
+
+```yaml
+resources:
+  my-service:
+    service.name: "my-service"
+    owned-scopes:
+      - "@my-org/my-library"    # This service owns this instrumentation scope
+```
+
+When OTLP traces arrive with scope `@my-org/my-library`, the LocalRegistry uses `owned-scopes` to route them to the correct workspace/library that has the matching workflows and storyboards.
+
+This is separate from visual styling - owned-scopes is about **which service owns which instrumentation scopes**, while the top-level scopes section (being migrated) was about **how to visually render those scopes**.
+
+**References:**
+- `docs/LOCAL_DEVELOPMENT_REGISTRY.md` - Registry routing design
+- `docs/LIBRARY_TELEMETRY_AND_MATCHING.md` - Scope-based telemetry matching
+- `docs/guides/configuring-telemetry-routing.md` - Practical routing configuration
+
+---
+
+Currently, scope **visual metadata** exists in **two separate places**, creating redundancy and confusion:
+
+1. **`library.yaml` → `scopes:` section** - Defines scope colors/icons/descriptions for event node rendering
 2. **`.scopes.canvas`** - Architectural diagram showing scope nodes as visual elements
 
 This dual representation creates several issues:
@@ -60,19 +94,19 @@ scopes:
 
 ## Proposed Architecture
 
-**Single Source of Truth**: `.scopes.canvas` file
+**Single Source of Truth for Visual Metadata**: `.scopes.canvas` file
 
-All scope information (colors, descriptions, icons) lives in the `.scopes.canvas` file as node properties. The `library.yaml` file no longer contains a `scopes:` section.
+All scope **visual metadata** (colors, descriptions, icons) lives in the `.scopes.canvas` file as node properties. The `library.yaml` file no longer contains a top-level `scopes:` section.
+
+**Important**: The `owned-scopes` field in resources remains in library.yaml - it serves a different purpose (telemetry routing/registry lookup).
 
 ### New Structure
 
 **architecture.scopes.canvas** (source of truth):
 ```json
 {
-  "pv": {
-    "name": "Instrumentation Scopes",
-    "description": "Defines instrumentation scopes for the application"
-  },
+  "name": "Instrumentation Scopes",
+  "description": "Defines instrumentation scopes for the application",
   "nodes": [
     {
       "id": "auth-scope",
@@ -104,35 +138,34 @@ All scope information (colors, descriptions, icons) lives in the `.scopes.canvas
 }
 ```
 
-**library.yaml** (no scopes section):
+**library.yaml** (no top-level scopes section):
 ```yaml
 version: "1.0.0"
 name: "My Library"
 
+# Resources still have owned-scopes for registry routing
 resources:
   my-service:
     service.name: "my-service"
     owned-scopes:
-      - auth-service
-      - payment-service
+      - auth-service      # Registry: this service owns "auth-service" scope
+      - payment-service   # Registry: this service owns "payment-service" scope
 
-nodeComponents:
-  otel-scope:
-    shape: circle
-    color: "#8b5cf6"  # Default color for scope nodes
-    description: "OTEL instrumentation scope"
-
-edgeComponents:
-  # ... edge definitions
+eventSchemas:
+  # ... event schema definitions (optional)
 ```
+
+**Note**: `owned-scopes` arrays remain in resources - they're used for telemetry routing, not visual metadata.
 
 ### Benefits
 
-1. **Single Source of Truth**: Scope metadata lives in one place
-2. **Visual First**: Scopes are architectural elements, naturally belong in canvas
-3. **Richer Metadata**: Can include visual position, relationships, groupings
-4. **Simpler Validation**: Only validate that `owned-scopes` references exist in `.scopes.canvas`
-5. **Better UX**: Edit scope colors directly in the canvas visual editor
+1. **Single Source of Truth**: Scope visual metadata lives in one place
+2. **Separation of Concerns**: Registry/routing config (`owned-scopes`) in library.yaml, visual config in .scopes.canvas
+3. **Visual First**: Scopes are architectural elements, naturally belong in canvas
+4. **Richer Metadata**: Can include visual position, relationships, groupings
+5. **Simpler Validation**: Only validate that `owned-scopes` references exist in `.scopes.canvas`
+6. **Better UX**: Edit scope colors directly in the canvas visual editor
+7. **Clearer Architecture**: `owned-scopes` declares ownership for routing; .scopes.canvas provides documentation and styling
 
 ---
 
@@ -279,13 +312,15 @@ private async validateScopesCanvasRequirement(
 
 ## Migration Implementation
 
-### Phase 1: Dual Support (Backwards Compatible)
+### Approach: Breaking Change with Clear Errors
 
-**Goal**: Support both architectures simultaneously
+**Goal**: Clean breaking change with helpful error messages and migration tooling
+
+No backward compatibility - the top-level `scopes:` section will immediately cause a validation error with clear instructions on how to migrate.
 
 #### Core Library Changes
 
-**1. New Canvas-based Color Map Builder**
+**1. Canvas-based Color Map Builder**
 
 ```typescript
 // packages/core/src/scopes/utils.ts
@@ -319,40 +354,25 @@ export function buildScopeColorMapFromCanvas(
 }
 ```
 
-**2. Update Existing Builder with Fallback**
+**2. Update Existing Builder to Use Canvas Only**
 
 ```typescript
 // packages/core/src/scopes/utils.ts
 
 /**
- * Build scope color map with fallback strategy:
- * 1. Use scopesCanvas if provided
- * 2. Fall back to library.scopes (deprecated)
+ * Build scope color map from .scopes.canvas
+ * No fallback - library.scopes is no longer supported
  */
 export function buildScopeColorMap(
-  library: { scopes?: Record<string, ScopeDefinition> } | undefined,
-  scopesCanvas?: ExtendedCanvas
+  scopesCanvas: ExtendedCanvas | undefined
 ): Record<string, string> {
-  // Prefer canvas-based approach
-  if (scopesCanvas) {
-    return buildScopeColorMapFromCanvas(scopesCanvas);
-  }
-
-  // Fall back to library.scopes (deprecated)
-  const colorMap: Record<string, string> = {};
-  if (library?.scopes) {
-    for (const [name, def] of Object.entries(library.scopes)) {
-      colorMap[name] = def.color ?? DEFAULT_SCOPE_COLOR;
-    }
-  }
-
-  return colorMap;
+  return buildScopeColorMapFromCanvas(scopesCanvas);
 }
 ```
 
 #### React Changes
 
-**Update GraphRenderer to accept scopesCanvas**
+**Update GraphRenderer to require scopesCanvas**
 
 ```typescript
 // packages/react/src/components/GraphRenderer.tsx
@@ -363,8 +383,8 @@ function useCanvasToLegacy(
   spansCanvas?: ExtendedCanvas,
   scopesCanvas?: ExtendedCanvas  // NEW parameter
 ) {
-  // Build scope color map (prefers canvas, falls back to library)
-  const scopeColorMap = buildScopeColorMap(library, scopesCanvas);
+  // Build scope color map from canvas only
+  const scopeColorMap = buildScopeColorMap(scopesCanvas);
 
   // Rest of implementation unchanged
 }
@@ -386,7 +406,7 @@ export async function migrateScopesToCanvas() {
   const library = await loadLibrary();
 
   if (!library.scopes || Object.keys(library.scopes).length === 0) {
-    console.log('No scopes to migrate');
+    console.log('✓ No scopes section found in library.yaml - nothing to migrate');
     return;
   }
 
@@ -400,10 +420,8 @@ export async function migrateScopesToCanvas() {
   } else {
     // Create new canvas
     scopesCanvas = {
-      pv: {
-        name: 'Instrumentation Scopes',
-        description: 'Defines instrumentation scopes for the application'
-      },
+      name: 'Instrumentation Scopes',
+      description: 'Defines instrumentation scopes for the application',
       nodes: [],
       edges: []
     };
@@ -441,31 +459,30 @@ export async function migrateScopesToCanvas() {
   const outputPath = scopesCanvasPath || '.principal-views/architecture.scopes.canvas';
   await saveCanvas(outputPath, scopesCanvas);
 
-  // 5. Show deprecation warning
-  console.warn(`
+  // 5. Show next steps
+  console.log(`
 ✓ Migrated ${Object.keys(library.scopes).length} scopes to ${outputPath}
 
 ⚠️  NEXT STEPS:
 1. Review the generated .scopes.canvas file
 2. Remove the 'scopes:' section from library.yaml
-3. Update your code to pass scopesCanvas to GraphRenderer
-
-The 'scopes' section in library.yaml is now deprecated and will be removed in v0.29.0.
+3. Run 'pv validate' to verify the migration
   `);
 }
 ```
 
-**2. Add Deprecation Warning to Validation**
+**2. Add Error for library.scopes**
 
 ```typescript
 // packages/cli/src/commands/validate.ts
 
-// After existing scope validation
+// Check for unsupported scopes section
 if (lib.scopes && typeof lib.scopes === 'object') {
   issues.push({
-    level: 'warning',
-    message: `The 'scopes' section in library.yaml is deprecated. Run 'pv migrate scopes-to-canvas' to migrate to .scopes.canvas. This section will be removed in v0.29.0.`,
-    path: libraryPath
+    level: 'error',
+    message: `The 'scopes' section in library.yaml is no longer supported. Run 'pv migrate scopes-to-canvas' to migrate to .scopes.canvas format.`,
+    path: libraryPath,
+    suggestion: 'Run: pv migrate scopes-to-canvas'
   });
 }
 ```
@@ -477,37 +494,24 @@ if (lib.scopes && typeof lib.scopes === 'object') {
 
 async function validateScopeReferences(
   canvas: ExtendedCanvas,
-  library: ComponentLibrary,
-  scopesCanvas?: ExtendedCanvas
+  scopesCanvas: ExtendedCanvas | undefined
 ) {
   for (const node of canvas.nodes) {
     const scope = node.otel?.scope;
     if (!scope) continue;
 
-    // Build available scopes list from both sources
-    let availableScopes: string[] = [];
+    // Get available scopes from .scopes.canvas only
+    const availableScopes = scopesCanvas?.nodes
+      .filter(n => n.type === 'otel-scope' && n.otel?.scope)
+      .map(n => n.otel!.scope) ?? [];
 
-    // 1. Check .scopes.canvas (preferred)
-    if (scopesCanvas) {
-      availableScopes = scopesCanvas.nodes
-        .filter(n => n.type === 'otel-scope' && n.otel?.scope)
-        .map(n => n.otel!.scope);
-    }
-
-    // 2. Fall back to library.scopes (deprecated)
-    if (availableScopes.length === 0 && library.scopes) {
-      availableScopes = Object.keys(library.scopes);
-    }
-
-    // 3. Validate scope exists
+    // Validate scope exists
     if (availableScopes.length > 0 && !availableScopes.includes(scope)) {
       issues.push({
         level: 'error',
         nodeId: node.id,
         message: `Scope "${scope}" not found. Available scopes: ${availableScopes.join(', ')}`,
-        suggestion: scopesCanvas
-          ? `Add a node with type="otel-scope" and otel.scope="${scope}" to your .scopes.canvas file`
-          : `Add "${scope}" to the scopes section in library.yaml (deprecated) or create a .scopes.canvas file`
+        suggestion: `Add a node with type="otel-scope" and otel.scope="${scope}" to your .scopes.canvas file`
       });
     }
   }
@@ -516,12 +520,12 @@ async function validateScopeReferences(
 
 #### Panels Changes
 
-**Update Legend to Support Both Sources**
+**Update Legend to Use Canvas Only**
 
 ```typescript
 // industry-themed-principal-view-panels/src/panels/CanvasEditorPanel.tsx
 
-// Load scopes canvas alongside library
+// Load scopes canvas
 const [scopesCanvas, setScopesCanvas] = useState<ExtendedCanvas | null>(null);
 
 useEffect(() => {
@@ -536,11 +540,10 @@ useEffect(() => {
   loadScopesCanvas();
 }, [fileTree]);
 
-// Build scope color map from both sources
+// Build scope color map from canvas
 const scopeColors = useMemo(() => {
   const colors: Record<string, string> = {};
 
-  // 1. Prefer .scopes.canvas
   if (scopesCanvas?.nodes) {
     for (const node of scopesCanvas.nodes) {
       if (node.type === 'otel-scope' && node.otel?.scope) {
@@ -549,15 +552,8 @@ const scopeColors = useMemo(() => {
     }
   }
 
-  // 2. Fall back to library.scopes (deprecated)
-  if (Object.keys(colors).length === 0 && state.library?.scopes) {
-    for (const [name, def] of Object.entries(state.library.scopes)) {
-      colors[name] = def.color || '#64748b';
-    }
-  }
-
   return colors;
-}, [scopesCanvas, state.library]);
+}, [scopesCanvas]);
 
 // Render legend
 {Object.keys(scopeColors).length > 0 && (
@@ -580,70 +576,36 @@ const scopeColors = useMemo(() => {
 
 ```typescript
 const handleScopeColorChange = async (scopeName: string, newColor: string) => {
-  if (scopesCanvas) {
-    // Edit .scopes.canvas node color
-    const updatedCanvas = {
-      ...scopesCanvas,
-      nodes: scopesCanvas.nodes.map(node =>
-        node.otel?.scope === scopeName
-          ? { ...node, color: newColor }
-          : node
-      )
-    };
-
-    // Save canvas
-    await actions.writeFile(scopesCanvasPath, JSON.stringify(updatedCanvas, null, 2));
-    setScopesCanvas(updatedCanvas);
-  } else {
-    // Fall back to library.yaml (deprecated - existing code)
-    // ... existing implementation
+  if (!scopesCanvas) {
+    console.error('No scopes canvas loaded');
+    return;
   }
+
+  // Edit .scopes.canvas node color
+  const updatedCanvas = {
+    ...scopesCanvas,
+    nodes: scopesCanvas.nodes.map(node =>
+      node.otel?.scope === scopeName
+        ? { ...node, color: newColor }
+        : node
+    )
+  };
+
+  // Save canvas
+  await actions.writeFile(scopesCanvasPath, JSON.stringify(updatedCanvas, null, 2));
+  setScopesCanvas(updatedCanvas);
 };
 ```
-
-### Phase 2: Deprecation (v0.29.0)
-
-**Goal**: Make `library.scopes` an error, force migration
-
-#### Changes
-
-1. **CLI Validation**: Upgrade warning to error
-   ```typescript
-   if (lib.scopes) {
-     issues.push({
-       level: 'error',
-       message: `The 'scopes' section in library.yaml is no longer supported. Run 'pv migrate scopes-to-canvas' to migrate.`
-     });
-   }
-   ```
-
-2. **Core Library**: Remove deprecated code paths
-   - Keep `buildScopeColorMap` but require `scopesCanvas` parameter
-   - Remove fallback to `library.scopes`
-
-3. **Documentation**: Update all examples to use `.scopes.canvas`
-
-### Phase 3: Removal (v0.30.0)
-
-**Goal**: Complete removal of `library.scopes` support
-
-#### Changes
-
-1. **Type Definitions**: Remove `scopes` field from `ComponentLibrary` interface
-2. **Validation**: Remove all `library.scopes` handling code
-3. **Migration**: Archive migration command (no longer needed)
 
 ---
 
 ## Implementation Checklist
 
-### Phase 1: Dual Support
-
 #### Core Library (`@principal-ai/principal-view-core`)
 
 - [ ] Add `buildScopeColorMapFromCanvas()` function
-- [ ] Update `buildScopeColorMap()` to accept optional `scopesCanvas` parameter
-- [ ] Add fallback logic (canvas → library.scopes)
+- [ ] Update `buildScopeColorMap()` to only use `scopesCanvas` parameter
+- [ ] Remove `scopes` field from `ComponentLibrary` interface
 - [ ] Update type exports
 - [ ] Write unit tests for canvas-based color mapping
 - [ ] Update existing tests to pass `scopesCanvas`
@@ -659,35 +621,16 @@ const handleScopeColorChange = async (scopeName: string, newColor: string) => {
 #### CLI (`@principal-ai/principal-view-cli`)
 
 - [ ] Create `migrate-scopes-to-canvas` command
-- [ ] Add deprecation warning to `validate` command
-- [ ] Update scope validation to check both sources
-- [ ] Add `--scopesCanvas` flag to validate command
+- [ ] Add error for `scopes` in library.yaml to `validate` command
+- [ ] Update scope validation to use .scopes.canvas only
 - [ ] Update help text and documentation
 
 #### Panels (`industry-themed-principal-view-panels`)
 
 - [ ] Load `.scopes.canvas` file in `CanvasEditorPanel`
-- [ ] Build scope colors from both sources (canvas preferred)
-- [ ] Update color picker to edit canvas when available
-- [ ] Fall back to library.yaml editing when no canvas
-- [ ] Add deprecation UI warning when using library.scopes
+- [ ] Build scope colors from canvas only
+- [ ] Update color picker to edit canvas
 - [ ] Update stories to use `.scopes.canvas`
-
-### Phase 2: Deprecation (v0.29.0)
-
-- [ ] Upgrade CLI warning to error
-- [ ] Update all documentation
-- [ ] Update all examples in repos
-- [ ] Publish migration guide
-- [ ] Create video tutorial on migration
-
-### Phase 3: Removal (v0.30.0)
-
-- [ ] Remove `scopes` field from `ComponentLibrary` interface
-- [ ] Remove library.scopes fallback logic
-- [ ] Remove deprecated code paths
-- [ ] Archive migration command
-- [ ] Update CHANGELOG
 
 ---
 
@@ -754,36 +697,24 @@ describe('buildScopeColorMapFromCanvas', () => {
   });
 });
 
-describe('buildScopeColorMap with fallback', () => {
-  it('prefers scopesCanvas over library.scopes', () => {
-    const library = {
-      scopes: {
-        'auth': { color: '#OLD_COLOR' }
-      }
-    };
-
+describe('buildScopeColorMap', () => {
+  it('builds color map from scopesCanvas', () => {
     const scopesCanvas: ExtendedCanvas = {
       nodes: [
-        { id: 'auth', type: 'otel-scope', color: '#NEW_COLOR', otel: { scope: 'auth' } }
+        { id: 'auth', type: 'otel-scope', color: '#3B82F6', otel: { scope: 'auth' } }
       ],
       edges: []
     };
 
-    const colorMap = buildScopeColorMap(library, scopesCanvas);
-
-    expect(colorMap['auth']).toBe('#NEW_COLOR');
-  });
-
-  it('falls back to library.scopes when no canvas provided', () => {
-    const library = {
-      scopes: {
-        'auth': { color: '#3B82F6' }
-      }
-    };
-
-    const colorMap = buildScopeColorMap(library);
+    const colorMap = buildScopeColorMap(scopesCanvas);
 
     expect(colorMap['auth']).toBe('#3B82F6');
+  });
+
+  it('returns empty map when no canvas provided', () => {
+    const colorMap = buildScopeColorMap(undefined);
+
+    expect(colorMap).toEqual({});
   });
 });
 ```
@@ -886,21 +817,20 @@ resources:
 version: "1.0"
 name: "My App"
 
+# owned-scopes REMAINS - used for registry routing
 resources:
   my-service:
     service.name: "my-service"
     owned-scopes:
-      - auth
-      - payments
+      - auth        # Routes "auth" scope traces to this service
+      - payments    # Routes "payments" scope traces to this service
 ```
 
 **.principal-views/architecture.scopes.canvas**:
 ```json
 {
-  "pv": {
-    "name": "Instrumentation Scopes",
-    "description": "OTEL instrumentation scopes for my-service"
-  },
+  "name": "Instrumentation Scopes",
+  "description": "OTEL instrumentation scopes for my-service",
   "nodes": [
     {
       "id": "auth-scope",
@@ -946,7 +876,7 @@ resources:
 />
 ```
 
-**After (Phase 1)**:
+**After**:
 ```typescript
 // Load scopes canvas
 const scopesCanvas = await loadCanvas('.principal-views/architecture.scopes.canvas');
@@ -955,7 +885,7 @@ const scopesCanvas = await loadCanvas('.principal-views/architecture.scopes.canv
 <GraphRenderer
   canvas={canvas}
   library={library}
-  scopesCanvas={scopesCanvas}  // NEW
+  scopesCanvas={scopesCanvas}  // NEW - required for scope colors
 />
 ```
 
@@ -979,20 +909,37 @@ The `.scopes.canvas` approach is strictly superior as it:
 
 ### Q: What happens to existing projects?
 
-**A**: Projects can migrate at their own pace:
-- **Phase 1 (v0.28)**: Both work, library.scopes deprecated
-- **Phase 2 (v0.29)**: library.scopes causes error, must migrate
-- **Phase 3 (v0.30)**: library.scopes support removed entirely
+**A**: This is a breaking change. Projects using the top-level `scopes:` section will get a validation error with clear instructions.
 
 Migration is simple: `pv migrate scopes-to-canvas`
 
+The migration command will:
+1. Read the existing `scopes:` section from library.yaml
+2. Generate a .scopes.canvas file with equivalent nodes
+3. Provide instructions to remove the old section
+
 ### Q: Can I still use library.yaml for other config?
 
-**A**: Yes! Only the `scopes:` section is being removed. All other sections remain:
-- `resources` - Service definitions with owned-scopes
-- `nodeComponents` - Visual node type definitions
-- `edgeComponents` - Edge type definitions
-- `states` - Node state definitions
+**A**: Yes! Only the top-level `scopes:` section is being removed. All other sections remain:
+- `resources` - Service definitions with owned-scopes (used for registry routing)
+- `eventSchemas` - Reusable event schema definitions
+
+The `owned-scopes` field in resources is **NOT** being removed - it serves a different purpose than the top-level scopes section.
+
+### Q: What's the difference between `owned-scopes` and the `scopes:` section?
+
+**A**: These serve different purposes:
+
+- **`owned-scopes` (in resources)**: Registry routing configuration
+  - Declares which instrumentation scopes this service owns
+  - Used by LocalRegistry to map incoming OTLP traces to the correct workspace
+  - Example: When a trace arrives with scope `@my-org/my-library`, route it to this workspace
+  - **NOT being removed** - critical for telemetry routing
+
+- **`scopes:` (top-level section)**: Visual metadata
+  - Defines colors, icons, and descriptions for scope nodes in canvases
+  - Used for rendering event nodes with scope-specific colors
+  - **BEING MIGRATED** to .scopes.canvas for better organization
 
 ### Q: What if I don't want a visual canvas?
 
@@ -1001,17 +948,6 @@ Migration is simple: `pv migrate scopes-to-canvas`
 - Nodes naturally represent scopes (vs nested YAML objects)
 - Can include positions for future visual editing
 - Consistent with other canvas files
-
----
-
-## Timeline
-
-| Version | Release Date | Changes |
-|---------|-------------|---------|
-| v0.27.x | Current | library.scopes only |
-| v0.28.0 | Q2 2026 | Dual support + migration command |
-| v0.29.0 | Q3 2026 | library.scopes causes error |
-| v0.30.0 | Q4 2026 | library.scopes removed |
 
 ---
 

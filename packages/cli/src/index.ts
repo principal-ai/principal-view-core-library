@@ -19,6 +19,7 @@ import { createCoverageCommand } from './commands/coverage.js';
 import { createWorkflowCommand } from './commands/workflow/index.js';
 import { createMigrationCommand } from './commands/migration.js';
 import { createMigrateNodesCommand } from './commands/migrate-nodes.js';
+import { createMigrateScopesCommand } from './commands/migrate-scopes-to-canvas.js';
 import { createScopesCommand } from './commands/scopes/index.js';
 import { createEventsCommand } from './commands/events/index.js';
 import { createCollectorCommand } from './commands/collector/index.js';
@@ -45,6 +46,7 @@ program.addCommand(createFormatsCommand());
 program.addCommand(createSetupCommand());
 program.addCommand(createMigrationCommand()); // Migration guide
 program.addCommand(createMigrateNodesCommand()); // Node type migration
+program.addCommand(createMigrateScopesCommand()); // Scope migration to canvas
 program.addCommand(createHooksCommand());
 program.addCommand(createCoverageCommand());
 program.addCommand(createWorkflowCommand());

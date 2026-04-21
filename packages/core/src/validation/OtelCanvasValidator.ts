@@ -61,7 +61,7 @@ export class OtelCanvasValidator {
             path: `nodes[id="${node.id}"].fill`,
             message: `OTEL event node "${node.id}" has explicit fill color which is not allowed`,
             impact: 'OTEL event nodes must use scope-based coloring for consistency. Explicit colors defeat this purpose.',
-            suggestion: `Remove the "fill" field and set the color in library.yaml under scopes["${scopeHint}"].color`,
+            suggestion: `Remove the "fill" field and set the color on the otel-scope node for "${scopeHint}" in your .scopes.canvas file`,
           });
         }
 
@@ -75,7 +75,7 @@ export class OtelCanvasValidator {
             path: `nodes[id="${node.id}"].color`,
             message: `OTEL event node "${node.id}" has explicit color which is not allowed`,
             impact: 'OTEL event nodes must use scope-based coloring for consistency. Explicit colors defeat this purpose.',
-            suggestion: `Remove the "color" field and set the color in library.yaml under scopes["${scopeHint}"].color`,
+            suggestion: `Remove the "color" field and set the color on the otel-scope node for "${scopeHint}" in your .scopes.canvas file`,
           });
         }
       }

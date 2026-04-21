@@ -343,6 +343,13 @@ export interface GraphRendererProps extends GraphRendererBaseProps {
   spansCanvas?: ExtendedCanvas;
 
   /**
+   * Optional scopes canvas containing scope definitions with colors.
+   * Required for scope-based node coloring.
+   * Replaces library.scopes (which is now deprecated).
+   */
+  scopesCanvas?: ExtendedCanvas;
+
+  /**
    * Optional span pattern for the current workflow context.
    * When provided, event nodes will use the span color from spansCanvas as their fill.
    * This should match a spanPattern from a workflow.json file.
@@ -2550,13 +2557,14 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
  * Convert canvas to legacy configuration format for internal use
  *
  * Color Contract:
- * - scopeColor: Used as border color (from library.yaml owned-scopes)
+ * - scopeColor: Used as border color (from .scopes.canvas)
  * - spanColor: Used as fill color (from .spans.canvas based on workflow context)
  */
 function useCanvasToLegacy(
   canvas: ExtendedCanvas | undefined,
   library?: ComponentLibrary,
   spansCanvas?: ExtendedCanvas,
+  scopesCanvas?: ExtendedCanvas,
   workflowSpanPattern?: string
 ): {
   configuration: GraphConfiguration;
@@ -2580,8 +2588,8 @@ function useCanvasToLegacy(
       }
     }
 
-    // Build scope color map from library scopes (for fill colors)
-    const scopeColorMap = buildScopeColorMap(library);
+    // Build scope color map from scopes canvas (for fill colors)
+    const scopeColorMap = buildScopeColorMap(scopesCanvas);
 
     // Build span color map from spans canvas (for border colors in workflow context)
     const spanColorMap = buildSpanColorMap(spansCanvas);
@@ -2590,7 +2598,7 @@ function useCanvasToLegacy(
     const spanColor = resolveEventSpanColor(workflowSpanPattern, spanColorMap);
 
     // Inject scope and span colors into nodes
-    // - scopeColor: fill/background color (from otel.scope → library.yaml scopes)
+    // - scopeColor: fill/background color (from otel.scope → scopes.canvas)
     // - spanColor: border color in workflow context (from workflow spanPattern → spans.canvas)
     for (const node of nodes) {
       const otel = node.data?.otel as { scope?: string } | undefined;
@@ -2731,7 +2739,7 @@ function useCanvasToLegacy(
     };
 
     return { configuration, nodes, edges };
-  }, [canvas, library, spansCanvas, workflowSpanPattern]);
+  }, [canvas, library, spansCanvas, scopesCanvas, workflowSpanPattern]);
 }
 
 /**
@@ -2760,6 +2768,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
     canvas,
     library,
     spansCanvas,
+    scopesCanvas,
     workflowSpanPattern,
     className,
     width = '100%',
@@ -2781,7 +2790,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
 
   // Convert canvas to internal format (merging library types if provided)
   // Also inject scope colors (for border) and span colors (for fill)
-  const canvasData = useCanvasToLegacy(canvas, library, spansCanvas, workflowSpanPattern);
+  const canvasData = useCanvasToLegacy(canvas, library, spansCanvas, scopesCanvas, workflowSpanPattern);
 
   // Calculate initial viewport if container dimensions are provided
   // This avoids the "zoom in then animate out" effect on initial render

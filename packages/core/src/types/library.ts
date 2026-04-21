@@ -30,6 +30,10 @@ import type {
  *
  * Describes a scope with its color and optional metadata.
  * Used for consistent visual representation across canvases.
+ *
+ * @deprecated Scope visual metadata is now defined in .scopes.canvas files using OtelScopeNode type.
+ * This type is kept for backward compatibility during migration but will be removed in a future version.
+ * Use .scopes.canvas files instead of the top-level scopes section in library.yaml.
  */
 export interface ScopeDefinition {
   /** Color for nodes belonging to this scope (hex format). Required unless external. */
@@ -162,14 +166,6 @@ export interface ResourceAttributes {
  * name: "My Service"
  * description: "OTEL instrumentation configuration"
  *
- * scopes:
- *   auth-flow:
- *     color: "#DC2626"
- *     description: "Authentication flow instrumentation"
- *   checkout-flow:
- *     color: "#059669"
- *     description: "Checkout process instrumentation"
- *
  * resources:
  *   auth-service:
  *     service.name: "auth-service"
@@ -189,6 +185,9 @@ export interface ResourceAttributes {
  *         type: string
  *         required: true
  * ```
+ *
+ * Note: Scope visual metadata (colors, icons) are now defined in .scopes.canvas files.
+ * The `owned-scopes` field in resources is used for telemetry routing only.
  */
 export interface ComponentLibrary {
   /** Library schema version */
@@ -199,25 +198,6 @@ export interface ComponentLibrary {
 
   /** Library description */
   description?: string;
-
-  /**
-   * Top-level scope definitions
-   *
-   * Defines instrumentation scopes with colors and descriptions.
-   * Resources reference these scopes by name in their `owned-scopes` field.
-   *
-   * @example
-   * ```yaml
-   * scopes:
-   *   authentication:
-   *     color: "#DC2626"
-   *     description: "Authentication flow instrumentation"
-   *   checkout:
-   *     color: "#059669"
-   *     description: "Checkout process instrumentation"
-   * ```
-   */
-  scopes?: Record<string, ScopeDefinition>;
 
   /**
    * Service resource registry

@@ -22,6 +22,9 @@ export {
   getScopeIcon,
   normalizeScopes,
   buildScopeColorMap,
+  buildScopeColorMapFromCanvas,
+  getScopeNamesFromCanvas,
+  getScopeNodeFromCanvas,
   getAllScopeNames,
   type NormalizedScope,
 } from './utils';

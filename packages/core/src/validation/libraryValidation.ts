@@ -130,36 +130,8 @@ export function validateLibraryStructure(library: ComponentLibrary): LibraryVali
     }
   }
 
-  // Validate top-level scopes if present
-  if (library.scopes !== undefined) {
-    if (typeof library.scopes !== 'object' || library.scopes === null || Array.isArray(library.scopes)) {
-      errors.push(schemaError(
-        'Field "scopes" must be an object',
-        'scopes',
-        'Define scopes as: scopes: { my-scope: { color: "#DC2626", description: "..." } }'
-      ));
-    } else {
-      for (const [scopeName, scopeDef] of Object.entries(library.scopes)) {
-        if (typeof scopeDef !== 'object' || scopeDef === null) {
-          errors.push(schemaError(
-            `Scope "${scopeName}" must be an object`,
-            `scopes.${scopeName}`,
-            'Use: { color: "#RRGGBB", description: "..." }'
-          ));
-        } else {
-          // External scopes don't require color (defined elsewhere)
-          const isExternal = scopeDef.external === true;
-          if (!isExternal && typeof scopeDef.color !== 'string') {
-            errors.push(schemaError(
-              `Scope "${scopeName}" is missing required "color" property`,
-              `scopes.${scopeName}.color`,
-              'Add a color: "#RRGGBB" or use external: true for scopes defined in other libraries'
-            ));
-          }
-        }
-      }
-    }
-  }
+  // Note: scopes validation removed - scopes field is deprecated
+  // The CLI validate.ts will show an error if library.scopes is present
 
   // Validate resources if present
   if (library.resources !== undefined) {
@@ -206,13 +178,9 @@ export function validateLibraryStructure(library: ComponentLibrary): LibraryVali
                   `resources.${serviceId}.owned-scopes`,
                   'All owned-scopes entries must be strings'
                 ));
-              } else if (!library.scopes || !library.scopes[scope]) {
-                errors.push(schemaError(
-                  `Resource "${serviceId}" references undefined scope "${scope}"`,
-                  `resources.${serviceId}.owned-scopes`,
-                  `Define scope "${scope}" in the top-level scopes section:\nscopes:\n  ${scope}:\n    color: "#RRGGBB"\n    description: "Description of this scope"`
-                ));
               }
+              // Note: Scope existence validation removed - scopes are now defined in .scopes.canvas
+              // The CLI will validate that owned-scopes exist in .scopes.canvas
             }
           }
         }

@@ -302,7 +302,7 @@ function validateNodes(
           nodeId: node.id,
           canvasPath: canvas.path,
           status,
-          error: `Event node must have otel.scope specified. Scope defines which instrumentation library emits this event (e.g., "terminal-activity", "auth"). Define scopes in library.yaml and document them in architecture.scopes.canvas.`,
+          error: `Event node must have otel.scope specified. Scope defines which instrumentation library emits this event (e.g., "terminal-activity", "auth"). Document scopes in your .scopes.canvas file with otel-scope nodes.`,
         });
       }
     }
