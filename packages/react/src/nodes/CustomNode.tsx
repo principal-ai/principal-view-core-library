@@ -28,6 +28,8 @@ export interface CustomNodeData extends Record<string, unknown> {
   animationDuration?: number;
   // Edit mode - shows larger connection handles
   editable?: boolean;
+  // Pending text change (from inline editing, not yet saved)
+  pendingText?: string;
   // Whether tooltips are enabled (defaults to true)
   tooltipsEnabled?: boolean;
   // Whether shift key is currently pressed (for tooltip control)
@@ -77,10 +79,13 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = (props) => 
 
   // Fall through to legacy rendering for non-OTEL nodes
   const { theme } = useTheme();
-  const { onNodeResizeEnd, onToggleNodeHidden, onHideUnconnectedNodes } = useGraphEdit();
+  const { onNodeResizeEnd, onNodeTextChange, onToggleNodeHidden, onHideUnconnectedNodes } = useGraphEdit();
   const nodeId = useNodeId();
   const [isHovered, setIsHovered] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingText, setEditingText] = useState('');
   const nodeRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const nodeProps = data;
   const {
     typeDefinition,
@@ -449,8 +454,8 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = (props) => 
   // Use fillColor as the primary "color" for backwards compatibility
   const color = fillColor;
 
-  // Get display name - use name from props (falls back to node.id in converter)
-  const displayName = nodeProps.name;
+  // Get display name - use pending text if available, otherwise use name from props
+  const displayName = nodeProps.pendingText ?? nodeProps.name;
 
   // Extract identifier based on node type (for display below the label)
   // Supports: event.name, otel.spanPattern, otel.scope, otel.resourceMatch, boundary.direction
@@ -545,8 +550,58 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = (props) => 
 
   const animationClass = getAnimationClass();
 
-  // Check if this is a group node
+  // Check if this is a group node or text node (canvas types that support inline editing)
   const isGroup = nodeData.canvasType === 'group';
+  const isTextNode = nodeData.canvasType === 'text';
+  const isInlineEditable = (isGroup || isTextNode) && editable;
+
+  // Double-click handler for inline text editing
+  const lastClickTimeRef = useRef<number>(0);
+  const handleNodeDoubleClick = useCallback((event: React.MouseEvent) => {
+    if (!isInlineEditable || !nodeId || !onNodeTextChange) return;
+
+    event.stopPropagation();
+    event.preventDefault();
+
+    setEditingText(displayName || '');
+    setIsEditing(true);
+
+    // Focus the textarea after state update
+    setTimeout(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.select();
+    }, 0);
+  }, [isInlineEditable, nodeId, onNodeTextChange, displayName]);
+
+  // Single click tracking for double-click detection
+  const handleNodeClick = useCallback((event: React.MouseEvent) => {
+    const now = Date.now();
+    const timeSinceLastClick = now - lastClickTimeRef.current;
+
+    if (timeSinceLastClick < 300) {
+      // Double-click detected
+      handleNodeDoubleClick(event);
+    }
+
+    lastClickTimeRef.current = now;
+  }, [handleNodeDoubleClick]);
+
+  // Save text changes
+  const handleSaveText = useCallback(() => {
+    if (!nodeId || !onNodeTextChange) return;
+
+    if (editingText !== displayName) {
+      onNodeTextChange(nodeId, editingText);
+    }
+
+    setIsEditing(false);
+  }, [nodeId, onNodeTextChange, editingText, displayName]);
+
+  // Cancel text editing
+  const handleCancelEdit = useCallback(() => {
+    setIsEditing(false);
+    setEditingText('');
+  }, []);
 
   // Shape-specific styles
   const getShapeStyles = () => {
@@ -946,6 +1001,7 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = (props) => 
           ref={nodeRef}
           style={{ position: 'relative', width: '100%', height: '100%' }}
           onMouseDown={handleMouseDown}
+          onClick={handleNodeClick}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
@@ -1018,6 +1074,57 @@ export const CustomNode: React.FC<NodeProps<Node<CustomNodeData>>> = (props) => 
               )}
             </div>
           </div>
+          {/* Inline text editor overlay */}
+          {isEditing && isInlineEditable && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                zIndex: 1000,
+                display: 'flex',
+                flexDirection: 'column',
+                padding: theme.space[1],
+                boxSizing: 'border-box',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <textarea
+                ref={textareaRef}
+                value={editingText}
+                onChange={(e) => setEditingText(e.target.value)}
+                placeholder="Enter text..."
+                style={{
+                  flex: 1,
+                  width: '100%',
+                  padding: theme.space[2],
+                  fontSize: theme.fontSizes[1],
+                  fontFamily: theme.fonts.body,
+                  color: theme.colors.text,
+                  backgroundColor: theme.colors.background,
+                  border: `3px solid ${theme.colors.primary}`,
+                  borderRadius: theme.radii[1],
+                  outline: 'none',
+                  resize: 'none',
+                  boxSizing: 'border-box',
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSaveText();
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    handleCancelEdit();
+                  }
+                }}
+                onBlur={handleSaveText}
+              />
+            </div>
+          )}
+
           {tooltipsEnabled && (
             <NodeTooltip
               description={description}

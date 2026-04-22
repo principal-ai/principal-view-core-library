@@ -7,6 +7,7 @@ import { TooltipPortalContext } from '../contexts/TooltipPortalContext';
 export interface OtelInfo {
   kind: 'type' | 'service' | 'instance';
   category?: string;
+  scope?: string;
   files?: string[];
 }
 
@@ -138,7 +139,7 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            marginBottom: description ? '6px' : 0,
+            marginBottom: description || otel.scope ? '6px' : 0,
           }}
         >
           <span
@@ -160,6 +161,24 @@ export const NodeTooltip: React.FC<NodeTooltipProps> = ({
               {otel.category}
             </span>
           )}
+        </div>
+      )}
+
+      {/* Scope */}
+      {otel?.scope && (
+        <div style={{
+          marginBottom: description ? '6px' : 0,
+          fontSize: theme.fontSizes[0],
+          fontFamily: theme.fonts.body,
+          color: 'rgba(255,255,255,0.8)'
+        }}>
+          <span style={{
+            color: 'rgba(255,255,255,0.6)',
+            fontWeight: theme.fontWeights.semibold
+          }}>
+            Scope:
+          </span>{' '}
+          <span style={{ fontFamily: 'monospace' }}>{otel.scope}</span>
         </div>
       )}
 

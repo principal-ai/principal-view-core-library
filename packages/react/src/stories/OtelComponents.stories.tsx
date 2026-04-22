@@ -243,7 +243,79 @@ export const TooltipVariants: StoryObj = {
           </div>
           <NodeTooltip
             description="A specific running instance of a service"
-            otel={{ kind: 'instance', category: 'runtime' }}
+            otel={{ kind: 'instance', category: 'runtime', scope: 'auth-flow' }}
+            visible={true}
+          />
+        </div>
+      </div>
+    </ThemeProvider>
+  ),
+};
+
+/**
+ * Demonstrates tooltips with scope information.
+ * Shows how scope names are displayed in the tooltip.
+ */
+export const TooltipWithScope: StoryObj = {
+  render: () => (
+    <ThemeProvider theme={defaultEditorTheme}>
+      <div style={{ padding: '40px', display: 'flex', gap: '80px', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', width: '200px', height: '180px' }}>
+          <div
+            style={{
+              padding: '20px',
+              border: '2px solid #DC2626',
+              borderRadius: '8px',
+              textAlign: 'center',
+              backgroundColor: '#DC2626',
+              color: 'white',
+            }}
+          >
+            Auth Event
+          </div>
+          <NodeTooltip
+            description="User authentication completed successfully"
+            otel={{ kind: 'type', category: 'event', scope: 'auth-flow' }}
+            visible={true}
+          />
+        </div>
+
+        <div style={{ position: 'relative', width: '200px', height: '180px' }}>
+          <div
+            style={{
+              padding: '20px',
+              border: '2px solid #2563EB',
+              borderRadius: '8px',
+              textAlign: 'center',
+              backgroundColor: '#2563EB',
+              color: 'white',
+            }}
+          >
+            Terminal Event
+          </div>
+          <NodeTooltip
+            description="Command executed in terminal session"
+            otel={{ kind: 'type', category: 'event', scope: 'terminal-activity' }}
+            visible={true}
+          />
+        </div>
+
+        <div style={{ position: 'relative', width: '200px', height: '180px' }}>
+          <div
+            style={{
+              padding: '20px',
+              border: '2px solid #16A34A',
+              borderRadius: '8px',
+              textAlign: 'center',
+              backgroundColor: '#16A34A',
+              color: 'white',
+            }}
+          >
+            Quality Event
+          </div>
+          <NodeTooltip
+            description="Code quality check completed with metrics"
+            otel={{ kind: 'type', category: 'event', scope: 'quality-panel' }}
             visible={true}
           />
         </div>

@@ -84,12 +84,20 @@ export interface NodeDimensionChange {
   dimensions: { width: number; height: number };
 }
 
+/** Text change event for tracking inline text edits */
+export interface NodeTextChange {
+  nodeId: string;
+  text: string;
+}
+
 /** All pending changes that can be saved */
 export interface PendingChanges {
   /** Node position changes */
   positionChanges: NodePositionChange[];
   /** Node dimension changes (from resizing) */
   dimensionChanges: NodeDimensionChange[];
+  /** Text changes for text and group nodes */
+  textChanges: NodeTextChange[];
   /** Node updates (type, data changes) */
   nodeUpdates: Array<{
     nodeId: string;
@@ -398,6 +406,7 @@ interface AlignmentGuide {
 interface EditState {
   positionChanges: Map<string, { x: number; y: number }>;
   dimensionChanges: Map<string, { width: number; height: number }>;
+  textChanges: Map<string, string>;
   nodeUpdates: Map<string, { type?: string; data?: Record<string, unknown> }>;
   deletedNodeIds: Set<string>;
   createdEdges: Array<{
@@ -414,6 +423,7 @@ interface EditState {
 const createEmptyEditState = (): EditState => ({
   positionChanges: new Map(),
   dimensionChanges: new Map(),
+  textChanges: new Map(),
   nodeUpdates: new Map(),
   deletedNodeIds: new Set(),
   createdEdges: [],
@@ -573,6 +583,7 @@ interface GraphRendererInnerProps {
   onEditStateChange?: (editState: EditState) => void;
   editStateRef: React.MutableRefObject<EditState>;
   resetVisualStateRef: React.MutableRefObject<(() => void) | null>;
+  resetTextChangesVersionRef: React.MutableRefObject<(() => void) | null>;
   undoRedoFunctionsRef: React.MutableRefObject<UndoRedoFunctionsRef | null>;
   pushHistory: (entries: HistoryEntry[]) => void;
   clearHistory: () => void;
@@ -629,6 +640,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   onEditStateChange,
   editStateRef,
   resetVisualStateRef,
+  resetTextChangesVersionRef,
   undoRedoFunctionsRef,
   pushHistory,
   clearHistory,
@@ -651,6 +663,9 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   // Track shift key state for tooltip control
   const [shiftKeyPressed, setShiftKeyPressed] = useState(false);
+
+  // Track text changes version to force re-renders when text is edited
+  const [textChangesVersion, setTextChangesVersion] = useState(0);
 
   // Track if we're currently processing a node hide operation
   const hidingNodeRef = useRef(false);
@@ -808,7 +823,10 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   // Always use localNodes for rendering - it syncs with props when structure changes
   // and receives state_changed event updates. localEdges only used in edit mode.
-  const nodes = localNodes;
+  // Filter out deleted nodes in edit mode
+  const nodes = editable
+    ? localNodes.filter((node) => !editStateRef.current.deletedNodeIds.has(node.id))
+    : localNodes;
   const edges = editable ? localEdges : propEdges;
 
   // Ref to track current xyflow nodes for undo/redo (set later via useEffect)
@@ -822,6 +840,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     return (
       state.positionChanges.size > 0 ||
       state.dimensionChanges.size > 0 ||
+      state.textChanges.size > 0 ||
       state.nodeUpdates.size > 0 ||
       state.deletedNodeIds.size > 0 ||
       state.createdEdges.length > 0 ||
@@ -841,6 +860,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         console.log('[GraphRenderer] Edit state updated:', {
           positionChanges: newState.positionChanges.size,
           dimensionChanges: newState.dimensionChanges.size,
+          textChanges: newState.textChanges.size,
           nodeUpdates: newState.nodeUpdates.size,
           hasChanges,
         });
@@ -881,6 +901,73 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     },
     [editable, updateEditState, pushHistory]
   );
+
+  // Handler for node text change - called from CustomNode via context
+  const handleNodeTextChange = useCallback(
+    (nodeId: string, text: string) => {
+      if (!editable) return;
+
+      // Capture before text for undo
+      // For text nodes, the text is in the canvas node's 'text' field
+      // For group nodes, it's in the 'label' field
+      // We need to look at the original canvas to get the before value
+      const beforeText = editStateRef.current.textChanges.get(nodeId) ?? '';
+
+      // Push to history
+      pushHistory([
+        {
+          type: 'text',
+          nodeId,
+          before: beforeText,
+          after: text,
+        },
+      ]);
+
+      updateEditState((prev) => {
+        const newTextChanges = new Map(prev.textChanges);
+        newTextChanges.set(nodeId, text);
+        return { ...prev, textChanges: newTextChanges };
+      });
+
+      // Force re-render by incrementing version
+      setTextChangesVersion((v) => v + 1);
+    },
+    [editable, updateEditState, pushHistory]
+  );
+
+  // Handler for deleting selected nodes (Delete/Backspace key)
+  const handleDeleteSelectedNodes = useCallback(() => {
+    if (!editable || selectedNodeIds.size === 0) return;
+
+    const nodesToDelete = Array.from(selectedNodeIds);
+    const historyEntries: HistoryEntry[] = [];
+
+    // Build history entries for each deleted node
+    for (const nodeId of nodesToDelete) {
+      const node = localNodes.find((n) => n.id === nodeId);
+      if (!node) continue;
+
+      historyEntries.push({
+        type: 'nodeDelete',
+        nodeId,
+        nodeData: node,
+      });
+    }
+
+    // Push all deletions as a single batch
+    if (historyEntries.length > 0) {
+      pushHistory(historyEntries);
+
+      updateEditState((prev) => {
+        const newDeletedNodeIds = new Set(prev.deletedNodeIds);
+        nodesToDelete.forEach((id) => newDeletedNodeIds.add(id));
+        return { ...prev, deletedNodeIds: newDeletedNodeIds };
+      });
+
+      // Clear selection after deletion
+      setSelectedNodeIds(new Set());
+    }
+  }, [editable, selectedNodeIds, localNodes, pushHistory, updateEditState]);
 
   // Handle toggling node hidden state (Cmd/Ctrl+click)
   // This is exposed via context so CustomNode can call it on mousedown
@@ -961,10 +1048,11 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
   const graphEditContextValue = useMemo(
     () => ({
       onNodeResizeEnd: handleNodeResizeEnd,
+      onNodeTextChange: handleNodeTextChange,
       onToggleNodeHidden: handleToggleNodeHidden,
       onHideUnconnectedNodes: handleHideUnconnectedNodes,
     }),
-    [handleNodeResizeEnd, handleToggleNodeHidden, handleHideUnconnectedNodes]
+    [handleNodeResizeEnd, handleNodeTextChange, handleToggleNodeHidden, handleHideUnconnectedNodes]
   );
 
   // ============================================
@@ -1647,6 +1735,8 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       const animation = animationState.nodeAnimations[node.id];
       // Apply any pending position changes
       const pendingPosition = editStateRef.current.positionChanges.get(node.id);
+      // Apply any pending text changes
+      const pendingText = editStateRef.current.textChanges.get(node.id);
       // Allow specific nodes to be draggable even when not in edit mode
       const isDraggable = editable || draggableNodeIds?.has(node.id);
       // When draggableNodeIds is provided, we need to explicitly control each node's draggability
@@ -1668,6 +1758,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         data: {
           ...node.data,
           editable,
+          pendingText,
           tooltipsEnabled: showTooltips,
           shiftKeyPressed,
           isHighlighted: highlightedNodeId === node.id,
@@ -1682,7 +1773,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         } as CustomNodeData,
       };
     });
-  }, [localNodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, highlightedNodeId, activeNodeIds, editStateRef, shiftKeyPressed, selectedNodeIds, hiddenNodeIds, draggableNodeIds]);
+  }, [localNodes, configuration, violations, animationState.nodeAnimations, editable, showTooltips, highlightedNodeId, activeNodeIds, editStateRef, shiftKeyPressed, selectedNodeIds, hiddenNodeIds, draggableNodeIds, textChangesVersion]);
 
   const baseNodesKey = useMemo(() => {
     return nodes
@@ -1746,6 +1837,24 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       }))
     );
   }, [editable, hiddenNodeIds]);
+
+  // Sync pending text changes to local nodes when textChangesVersion changes (edit mode only)
+  const prevTextChangesVersionRef = useRef(textChangesVersion);
+  useEffect(() => {
+    if (!editable) return;
+    if (prevTextChangesVersionRef.current === textChangesVersion) return;
+    prevTextChangesVersionRef.current = textChangesVersion;
+
+    setXyflowLocalNodes((nodes) =>
+      nodes.map((n) => {
+        const pendingText = editStateRef.current.textChanges.get(n.id);
+        return {
+          ...n,
+          data: { ...n.data, pendingText },
+        };
+      })
+    );
+  }, [editable, textChangesVersion]);
 
   // Also sync when entering edit mode or when base nodes change content
   const prevEditableRef = useRef(editable);
@@ -1865,6 +1974,27 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           });
           break;
 
+        case 'text':
+          // Restore previous text
+          // Update edit state
+          updateEditState((prev) => {
+            const newTextChanges = new Map(prev.textChanges);
+            newTextChanges.set(entry.nodeId, entry.before);
+            return { ...prev, textChanges: newTextChanges };
+          });
+          // Force re-render
+          setTextChangesVersion((v) => v + 1);
+          break;
+
+        case 'nodeDelete':
+          // Restore the deleted node
+          updateEditState((prev) => {
+            const newDeletedNodeIds = new Set(prev.deletedNodeIds);
+            newDeletedNodeIds.delete(entry.nodeId);
+            return { ...prev, deletedNodeIds: newDeletedNodeIds };
+          });
+          break;
+
         case 'edgeCreate':
           // Remove the created edge
           setLocalEdges((edges) => edges.filter((e) => e.id !== entry.edge.id));
@@ -1930,6 +2060,27 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
           });
           break;
 
+        case 'text':
+          // Apply new text
+          // Update edit state
+          updateEditState((prev) => {
+            const newTextChanges = new Map(prev.textChanges);
+            newTextChanges.set(entry.nodeId, entry.after);
+            return { ...prev, textChanges: newTextChanges };
+          });
+          // Force re-render
+          setTextChangesVersion((v) => v + 1);
+          break;
+
+        case 'nodeDelete':
+          // Re-delete the node
+          updateEditState((prev) => {
+            const newDeletedNodeIds = new Set(prev.deletedNodeIds);
+            newDeletedNodeIds.add(entry.nodeId);
+            return { ...prev, deletedNodeIds: newDeletedNodeIds };
+          });
+          break;
+
         case 'edgeCreate':
           // Re-create the edge
           setLocalEdges((edges) => [...edges, entry.edge]);
@@ -1971,7 +2122,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
     }
   }, [redoFromStack, updateEditState]);
 
-  // Keyboard shortcuts for undo/redo
+  // Keyboard shortcuts for undo/redo and delete
   useEffect(() => {
     if (!editable) return;
 
@@ -1991,11 +2142,21 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
         e.preventDefault();
         applyRedo();
       }
+      // Delete or Backspace to delete selected nodes
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Only delete if not editing text (check if active element is an input/textarea)
+        const activeElement = document.activeElement;
+        const isEditingText = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
+        if (!isEditingText) {
+          e.preventDefault();
+          handleDeleteSelectedNodes();
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editable, applyUndo, applyRedo]);
+  }, [editable, applyUndo, applyRedo, handleDeleteSelectedNodes]);
 
   // Set undo/redo functions in ref for outer component access
   useEffect(() => {
@@ -2313,6 +2474,13 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
       onPendingChangesChange?.(false);
     };
   }, [xyflowNodesBase, xyflowEdgesWithElk, onPendingChangesChange]);
+
+  // Set the reset text changes version function for use by resetEditState
+  useEffect(() => {
+    resetTextChangesVersionRef.current = () => {
+      setTextChangesVersion(0);
+    };
+  }, []);
 
   // Use local edges in edit mode, base edges otherwise
   const xyflowEdges = editable ? xyflowLocalEdges : xyflowEdgesWithElk;
@@ -2823,6 +2991,9 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
   // Ref to hold the reset visual state function - will be set after xyflowLocalNodes is defined
   const resetVisualStateRef = useRef<(() => void) | null>(null);
 
+  // Ref to hold the reset text changes version function - will be set by inner component
+  const resetTextChangesVersionRef = useRef<(() => void) | null>(null);
+
   // Undo/redo management
   const {
     canUndo: canUndoState,
@@ -2855,6 +3026,12 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
               dimensions,
             })
           ),
+          textChanges: Array.from(state.textChanges.entries()).map(
+            ([nodeId, text]) => ({
+              nodeId,
+              text,
+            })
+          ),
           nodeUpdates: Array.from(state.nodeUpdates.entries()).map(([nodeId, updates]) => ({
             nodeId,
             updates,
@@ -2871,6 +3048,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
           hasChanges:
             state.positionChanges.size > 0 ||
             state.dimensionChanges.size > 0 ||
+            state.textChanges.size > 0 ||
             state.nodeUpdates.size > 0 ||
             state.deletedNodeIds.size > 0 ||
             state.createdEdges.length > 0 ||
@@ -2879,6 +3057,8 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
       },
       resetEditState: () => {
         editStateRef.current = createEmptyEditState();
+        // Reset text changes version to trigger re-render
+        resetTextChangesVersionRef.current?.();
         // Also reset visual state (node positions/dimensions) if available
         resetVisualStateRef.current?.();
         // Clear undo/redo history
@@ -2889,6 +3069,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
         return (
           state.positionChanges.size > 0 ||
           state.dimensionChanges.size > 0 ||
+          state.textChanges.size > 0 ||
           state.nodeUpdates.size > 0 ||
           state.deletedNodeIds.size > 0 ||
           state.createdEdges.length > 0 ||
@@ -2988,6 +3169,7 @@ export const GraphRenderer = forwardRef<GraphRendererHandle, GraphRendererProps>
             onPendingChangesChange={onPendingChangesChange}
             editStateRef={editStateRef}
             resetVisualStateRef={resetVisualStateRef}
+            resetTextChangesVersionRef={resetTextChangesVersionRef}
             undoRedoFunctionsRef={undoRedoFunctionsRef}
             pushHistory={pushHistory}
             clearHistory={clearHistory}

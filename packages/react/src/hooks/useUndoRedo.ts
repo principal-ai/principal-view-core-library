@@ -27,6 +27,12 @@ export type HistoryEntry =
       after: { width: number; height: number };
     }
   | {
+      type: 'text';
+      nodeId: string;
+      before: string;
+      after: string;
+    }
+  | {
       type: 'nodeDelete';
       nodeId: string;
       nodeData: NodeState;
