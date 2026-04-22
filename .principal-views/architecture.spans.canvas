@@ -7,6 +7,15 @@
       "description": "A span convention defining an operation type"
     }
   },
+  "edgeTypes": {
+    "data-flow": {
+      "label": "Data Flow",
+      "style": "solid",
+      "color": "#666",
+      "width": 2,
+      "directed": true
+    }
+  },
   "nodes": [
     {
       "id": "cli-command",

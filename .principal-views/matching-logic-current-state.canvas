@@ -2,6 +2,24 @@
   "name": "Matching Logic - Current State",
   "markdown": ".principal-views/matching-logic-current-state.md",
   "description": "Documents what exists vs what needs to be implemented for the OTLP trace matching logic",
+  "nodeTypes": {
+    "input": { "label": "Input" },
+    "output": { "label": "Output" },
+    "type-definition": { "label": "Type Definition" },
+    "missing": { "label": "Missing / Not Implemented" },
+    "registry": { "label": "Registry" },
+    "matcher": { "label": "Matcher" },
+    "utility": { "label": "Utility" },
+    "builder": { "label": "Builder" },
+    "discovery": { "label": "Discovery" }
+  },
+  "edgeTypes": {
+    "data-flow": { "label": "Data Flow", "style": "solid", "directed": true },
+    "missing-flow": { "label": "Missing Flow", "style": "dashed", "directed": true },
+    "query": { "label": "Query", "style": "dashed", "directed": true },
+    "type-definition": { "label": "Type Definition", "style": "solid", "directed": false },
+    "supports": { "label": "Supports", "style": "solid", "directed": false }
+  },
   "nodes": [
     {
       "id": "otlp-trace",

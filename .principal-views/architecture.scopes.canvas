@@ -1,6 +1,15 @@
 {
   "name": "Principal View CLI Scopes",
   "markdown": ".principal-views/architecture.scopes.md",
+  "edgeTypes": {
+    "data-flow": {
+      "label": "Data Flow",
+      "style": "solid",
+      "color": "#666",
+      "width": 2,
+      "directed": true
+    }
+  },
   "nodes": [
     {
       "id": "scope-cli",

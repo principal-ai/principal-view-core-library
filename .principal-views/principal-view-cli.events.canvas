@@ -2,6 +2,7 @@
   "name": "Validation Events Vocabulary",
   "description": "Event namespace canvas showing all event namespaces used during validation workflows and their adjacency relationships",
   "type": "event-namespace",
+  "scope": "principal-view.cli",
   "markdown": ".principal-views/architecture.events.md",
   "nodeTypes": {
     "event-namespace": {

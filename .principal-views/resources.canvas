@@ -1,6 +1,15 @@
 {
   "name": "Principal View Resources",
   "markdown": ".principal-views/resources.md",
+  "edgeTypes": {
+    "data-flow": {
+      "label": "Data Flow",
+      "style": "solid",
+      "color": "#666",
+      "width": 2,
+      "directed": true
+    }
+  },
   "nodes": [
     {
       "id": "pv-cli-resource",
