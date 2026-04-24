@@ -219,7 +219,12 @@ export type {
 } from './scopes';
 
 // Export events module (canvas validation)
-export { EventsCanvasValidator, ScopeEventsValidator } from './events';
+export {
+  EventsCanvasValidator,
+  ScopeEventsValidator,
+  NamespacePathIndex,
+  OtelEventPathsValidator,
+} from './events';
 export type {
   EventsCanvasValidationContext,
   EventsCanvasValidationResult,
@@ -227,4 +232,12 @@ export type {
   ScopeEventsValidationContext,
   ScopeEventsValidationResult,
   ScopeEventsViolation,
+  NamespacePathEntry,
+  NamespacePathMatch,
+  EventsCanvasInput,
+  OtelCanvasInput,
+  OtelEventPathsValidationContext,
+  OtelEventPathsValidationResult,
+  OtelEventPathsViolation,
+  OtelEventPathsRuleId,
 } from './events';

@@ -36,6 +36,11 @@ import {
   EventRegistry,
   WorkflowValidator,
   ScopeEventsValidator,
+  OtelEventPathsValidator,
+} from '@principal-ai/principal-view-core/node';
+import type {
+  EventsCanvasInput,
+  OtelCanvasInput,
 } from '@principal-ai/principal-view-core/node';
 import type { ComponentLibrary } from '@principal-ai/principal-view-core';
 import {
@@ -3165,6 +3170,56 @@ export function createValidateCommand(): Command {
               isValid: !libraryHasErrors,
               issues: libraryIssues,
             });
+          }
+
+          // Cross-canvas path enforcement: cross-reference `otel.files` on
+          // `otel-event` nodes against `paths` on `event-namespace` nodes.
+          // Enforcement is opt-in per namespace — namespaces without `paths`
+          // produce no violations.
+          try {
+            const eventsCanvasInputs: EventsCanvasInput[] = [];
+            const otelCanvasInputs: OtelCanvasInput[] = [];
+
+            for (const cf of canvasFiles) {
+              const absPath = resolve(repositoryPath, cf);
+              if (!existsSync(absPath)) continue;
+              let canvas: ExtendedCanvas;
+              try {
+                canvas = JSON.parse(readFileSync(absPath, 'utf-8')) as ExtendedCanvas;
+              } catch {
+                continue; // malformed — caught by per-file validator
+              }
+
+              if (cf.endsWith('.events.canvas')) {
+                const rawScope = (canvas as any).scope;
+                if (typeof rawScope !== 'string' || rawScope.length === 0) continue;
+                eventsCanvasInputs.push({ canvas, canvasPath: cf, scope: rawScope });
+              } else if (cf.endsWith('.otel.canvas')) {
+                otelCanvasInputs.push({ canvas, canvasPath: cf });
+              }
+            }
+
+            if (eventsCanvasInputs.length > 0 && otelCanvasInputs.length > 0) {
+              const pathsResult = new OtelEventPathsValidator().validate({
+                eventsCanvases: eventsCanvasInputs,
+                otelCanvases: otelCanvasInputs,
+              });
+
+              for (const violation of pathsResult.violations) {
+                const target = results.find((r) => r.file === violation.file);
+                if (!target) continue;
+                if (violation.severity === 'error') target.isValid = false;
+                target.issues.push({
+                  type: violation.severity === 'error' ? 'error' : 'warning',
+                  message: violation.message,
+                  path: violation.path,
+                  suggestion: violation.suggestion,
+                });
+              }
+            }
+          } catch {
+            // Non-fatal — any loading/parsing failure leaves the cross-canvas
+            // check quiet, letting the per-file validators surface their own errors.
           }
 
           // Group canvases by directory for validation

@@ -356,12 +356,20 @@ export type {
 } from './scopes';
 
 // Export events module (event namespace canvas validation)
-export { EventsCanvasValidator } from './events';
+export { EventsCanvasValidator, NamespacePathIndex, OtelEventPathsValidator } from './events';
 export type {
   EventNamespaceNode,
   EventsCanvasValidationContext,
   EventsCanvasViolation,
   EventsCanvasValidationResult,
+  NamespacePathEntry,
+  NamespacePathMatch,
+  EventsCanvasInput,
+  OtelCanvasInput,
+  OtelEventPathsValidationContext,
+  OtelEventPathsValidationResult,
+  OtelEventPathsViolation,
+  OtelEventPathsRuleId,
 } from './events';
 
 // Export spans module (span conventions + span color utilities)
