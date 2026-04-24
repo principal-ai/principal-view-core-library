@@ -65,6 +65,7 @@
       "namespace": {
         "name": "filetree",
         "description": "File tree construction events",
+        "paths": ["packages/cli/src/file-utils.ts"],
         "events": [
           {
             "name": "filetree.built",
@@ -516,6 +517,7 @@
       "namespace": {
         "name": "workflow",
         "description": "Workflow validation events",
+        "paths": ["packages/cli/src/commands/workflow"],
         "events": [
           {
             "name": "workflow.validated",

@@ -76,6 +76,65 @@ interface LoadedLibrary {
 }
 
 /**
+ * Cross-canvas path enforcement. For every `otel-event` node in an OTEL
+ * canvas, cross-references each entry in `otel.files` against the `paths`
+ * declared on the event's namespace in the matching events canvas.
+ * Enforcement is opt-in per namespace — namespaces without `paths` produce
+ * no violations. Mutates `results` in place to attach any violations.
+ */
+function runOtelEventPathsValidation(
+  results: ValidationResult[],
+  repositoryPath: string,
+): void {
+  try {
+    const eventsCanvasInputs: EventsCanvasInput[] = [];
+    const otelCanvasInputs: OtelCanvasInput[] = [];
+
+    for (const r of results) {
+      if (r.fileType !== 'canvas') continue;
+      const absPath = resolve(repositoryPath, r.file);
+      if (!existsSync(absPath)) continue;
+      let canvas: ExtendedCanvas;
+      try {
+        canvas = JSON.parse(readFileSync(absPath, 'utf-8')) as ExtendedCanvas;
+      } catch {
+        continue; // malformed — caught by per-file validator
+      }
+
+      if (r.file.endsWith('.events.canvas')) {
+        const rawScope = (canvas as unknown as { scope?: unknown }).scope;
+        if (typeof rawScope !== 'string' || rawScope.length === 0) continue;
+        eventsCanvasInputs.push({ canvas, canvasPath: r.file, scope: rawScope });
+      } else if (r.file.endsWith('.otel.canvas')) {
+        otelCanvasInputs.push({ canvas, canvasPath: r.file });
+      }
+    }
+
+    if (eventsCanvasInputs.length === 0 || otelCanvasInputs.length === 0) return;
+
+    const pathsResult = new OtelEventPathsValidator().validate({
+      eventsCanvases: eventsCanvasInputs,
+      otelCanvases: otelCanvasInputs,
+    });
+
+    for (const violation of pathsResult.violations) {
+      const target = results.find((r) => r.file === violation.file);
+      if (!target) continue;
+      if (violation.severity === 'error') target.isValid = false;
+      target.issues.push({
+        type: violation.severity === 'error' ? 'error' : 'warning',
+        message: violation.message,
+        path: violation.path,
+        suggestion: violation.suggestion,
+      });
+    }
+  } catch {
+    // Non-fatal — any loading/parsing failure leaves the cross-canvas check
+    // quiet, letting the per-file validators surface their own errors.
+  }
+}
+
+/**
  * Load the library.yaml file from the .principal-views directory
  */
 function loadLibrary(principalViewsDir: string): LoadedLibrary | null {
@@ -3174,53 +3233,7 @@ export function createValidateCommand(): Command {
 
           // Cross-canvas path enforcement: cross-reference `otel.files` on
           // `otel-event` nodes against `paths` on `event-namespace` nodes.
-          // Enforcement is opt-in per namespace — namespaces without `paths`
-          // produce no violations.
-          try {
-            const eventsCanvasInputs: EventsCanvasInput[] = [];
-            const otelCanvasInputs: OtelCanvasInput[] = [];
-
-            for (const cf of canvasFiles) {
-              const absPath = resolve(repositoryPath, cf);
-              if (!existsSync(absPath)) continue;
-              let canvas: ExtendedCanvas;
-              try {
-                canvas = JSON.parse(readFileSync(absPath, 'utf-8')) as ExtendedCanvas;
-              } catch {
-                continue; // malformed — caught by per-file validator
-              }
-
-              if (cf.endsWith('.events.canvas')) {
-                const rawScope = (canvas as any).scope;
-                if (typeof rawScope !== 'string' || rawScope.length === 0) continue;
-                eventsCanvasInputs.push({ canvas, canvasPath: cf, scope: rawScope });
-              } else if (cf.endsWith('.otel.canvas')) {
-                otelCanvasInputs.push({ canvas, canvasPath: cf });
-              }
-            }
-
-            if (eventsCanvasInputs.length > 0 && otelCanvasInputs.length > 0) {
-              const pathsResult = new OtelEventPathsValidator().validate({
-                eventsCanvases: eventsCanvasInputs,
-                otelCanvases: otelCanvasInputs,
-              });
-
-              for (const violation of pathsResult.violations) {
-                const target = results.find((r) => r.file === violation.file);
-                if (!target) continue;
-                if (violation.severity === 'error') target.isValid = false;
-                target.issues.push({
-                  type: violation.severity === 'error' ? 'error' : 'warning',
-                  message: violation.message,
-                  path: violation.path,
-                  suggestion: violation.suggestion,
-                });
-              }
-            }
-          } catch {
-            // Non-fatal — any loading/parsing failure leaves the cross-canvas
-            // check quiet, letting the per-file validators surface their own errors.
-          }
+          runOtelEventPathsValidation(results, repositoryPath);
 
           // Group canvases by directory for validation
           const canvasesByDir = new Map<string, { otel: string[]; regular: string[] }>();
@@ -3931,6 +3944,9 @@ export function createValidateCommand(): Command {
             results.push(validationResult);
           }
         }
+
+        // Cross-canvas path enforcement (discovery branch).
+        runOtelEventPathsValidation(results, repositoryPath);
 
         // Output results using helper function
         outputResults(results, libraryResult, options, false);

@@ -97,7 +97,8 @@
       },
       "otel": {
         "status": "draft",
-        "scope": "principal-view.cli"
+        "scope": "principal-view.cli",
+        "files": ["packages/cli/src/file-utils.ts"]
       }
     },
     {
@@ -457,7 +458,8 @@
       },
       "otel": {
         "status": "draft",
-        "scope": "principal-view.cli"
+        "scope": "principal-view.cli",
+        "files": ["packages/cli/src/commands/workflow/validate.ts"]
       }
     },
     {
