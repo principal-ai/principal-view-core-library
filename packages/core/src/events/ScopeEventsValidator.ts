@@ -5,9 +5,8 @@
  * has a corresponding {scope-name}.events.canvas file documenting its event vocabulary.
  */
 
+import type { FileSystemAdapter } from '@principal-ai/repository-abstraction';
 import type { ExtendedCanvas, OtelScopeNode } from '../types/canvas';
-import { existsSync } from 'fs';
-import { resolve, join } from 'path';
 
 /**
  * Scope events validation context
@@ -82,6 +81,8 @@ function scopeToEventsCanvasFilename(scope: string): string {
  * Validates that scopes have corresponding events canvas files
  */
 export class ScopeEventsValidator {
+  constructor(private fsAdapter: FileSystemAdapter) {}
+
   /**
    * Validate that each scope documented in scopes canvas has an events canvas
    */
@@ -116,10 +117,10 @@ export class ScopeEventsValidator {
       if (!scope) continue;
 
       const eventsCanvasFilename = scopeToEventsCanvasFilename(scope);
-      const eventsCanvasPath = join(basePath, '.principal-views', eventsCanvasFilename);
+      const eventsCanvasPath = this.fsAdapter.join(basePath, '.principal-views', eventsCanvasFilename);
       const relativePath = `.principal-views/${eventsCanvasFilename}`;
 
-      if (existsSync(eventsCanvasPath)) {
+      if (await this.fsAdapter.exists(eventsCanvasPath)) {
         scopesWithEvents.push(scope);
       } else {
         scopesMissingEvents.push(scope);

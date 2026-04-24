@@ -13,6 +13,11 @@ storybook-static/
 coverage/
 .nyc_output/
 
+# Test-run artifacts (regenerated on every test run)
+packages/core/__traces__/
+packages/react/src/stories/data/graph-converter-test-execution.json
+.principal-views/validation/validation-workflow/rules-engine-execution.otel.json
+
 # IDE
 .vscode/
 .idea/

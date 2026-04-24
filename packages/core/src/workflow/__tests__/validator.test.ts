@@ -7,6 +7,7 @@ import type { WorkflowTemplate, WorkflowValidationContext } from '../validator';
 import type { ExtendedCanvas } from '../../types/canvas';
 import type { ComponentLibrary } from '../../types/library';
 import { EventRegistry } from '../../registry/EventRegistry';
+import { NodeFileSystemAdapter } from '@principal-ai/repository-abstraction/node';
 import { mkdtempSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -16,7 +17,7 @@ describe('WorkflowValidator', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    validator = new WorkflowValidator();
+    validator = new WorkflowValidator(new NodeFileSystemAdapter());
     // Create a temporary directory for test files
     tempDir = mkdtempSync(join(tmpdir(), 'workflow-validator-test-'));
   });
@@ -300,6 +301,124 @@ describe('WorkflowValidator', () => {
           message: expect.stringContaining('does not exist'),
         })
       );
+    });
+  });
+
+  // ============================================================================
+  // Implementation Files Existence Tests (workflow-files-exist)
+  // ============================================================================
+
+  describe('workflow-files-exist', () => {
+    // Create the referenced canvas so unrelated canvas-exists violations stay silent.
+    function setupCanvas(): string {
+      const canvasPath = join(tempDir, 'test.otel.canvas');
+      writeFileSync(canvasPath, JSON.stringify(createValidCanvas()));
+      writeFileSync(join(tempDir, 'test.md'), '# Test');
+      return canvasPath;
+    }
+
+    it('should pass when status is implemented and all files exist', async () => {
+      const canvasPath = setupCanvas();
+      writeFileSync(join(tempDir, 'impl.ts'), '// impl');
+
+      const context = createContext(
+        { status: 'implemented', scope: 'test-scope', files: ['impl.ts'] },
+        { canvasPath }
+      );
+      const result = await validator.validate(context);
+
+      const fileViolations = result.violations.filter(
+        (v) => v.ruleId === 'workflow-files-exist'
+      );
+      expect(fileViolations).toHaveLength(0);
+    });
+
+    it('should flag each missing file when status is implemented', async () => {
+      const canvasPath = setupCanvas();
+
+      const context = createContext(
+        {
+          status: 'implemented',
+          scope: 'test-scope',
+          files: ['missing-one.ts', 'missing-two.ts'],
+        },
+        { canvasPath }
+      );
+      const result = await validator.validate(context);
+
+      const fileViolations = result.violations.filter(
+        (v) => v.ruleId === 'workflow-files-exist'
+      );
+      expect(fileViolations).toHaveLength(2);
+      expect(fileViolations).toContainEqual(
+        expect.objectContaining({
+          ruleId: 'workflow-files-exist',
+          severity: 'error',
+          path: 'files',
+          message: expect.stringContaining('missing-one.ts'),
+        })
+      );
+      expect(fileViolations).toContainEqual(
+        expect.objectContaining({
+          ruleId: 'workflow-files-exist',
+          message: expect.stringContaining('missing-two.ts'),
+        })
+      );
+    });
+
+    it('should flag only the missing files when some exist and some do not', async () => {
+      const canvasPath = setupCanvas();
+      writeFileSync(join(tempDir, 'present.ts'), '// present');
+
+      const context = createContext(
+        {
+          status: 'implemented',
+          scope: 'test-scope',
+          files: ['present.ts', 'absent.ts'],
+        },
+        { canvasPath }
+      );
+      const result = await validator.validate(context);
+
+      const fileViolations = result.violations.filter(
+        (v) => v.ruleId === 'workflow-files-exist'
+      );
+      expect(fileViolations).toHaveLength(1);
+      expect(fileViolations[0].message).toContain('absent.ts');
+    });
+
+    it('should not check file existence when status is draft', async () => {
+      const canvasPath = setupCanvas();
+
+      const context = createContext(
+        { status: 'draft', files: ['does-not-exist.ts'] },
+        { canvasPath }
+      );
+      const result = await validator.validate(context);
+
+      const fileViolations = result.violations.filter(
+        (v) => v.ruleId === 'workflow-files-exist'
+      );
+      expect(fileViolations).toHaveLength(0);
+    });
+
+    it('should not check file existence when status is approved', async () => {
+      const canvasPath = setupCanvas();
+
+      const context = createContext(
+        {
+          status: 'approved',
+          scope: 'test-scope',
+          files: ['does-not-exist.ts'],
+        },
+        { canvasPath }
+      );
+      const result = await validator.validate(context);
+
+      const fileViolations = result.violations.filter(
+        (v) => v.ruleId === 'workflow-files-exist'
+      );
+      expect(fileViolations).toHaveLength(0);
     });
   });
 

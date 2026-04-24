@@ -3,11 +3,11 @@
  * Validates .workflow.json files against their corresponding .otel.canvas files
  */
 
+import type { FileSystemAdapter } from '@principal-ai/repository-abstraction';
 import type { WorkflowTemplate, WorkflowScenario, ScenarioTemplate } from './types';
 import { getEventTemplateString } from './types';
 import type { ExtendedCanvas, OtelEventNode } from '../types/canvas';
 import { isOtelEventNode } from '../types/canvas';
-import { existsSync, readFileSync } from 'fs';
 import { resolve, basename } from 'path';
 import type { EventRegistry } from '../registry/EventRegistry';
 import type { IExportTraceServiceRequest } from '@opentelemetry/otlp-transformer/build/src/trace/internal-types';
@@ -125,6 +125,8 @@ export interface WorkflowValidationResult {
 // ============================================================================
 
 export class WorkflowValidator {
+  constructor(private fsAdapter: FileSystemAdapter) {}
+
   /**
    * Validate a workflow template
    */
@@ -134,8 +136,8 @@ export class WorkflowValidator {
     const violations: WorkflowViolation[] = [];
 
     // Run all validation rules
-    violations.push(...this.checkSchema(context));
-    violations.push(...this.checkCanvasExists(context));
+    violations.push(...(await this.checkSchema(context)));
+    violations.push(...(await this.checkCanvasExists(context)));
     violations.push(...this.checkCanvasNodeLabels(context));
     violations.push(...this.checkCanvasCrossReference(context));
     violations.push(...this.checkDeprecatedFields(context));
@@ -162,7 +164,7 @@ export class WorkflowValidator {
 
     // Check execution data completeness if execution files are provided
     if (context.executionFiles && context.executionFiles.length > 0) {
-      violations.push(...this.checkExecutionDataCompleteness(context));
+      violations.push(...(await this.checkExecutionDataCompleteness(context)));
     }
 
     return this.aggregateResults(violations);
@@ -221,7 +223,7 @@ export class WorkflowValidator {
   /**
    * Check schema validity (required fields, valid values)
    */
-  private checkSchema(context: WorkflowValidationContext): WorkflowViolation[] {
+  private async checkSchema(context: WorkflowValidationContext): Promise<WorkflowViolation[]> {
     const violations: WorkflowViolation[] = [];
     const { workflow, workflowPath } = context;
 
@@ -426,7 +428,7 @@ export class WorkflowValidator {
     if (status === 'implemented' && workflow.files && workflow.files.length > 0) {
       for (const file of workflow.files) {
         const filePath = resolve(context.basePath, file);
-        if (!existsSync(filePath)) {
+        if (!(await this.fsAdapter.exists(filePath))) {
           violations.push({
             ruleId: 'workflow-files-exist',
             severity: 'error',
@@ -501,7 +503,7 @@ export class WorkflowValidator {
   /**
    * Check that the referenced canvas file exists
    */
-  private checkCanvasExists(context: WorkflowValidationContext): WorkflowViolation[] {
+  private async checkCanvasExists(context: WorkflowValidationContext): Promise<WorkflowViolation[]> {
     const violations: WorkflowViolation[] = [];
     const { workflow, workflowPath, basePath, canvasPath } = context;
 
@@ -513,7 +515,7 @@ export class WorkflowValidator {
     // Resolve canvas path
     const resolvedPath = canvasPath || resolve(basePath, workflow.canvas);
 
-    if (!existsSync(resolvedPath)) {
+    if (!(await this.fsAdapter.exists(resolvedPath))) {
       violations.push({
         ruleId: 'workflow-canvas-exists',
         severity: 'error',
@@ -2302,7 +2304,7 @@ export class WorkflowValidator {
    * Validates that co-located execution files contain the events and attributes
    * that workflow templates reference.
    */
-  private checkExecutionDataCompleteness(context: WorkflowValidationContext): WorkflowViolation[] {
+  private async checkExecutionDataCompleteness(context: WorkflowValidationContext): Promise<WorkflowViolation[]> {
     const violations: WorkflowViolation[] = [];
     const { workflow, workflowPath, executionFiles } = context;
 
@@ -2314,7 +2316,7 @@ export class WorkflowValidator {
     const executions: Array<{path: string; data: IExportTraceServiceRequest}> = [];
     for (const execPath of executionFiles) {
       try {
-        const content = readFileSync(execPath, 'utf-8');
+        const content = await this.fsAdapter.readFile(execPath);
         const data = JSON.parse(content) as IExportTraceServiceRequest;
         executions.push({ path: execPath, data });
       } catch (error) {
@@ -2730,6 +2732,6 @@ export class WorkflowValidator {
 /**
  * Create a validator instance
  */
-export function createWorkflowValidator(): WorkflowValidator {
-  return new WorkflowValidator();
+export function createWorkflowValidator(fsAdapter: FileSystemAdapter): WorkflowValidator {
+  return new WorkflowValidator(fsAdapter);
 }
