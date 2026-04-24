@@ -6,6 +6,9 @@
  */
 
 import type { ExtendedCanvas, ExtendedCanvasNode } from '../types/canvas';
+import { existsSync } from 'fs';
+import { resolve } from 'path';
+import { pathsOverlap } from './path-helpers';
 
 /**
  * Event namespace node structure
@@ -16,6 +19,19 @@ export interface EventNamespaceNode {
   namespace: {
     name: string;
     description: string;
+    /**
+     * Optional source paths that define this component's code location.
+     * Each entry may be a folder (covers all descendants) or a specific file.
+     * When present, events in this namespace may only be emitted from files
+     * covered by one of these paths. Namespaces without `paths` remain
+     * unenforced — enforcement is opt-in per namespace.
+     *
+     * Multiple entries are valid for cases like generated code, platform-split
+     * implementations, or migration periods. The validator warns when
+     * `paths.length > 1` to prompt authors to confirm the multi-location
+     * is intentional.
+     */
+    paths?: string[];
     events: Array<{
       name: string;
       severity?: 'INFO' | 'WARN' | 'ERROR';
@@ -324,6 +340,76 @@ export class EventsCanvasValidator {
               suggestion: 'Add severity field with value: "INFO", "WARN", or "ERROR"',
             });
           }
+        }
+      }
+    }
+
+    // Validate namespace paths (optional field — enforcement is opt-in per namespace).
+    // Collects declared paths across namespaces to check for cross-namespace overlap.
+    const declaredPaths: Array<{ namespace: string; nodeId: string; path: string }> = [];
+    for (const node of eventsCanvas.nodes || []) {
+      if (!this.isEventNamespaceNode(node)) continue;
+      const namespaceNode = node as EventNamespaceNode;
+      const paths = namespaceNode.namespace.paths;
+      if (!paths || paths.length === 0) continue;
+
+      // Warn when a namespace declares more than one path — prompt author to
+      // confirm the multi-location is intentional (generated code, platform
+      // splits, migration) rather than an accidental sprawl.
+      if (paths.length > 1) {
+        violations.push({
+          ruleId: 'events-namespace-multiple-paths',
+          severity: 'warn',
+          file: eventsCanvasPath || '.principal-views/cli.events.canvas',
+          path: `nodes[id="${namespaceNode.id}"].namespace.paths`,
+          message: `Namespace "${namespaceNode.namespace.name}" declares ${paths.length} paths`,
+          impact: 'Multiple paths can indicate legitimate cases (generated code, platform splits, migration) but often signal that the namespace should be split',
+          suggestion: 'Confirm the multi-location is intentional. Otherwise consider splitting the namespace or grouping the code under a single parent folder.',
+        });
+      }
+
+      for (const p of paths) {
+        declaredPaths.push({
+          namespace: namespaceNode.namespace.name,
+          nodeId: namespaceNode.id,
+          path: p,
+        });
+
+        // Warn when a declared path does not exist relative to the repo root.
+        const resolved = resolve(basePath, p);
+        if (!existsSync(resolved)) {
+          violations.push({
+            ruleId: 'events-namespace-paths-missing',
+            severity: 'warn',
+            file: eventsCanvasPath || '.principal-views/cli.events.canvas',
+            path: `nodes[id="${namespaceNode.id}"].namespace.paths`,
+            message: `Path "${p}" declared by namespace "${namespaceNode.namespace.name}" does not exist`,
+            impact: 'Events emitted under this namespace cannot be validated against a real code location',
+            suggestion: 'Verify the path exists relative to the repository root, or remove it from the namespace declaration.',
+          });
+        }
+      }
+    }
+
+    // Cross-namespace overlap check. Parent-child nesting is a valid partition
+    // (longest-prefix wins at runtime); any other overlap makes namespace
+    // ownership of a file ambiguous.
+    for (let i = 0; i < declaredPaths.length; i++) {
+      for (let j = i + 1; j < declaredPaths.length; j++) {
+        const a = declaredPaths[i];
+        const b = declaredPaths[j];
+        if (a.namespace === b.namespace) continue;
+
+        const relationship = pathsOverlap(a.path, b.path);
+        if (relationship === 'conflict') {
+          violations.push({
+            ruleId: 'events-namespace-paths-overlap',
+            severity: 'error',
+            file: eventsCanvasPath || '.principal-views/cli.events.canvas',
+            message: `Paths overlap between namespaces "${a.namespace}" ("${a.path}") and "${b.namespace}" ("${b.path}")`,
+            impact: 'A file covered by two namespaces makes namespace ownership ambiguous',
+            suggestion: 'Separate the paths so they are disjoint, or restructure as parent/child namespaces (e.g., "workflow" covering "src/workflow" and "workflow.scenarios" covering "src/workflow/scenarios").',
+          });
         }
       }
     }
