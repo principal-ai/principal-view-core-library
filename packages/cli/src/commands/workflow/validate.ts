@@ -11,6 +11,7 @@ import {
   getScopeNames,
 } from '@principal-ai/principal-view-core/node';
 import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
+import { NodeFileSystemAdapter as RepoFsAdapter } from '@principal-ai/repository-abstraction/node';
 import yaml from 'js-yaml';
 // Browser-safe imports
 import { computeAggregates } from '@principal-ai/principal-view-core';
@@ -243,7 +244,7 @@ export function createValidateCommand(): Command {
         }
 
         // Create validator
-        const validator = new WorkflowValidator();
+        const validator = new WorkflowValidator(new RepoFsAdapter());
 
         // Validate
         const context = {

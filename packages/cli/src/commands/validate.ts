@@ -2599,7 +2599,7 @@ async function validateWorkflow(
         : undefined;
 
     // Validate using workflow validator
-    const validator = createWorkflowValidator();
+    const validator = createWorkflowValidator(new NodeFileSystemAdapter());
     const rawContent = readFileSync(filePath, 'utf8');
 
     const result = await validator.validate({
@@ -3202,7 +3202,7 @@ export function createValidateCommand(): Command {
                 const scopesCanvasData = readFileSync(scopesCanvasPath, 'utf-8');
                 const scopesCanvasContent = JSON.parse(scopesCanvasData) as ExtendedCanvas;
 
-                const scopeEventsValidator = new ScopeEventsValidator();
+                const scopeEventsValidator = new ScopeEventsValidator(new NodeFileSystemAdapter());
                 const scopeEventsResult = await scopeEventsValidator.validate({
                   scopesCanvas: scopesCanvasContent,
                   scopesCanvasPath: '.principal-views/architecture.scopes.canvas',
@@ -3418,7 +3418,7 @@ export function createValidateCommand(): Command {
             }
 
             if (scopesCanvasContent) {
-              const scopeEventsValidator = new ScopeEventsValidator();
+              const scopeEventsValidator = new ScopeEventsValidator(new NodeFileSystemAdapter());
               const scopeEventsResult = await scopeEventsValidator.validate({
                 scopesCanvas: scopesCanvasContent,
                 scopesCanvasPath: scopesCanvas.path,

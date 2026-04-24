@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "@principal-ai/codebase-composition": "^0.2.43",
-    "@principal-ai/principal-view-core": "^0.28.1",
+    "@principal-ai/principal-view-core": "^0.28.2",
     "@principal-ai/repository-abstraction": "^0.5.7",
     "chalk": "5.6.2",
     "commander": "14.0.2",
