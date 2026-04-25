@@ -202,6 +202,8 @@ export type {
 // Export scopes module (canvas validation + scope utilities)
 export {
   ScopesCanvasValidator,
+  ScopePathIndex,
+  validateScopeNamespaceNesting,
   DEFAULT_SCOPE_COLOR,
   DRAFT_NODE_COLOR,
   getScopeNames,
@@ -215,6 +217,10 @@ export type {
   ScopesCanvasValidationContext,
   ScopesCanvasValidationResult,
   ScopesCanvasViolation,
+  ScopePathEntry,
+  ScopePathMatch,
+  ScopeEventsCanvasPair,
+  ValidateScopeNamespaceNestingInput,
   NormalizedScope,
 } from './scopes';
 

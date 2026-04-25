@@ -14,6 +14,18 @@ export {
 } from './ScopesCanvasValidator';
 
 export {
+  ScopePathIndex,
+  type ScopePathEntry,
+  type ScopePathMatch,
+} from './ScopePathIndex';
+
+export {
+  validateScopeNamespaceNesting,
+  type ScopeEventsCanvasPair,
+  type ValidateScopeNamespaceNestingInput,
+} from './validateScopeNamespaceNesting';
+
+export {
   DEFAULT_SCOPE_COLOR,
   DRAFT_NODE_COLOR,
   getScopeNames,

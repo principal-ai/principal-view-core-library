@@ -1014,6 +1014,21 @@ export interface OtelScopeNode extends OtelNodeBase {
   type: 'otel-scope';
   /** Short description of this instrumentation scope */
   description?: string;
+  /**
+   * Optional source paths that define this scope's code region.
+   * Each entry may be a folder (covers all descendants) or a specific file.
+   * When present, events under this scope may only originate from files
+   * covered by one of these paths, and every `event-namespace` declared in
+   * this scope's events canvas must have its own `paths` nested inside this
+   * region. Scopes without `paths` remain unenforced — enforcement is opt-in
+   * per scope.
+   *
+   * Semantics are "ownership / partition", distinct from `otel.files` on
+   * `otel-event` nodes (which lists specific emission sites). Across scopes,
+   * paths must be disjoint except for strict parent-child nesting by
+   * dotted-scope name (longest-prefix wins).
+   */
+  paths?: string[];
   /** OTEL metadata - scope name is required */
   otel: OtelMetadata & {
     /** Scope name (required - maps to getTracer('scope-name')) */

@@ -5,8 +5,11 @@
  * all instrumentation scopes declared in library.yaml.
  */
 
+import { existsSync } from 'fs';
+import { resolve } from 'path';
 import type { ExtendedCanvas, ExtendedCanvasNode, OtelScopeNode, isOtelScopeNode } from '../types/canvas';
 import { isOtelScopeNode as checkOtelScopeNode } from '../types/canvas';
+import { pathsOverlap } from '../events/path-helpers';
 
 /**
  * Scopes canvas validation context
@@ -191,6 +194,71 @@ export class ScopesCanvasValidator {
           impact: 'Scope documentation is incomplete without a description',
           suggestion: `Add a description field to explain what this scope covers`,
         });
+      }
+    }
+
+    // Validate scope paths (optional field — enforcement is opt-in per scope).
+    // Collects declared paths across scopes to check for cross-scope overlap.
+    const declaredPaths: Array<{ scope: string; nodeId: string; path: string }> = [];
+    for (const { scope, nodeId, node } of canvasScopes) {
+      const otelScopeNode = node as unknown as OtelScopeNode;
+      const paths = otelScopeNode.paths;
+      if (!paths || paths.length === 0) continue;
+
+      // Warn when a scope declares more than one path — prompt author to
+      // confirm the multi-location is intentional (monorepo bundling,
+      // generated code, platform splits, migration) rather than accidental.
+      if (paths.length > 1) {
+        violations.push({
+          ruleId: 'scopes-paths-multiple',
+          severity: 'warn',
+          file: scopesCanvasPath || '.principal-views/architecture.scopes.canvas',
+          path: `nodes[${nodeId}].paths`,
+          message: `Scope "${scope}" declares ${paths.length} paths`,
+          impact: 'Multiple paths can indicate legitimate cases (monorepo bundling, generated code, platform splits, migration) but often signal that the scope should be split',
+          suggestion: 'Confirm the multi-location is intentional. Otherwise consider splitting the scope or grouping the code under a single parent folder.',
+        });
+      }
+
+      for (const p of paths) {
+        declaredPaths.push({ scope, nodeId, path: p });
+
+        // Warn when a declared path does not exist relative to the repo root.
+        const resolved = resolve(basePath, p);
+        if (!existsSync(resolved)) {
+          violations.push({
+            ruleId: 'scopes-paths-missing',
+            severity: 'warn',
+            file: scopesCanvasPath || '.principal-views/architecture.scopes.canvas',
+            path: `nodes[${nodeId}].paths`,
+            message: `Path "${p}" declared by scope "${scope}" does not exist`,
+            impact: 'Events emitted under this scope cannot be validated against a real code location',
+            suggestion: 'Verify the path exists relative to the repository root, or remove it from the scope declaration.',
+          });
+        }
+      }
+    }
+
+    // Cross-scope overlap check. Parent-child path nesting is a valid partition
+    // (longest-prefix wins at runtime); any other overlap makes scope ownership
+    // of a file ambiguous.
+    for (let i = 0; i < declaredPaths.length; i++) {
+      for (let j = i + 1; j < declaredPaths.length; j++) {
+        const a = declaredPaths[i];
+        const b = declaredPaths[j];
+        if (a.scope === b.scope) continue;
+
+        const relationship = pathsOverlap(a.path, b.path);
+        if (relationship === 'conflict') {
+          violations.push({
+            ruleId: 'scopes-paths-overlap',
+            severity: 'error',
+            file: scopesCanvasPath || '.principal-views/architecture.scopes.canvas',
+            message: `Paths overlap between scopes "${a.scope}" ("${a.path}") and "${b.scope}" ("${b.path}")`,
+            impact: 'A file covered by two scopes makes scope ownership ambiguous',
+            suggestion: 'Separate the paths so they are disjoint, or restructure as parent/child scopes by dotted name (e.g., "principal-ai.core" covering "packages/core/src" and "principal-ai.core.validation" covering "packages/core/src/validation").',
+          });
+        }
       }
     }
 
