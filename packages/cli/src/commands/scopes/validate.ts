@@ -5,6 +5,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import yaml from 'js-yaml';
 import {
   ScopesCanvasValidator,
+  validateScopeNamespaceNesting,
   CanvasDiscovery,
   getScopeNames,
 } from '@principal-ai/principal-view-core/node';
@@ -13,6 +14,7 @@ import type {
   ComponentLibrary,
   DiscoveredCanvasWithContent,
   ScopesCanvasViolation,
+  ScopeEventsCanvasPair,
   OwnedScopes,
 } from '@principal-ai/principal-view-core';
 import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
@@ -99,6 +101,49 @@ export function createValidateCommand(): Command {
           ownedScopes,
           basePath: baseDir,
         });
+
+        // Cross-canvas: scope-namespace nesting check
+        // Pair each owned scope with its events canvas (filename convention:
+        // "scope.with.dots" -> "scope-with-dots.events.canvas") and verify
+        // that every namespace.paths entry stays inside its scope.paths.
+        if (scopesCanvasContent && ownedScopes.length > 0) {
+          const eventsCanvases: ScopeEventsCanvasPair[] = [];
+          for (const scope of ownedScopes) {
+            const expectedBasename = scope.replace(/\./g, '-');
+            const discovered = discoveryResult.canvases.find(
+              c => c.type === 'events' && c.basename === expectedBasename,
+            );
+            if (!discovered) continue;
+
+            const withContent = discovered as DiscoveredCanvasWithContent;
+            let eventsCanvas: ExtendedCanvas | undefined = withContent.content;
+            if (!eventsCanvas) {
+              try {
+                const fullPath = resolve(baseDir, discovered.path);
+                eventsCanvas = JSON.parse(readFileSync(fullPath, 'utf-8')) as ExtendedCanvas;
+              } catch {
+                continue;
+              }
+            }
+            eventsCanvases.push({
+              scope,
+              eventsCanvas,
+              eventsCanvasPath: discovered.path,
+            });
+          }
+
+          const nestingViolations = validateScopeNamespaceNesting({
+            scopesCanvas: scopesCanvasContent,
+            scopesCanvasPath,
+            eventsCanvases,
+          });
+          if (nestingViolations.length > 0) {
+            result.violations.push(...nestingViolations);
+            if (nestingViolations.some(v => v.severity === 'error')) {
+              result.valid = false;
+            }
+          }
+        }
 
         // Output results
         if (options.json) {

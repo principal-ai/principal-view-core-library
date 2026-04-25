@@ -708,6 +708,7 @@ const ALLOWED_CANVAS_FIELDS = {
     'dataSchema',
     'boundary',
     'namespace',
+    'paths',
   ],
   // Node pv extension
   nodePv: [
