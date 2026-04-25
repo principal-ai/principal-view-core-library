@@ -22,6 +22,7 @@
       "label": "principal-view.cli",
       "description": "CLI tool instrumentation scope covering all command operations, validation, discovery, and file parsing.",
       "shape": "circle",
+      "paths": ["packages/cli/src"],
       "otel": {
         "scope": "principal-view.cli",
         "status": "draft"
