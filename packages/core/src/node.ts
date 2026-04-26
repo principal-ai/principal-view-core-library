@@ -224,6 +224,18 @@ export type {
   NormalizedScope,
 } from './scopes';
 
+// Export auxiliary module (manifest validation for non-OTEL project regions)
+export {
+  AuxiliaryManifestValidator,
+  validateAreaScopeDisjoint,
+} from './auxiliary';
+export type {
+  AuxiliaryManifestValidationContext,
+  AuxiliaryManifestValidationResult,
+  AuxiliaryManifestViolation,
+  ValidateAreaScopeDisjointInput,
+} from './auxiliary';
+
 // Export events module (canvas validation)
 export {
   EventsCanvasValidator,
