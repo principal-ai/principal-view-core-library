@@ -11,8 +11,7 @@
  * checks for scopes/namespaces.
  */
 
-import { existsSync } from 'fs';
-import { resolve } from 'path';
+import type { FileSystemAdapter } from '@principal-ai/repository-abstraction';
 import type { AuxiliaryManifest } from '../types/auxiliary';
 import { pathsOverlap } from '../events/path-helpers';
 
@@ -45,7 +44,9 @@ export interface AuxiliaryManifestValidationResult {
 const DEFAULT_MANIFEST_PATH = '.principal-views/auxiliary.manifest.json';
 
 export class AuxiliaryManifestValidator {
-  validate(context: AuxiliaryManifestValidationContext): AuxiliaryManifestValidationResult {
+  constructor(private fsAdapter: FileSystemAdapter) {}
+
+  async validate(context: AuxiliaryManifestValidationContext): Promise<AuxiliaryManifestValidationResult> {
     const violations: AuxiliaryManifestViolation[] = [];
     const { manifest, basePath } = context;
     const file = context.manifestPath || DEFAULT_MANIFEST_PATH;
@@ -76,13 +77,15 @@ export class AuxiliaryManifestValidator {
 
     // Path existence + collect for overlap pass
     const declaredPaths: Array<{ areaName: string; areaIndex: number; pathIndex: number; path: string }> = [];
-    areas.forEach((area, areaIdx) => {
+    for (let areaIdx = 0; areaIdx < areas.length; areaIdx++) {
+      const area = areas[areaIdx];
       const paths = area.paths || [];
-      paths.forEach((p, pathIdx) => {
+      for (let pathIdx = 0; pathIdx < paths.length; pathIdx++) {
+        const p = paths[pathIdx];
         declaredPaths.push({ areaName: area.name, areaIndex: areaIdx, pathIndex: pathIdx, path: p });
 
-        const resolved = resolve(basePath, p);
-        if (!existsSync(resolved)) {
+        const resolved = this.fsAdapter.join(basePath, p);
+        if (!(await this.fsAdapter.exists(resolved))) {
           violations.push({
             ruleId: 'auxiliary-area-path-missing',
             severity: 'warn',
@@ -93,8 +96,8 @@ export class AuxiliaryManifestValidator {
             suggestion: 'Verify the path exists relative to the repository root, or remove it from the area declaration.',
           });
         }
-      });
-    });
+      }
+    }
 
     // Path overlap. Unlike scopes, areas have no dotted-name hierarchy, so
     // parent-child nesting between two areas is just as ambiguous as a flat

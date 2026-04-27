@@ -2,6 +2,7 @@ import { describe, expect, test, beforeAll, afterAll } from 'bun:test';
 import { mkdtempSync, mkdirSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { NodeFileSystemAdapter } from '@principal-ai/repository-abstraction/node';
 import { EventsCanvasValidator } from './EventsCanvasValidator';
 import type { ExtendedCanvas } from '../types/canvas';
 
@@ -50,7 +51,7 @@ function canvas(nodes: any[]): ExtendedCanvas {
 }
 
 async function runValidator(nodes: any[]) {
-  const validator = new EventsCanvasValidator();
+  const validator = new EventsCanvasValidator(new NodeFileSystemAdapter());
   return validator.validate({
     eventsCanvas: canvas(nodes),
     eventsCanvasPath: 'test.events.canvas',

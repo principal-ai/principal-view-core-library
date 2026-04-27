@@ -16,6 +16,7 @@ import type {
   DiscoveredCanvasWithContent,
 } from '@principal-ai/principal-view-core';
 import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
+import { NodeFileSystemAdapter as RepoNodeFileSystemAdapter } from '@principal-ai/repository-abstraction/node';
 
 interface ValidateOptions {
   json?: boolean;
@@ -54,7 +55,7 @@ export function createValidateCommand(): Command {
           process.exit(1);
         }
 
-        const ownFileResult = new AuxiliaryManifestValidator().validate({
+        const ownFileResult = await new AuxiliaryManifestValidator(new RepoNodeFileSystemAdapter()).validate({
           manifest,
           manifestPath,
           basePath: baseDir,

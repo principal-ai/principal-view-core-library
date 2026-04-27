@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { NodeFileSystemAdapter } from '@principal-ai/repository-abstraction/node';
 import { ScopesCanvasValidator } from './ScopesCanvasValidator';
 import type { ExtendedCanvas } from '../types/canvas';
 
@@ -46,7 +47,7 @@ function withTempRepo(layout: string[], fn: (root: string) => Promise<void>): Pr
 describe('ScopesCanvasValidator scope paths', () => {
   test('no paths declared → no path violations', async () => {
     const canvas = makeCanvas([makeScopeNode({ id: 's1', scope: 'a.b' })]);
-    const v = new ScopesCanvasValidator();
+    const v = new ScopesCanvasValidator(new NodeFileSystemAdapter());
     const r = await v.validate({
       scopesCanvas: canvas,
       ownedScopes: ['a.b'],
@@ -64,7 +65,7 @@ describe('ScopesCanvasValidator scope paths', () => {
           paths: ['packages/a/src', 'packages/a/generated'],
         }),
       ]);
-      const v = new ScopesCanvasValidator();
+      const v = new ScopesCanvasValidator(new NodeFileSystemAdapter());
       const r = await v.validate({ scopesCanvas: canvas, ownedScopes: ['a'], basePath: root });
       const w = r.violations.find(x => x.ruleId === 'scopes-paths-multiple');
       expect(w).toBeDefined();
@@ -77,7 +78,7 @@ describe('ScopesCanvasValidator scope paths', () => {
       const canvas = makeCanvas([
         makeScopeNode({ id: 's1', scope: 'a', paths: ['packages/a/missing'] }),
       ]);
-      const v = new ScopesCanvasValidator();
+      const v = new ScopesCanvasValidator(new NodeFileSystemAdapter());
       const r = await v.validate({ scopesCanvas: canvas, ownedScopes: ['a'], basePath: root });
       const w = r.violations.find(x => x.ruleId === 'scopes-paths-missing');
       expect(w).toBeDefined();
@@ -91,7 +92,7 @@ describe('ScopesCanvasValidator scope paths', () => {
         makeScopeNode({ id: 's1', scope: 'a', paths: ['packages/shared/src'] }),
         makeScopeNode({ id: 's2', scope: 'b', paths: ['packages/shared/src'] }),
       ]);
-      const v = new ScopesCanvasValidator();
+      const v = new ScopesCanvasValidator(new NodeFileSystemAdapter());
       const r = await v.validate({
         scopesCanvas: canvas,
         ownedScopes: ['a', 'b'],
@@ -114,7 +115,7 @@ describe('ScopesCanvasValidator scope paths', () => {
           paths: ['packages/core/src/validation'],
         }),
       ]);
-      const v = new ScopesCanvasValidator();
+      const v = new ScopesCanvasValidator(new NodeFileSystemAdapter());
       const r = await v.validate({
         scopesCanvas: canvas,
         ownedScopes: ['principal-ai.core', 'principal-ai.core.validation'],

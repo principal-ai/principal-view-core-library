@@ -53,7 +53,12 @@ export type {
   PathBasedEvent,
   JsonValue,
   JsonObject,
+  ProjectArea,
+  AuxiliaryManifest,
 } from './types';
+
+// Auxiliary manifest type guard (browser-safe runtime helper)
+export { isAuxiliaryManifest } from './types/auxiliary';
 
 // Export path-based configuration types (browser-safe)
 export type { PathBasedGraphConfiguration } from './types/path-based-config';

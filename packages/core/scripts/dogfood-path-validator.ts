@@ -7,6 +7,7 @@
 
 import { readFileSync } from 'fs';
 import { resolve, relative } from 'path';
+import { NodeFileSystemAdapter } from '@principal-ai/repository-abstraction/node';
 import { EventsCanvasValidator } from '../src/events/EventsCanvasValidator';
 import { OtelEventPathsValidator } from '../src/events/OtelEventPathsValidator';
 import type { ExtendedCanvas } from '../src/types/canvas';
@@ -46,7 +47,7 @@ async function main() {
   header('Phase 1 — EventsCanvasValidator (per-canvas)');
   console.log(`Canvas: ${relative(REPO_ROOT, eventsCanvasPath)}`);
 
-  const p1 = await new EventsCanvasValidator().validate({
+  const p1 = await new EventsCanvasValidator(new NodeFileSystemAdapter()).validate({
     eventsCanvas,
     eventsCanvasPath: relative(REPO_ROOT, eventsCanvasPath),
     basePath: REPO_ROOT,

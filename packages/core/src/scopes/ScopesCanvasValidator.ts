@@ -5,8 +5,7 @@
  * all instrumentation scopes declared in library.yaml.
  */
 
-import { existsSync } from 'fs';
-import { resolve } from 'path';
+import type { FileSystemAdapter } from '@principal-ai/repository-abstraction';
 import type { ExtendedCanvas, ExtendedCanvasNode, OtelScopeNode, isOtelScopeNode } from '../types/canvas';
 import { isOtelScopeNode as checkOtelScopeNode } from '../types/canvas';
 import { pathsOverlap } from '../events/path-helpers';
@@ -81,6 +80,8 @@ export interface ScopesCanvasValidationResult {
  * Validates scopes canvas files
  */
 export class ScopesCanvasValidator {
+  constructor(private fsAdapter: FileSystemAdapter) {}
+
   /**
    * Validate a scopes canvas against library.yaml owned-scopes
    */
@@ -224,8 +225,8 @@ export class ScopesCanvasValidator {
         declaredPaths.push({ scope, nodeId, path: p });
 
         // Warn when a declared path does not exist relative to the repo root.
-        const resolved = resolve(basePath, p);
-        if (!existsSync(resolved)) {
+        const resolved = this.fsAdapter.join(basePath, p);
+        if (!(await this.fsAdapter.exists(resolved))) {
           violations.push({
             ruleId: 'scopes-paths-missing',
             severity: 'warn',

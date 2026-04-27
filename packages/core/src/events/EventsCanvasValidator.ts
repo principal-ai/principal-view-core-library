@@ -5,9 +5,8 @@
  * and their events, with correct namespace extraction and node structure.
  */
 
+import type { FileSystemAdapter } from '@principal-ai/repository-abstraction';
 import type { ExtendedCanvas, ExtendedCanvasNode } from '../types/canvas';
-import { existsSync } from 'fs';
-import { resolve } from 'path';
 import { pathsOverlap } from './path-helpers';
 
 /**
@@ -128,6 +127,8 @@ export interface EventsCanvasValidationResult {
  * Validates events canvas files
  */
 export class EventsCanvasValidator {
+  constructor(private fsAdapter: FileSystemAdapter) {}
+
   /**
    * Extract namespace from event name (all segments except last)
    *
@@ -376,8 +377,8 @@ export class EventsCanvasValidator {
         });
 
         // Warn when a declared path does not exist relative to the repo root.
-        const resolved = resolve(basePath, p);
-        if (!existsSync(resolved)) {
+        const resolved = this.fsAdapter.join(basePath, p);
+        if (!(await this.fsAdapter.exists(resolved))) {
           violations.push({
             ruleId: 'events-namespace-paths-missing',
             severity: 'warn',

@@ -18,6 +18,7 @@ import type {
   OwnedScopes,
 } from '@principal-ai/principal-view-core';
 import { FilesystemService, NodeFileSystemAdapter } from '@principal-ai/codebase-composition/node';
+import { NodeFileSystemAdapter as RepoNodeFileSystemAdapter } from '@principal-ai/repository-abstraction/node';
 
 interface ValidateOptions {
   json?: boolean;
@@ -94,7 +95,7 @@ export function createValidateCommand(): Command {
         }
 
         // Validate
-        const validator = new ScopesCanvasValidator();
+        const validator = new ScopesCanvasValidator(new RepoNodeFileSystemAdapter());
         const result = await validator.validate({
           scopesCanvas: scopesCanvasContent,
           scopesCanvasPath,
