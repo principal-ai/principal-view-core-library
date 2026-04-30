@@ -45,7 +45,7 @@ participant metadata from a canvas.
   decorators: [
     (Story) => (
       <ThemeProvider theme={defaultEditorTheme}>
-        <div style={{ padding: 20, height: '100vh', boxSizing: 'border-box' }}>
+        <div style={{ height: '100vh' }}>
           <Story />
         </div>
       </ThemeProvider>
@@ -139,6 +139,27 @@ const errorHandlingScenario: WorkflowScenario = {
       'service.error.logged': {},
       'notification.alert.sent': {},
       'api.error.response.sent': {},
+    },
+  },
+};
+
+/**
+ * Scenario with long namespace titles for stress-testing swimlane header rendering
+ */
+const longTitlesScenario: WorkflowScenario = {
+  id: 'long-titles',
+  name: 'Long Swimlane Titles',
+  description: 'Scenario designed to stress-test header rendering with long participant names',
+  template: {
+    events: {
+      'authenticationAndAuthorizationService.request.received': {},
+      'authenticationAndAuthorizationService.token.validated': {},
+      'distributedTransactionCoordinator.transaction.started': {},
+      'inventoryReservationAndAllocationManager.items.reserved': {},
+      'paymentProcessingAndFraudDetectionGateway.charge.authorized': {},
+      'paymentProcessingAndFraudDetectionGateway.charge.captured': {},
+      'distributedTransactionCoordinator.transaction.committed': {},
+      'notificationDispatchAndDeliveryService.confirmation.sent': {},
     },
   },
 };
@@ -273,7 +294,7 @@ export const ClickDiagnostic: Story = {
 export const BasicScenario: Story = {
   args: {
     scenario: simpleAuthScenario,
-    height: 500,
+    height: '100%',
     layoutOptions: {
       namespaceStrategy: 'first',
       eventSpacing: 80,
@@ -288,7 +309,7 @@ export const WithCanvasMetadata: Story = {
   args: {
     scenario: simpleAuthScenario,
     canvas: sampleCanvas,
-    height: 500,
+    height: '100%',
     layoutOptions: {
       namespaceStrategy: 'first',
       eventSpacing: 80,
@@ -302,7 +323,7 @@ export const WithCanvasMetadata: Story = {
 export const ComplexWorkflow: Story = {
   args: {
     scenario: orderProcessingScenario,
-    height: 700,
+    height: '100%',
     layoutOptions: {
       namespaceStrategy: 'first',
       laneWidth: 200,
@@ -317,7 +338,7 @@ export const ComplexWorkflow: Story = {
 export const MicroservicesPattern: Story = {
   args: {
     scenario: microservicesScenario,
-    height: 600,
+    height: '100%',
     layoutOptions: {
       namespaceStrategy: 'first',
       laneWidth: 220,
@@ -332,7 +353,7 @@ export const MicroservicesPattern: Story = {
 export const ErrorHandling: Story = {
   args: {
     scenario: errorHandlingScenario,
-    height: 500,
+    height: '100%',
     layoutOptions: {
       namespaceStrategy: 'first',
       eventSpacing: 80,
@@ -346,7 +367,23 @@ export const ErrorHandling: Story = {
 export const EmptyState: Story = {
   args: {
     scenario: emptyScenario,
-    height: 300,
+    height: '100%',
+  },
+};
+
+/**
+ * Long swimlane titles - stress-tests header rendering with very long participant names.
+ * Use this to verify text wrapping, truncation, and overflow behavior in lane headers.
+ */
+export const LongSwimlaneTitles: Story = {
+  args: {
+    scenario: longTitlesScenario,
+    height: '100%',
+    layoutOptions: {
+      namespaceStrategy: 'first',
+      eventSpacing: 80,
+      headerHeight: 100,
+    },
   },
 };
 
@@ -605,7 +642,7 @@ export const NamespaceStrategies: Story = {
 export const CompactLayout: Story = {
   args: {
     scenario: simpleAuthScenario,
-    height: 400,
+    height: '100%',
     layoutOptions: {
       namespaceStrategy: 'first',
       laneWidth: 150,
@@ -621,7 +658,7 @@ export const CompactLayout: Story = {
 export const SpaciousLayout: Story = {
   args: {
     scenario: simpleAuthScenario,
-    height: 600,
+    height: '100%',
     layoutOptions: {
       namespaceStrategy: 'first',
       laneWidth: 250,
@@ -637,7 +674,7 @@ export const SpaciousLayout: Story = {
 export const WithoutControls: Story = {
   args: {
     scenario: simpleAuthScenario,
-    height: 500,
+    height: '100%',
     showControls: false,
     layoutOptions: {
       namespaceStrategy: 'first',
@@ -652,7 +689,7 @@ export const WithoutControls: Story = {
 export const WithBackground: Story = {
   args: {
     scenario: simpleAuthScenario,
-    height: 500,
+    height: '100%',
     showBackground: true,
     layoutOptions: {
       namespaceStrategy: 'first',

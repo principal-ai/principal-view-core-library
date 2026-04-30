@@ -92,7 +92,7 @@ export interface UseSequenceLayoutOptions {
 
   /**
    * Width of each swimlane
-   * @default 200
+   * @default 250
    */
   laneWidth?: number;
 
@@ -218,8 +218,8 @@ export function useSequenceLayout(
 ): UseSequenceLayoutResult {
   const {
     namespaceStrategy = 'all-but-last',
-    laneWidth = 200,
-    laneGap = 10,
+    laneWidth = 250,
+    laneGap = 0,
     eventSpacing = 80,
     headerHeight = 60,
     collapsedNamespaces = [],

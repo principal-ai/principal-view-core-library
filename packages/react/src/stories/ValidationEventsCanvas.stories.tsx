@@ -6,7 +6,7 @@ import type { ExtendedCanvas } from '@principal-ai/principal-view-core';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
 
 // Import the CLI events canvas
-import validationEventsCanvasUrl from '../../../../.principal-views/cli.events.canvas?url';
+import validationEventsCanvasUrl from '../../../../.principal-views/principal-view-cli.events.canvas?url';
 
 // Helper to load canvas from URL
 async function loadCanvas(url: string): Promise<ExtendedCanvas> {

@@ -138,19 +138,25 @@ function convertWorkflowToSequence(
 
   // Convert to SequenceEvent format
   const events: SequenceEvent[] = eventNames.map((eventName, index) => {
-    const scope = eventToScopeMap.get(eventName) || 'unknown';
+    const canvasScope = eventToScopeMap.get(eventName);
     const label = eventToLabelMap.get(eventName) || eventName.split('.').pop() || eventName;
 
     // Determine if this is a move event
     // Default to true unless explicitly marked as transform event in participant node
     const isMoveEvent = eventToMoveEventMap.get(eventName) ?? true;
 
+    // When the canvas provides a scope, prefix it so the event lands in that
+    // participant's lane. Otherwise, use the event name as-is so the layout's
+    // namespace strategy can derive the participant from the event name itself.
+    const name = canvasScope ? `${canvasScope}.${eventName}` : eventName;
+    const participant = canvasScope ?? eventName.split('.')[0] ?? eventName;
+
     return {
       id: `event-${index}`,
-      name: `${scope}.${eventName}`,
+      name,
       label,
       moveEvent: isMoveEvent,
-      participant: scope,
+      participant,
     };
   });
 

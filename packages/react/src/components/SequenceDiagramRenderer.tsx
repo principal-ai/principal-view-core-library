@@ -14,6 +14,7 @@ import {
   ReactFlowProvider,
   Panel,
   useViewport,
+  useStore,
   Handle,
   Position,
   BaseEdge,
@@ -376,10 +377,12 @@ function SwimlaneLayer({
   transparent = false,
 }: SwimlaneLayerProps) {
   const { x, y, zoom } = useViewport();
+  const viewportHeight = useStore((s) => s.height);
   const { theme } = useTheme();
 
-  // Add a small buffer to ensure lanes extend slightly beyond the last event
-  const extendedHeight = totalHeight + 20;
+  // Extend lanes to cover the viewport bottom even when content is short.
+  // In flow-coord space, the visible viewport is `viewportHeight / zoom` tall.
+  const extendedHeight = Math.max(totalHeight + 20, viewportHeight / zoom + 100);
 
   return (
     <div
@@ -481,6 +484,8 @@ function SwimlaneHeadersLayer({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              padding: '0 8px',
+              boxSizing: 'border-box',
               backgroundColor: transparent ? 'transparent' : theme.colors.muted,
               borderBottom: `2px solid ${theme.colors.border}`,
               fontWeight: theme.fontWeights.semibold,
@@ -498,7 +503,17 @@ function SwimlaneHeadersLayer({
                 {lane.isCollapsed ? '▼' : '▶'}
               </span>
             )}
-            <span>{lane.label}</span>
+            <span
+              style={{
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+                lineHeight: 1.2,
+                textAlign: 'center',
+              }}
+              title={lane.label}
+            >
+              {lane.label}
+            </span>
           </div>
         );
       })}
@@ -585,7 +600,7 @@ function SequenceDiagramInner({
   const { theme } = useTheme();
 
   // Extract layout params
-  const { laneWidth = 200, headerHeight = 60 } = layoutOptions;
+  const { laneWidth = 250, headerHeight = 60 } = layoutOptions;
 
   // Merge custom node/edge types with sequence defaults
   const nodeTypes = useMemo(
@@ -598,7 +613,7 @@ function SequenceDiagramInner({
   );
 
   // Compute layout
-  const { nodes: layoutNodes, edges, swimlanes, totalHeight } = useSequenceLayout(
+  const { nodes: layoutNodes, edges, swimlanes, totalWidth, totalHeight } = useSequenceLayout(
     events,
     sequenceEdges,
     layoutOptions
@@ -645,22 +660,19 @@ function SequenceDiagramInner({
     [onNodeClick]
   );
 
-  // When sticky headers are enabled, limit upward panning to prevent headers from disconnecting
-  // from swimlane backgrounds. Allow downward panning to see all content.
+  // Clamp horizontal and vertical panning to content bounds so swimlanes and
+  // headers stay in view. When sticky headers are disabled, allow a small
+  // negative top buffer for visual breathing room.
   const translateExtent = useMemo(() => {
-    if (!stickyHeaders) {
-      // No restrictions when sticky headers are disabled
-      return undefined;
-    }
-
-    // Prevent panning up past the header area (y >= 0)
-    // Allow panning down to see all content (y can be positive up to totalHeight)
-    // Allow full horizontal panning
+    const xMin = 0;
+    const xMax = totalWidth;
+    const yMin = stickyHeaders ? 0 : -20;
+    const yMax = stickyHeaders ? totalHeight + 1000 : totalHeight + 20;
     return [
-      [-Infinity, 0],
-      [Infinity, totalHeight + 1000],
+      [xMin, yMin],
+      [xMax, yMax],
     ] as [[number, number], [number, number]];
-  }, [stickyHeaders, totalHeight]);
+  }, [stickyHeaders, totalWidth, totalHeight]);
 
   // When sticky headers are enabled, use defaultViewport to ensure we start at y=0
   // This prevents the snap-to-position issue on initial load
