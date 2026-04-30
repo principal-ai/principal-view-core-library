@@ -361,6 +361,8 @@ interface SwimlaneLayerProps {
   totalHeight: number;
   onToggleCollapse?: (namespace: string) => void;
   stickyHeaders?: boolean;
+  /** When true, render lane and header backgrounds as transparent. */
+  transparent?: boolean;
 }
 
 /**
@@ -371,6 +373,7 @@ function SwimlaneLayer({
   laneWidth,
   headerHeight,
   totalHeight,
+  transparent = false,
 }: SwimlaneLayerProps) {
   const { x, y, zoom } = useViewport();
   const { theme } = useTheme();
@@ -393,6 +396,11 @@ function SwimlaneLayer({
       {/* Lane backgrounds */}
       {swimlanes.map((lane, index) => {
         const isEven = index % 2 === 0;
+        const laneBackground = transparent
+          ? 'transparent'
+          : isEven
+            ? theme.colors.muted
+            : theme.colors.background;
         return (
           <div
             key={`bg-${lane.namespace}`}
@@ -402,9 +410,7 @@ function SwimlaneLayer({
               top: 0,
               width: laneWidth,
               height: extendedHeight,
-              backgroundColor: isEven
-                ? theme.colors.muted
-                : theme.colors.background,
+              backgroundColor: laneBackground,
               borderRight: `1px solid ${theme.colors.border}`,
             }}
           />
@@ -439,6 +445,7 @@ function SwimlaneHeadersLayer({
   headerHeight,
   onToggleCollapse,
   stickyHeaders = true,
+  transparent = false,
 }: SwimlaneLayerProps) {
   const { x, y, zoom } = useViewport();
   const { theme } = useTheme();
@@ -474,7 +481,7 @@ function SwimlaneHeadersLayer({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: theme.colors.muted,
+              backgroundColor: transparent ? 'transparent' : theme.colors.muted,
               borderBottom: `2px solid ${theme.colors.border}`,
               fontWeight: theme.fontWeights.semibold,
               fontSize: theme.fontSizes[2],
@@ -547,6 +554,14 @@ export interface SequenceDiagramRendererProps {
 
   /** Whether to show event labels on nodes (default: false, labels already shown on edges) */
   showEventLabels?: boolean;
+
+  /**
+   * When true, render the diagram chrome (canvas background, swimlane fills,
+   * header backgrounds) as transparent so the diagram can be composited over
+   * an arbitrary backdrop. Lifelines, borders, edges, and label pills keep
+   * their theme colors so the diagram stays legible. Defaults to `false`.
+   */
+  transparent?: boolean;
 }
 
 /**
@@ -565,6 +580,7 @@ function SequenceDiagramInner({
   stickyHeaders = true,
   selectedNodeId,
   showEventLabels = false, // Default to false - labels already shown on edges
+  transparent = false,
 }: SequenceDiagramRendererProps) {
   const { theme } = useTheme();
 
@@ -684,7 +700,7 @@ function SequenceDiagramInner({
       panOnScroll
       zoomOnScroll
       translateExtent={translateExtent}
-      style={{ background: theme.colors.background }}
+      style={{ background: transparent ? 'transparent' : theme.colors.background }}
     >
       {/* SVG defs for arrow markers */}
       <svg style={{ position: 'absolute', width: 0, height: 0 }}>
@@ -733,6 +749,7 @@ function SequenceDiagramInner({
         laneWidth={laneWidth}
         headerHeight={headerHeight}
         totalHeight={totalHeight}
+        transparent={transparent}
       />
 
       {/* Swimlane headers layer - renders on top for clickability */}
@@ -743,6 +760,7 @@ function SequenceDiagramInner({
         totalHeight={totalHeight}
         onToggleCollapse={onToggleCollapse}
         stickyHeaders={stickyHeaders}
+        transparent={transparent}
       />
 
       {/* Collapse toggle panel (for namespaces with children) */}

@@ -23,6 +23,14 @@ export interface SequenceEvent {
   moveEvent?: boolean;
   /** Participant this event belongs to (for move events, this is the target) */
   participant?: string;
+  /**
+   * Optional source-file path this event originated from, expressed
+   * relative to the repository root (e.g.
+   * `auth-server/src/lib/auth-provider.ts`). Surfaced on the React Flow
+   * node `data` so downstream renderers (file-city overlays, jump-to-source,
+   * IDE bridges) can react to selection without reaching into `data`.
+   */
+  sourcePath?: string;
   /** Additional data to pass through to the node */
   data?: Record<string, unknown>;
 }
@@ -334,6 +342,7 @@ export function useSequenceLayout(
           visibleNamespace,
           timeLayer: i,
           isMoveEvent: event.moveEvent === true,
+          sourcePath: event.sourcePath,
           ...event.data,
         },
         style: {

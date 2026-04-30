@@ -48,6 +48,13 @@ export interface WorkflowSequenceDiagramProps {
 
   /** Whether to show event labels on nodes (default: false, labels already shown on edges) */
   showEventLabels?: boolean;
+
+  /**
+   * When true, render the diagram chrome (canvas background, swimlane fills,
+   * header backgrounds) as transparent so the diagram can be composited over
+   * an arbitrary backdrop. Defaults to `false`.
+   */
+  transparent?: boolean;
 }
 
 /**
@@ -192,6 +199,7 @@ export function WorkflowSequenceDiagram({
   onEventIndexChange,
   selectedEventIndex,
   showEventLabels = false, // Default to false - labels already on edges
+  transparent = false,
 }: WorkflowSequenceDiagramProps) {
   // Convert workflow to sequence format
   const { events, edges } = useMemo(
@@ -253,6 +261,7 @@ export function WorkflowSequenceDiagram({
       onNodeClick={onEventIndexChange ? handleNodeClick : undefined}
       selectedNodeId={selectedNodeId}
       showEventLabels={showEventLabels}
+      transparent={transparent}
     />
   );
 }
