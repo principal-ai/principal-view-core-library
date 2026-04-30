@@ -250,7 +250,6 @@ function SequenceArrowParticipantEdge({
             width={barWidth}
             height={barHeight}
             fill={strokeColor}
-            fillOpacity={0.15}
             stroke={strokeColor}
             strokeWidth={2}
             rx={2}
@@ -261,15 +260,21 @@ function SequenceArrowParticipantEdge({
             <div
               style={{
                 position: 'absolute',
-                transform: `translate(0, -50%) translate(${sourceX + 15}px,${barY + barHeight / 2}px)`,
+                transform: `translate(-100%, -50%) translate(${sourceX - 7}px,${barY + barHeight / 2}px)`,
                 background: isSourceSelected ? strokeColor : theme.colors.background,
-                padding: isSourceSelected ? '4px 10px' : '2px 8px',
-                borderRadius: 4,
+                padding: '2px 8px',
+                borderTopLeftRadius: 4,
+                borderTopRightRadius: 0,
+                borderBottomLeftRadius: 4,
+                borderBottomRightRadius: 0,
                 fontSize: theme.fontSizes[0],
                 fontWeight: isSourceSelected ? theme.fontWeights.bold : theme.fontWeights.medium,
                 fontFamily: theme.fonts.body,
                 color: isSourceSelected ? theme.colors.background : strokeColor,
-                border: `${isSourceSelected ? 2 : 1}px solid ${strokeColor}`,
+                borderTop: `${isSourceSelected ? 2 : 1}px solid ${strokeColor}`,
+                borderLeft: `${isSourceSelected ? 2 : 1}px solid ${strokeColor}`,
+                borderBottom: `${isSourceSelected ? 2 : 1}px solid ${strokeColor}`,
+                borderRight: `1px solid ${strokeColor}`,
                 pointerEvents: 'all',
                 whiteSpace: 'nowrap',
                 cursor: 'pointer',
@@ -292,7 +297,12 @@ function SequenceArrowParticipantEdge({
 
   // Draw horizontal arrow at the midpoint between source and target Y positions
   const arrowY = (safeSourceY + safeTargetY) / 2;
-  const path = `M ${sourceX} ${arrowY} L ${targetX} ${arrowY}`;
+  // Inset arrow endpoints so they stop just before the lifelines instead of crossing them
+  const lifelineInset = 6;
+  const direction = targetX > sourceX ? 1 : -1;
+  const startX = sourceX + direction * lifelineInset;
+  const endX = targetX - direction * lifelineInset;
+  const path = `M ${startX} ${arrowY} L ${endX} ${arrowY}`;
   const labelX = (sourceX + targetX) / 2;
   const labelY = arrowY;
 
@@ -314,13 +324,19 @@ function SequenceArrowParticipantEdge({
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY - 12}px)`,
               background: isSourceSelected ? strokeColor : theme.colors.background,
-              padding: isSourceSelected ? '5px 12px' : (isMoveEvent ? '3px 10px' : '2px 8px'),
-              borderRadius: 4,
+              padding: isMoveEvent ? '3px 10px' : '2px 8px',
+              borderTopLeftRadius: 4,
+              borderTopRightRadius: 4,
+              borderBottomLeftRadius: 0,
+              borderBottomRightRadius: 0,
               fontSize: theme.fontSizes[0],
               fontWeight: isSourceSelected ? theme.fontWeights.bold : (isMoveEvent ? theme.fontWeights.bold : theme.fontWeights.medium),
               fontFamily: theme.fonts.body,
               color: isSourceSelected ? theme.colors.background : strokeColor,
-              border: `${isSourceSelected ? 3 : (isMoveEvent ? 2 : 1)}px solid ${strokeColor}`,
+              borderTop: `${isSourceSelected ? 3 : (isMoveEvent ? 2 : 1)}px solid ${strokeColor}`,
+              borderLeft: `${isSourceSelected ? 3 : (isMoveEvent ? 2 : 1)}px solid ${strokeColor}`,
+              borderRight: `${isSourceSelected ? 3 : (isMoveEvent ? 2 : 1)}px solid ${strokeColor}`,
+              borderBottom: `${isMoveEvent ? 2 : 1}px solid ${strokeColor}`,
               pointerEvents: 'all',
               whiteSpace: 'nowrap',
               cursor: 'pointer',
@@ -430,7 +446,7 @@ function SwimlaneLayer({
             top: headerHeight,
             width: 2,
             height: extendedHeight - headerHeight,
-            backgroundColor: theme.colors.border,
+            backgroundColor: 'rgba(255, 255, 255, 0.4)',
             transform: 'translateX(-1px)',
           }}
         />
