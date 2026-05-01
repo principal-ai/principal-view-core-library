@@ -362,6 +362,42 @@ const defaultSequenceNodeTypes: NodeTypes = {
 };
 
 /**
+ * Shared transition for swimlane chrome — interpolates positions and sizes
+ * when lanes shift due to drill toggles.
+ */
+const swimlaneTransition =
+  'top 350ms ease-out, left 350ms ease-out, width 350ms ease-out, height 350ms ease-out';
+
+/** Duration of the child slide-up exit animation. The close handler waits
+ * this long before applying the data change so the diagram body doesn't
+ * shift while the children are still on screen. */
+const SWIMLANE_CLOSE_EXIT_MS = 280;
+
+const swimlaneAnimationStyles = `
+@keyframes swimlaneFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes swimlaneFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes swimlaneChildSlideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes swimlaneChildSlideUp {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(-100%); opacity: 0; }
+}
+.swimlane-fade-in { animation: swimlaneFadeIn 250ms ease-out both; }
+.swimlane-child-bg-in { animation: swimlaneFadeIn 300ms ease-out 250ms both; }
+.swimlane-child-in { animation: swimlaneChildSlideDown 300ms ease-out 250ms both; }
+.swimlane-child-out { animation: swimlaneChildSlideUp 280ms ease-in both; }
+.swimlane-fade-out { animation: swimlaneFadeOut 250ms ease-in both; }
+`;
+
+/**
  * Default edge types including sequence arrow and participant arrow
  */
 const defaultSequenceEdgeTypes: EdgeTypes = {
@@ -382,6 +418,10 @@ interface SwimlaneLayerProps {
   totalHeight: number;
   /** Called when the user clicks a chevron or parent header to toggle its drilled state */
   onToggleNamespace?: (namespace: string) => void;
+  /** Namespaces mid-close. Their children are still in the data but render
+   *  with the exit animation so the body can stay put until the animation
+   *  finishes and the data change applies. */
+  closingNamespaces?: Set<string>;
   stickyHeaders?: boolean;
   /** When true, render lane and header backgrounds as transparent. */
   transparent?: boolean;
@@ -427,9 +467,13 @@ function SwimlaneLayer({
           : isEven
             ? theme.colors.muted
             : theme.colors.background;
+        const fadeClass = lane.isParentOpened
+          ? 'swimlane-child-bg-in'
+          : 'swimlane-fade-in';
         return (
           <div
             key={`bg-${lane.namespace}`}
+            className={fadeClass}
             style={{
               position: 'absolute',
               left: lane.x - laneWidth / 2,
@@ -438,6 +482,7 @@ function SwimlaneLayer({
               height: extendedHeight,
               backgroundColor: laneBackground,
               borderRight: `1px solid ${theme.colors.border}`,
+              transition: swimlaneTransition,
             }}
           />
         );
@@ -447,6 +492,9 @@ function SwimlaneLayer({
       {swimlanes.map((lane) => (
         <div
           key={`lifeline-${lane.namespace}`}
+          className={
+            lane.isParentOpened ? 'swimlane-child-bg-in' : 'swimlane-fade-in'
+          }
           style={{
             position: 'absolute',
             left: lane.x,
@@ -455,6 +503,7 @@ function SwimlaneLayer({
             height: extendedHeight - totalHeaderHeight,
             backgroundColor: 'rgba(255, 255, 255, 0.4)',
             transform: 'translateX(-1px)',
+            transition: swimlaneTransition,
           }}
         />
       ))}
@@ -471,6 +520,7 @@ function SwimlaneHeadersLayer({
   laneWidth,
   headerHeight,
   onToggleNamespace,
+  closingNamespaces,
   stickyHeaders = true,
   transparent = false,
 }: SwimlaneLayerProps) {
@@ -481,8 +531,47 @@ function SwimlaneHeadersLayer({
   // to keep headers at the top of the screen
   const headerTop = stickyHeaders ? -y / zoom : 0;
 
-  // Each leaf renders at the row matching its namespace depth.
-  const leafDepth = (lane: Swimlane) => lane.namespace.split('.').length;
+  // Build a unified header list: each namespace currently in view (whether a
+  // leaf or an opened ancestor) gets ONE DOM element keyed by namespace, so
+  // clicking ▶ smoothly morphs the same cell from leaf-shape to parent-shape
+  // (wider, possibly across multiple lanes) instead of unmounting+remounting.
+  type HeaderCell = {
+    namespace: string;
+    label: string;
+    x: number;
+    width: number;
+    depth: number;
+    isOpened: boolean; // currently in `openedNamespaces`
+    isParentOpened: boolean;
+    canExpand: boolean; // only meaningful when !isOpened
+  };
+
+  const headers: HeaderCell[] = useMemo(
+    () => [
+      ...parentHeaders.map((h) => ({
+        namespace: h.namespace,
+        label: h.label,
+        x: h.x,
+        width: h.width,
+        depth: h.depth,
+        isOpened: true,
+        isParentOpened: h.depth > 1,
+        canExpand: false,
+      })),
+      ...swimlanes.map((lane) => ({
+        namespace: lane.namespace,
+        label: lane.label,
+        x: lane.x,
+        width: laneWidth,
+        depth: lane.namespace.split('.').length,
+        isOpened: false,
+        isParentOpened: lane.isParentOpened,
+        canExpand: lane.canExpand,
+      })),
+    ],
+    [parentHeaders, swimlanes, laneWidth]
+  );
+
 
   return (
     <div
@@ -496,15 +585,48 @@ function SwimlaneHeadersLayer({
         zIndex: 10,
       }}
     >
-      {/* Parent headers — opened ancestors stack above their child leaves */}
-      {parentHeaders.map((header) => {
+      {headers.map((header) => {
         const rowTop = headerTop + (header.depth - 1) * headerHeight;
+        // Child leaves (under an opened parent) get the differentiated, lighter
+        // styling. Top-level leaves AND opened parents share the original
+        // header look — so the cell you clicked doesn't change appearance, it
+        // just grows to span its children.
+        const isChild = header.isParentOpened && !header.isOpened;
+        const showOpen = header.canExpand && !header.isOpened;
+        const isClickable = header.isOpened || showOpen;
+        // If this child's parent is mid-close, play the exit animation
+        // instead of the entry. After SWIMLANE_CLOSE_EXIT_MS the data
+        // change applies and the child unmounts.
+        const parentNs =
+          header.depth > 1
+            ? header.namespace.split('.').slice(0, -1).join('.')
+            : undefined;
+        const isExiting =
+          isChild && !!parentNs && !!closingNamespaces?.has(parentNs);
+        const cellClassName = isExiting
+          ? 'swimlane-child-out'
+          : isChild
+            ? 'swimlane-child-in'
+            : 'swimlane-fade-in';
         return (
           <div
-            key={`parent-${header.namespace}`}
-            role="button"
-            aria-label={`Close ${header.namespace}`}
-            title={`${header.namespace} (click to close)`}
+            key={header.namespace}
+            className={cellClassName}
+            role={isClickable ? 'button' : undefined}
+            aria-label={
+              header.isOpened
+                ? `Close ${header.namespace}`
+                : showOpen
+                  ? `Open ${header.namespace}`
+                  : undefined
+            }
+            title={
+              header.isOpened
+                ? `${header.namespace} (click to close)`
+                : showOpen
+                  ? `${header.namespace} (click to open)`
+                  : header.namespace
+            }
             style={{
               position: 'absolute',
               left: header.x - header.width / 2,
@@ -516,69 +638,18 @@ function SwimlaneHeadersLayer({
               justifyContent: 'center',
               padding: '0 8px',
               boxSizing: 'border-box',
-              backgroundColor: transparent ? 'transparent' : theme.colors.muted,
-              borderBottom: `2px solid ${theme.colors.border}`,
-              fontWeight: theme.fontWeights.semibold,
-              fontSize: theme.fontSizes[2],
-              fontFamily: theme.fonts.heading,
-              color: theme.colors.text,
-              pointerEvents: 'auto',
-              userSelect: 'none',
-              cursor: 'pointer',
-              gap: 6,
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleNamespace?.(header.namespace);
-            }}
-          >
-            <span style={{ fontSize: 10, opacity: 0.6 }}>▾</span>
-            <span
-              style={{
-                overflowWrap: 'anywhere',
-                wordBreak: 'break-word',
-                lineHeight: 1.2,
-                textAlign: 'center',
-              }}
-            >
-              {header.label}
-            </span>
-          </div>
-        );
-      })}
-
-      {/* Leaf headers — render at the row matching their depth, original height */}
-      {swimlanes.map((lane) => {
-        const showOpen = lane.canExpand;
-        const depth = leafDepth(lane);
-        const rowTop = headerTop + (depth - 1) * headerHeight;
-        // Top-level leaves keep the original header style; only child leaves
-        // (under an opened parent) get the differentiated treatment so the
-        // lane you clicked stays visually unchanged.
-        const isChild = lane.isParentOpened;
-        return (
-          <div
-            key={`header-${lane.namespace}`}
-            style={{
-              position: 'absolute',
-              left: lane.x - laneWidth / 2,
-              top: rowTop,
-              width: laneWidth,
-              height: headerHeight,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0 8px',
-              boxSizing: 'border-box',
               backgroundColor: transparent
                 ? 'transparent'
                 : isChild
                   ? theme.colors.background
                   : theme.colors.muted,
+              transition: swimlaneTransition,
               borderBottom: isChild
                 ? `1px solid ${theme.colors.border}`
                 : `2px solid ${theme.colors.border}`,
-              borderLeft: isChild ? `1px solid ${theme.colors.border}` : 'none',
+              borderLeft: isChild
+                ? `1px solid ${theme.colors.border}`
+                : 'none',
               borderRight: isChild
                 ? `1px solid ${theme.colors.border}`
                 : 'none',
@@ -590,10 +661,24 @@ function SwimlaneHeadersLayer({
               color: isChild ? theme.colors.textSecondary : theme.colors.text,
               pointerEvents: 'auto',
               userSelect: 'none',
+              cursor: isClickable ? 'pointer' : 'default',
               gap: 6,
+              // Parent (opened) cells sit above leaves so children slide out
+              // from behind them rather than over the top.
+              zIndex: header.isOpened ? 2 : 1,
             }}
-            title={lane.namespace}
+            onClick={
+              isClickable
+                ? (e) => {
+                    e.stopPropagation();
+                    onToggleNamespace?.(header.namespace);
+                  }
+                : undefined
+            }
           >
+            {header.isOpened && (
+              <span style={{ fontSize: 10, opacity: 0.6 }}>▾</span>
+            )}
             <span
               style={{
                 overflowWrap: 'anywhere',
@@ -603,22 +688,12 @@ function SwimlaneHeadersLayer({
                 flex: 1,
               }}
             >
-              {lane.label}
+              {header.label}
             </span>
             {showOpen && (
               <span
-                role="button"
-                aria-label={`Open ${lane.namespace}`}
-                style={{
-                  fontSize: 10,
-                  cursor: 'pointer',
-                  padding: '2px 4px',
-                  opacity: 0.7,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleNamespace?.(lane.namespace);
-                }}
+                aria-hidden="true"
+                style={{ fontSize: 10, opacity: 0.6 }}
               >
                 ▶
               </span>
@@ -626,6 +701,7 @@ function SwimlaneHeadersLayer({
           </div>
         );
       })}
+
     </div>
   );
 }
@@ -723,18 +799,52 @@ function SequenceDiagramInner({
     ? layoutOptions.openedNamespaces
     : internalOpened;
 
+  // Namespaces currently mid-close. While one is here, the children still
+  // render in the data (lifelines, events, edges unchanged) but their header
+  // cells flip to the exit animation. After the exit completes we apply the
+  // real data change, so the diagram body shifts in sync with the parent
+  // header shrink instead of ahead of it.
+  const [closingNamespaces, setClosingNamespaces] = useState<Set<string>>(
+    () => new Set()
+  );
+
   const handleToggleNamespace = useCallback(
     (namespace: string) => {
-      if (!isOpenedControlled) {
-        setInternalOpened((prev) =>
-          prev.includes(namespace)
-            ? prev.filter((n) => n !== namespace)
-            : [...prev, namespace]
-        );
+      const openedSet =
+        effectiveOpened instanceof Set
+          ? effectiveOpened
+          : new Set(effectiveOpened ?? []);
+      const isCurrentlyOpened = openedSet.has(namespace);
+
+      if (isCurrentlyOpened) {
+        // Stage the close: animate children out first, then apply data change.
+        setClosingNamespaces((prev) => {
+          if (prev.has(namespace)) return prev;
+          const next = new Set(prev);
+          next.add(namespace);
+          return next;
+        });
+        setTimeout(() => {
+          if (!isOpenedControlled) {
+            setInternalOpened((prev) => prev.filter((n) => n !== namespace));
+          }
+          onToggleNamespace?.(namespace);
+          setClosingNamespaces((prev) => {
+            if (!prev.has(namespace)) return prev;
+            const next = new Set(prev);
+            next.delete(namespace);
+            return next;
+          });
+        }, SWIMLANE_CLOSE_EXIT_MS);
+      } else {
+        // Open: data change is immediate; children animate in via CSS.
+        if (!isOpenedControlled) {
+          setInternalOpened((prev) => [...prev, namespace]);
+        }
+        onToggleNamespace?.(namespace);
       }
-      onToggleNamespace?.(namespace);
     },
-    [isOpenedControlled, onToggleNamespace]
+    [effectiveOpened, isOpenedControlled, onToggleNamespace]
   );
 
   const effectiveLayoutOptions = useMemo(
@@ -858,6 +968,7 @@ function SequenceDiagramInner({
       translateExtent={translateExtent}
       style={{ background: transparent ? 'transparent' : theme.colors.background }}
     >
+      <style>{swimlaneAnimationStyles}</style>
       {/* SVG defs for arrow markers */}
       <svg style={{ position: 'absolute', width: 0, height: 0 }}>
         <defs>
@@ -919,6 +1030,7 @@ function SequenceDiagramInner({
         headerHeight={headerHeight}
         totalHeight={totalHeight}
         onToggleNamespace={handleToggleNamespace}
+        closingNamespaces={closingNamespaces}
         stickyHeaders={stickyHeaders}
         transparent={transparent}
       />
