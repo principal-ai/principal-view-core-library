@@ -512,6 +512,78 @@ function SwimlaneLayer({
 }
 
 /**
+ * Two offset rounded rectangles signaling that a header has nested lanes
+ * underneath it. When `opened`, the front layer is filled to indicate the
+ * stack is currently expanded.
+ */
+function StackIcon({
+  opened = false,
+  hovered = false,
+  accentColor,
+}: {
+  opened?: boolean;
+  hovered?: boolean;
+  accentColor?: string;
+}) {
+  // Closed: rects compactly stacked, both outlined in text color.
+  // Hovered: strokes tint to the accent color (preview of the action).
+  // Opened: front rect drifts down/right and fades to filled in the accent.
+  const rectTransition =
+    'transform 280ms cubic-bezier(0.2, 0, 0, 1), fill-opacity 280ms ease, stroke 200ms ease';
+  const useAccent = (opened || hovered) && !!accentColor;
+  const stroke = useAccent ? accentColor : 'currentColor';
+  const fill = accentColor || 'currentColor';
+  return (
+    <svg
+      width={22}
+      height={22}
+      viewBox="0 0 14 14"
+      fill="none"
+      strokeWidth={1.3}
+      strokeLinejoin="round"
+      aria-hidden="true"
+      style={{
+        flexShrink: 0,
+        opacity: opened ? 0.95 : hovered ? 0.9 : 0.75,
+        overflow: 'visible',
+        transition: 'opacity 200ms ease',
+      }}
+    >
+      <rect
+        x={2}
+        y={3}
+        width={7}
+        height={5}
+        rx={1}
+        stroke={stroke}
+        style={{
+          transition: rectTransition,
+          transform: opened
+            ? 'translate(-1.5px, -1.5px)'
+            : 'translate(0px, 0px)',
+        }}
+      />
+      <rect
+        x={5}
+        y={6}
+        width={7}
+        height={5}
+        rx={1}
+        stroke={stroke}
+        fill={fill}
+        style={{
+          transition: rectTransition,
+          transform: opened
+            ? 'translate(1.5px, 1.5px)'
+            : 'translate(0px, 0px)',
+          fillOpacity: opened ? 0.35 : 0,
+        }}
+      />
+    </svg>
+  );
+}
+
+/**
  * Swimlane headers layer that renders on top of nodes for clickability
  */
 function SwimlaneHeadersLayer({
@@ -526,6 +598,7 @@ function SwimlaneHeadersLayer({
 }: SwimlaneLayerProps) {
   const { x, y, zoom } = useViewport();
   const { theme } = useTheme();
+  const [hoveredNamespace, setHoveredNamespace] = useState<string | null>(null);
 
   // When sticky headers are enabled, compensate for vertical viewport panning
   // to keep headers at the top of the screen
@@ -675,10 +748,20 @@ function SwimlaneHeadersLayer({
                   }
                 : undefined
             }
+            onMouseEnter={
+              isClickable
+                ? () => setHoveredNamespace(header.namespace)
+                : undefined
+            }
+            onMouseLeave={
+              isClickable
+                ? () =>
+                    setHoveredNamespace((current) =>
+                      current === header.namespace ? null : current
+                    )
+                : undefined
+            }
           >
-            {header.isOpened && (
-              <span style={{ fontSize: 10, opacity: 0.6 }}>▾</span>
-            )}
             <span
               style={{
                 overflowWrap: 'anywhere',
@@ -690,13 +773,12 @@ function SwimlaneHeadersLayer({
             >
               {header.label}
             </span>
-            {showOpen && (
-              <span
-                aria-hidden="true"
-                style={{ fontSize: 10, opacity: 0.6 }}
-              >
-                ▶
-              </span>
+            {(header.isOpened || showOpen) && (
+              <StackIcon
+                opened={header.isOpened}
+                hovered={hoveredNamespace === header.namespace}
+                accentColor={theme.colors.primary}
+              />
             )}
           </div>
         );
@@ -1046,9 +1128,15 @@ function SequenceDiagramInner({
               fontSize: theme.fontSizes[0],
               fontFamily: theme.fonts.body,
               color: theme.colors.textSecondary,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
             }}
           >
-            ▶ to drill in · click parent header (▾) to close
+            <StackIcon accentColor={theme.colors.primary} />
+            <span>to drill in · click parent header</span>
+            <StackIcon opened accentColor={theme.colors.primary} />
+            <span>to close</span>
           </div>
         </Panel>
       )}
