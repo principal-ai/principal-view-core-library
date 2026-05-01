@@ -161,7 +161,6 @@ export const CacheHitFlow: Story = {
       edges={workflowData.workflows[0].edges}
       height={600}
       layoutOptions={{
-        namespaceStrategy: 'first',
         laneWidth: 200,
         eventSpacing: 80,
       }}
@@ -204,7 +203,6 @@ export const GenerateNewFlow: Story = {
       edges={workflowData.workflows[1].edges}
       height={700}
       layoutOptions={{
-        namespaceStrategy: 'first',
         laneWidth: 200,
         eventSpacing: 80,
       }}
@@ -242,7 +240,6 @@ export const NoFileTreeFlow: Story = {
       edges={workflowData.workflows[2].edges}
       height={600}
       layoutOptions={{
-        namespaceStrategy: 'first',
         laneWidth: 200,
         eventSpacing: 80,
       }}
@@ -281,7 +278,6 @@ export const ErrorFlow: Story = {
       edges={workflowData.workflows[3].edges}
       height={650}
       layoutOptions={{
-        namespaceStrategy: 'first',
         laneWidth: 200,
         eventSpacing: 80,
       }}
@@ -313,7 +309,6 @@ export const ComparisonView: Story = {
             edges={workflowData.workflows[0].edges}
             height={600}
             layoutOptions={{
-              namespaceStrategy: 'first',
               laneWidth: 180,
               eventSpacing: 70,
             }}
@@ -328,7 +323,6 @@ export const ComparisonView: Story = {
             edges={workflowData.workflows[1].edges}
             height={600}
             layoutOptions={{
-              namespaceStrategy: 'first',
               laneWidth: 180,
               eventSpacing: 70,
             }}
@@ -384,7 +378,6 @@ export const AllPathsOverview: Story = {
               edges={workflow.edges}
               height={400}
               layoutOptions={{
-                namespaceStrategy: 'first',
                 laneWidth: 160,
                 eventSpacing: 60,
                 laneGap: 40,
@@ -447,7 +440,6 @@ export const UsingWorkflowWrapper: Story = {
             scenario={scenario}
             height="100%"
             layoutOptions={{
-              namespaceStrategy: 'first',
               laneWidth: 200,
               eventSpacing: 80,
             }}
@@ -466,57 +458,36 @@ export const UsingWorkflowWrapper: Story = {
 };
 
 /**
- * **Interactive Namespace Strategy**
+ * **Interactive Drill-Down**
  *
- * Demonstrates different namespace grouping strategies.
- * Toggle between showing full event namespaces vs collapsed participants.
+ * Lanes default to top-level participants. Use the ▶ chevrons on a lane
+ * header to drill into its sub-namespaces, and ‹ on a child lane to step
+ * back out.
  */
-export const InteractiveNamespaceStrategy: Story = {
+export const InteractiveDrillDown: Story = {
   render: () => {
-    const [strategy, setStrategy] = React.useState<'first' | 'all-but-last'>('first');
+    const [opened, setOpened] = React.useState<string[]>([]);
+
+    const handleToggle = (namespace: string) => {
+      setOpened((prev) =>
+        prev.includes(namespace)
+          ? prev.filter((n) => n !== namespace)
+          : [...prev, namespace]
+      );
+    };
 
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
         <div style={{
           padding: '12px',
           background: '#1e1e1e',
-          borderBottom: '1px solid #3e3e3e'
+          borderBottom: '1px solid #3e3e3e',
+          color: '#d4d4d4',
         }}>
-          <label style={{ marginRight: 16, color: '#d4d4d4' }}>
-            <strong>Namespace Strategy:</strong>
-          </label>
-          <button
-            onClick={() => setStrategy('first')}
-            style={{
-              padding: '8px 16px',
-              marginRight: 8,
-              background: strategy === 'first' ? '#3B82F6' : '#2a2a2a',
-              color: '#d4d4d4',
-              border: '1px solid #3e3e3e',
-              borderRadius: 4,
-              cursor: 'pointer',
-            }}
-          >
-            First Segment (Participants)
-          </button>
-          <button
-            onClick={() => setStrategy('all-but-last')}
-            style={{
-              padding: '8px 16px',
-              background: strategy === 'all-but-last' ? '#3B82F6' : '#2a2a2a',
-              color: '#d4d4d4',
-              border: '1px solid #3e3e3e',
-              borderRadius: 4,
-              cursor: 'pointer',
-            }}
-          >
-            Detailed Namespaces
-          </button>
+          <strong>Opened:</strong>{' '}
+          {opened.length ? opened.join(', ') : 'none (top-level participants)'}
           <p style={{ fontSize: 13, color: '#858585', marginTop: 8, marginBottom: 0 }}>
-            {strategy === 'first'
-              ? 'Showing high-level participants (renderer.*, main.*) - participant-focused view'
-              : 'Showing detailed event namespaces - event-focused view'
-            }
+            ▶ on a lane drills into its sub-namespaces. ‹ on a child lane steps back out.
           </p>
         </div>
         <div style={{ flex: 1 }}>
@@ -525,10 +496,11 @@ export const InteractiveNamespaceStrategy: Story = {
             edges={workflowData.workflows[1].edges}
             height={700}
             layoutOptions={{
-              namespaceStrategy: strategy,
+              openedNamespaces: opened,
               laneWidth: 200,
               eventSpacing: 80,
             }}
+            onToggleNamespace={handleToggle}
           />
         </div>
       </div>
@@ -537,7 +509,7 @@ export const InteractiveNamespaceStrategy: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Toggle between participant-level and detailed namespace views.',
+        story: 'Drill into participant lanes to reveal their sub-namespaces.',
       },
     },
   },

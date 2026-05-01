@@ -146,8 +146,8 @@ function convertWorkflowToSequence(
     const isMoveEvent = eventToMoveEventMap.get(eventName) ?? true;
 
     // When the canvas provides a scope, prefix it so the event lands in that
-    // participant's lane. Otherwise, use the event name as-is so the layout's
-    // namespace strategy can derive the participant from the event name itself.
+    // participant's lane (the layout uses the first dotted segment as the
+    // default lane). Otherwise, use the event name as-is.
     const name = canvasScope ? `${canvasScope}.${eventName}` : eventName;
     const participant = canvasScope ?? eventName.split('.')[0] ?? eventName;
 
@@ -186,10 +186,7 @@ function convertWorkflowToSequence(
  *   scenario={workflowScenario}
  *   canvas={otelCanvas}
  *   height={600}
- *   layoutOptions={{
- *     namespaceStrategy: 'first',
- *     eventSpacing: 80,
- *   }}
+ *   layoutOptions={{ eventSpacing: 80 }}
  * />
  * ```
  */

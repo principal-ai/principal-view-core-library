@@ -5,7 +5,7 @@
  * Uses namespaces to determine swimlanes and event order for vertical positioning.
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -33,6 +33,7 @@ import {
   type SequenceEdge,
   type UseSequenceLayoutOptions,
   type Swimlane,
+  type ParentHeader,
 } from '../hooks/useSequenceLayout';
 
 /**
@@ -373,10 +374,14 @@ const defaultSequenceEdgeTypes: EdgeTypes = {
  */
 interface SwimlaneLayerProps {
   swimlanes: Swimlane[];
+  parentHeaders: ParentHeader[];
+  headerRows: number;
   laneWidth: number;
+  /** Per-row height (each row in the header strip is this tall) */
   headerHeight: number;
   totalHeight: number;
-  onToggleCollapse?: (namespace: string) => void;
+  /** Called when the user clicks a chevron or parent header to toggle its drilled state */
+  onToggleNamespace?: (namespace: string) => void;
   stickyHeaders?: boolean;
   /** When true, render lane and header backgrounds as transparent. */
   transparent?: boolean;
@@ -387,11 +392,13 @@ interface SwimlaneLayerProps {
  */
 function SwimlaneLayer({
   swimlanes,
+  headerRows,
   laneWidth,
   headerHeight,
   totalHeight,
   transparent = false,
 }: SwimlaneLayerProps) {
+  const totalHeaderHeight = headerHeight * headerRows;
   const { x, y, zoom } = useViewport();
   const viewportHeight = useStore((s) => s.height);
   const { theme } = useTheme();
@@ -443,9 +450,9 @@ function SwimlaneLayer({
           style={{
             position: 'absolute',
             left: lane.x,
-            top: headerHeight,
+            top: totalHeaderHeight,
             width: 2,
-            height: extendedHeight - headerHeight,
+            height: extendedHeight - totalHeaderHeight,
             backgroundColor: 'rgba(255, 255, 255, 0.4)',
             transform: 'translateX(-1px)',
           }}
@@ -460,9 +467,10 @@ function SwimlaneLayer({
  */
 function SwimlaneHeadersLayer({
   swimlanes,
+  parentHeaders,
   laneWidth,
   headerHeight,
-  onToggleCollapse,
+  onToggleNamespace,
   stickyHeaders = true,
   transparent = false,
 }: SwimlaneLayerProps) {
@@ -472,6 +480,9 @@ function SwimlaneHeadersLayer({
   // When sticky headers are enabled, compensate for vertical viewport panning
   // to keep headers at the top of the screen
   const headerTop = stickyHeaders ? -y / zoom : 0;
+
+  // Each leaf renders at the row matching its namespace depth.
+  const leafDepth = (lane: Swimlane) => lane.namespace.split('.').length;
 
   return (
     <div
@@ -485,17 +496,20 @@ function SwimlaneHeadersLayer({
         zIndex: 10,
       }}
     >
-      {/* Lane headers */}
-      {swimlanes.map((lane) => {
-        const hasChildren = lane.children.length > 0;
+      {/* Parent headers — opened ancestors stack above their child leaves */}
+      {parentHeaders.map((header) => {
+        const rowTop = headerTop + (header.depth - 1) * headerHeight;
         return (
           <div
-            key={`header-${lane.namespace}`}
+            key={`parent-${header.namespace}`}
+            role="button"
+            aria-label={`Close ${header.namespace}`}
+            title={`${header.namespace} (click to close)`}
             style={{
               position: 'absolute',
-              left: lane.x - laneWidth / 2,
-              top: headerTop,
-              width: laneWidth,
+              left: header.x - header.width / 2,
+              top: rowTop,
+              width: header.width,
               height: headerHeight,
               display: 'flex',
               alignItems: 'center',
@@ -509,16 +523,16 @@ function SwimlaneHeadersLayer({
               fontFamily: theme.fonts.heading,
               color: theme.colors.text,
               pointerEvents: 'auto',
-              cursor: hasChildren ? 'pointer' : 'default',
               userSelect: 'none',
+              cursor: 'pointer',
+              gap: 6,
             }}
-            onClick={() => hasChildren && onToggleCollapse?.(lane.namespace)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleNamespace?.(header.namespace);
+            }}
           >
-            {hasChildren && (
-              <span style={{ marginRight: 6, fontSize: 10 }}>
-                {lane.isCollapsed ? '▼' : '▶'}
-              </span>
-            )}
+            <span style={{ fontSize: 10, opacity: 0.6 }}>▾</span>
             <span
               style={{
                 overflowWrap: 'anywhere',
@@ -526,10 +540,89 @@ function SwimlaneHeadersLayer({
                 lineHeight: 1.2,
                 textAlign: 'center',
               }}
-              title={lane.label}
+            >
+              {header.label}
+            </span>
+          </div>
+        );
+      })}
+
+      {/* Leaf headers — render at the row matching their depth, original height */}
+      {swimlanes.map((lane) => {
+        const showOpen = lane.canExpand;
+        const depth = leafDepth(lane);
+        const rowTop = headerTop + (depth - 1) * headerHeight;
+        // Top-level leaves keep the original header style; only child leaves
+        // (under an opened parent) get the differentiated treatment so the
+        // lane you clicked stays visually unchanged.
+        const isChild = lane.isParentOpened;
+        return (
+          <div
+            key={`header-${lane.namespace}`}
+            style={{
+              position: 'absolute',
+              left: lane.x - laneWidth / 2,
+              top: rowTop,
+              width: laneWidth,
+              height: headerHeight,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 8px',
+              boxSizing: 'border-box',
+              backgroundColor: transparent
+                ? 'transparent'
+                : isChild
+                  ? theme.colors.background
+                  : theme.colors.muted,
+              borderBottom: isChild
+                ? `1px solid ${theme.colors.border}`
+                : `2px solid ${theme.colors.border}`,
+              borderLeft: isChild ? `1px solid ${theme.colors.border}` : 'none',
+              borderRight: isChild
+                ? `1px solid ${theme.colors.border}`
+                : 'none',
+              fontWeight: isChild
+                ? theme.fontWeights.medium
+                : theme.fontWeights.semibold,
+              fontSize: isChild ? theme.fontSizes[1] : theme.fontSizes[2],
+              fontFamily: theme.fonts.heading,
+              color: isChild ? theme.colors.textSecondary : theme.colors.text,
+              pointerEvents: 'auto',
+              userSelect: 'none',
+              gap: 6,
+            }}
+            title={lane.namespace}
+          >
+            <span
+              style={{
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+                lineHeight: 1.2,
+                textAlign: 'center',
+                flex: 1,
+              }}
             >
               {lane.label}
             </span>
+            {showOpen && (
+              <span
+                role="button"
+                aria-label={`Open ${lane.namespace}`}
+                style={{
+                  fontSize: 10,
+                  cursor: 'pointer',
+                  padding: '2px 4px',
+                  opacity: 0.7,
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleNamespace?.(lane.namespace);
+                }}
+              >
+                ▶
+              </span>
+            )}
           </div>
         );
       })}
@@ -556,8 +649,12 @@ export interface SequenceDiagramRendererProps {
   /** Optional custom edge types */
   edgeTypes?: EdgeTypes;
 
-  /** Callback when a namespace collapse state is toggled */
-  onToggleCollapse?: (namespace: string) => void;
+  /**
+   * Called when the user toggles a lane's drill state via the header
+   * chevrons. Update `layoutOptions.openedNamespaces` in response to
+   * open/close the lane.
+   */
+  onToggleNamespace?: (namespace: string) => void;
 
   /** Callback when a node is clicked */
   onNodeClick?: (nodeId: string, event: React.MouseEvent) => void;
@@ -604,7 +701,7 @@ function SequenceDiagramInner({
   layoutOptions = {},
   nodeTypes: customNodeTypes,
   edgeTypes: customEdgeTypes,
-  onToggleCollapse,
+  onToggleNamespace,
   onNodeClick,
   showControls = true,
   showBackground = false, // Default to false since swimlanes provide visual structure
@@ -618,6 +715,33 @@ function SequenceDiagramInner({
   // Extract layout params
   const { laneWidth = 250, headerHeight = 60 } = layoutOptions;
 
+  // openedNamespaces is controlled if provided in layoutOptions, otherwise
+  // we manage it internally so chevrons work out of the box.
+  const isOpenedControlled = layoutOptions.openedNamespaces !== undefined;
+  const [internalOpened, setInternalOpened] = useState<string[]>([]);
+  const effectiveOpened = isOpenedControlled
+    ? layoutOptions.openedNamespaces
+    : internalOpened;
+
+  const handleToggleNamespace = useCallback(
+    (namespace: string) => {
+      if (!isOpenedControlled) {
+        setInternalOpened((prev) =>
+          prev.includes(namespace)
+            ? prev.filter((n) => n !== namespace)
+            : [...prev, namespace]
+        );
+      }
+      onToggleNamespace?.(namespace);
+    },
+    [isOpenedControlled, onToggleNamespace]
+  );
+
+  const effectiveLayoutOptions = useMemo(
+    () => ({ ...layoutOptions, openedNamespaces: effectiveOpened }),
+    [layoutOptions, effectiveOpened]
+  );
+
   // Merge custom node/edge types with sequence defaults
   const nodeTypes = useMemo(
     () => ({ ...defaultSequenceNodeTypes, ...customNodeTypes }),
@@ -629,11 +753,15 @@ function SequenceDiagramInner({
   );
 
   // Compute layout
-  const { nodes: layoutNodes, edges, swimlanes, totalWidth, totalHeight } = useSequenceLayout(
-    events,
-    sequenceEdges,
-    layoutOptions
-  );
+  const {
+    nodes: layoutNodes,
+    edges,
+    swimlanes,
+    parentHeaders,
+    headerRows,
+    totalWidth,
+    totalHeight,
+  } = useSequenceLayout(events, sequenceEdges, effectiveLayoutOptions);
 
   // Mark selected node and add showEventLabels to node data
   const nodes = useMemo(() => {
@@ -774,6 +902,8 @@ function SequenceDiagramInner({
       {/* Swimlane layer - renders behind nodes */}
       <SwimlaneLayer
         swimlanes={swimlanes}
+        parentHeaders={parentHeaders}
+        headerRows={headerRows}
         laneWidth={laneWidth}
         headerHeight={headerHeight}
         totalHeight={totalHeight}
@@ -783,16 +913,17 @@ function SequenceDiagramInner({
       {/* Swimlane headers layer - renders on top for clickability */}
       <SwimlaneHeadersLayer
         swimlanes={swimlanes}
+        parentHeaders={parentHeaders}
+        headerRows={headerRows}
         laneWidth={laneWidth}
         headerHeight={headerHeight}
         totalHeight={totalHeight}
-        onToggleCollapse={onToggleCollapse}
+        onToggleNamespace={handleToggleNamespace}
         stickyHeaders={stickyHeaders}
         transparent={transparent}
       />
 
-      {/* Collapse toggle panel (for namespaces with children) */}
-      {swimlanes.some((s) => s.children.length > 0) && (
+      {(swimlanes.some((s) => s.canExpand) || parentHeaders.length > 0) && (
         <Panel position="top-right">
           <div
             style={{
@@ -805,7 +936,7 @@ function SequenceDiagramInner({
               color: theme.colors.textSecondary,
             }}
           >
-            Click lane headers to expand/collapse
+            ▶ to drill in · click parent header (▾) to close
           </div>
         </Panel>
       )}

@@ -278,7 +278,6 @@ export const ClickDiagnostic: Story = {
             selectedEventIndex={selectedIndex}
             onEventIndexChange={handleClick}
             layoutOptions={{
-              namespaceStrategy: 'first',
               eventSpacing: 100,
             }}
           />
@@ -296,7 +295,6 @@ export const BasicScenario: Story = {
     scenario: simpleAuthScenario,
     height: '100%',
     layoutOptions: {
-      namespaceStrategy: 'first',
       eventSpacing: 80,
     },
   },
@@ -311,7 +309,6 @@ export const WithCanvasMetadata: Story = {
     canvas: sampleCanvas,
     height: '100%',
     layoutOptions: {
-      namespaceStrategy: 'first',
       eventSpacing: 80,
     },
   },
@@ -325,7 +322,6 @@ export const ComplexWorkflow: Story = {
     scenario: orderProcessingScenario,
     height: '100%',
     layoutOptions: {
-      namespaceStrategy: 'first',
       laneWidth: 200,
       eventSpacing: 70,
     },
@@ -340,7 +336,6 @@ export const MicroservicesPattern: Story = {
     scenario: microservicesScenario,
     height: '100%',
     layoutOptions: {
-      namespaceStrategy: 'first',
       laneWidth: 220,
       eventSpacing: 75,
     },
@@ -355,7 +350,6 @@ export const ErrorHandling: Story = {
     scenario: errorHandlingScenario,
     height: '100%',
     layoutOptions: {
-      namespaceStrategy: 'first',
       eventSpacing: 80,
     },
   },
@@ -380,7 +374,6 @@ export const LongSwimlaneTitles: Story = {
     scenario: longTitlesScenario,
     height: '100%',
     layoutOptions: {
-      namespaceStrategy: 'first',
       eventSpacing: 80,
       headerHeight: 100,
     },
@@ -449,7 +442,6 @@ export const WithEventSelection: Story = {
             selectedEventIndex={selectedIndex}
             onEventIndexChange={setSelectedIndex}
             layoutOptions={{
-              namespaceStrategy: 'first',
               eventSpacing: 80,
               nodeWidth: 14,
               nodeHeight: 14,
@@ -508,7 +500,6 @@ export const InteractiveSelection: Story = {
             selectedEventIndex={selectedIndex}
             onEventIndexChange={setSelectedIndex}
             layoutOptions={{
-              namespaceStrategy: 'first',
               eventSpacing: 80,
             }}
           />
@@ -553,7 +544,6 @@ export const EdgeLabelsVsNodeLabels: Story = {
               onEventIndexChange={setSelectedLeft}
               showEventLabels={false}
               layoutOptions={{
-                namespaceStrategy: 'first',
                 eventSpacing: 100,
               }}
             />
@@ -583,7 +573,6 @@ export const EdgeLabelsVsNodeLabels: Story = {
               onEventIndexChange={setSelectedRight}
               showEventLabels={true}
               layoutOptions={{
-                namespaceStrategy: 'first',
                 eventSpacing: 100,
                 nodeWidth: 80,
                 nodeHeight: 50,
@@ -597,34 +586,38 @@ export const EdgeLabelsVsNodeLabels: Story = {
 };
 
 /**
- * Comparison of different namespace strategies
+ * Comparison of default lanes vs fully-drilled lanes
  */
-export const NamespaceStrategies: Story = {
+export const DefaultVsDrilled: Story = {
   render: () => {
+    const allTopSegments = Array.from(
+      new Set(
+        Object.keys(orderProcessingScenario.template.events ?? {})
+          .map((name) => name.split('.')[0])
+          .filter(Boolean)
+      )
+    );
+
     return (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', height: '100%', gap: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{ margin: '0 0 12px 0' }}>First Segment (Participants)</h3>
+          <h3 style={{ margin: '0 0 12px 0' }}>Default (top-level lanes)</h3>
           <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: 4 }}>
             <WorkflowSequenceDiagram
               scenario={orderProcessingScenario}
               height="100%"
-              layoutOptions={{
-                namespaceStrategy: 'first',
-                laneWidth: 180,
-                eventSpacing: 60,
-              }}
+              layoutOptions={{ laneWidth: 180, eventSpacing: 60 }}
             />
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{ margin: '0 0 12px 0' }}>All But Last (Detailed)</h3>
+          <h3 style={{ margin: '0 0 12px 0' }}>All top-level lanes drilled</h3>
           <div style={{ flex: 1, border: '1px solid #ddd', borderRadius: 4 }}>
             <WorkflowSequenceDiagram
               scenario={orderProcessingScenario}
               height="100%"
               layoutOptions={{
-                namespaceStrategy: 'all-but-last',
+                openedNamespaces: allTopSegments,
                 laneWidth: 180,
                 eventSpacing: 60,
               }}
@@ -644,7 +637,6 @@ export const CompactLayout: Story = {
     scenario: simpleAuthScenario,
     height: '100%',
     layoutOptions: {
-      namespaceStrategy: 'first',
       laneWidth: 150,
       laneGap: 30,
       eventSpacing: 50,
@@ -660,7 +652,6 @@ export const SpaciousLayout: Story = {
     scenario: simpleAuthScenario,
     height: '100%',
     layoutOptions: {
-      namespaceStrategy: 'first',
       laneWidth: 250,
       laneGap: 100,
       eventSpacing: 120,
@@ -677,7 +668,6 @@ export const WithoutControls: Story = {
     height: '100%',
     showControls: false,
     layoutOptions: {
-      namespaceStrategy: 'first',
       eventSpacing: 80,
     },
   },
@@ -692,7 +682,6 @@ export const WithBackground: Story = {
     height: '100%',
     showBackground: true,
     layoutOptions: {
-      namespaceStrategy: 'first',
       eventSpacing: 80,
     },
   },
@@ -802,7 +791,6 @@ export const FullFeatured: Story = {
             showControls={showControls}
             showBackground={showBackground}
             layoutOptions={{
-              namespaceStrategy: 'first',
               laneWidth: 200,
               eventSpacing: 70,
             }}

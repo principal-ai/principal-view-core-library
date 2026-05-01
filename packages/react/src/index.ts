@@ -46,7 +46,6 @@ export type {
   SequenceEvent,
   SequenceEdge,
   Swimlane,
-  NamespaceStrategy,
   UseSequenceLayoutOptions,
   UseSequenceLayoutResult,
 } from './hooks/useSequenceLayout';

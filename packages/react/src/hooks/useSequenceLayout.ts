@@ -1,7 +1,11 @@
 /**
  * React hook for sequence diagram layout
  *
- * Computes swimlane-based positioning for events based on their namespaces.
+ * Computes swimlane-based positioning for events. Lanes default to the first
+ * dotted segment of each event name. Callers can drill deeper by passing
+ * `openedNamespaces`: any prefix listed there has its events pushed one level
+ * deeper, so its children appear as their own lanes instead of being grouped
+ * under the parent.
  */
 
 import { useMemo } from 'react';
@@ -55,40 +59,36 @@ export interface SequenceEdge {
  * Swimlane information computed from events
  */
 export interface Swimlane {
-  /** Namespace identifier */
+  /** Namespace identifier for this lane */
   namespace: string;
-  /** Display label for the lane header */
+  /** Display label for the lane header (last segment of the namespace) */
   label: string;
   /** X position of the lane center */
   x: number;
-  /** Parent namespace (for hierarchical lanes) */
+  /** Parent namespace (one segment shallower), if any */
   parentNamespace?: string;
-  /** Whether this lane is collapsed */
-  isCollapsed: boolean;
-  /** Child namespaces */
-  children: string[];
-  /** Events in this lane */
+  /** Whether this lane's namespace is in `openedNamespaces` (its events have been drilled deeper) */
+  isOpened: boolean;
+  /** Whether the immediate parent namespace is opened (this lane only exists because its parent was drilled into) */
+  isParentOpened: boolean;
+  /** Whether any event extends strictly past this lane's namespace (so opening would split it further) */
+  canExpand: boolean;
+  /** Events directly assigned to this lane */
   eventIds: string[];
 }
-
-/**
- * Namespace extraction strategy
- */
-export type NamespaceStrategy =
-  | 'first' // First segment only (auth.validation.started -> auth)
-  | 'all-but-last' // All but last segment (auth.validation.started -> auth.validation)
-  | number // Specific depth (2 -> auth.validation)
-  | ((name: string) => string); // Custom function
 
 /**
  * Options for sequence layout
  */
 export interface UseSequenceLayoutOptions {
   /**
-   * How to extract namespace from event name
-   * @default 'all-but-last'
+   * Namespace prefixes whose events should be drilled one segment deeper.
+   * Pass an array or a Set. Each entry is a dotted prefix (e.g. `auth` or
+   * `auth.user`). When listed, events under that prefix land in lanes one
+   * level deeper than the prefix, instead of all sharing the prefix lane.
+   * Drilling is recursive: list both `auth` and `auth.user` to drill twice.
    */
-  namespaceStrategy?: NamespaceStrategy;
+  openedNamespaces?: string[] | Set<string>;
 
   /**
    * Width of each swimlane
@@ -125,11 +125,23 @@ export interface UseSequenceLayoutOptions {
    * @default 14
    */
   nodeHeight?: number;
+}
 
-  /**
-   * Namespaces to collapse (show as single lane)
-   */
-  collapsedNamespaces?: string[];
+/**
+ * A header cell for an opened ancestor namespace, sitting above the leaf
+ * lanes it groups. Rendered as a row in the header strip.
+ */
+export interface ParentHeader {
+  /** Full ancestor namespace (always in `openedNamespaces`) */
+  namespace: string;
+  /** Last segment, for display */
+  label: string;
+  /** Center x of the cell */
+  x: number;
+  /** Total span width across the leaf lanes underneath */
+  width: number;
+  /** 1-based depth in the header strip (1 = topmost row) */
+  depth: number;
 }
 
 /**
@@ -140,8 +152,15 @@ export interface UseSequenceLayoutResult {
   nodes: Node[];
   /** Edges for React Flow */
   edges: Edge[];
-  /** Computed swimlane information */
+  /** Leaf swimlanes — each gets a lifeline and a leaf header row */
   swimlanes: Swimlane[];
+  /**
+   * Header cells for opened ancestor namespaces. Stack above the leaf
+   * headers; depth 1 sits at the top of the header strip.
+   */
+  parentHeaders: ParentHeader[];
+  /** Number of header rows (= max leaf depth). At least 1. */
+  headerRows: number;
   /** Total width of the diagram */
   totalWidth: number;
   /** Total height of the diagram */
@@ -149,52 +168,30 @@ export interface UseSequenceLayoutResult {
 }
 
 /**
- * Extract namespace from event name based on strategy
+ * Resolve the lane (namespace prefix) for a given event name, given the set
+ * of opened namespaces. Walks segments from depth 1 outward, descending while
+ * the current prefix is opened, and stopping at the first prefix that isn't.
  */
-function extractNamespace(name: string, strategy: NamespaceStrategy): string {
-  if (typeof strategy === 'function') {
-    return strategy(name);
+function resolveLane(name: string, opened: Set<string>): string {
+  const segs = name.split('.');
+  let depth = 1;
+  while (depth < segs.length) {
+    const prefix = segs.slice(0, depth).join('.');
+    if (opened.has(prefix)) {
+      depth++;
+    } else {
+      break;
+    }
   }
-
-  const segments = name.split('.');
-
-  if (segments.length <= 1) {
-    return name;
-  }
-
-  if (strategy === 'first') {
-    return segments[0];
-  }
-
-  if (strategy === 'all-but-last') {
-    return segments.slice(0, -1).join('.');
-  }
-
-  if (typeof strategy === 'number') {
-    return segments.slice(0, strategy).join('.');
-  }
-
-  return segments.slice(0, -1).join('.');
+  return segs.slice(0, depth).join('.');
 }
 
 /**
- * Get parent namespace (one level up)
- */
-function getParentNamespace(namespace: string): string | undefined {
-  const segments = namespace.split('.');
-  if (segments.length <= 1) {
-    return undefined;
-  }
-  return segments.slice(0, -1).join('.');
-}
-
-/**
- * Hook for computing sequence diagram layout
+ * useSequenceLayout
  *
- * @param events - Events to layout
- * @param edges - Edges between events
- * @param options - Layout options
- * @returns Layout result with positioned nodes, edges, and swimlane info
+ * @param events - Events to lay out
+ * @param sequenceEdges - Edges connecting events
+ * @param options - Layout options (lane sizing, openedNamespaces)
  *
  * @example
  * ```tsx
@@ -207,7 +204,8 @@ function getParentNamespace(namespace: string): string | undefined {
  *   [
  *     { id: 'e1', fromEvent: '1', toEvent: '2' },
  *     { id: 'e2', fromEvent: '2', toEvent: '3' },
- *   ]
+ *   ],
+ *   { openedNamespaces: ['auth'] }, // drill `auth` to show validation/token as separate lanes
  * );
  * ```
  */
@@ -217,15 +215,22 @@ export function useSequenceLayout(
   options: UseSequenceLayoutOptions = {}
 ): UseSequenceLayoutResult {
   const {
-    namespaceStrategy = 'all-but-last',
+    openedNamespaces,
     laneWidth = 250,
     laneGap = 0,
     eventSpacing = 80,
     headerHeight = 60,
-    collapsedNamespaces = [],
     nodeWidth = 14,
     nodeHeight = 14,
   } = options;
+
+  // Normalize openedNamespaces into a stable string for memo dependency
+  const openedKey = useMemo(() => {
+    if (!openedNamespaces) return '';
+    const arr = Array.from(openedNamespaces);
+    arr.sort();
+    return arr.join('|');
+  }, [openedNamespaces]);
 
   return useMemo(() => {
     if (events.length === 0) {
@@ -233,113 +238,139 @@ export function useSequenceLayout(
         nodes: [],
         edges: [],
         swimlanes: [],
+        parentHeaders: [],
+        headerRows: 1,
         totalWidth: 0,
         totalHeight: 0,
       };
     }
 
-    // Step 1: Extract namespaces and group events
-    const eventNamespaces = new Map<string, string>();
-    const namespaceEvents = new Map<string, string[]>();
+    const opened = new Set<string>(
+      openedKey ? openedKey.split('|') : []
+    );
+
+    // Step 1: Resolve each event to a lane prefix
+    const eventLane = new Map<string, string>();
+    const laneEvents = new Map<string, string[]>();
 
     for (const event of events) {
-      const namespace = extractNamespace(event.name, namespaceStrategy);
-      eventNamespaces.set(event.id, namespace);
-
-      if (!namespaceEvents.has(namespace)) {
-        namespaceEvents.set(namespace, []);
+      const lane = resolveLane(event.name, opened);
+      eventLane.set(event.id, lane);
+      if (!laneEvents.has(lane)) {
+        laneEvents.set(lane, []);
       }
-      namespaceEvents.get(namespace)!.push(event.id);
+      laneEvents.get(lane)!.push(event.id);
     }
 
-    // Step 2: Build namespace hierarchy and determine visible lanes
-    const allNamespaces = Array.from(namespaceEvents.keys()).sort();
-    const collapsedSet = new Set(collapsedNamespaces);
+    // Step 2: Order lanes alphabetically (parents naturally sort before children)
+    const laneNames = Array.from(laneEvents.keys()).sort();
 
-    // For collapsed namespaces, merge children into parent
-    const visibleNamespaces: string[] = [];
-    const namespaceToVisible = new Map<string, string>();
+    // canExpand is meaningful only when opening would actually fork the lane
+    // into multiple child lanes. If every event in the lane would drill into
+    // the same child, drilling is a relabel — hide the chevron.
+    const eventsById = new Map<string, SequenceEvent>();
+    for (const event of events) eventsById.set(event.id, event);
 
-    for (const ns of allNamespaces) {
-      // Check if any ancestor is collapsed
-      let visibleNs = ns;
-      let current: string | undefined = ns;
-
-      while (current) {
-        if (collapsedSet.has(current)) {
-          visibleNs = current;
-        }
-        current = getParentNamespace(current);
+    const canExpandLane = (laneNs: string, eventIds: string[]): boolean => {
+      const augmented = new Set(opened);
+      augmented.add(laneNs);
+      const seen = new Set<string>();
+      for (const eid of eventIds) {
+        const event = eventsById.get(eid);
+        if (!event) continue;
+        seen.add(resolveLane(event.name, augmented));
+        if (seen.size > 1) return true;
       }
+      return false;
+    };
 
-      namespaceToVisible.set(ns, visibleNs);
-
-      if (!visibleNamespaces.includes(visibleNs)) {
-        visibleNamespaces.push(visibleNs);
-      }
-    }
-
-    // Step 3: Create swimlanes with positions
-    const swimlanes: Swimlane[] = visibleNamespaces.map((namespace, index) => {
+    // Step 3: Build Swimlane records
+    const swimlanes: Swimlane[] = laneNames.map((namespace, index) => {
       const x = index * (laneWidth + laneGap) + laneWidth / 2;
-
-      // Find all events that map to this visible namespace
-      const eventIds: string[] = [];
-      for (const [eventId, eventNs] of eventNamespaces) {
-        if (namespaceToVisible.get(eventNs) === namespace) {
-          eventIds.push(eventId);
-        }
-      }
-
-      // Find children (namespaces that have this as parent)
-      const children = allNamespaces.filter(
-        (ns) => getParentNamespace(ns) === namespace
-      );
+      const segs = namespace.split('.');
+      const parentNamespace =
+        segs.length > 1 ? segs.slice(0, -1).join('.') : undefined;
+      const eventIds = laneEvents.get(namespace)!;
 
       return {
         namespace,
-        label: namespace.split('.').pop() || namespace,
+        label: segs[segs.length - 1] || namespace,
         x,
-        parentNamespace: getParentNamespace(namespace),
-        isCollapsed: collapsedSet.has(namespace),
-        children,
+        parentNamespace,
+        isOpened: opened.has(namespace),
+        isParentOpened: parentNamespace ? opened.has(parentNamespace) : false,
+        canExpand: canExpandLane(namespace, eventIds),
         eventIds,
       };
     });
 
-    // Create lookup for swimlane by namespace
-    const swimlaneByNamespace = new Map<string, Swimlane>();
+    const laneByNamespace = new Map<string, Swimlane>();
     for (const lane of swimlanes) {
-      swimlaneByNamespace.set(lane.namespace, lane);
+      laneByNamespace.set(lane.namespace, lane);
     }
 
-    // Step 4: Position events using global time layers
-    // Each event gets a Y position based on its index in the overall sequence
-    // This creates horizontal "time layers" across all swimlanes
-    const nodes: Node[] = [];
+    // Step 3b: Build parent header cells for opened ancestors. For every leaf
+    // lane at depth > 1, walk depths 1..d-1 and aggregate the leaf x-extent
+    // under each ancestor.
+    const ancestorBounds = new Map<
+      string,
+      { xMin: number; xMax: number; depth: number }
+    >();
+    for (const lane of swimlanes) {
+      const segs = lane.namespace.split('.');
+      const left = lane.x - laneWidth / 2;
+      const right = lane.x + laneWidth / 2;
+      for (let d = 1; d < segs.length; d++) {
+        const ancestorNs = segs.slice(0, d).join('.');
+        const existing = ancestorBounds.get(ancestorNs);
+        if (existing) {
+          existing.xMin = Math.min(existing.xMin, left);
+          existing.xMax = Math.max(existing.xMax, right);
+        } else {
+          ancestorBounds.set(ancestorNs, { xMin: left, xMax: right, depth: d });
+        }
+      }
+    }
 
+    const parentHeaders: ParentHeader[] = Array.from(ancestorBounds.entries())
+      .map(([namespace, { xMin, xMax, depth }]) => {
+        const segs = namespace.split('.');
+        return {
+          namespace,
+          label: segs[segs.length - 1] || namespace,
+          x: (xMin + xMax) / 2,
+          width: xMax - xMin,
+          depth,
+        };
+      })
+      .sort((a, b) => a.depth - b.depth || a.x - b.x);
+
+    const headerRows = swimlanes.reduce(
+      (max, lane) => Math.max(max, lane.namespace.split('.').length),
+      1
+    );
+    const totalHeaderHeight = headerHeight * headerRows;
+
+    // Step 4: Position events on global time layers, below the full header strip
+    const nodes: Node[] = [];
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
-      const originalNamespace = eventNamespaces.get(event.id)!;
-      const visibleNamespace = namespaceToVisible.get(originalNamespace)!;
-      const lane = swimlaneByNamespace.get(visibleNamespace)!;
+      const laneNs = eventLane.get(event.id)!;
+      const lane = laneByNamespace.get(laneNs)!;
 
-      // Global Y position based on event order (time layer)
-      // Start first event closer to header with small offset
-      const y = headerHeight + 40 + i * eventSpacing;
+      const y = totalHeaderHeight + 40 + i * eventSpacing;
 
       nodes.push({
         id: event.id,
         type: 'sequenceMarker',
         position: {
           x: lane.x - nodeWidth / 2,
-          y: y - nodeHeight / 2, // Center vertically on the time layer
+          y: y - nodeHeight / 2,
         },
         data: {
           label: event.label || event.name.split('.').pop() || event.name,
           fullName: event.name,
-          namespace: originalNamespace,
-          visibleNamespace,
+          namespace: laneNs,
           timeLayer: i,
           isMoveEvent: event.moveEvent === true,
           sourcePath: event.sourcePath,
@@ -352,27 +383,24 @@ export function useSequenceLayout(
       });
     }
 
-    // Step 5: Create edges - one per event, showing how to get to the NEXT event
-    // Each edge looks forward to determine what to render
+    // Step 5: Edges — one per event, looking ahead to the next
     const edges: Edge[] = [];
-
     for (let i = 0; i < events.length; i++) {
       const currentEvent = events[i];
-      const currentNamespace = eventNamespaces.get(currentEvent.id)!;
-      const currentVisibleNs = namespaceToVisible.get(currentNamespace)!;
-      const currentLane = swimlaneByNamespace.get(currentVisibleNs)!;
+      const currentLaneNs = eventLane.get(currentEvent.id)!;
+      const currentLane = laneByNamespace.get(currentLaneNs)!;
 
-      // Look at the next event (if any)
       if (i < events.length - 1) {
         const nextEvent = events[i + 1];
-        const nextNamespace = eventNamespaces.get(nextEvent.id)!;
-        const nextVisibleNs = namespaceToVisible.get(nextNamespace)!;
-        const nextLane = swimlaneByNamespace.get(nextVisibleNs)!;
+        const nextLaneNs = eventLane.get(nextEvent.id)!;
+        const nextLane = laneByNamespace.get(nextLaneNs)!;
         const nextIsMoveEvent = nextEvent.moveEvent === true;
-        const crossesLanes = currentVisibleNs !== nextVisibleNs;
+        const crossesLanes = currentLaneNs !== nextLaneNs;
 
-        // Label is from the CURRENT event (the one creating this edge)
-        const edgeLabel = currentEvent.label || currentEvent.name.split('.').pop() || currentEvent.name;
+        const edgeLabel =
+          currentEvent.label ||
+          currentEvent.name.split('.').pop() ||
+          currentEvent.name;
 
         edges.push({
           id: `edge-${currentEvent.id}-to-${nextEvent.id}`,
@@ -384,8 +412,8 @@ export function useSequenceLayout(
           labelBgStyle: { fill: 'white', fillOpacity: 0.8 },
           data: {
             crossesLanes,
-            sourceNamespace: currentNamespace,
-            targetNamespace: nextNamespace,
+            sourceNamespace: currentLaneNs,
+            targetNamespace: nextLaneNs,
             isMoveEvent: nextIsMoveEvent,
             sourceEvent: currentEvent,
             targetEvent: nextEvent,
@@ -394,9 +422,11 @@ export function useSequenceLayout(
           },
         });
       } else {
-        // Last event - render small activation bar to show it exists
         const currentIsMoveEvent = currentEvent.moveEvent === true;
-        const edgeLabel = currentEvent.label || currentEvent.name.split('.').pop() || currentEvent.name;
+        const edgeLabel =
+          currentEvent.label ||
+          currentEvent.name.split('.').pop() ||
+          currentEvent.name;
 
         edges.push({
           id: `edge-${currentEvent.id}-end`,
@@ -408,8 +438,8 @@ export function useSequenceLayout(
           labelBgStyle: { fill: 'white', fillOpacity: 0.8 },
           data: {
             crossesLanes: false,
-            sourceNamespace: currentNamespace,
-            targetNamespace: currentNamespace,
+            sourceNamespace: currentLaneNs,
+            targetNamespace: currentLaneNs,
             isMoveEvent: currentIsMoveEvent,
             sourceEvent: currentEvent,
             targetEvent: currentEvent,
@@ -425,15 +455,13 @@ export function useSequenceLayout(
     // Step 6: Compute total dimensions
     const totalWidth =
       swimlanes.length * laneWidth + (swimlanes.length - 1) * laneGap;
-    // Total height based on number of events (time layers)
-    const totalHeight = headerHeight + 40 + events.length * eventSpacing;
+    const totalHeight = totalHeaderHeight + 40 + events.length * eventSpacing;
 
-    // Step 7: Add invisible boundary nodes to ensure fitView includes full diagram width
+    // Step 7: Boundary nodes so React Flow's fitView covers full width
     if (swimlanes.length > 0) {
       const leftmostLane = swimlanes[0];
       const rightmostLane = swimlanes[swimlanes.length - 1];
 
-      // Add boundary nodes at the corners
       nodes.push(
         {
           id: '__boundary_left__',
@@ -460,19 +488,20 @@ export function useSequenceLayout(
       nodes,
       edges,
       swimlanes,
+      parentHeaders,
+      headerRows,
       totalWidth,
       totalHeight,
     };
   }, [
     events,
     sequenceEdges,
-    namespaceStrategy,
+    openedKey,
     laneWidth,
     laneGap,
     eventSpacing,
     headerHeight,
     nodeWidth,
     nodeHeight,
-    collapsedNamespaces,
   ]);
 }

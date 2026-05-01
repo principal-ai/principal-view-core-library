@@ -142,30 +142,14 @@ export const ComplexFlow: Story = {
 };
 
 /**
- * Flow with hierarchical namespaces to test sub-namespace handling
+ * Flow with hierarchical namespaces. By default, lanes group at the first
+ * dotted segment — drill in via `openedNamespaces` (see `WithDrillDown`).
  */
 export const HierarchicalNamespaces: Story = {
   args: {
     events: hierarchicalFlow.events,
     edges: hierarchicalFlow.edges,
     height: 500,
-    layoutOptions: {
-      namespaceStrategy: 'all-but-last',
-    },
-  },
-};
-
-/**
- * Same story but with first-segment namespace strategy
- */
-export const HierarchicalCollapsedToFirst: Story = {
-  args: {
-    events: hierarchicalFlow.events,
-    edges: hierarchicalFlow.edges,
-    height: 500,
-    layoutOptions: {
-      namespaceStrategy: 'first',
-    },
   },
 };
 
@@ -181,14 +165,15 @@ export const SameNamespaceEdges: Story = {
 };
 
 /**
- * Interactive example with collapse toggle
+ * Interactive drill-down. Click ▶ on a lane header to split it into
+ * its sub-namespaces; click ‹ on a child lane to step back out.
  */
-export const WithCollapseToggle: Story = {
+export const WithDrillDown: Story = {
   render: () => {
-    const [collapsed, setCollapsed] = useState<string[]>([]);
+    const [opened, setOpened] = useState<string[]>([]);
 
     const handleToggle = (namespace: string) => {
-      setCollapsed((prev) =>
+      setOpened((prev) =>
         prev.includes(namespace)
           ? prev.filter((n) => n !== namespace)
           : [...prev, namespace]
@@ -198,19 +183,17 @@ export const WithCollapseToggle: Story = {
     return (
       <div>
         <div style={{ marginBottom: 16 }}>
-          <strong>Collapsed namespaces:</strong>{' '}
-          {collapsed.length ? collapsed.join(', ') : 'none'}
+          <strong>Opened namespaces:</strong>{' '}
+          {opened.length ? opened.join(', ') : 'none'}
           <br />
-          <small>Click on lane headers with children to toggle collapse</small>
+          <small>▶ on a lane header drills in. ‹ on a child lane steps back out.</small>
         </div>
         <SequenceDiagramRenderer
           events={hierarchicalFlow.events}
           edges={hierarchicalFlow.edges}
           height={500}
-          layoutOptions={{
-            collapsedNamespaces: collapsed,
-          }}
-          onToggleCollapse={handleToggle}
+          layoutOptions={{ openedNamespaces: opened }}
+          onToggleNamespace={handleToggle}
         />
       </div>
     );
