@@ -196,6 +196,12 @@ export function exportSpans(filename: string) {
     }
   });
 
+  // Skip writing the file unless explicitly opted in. The fixture is consumed
+  // only by Storybook stories and doesn't need to be regenerated on every test run.
+  if (process.env.OTEL_TRACE_EXPORT !== 'true') {
+    return collectedSpans;
+  }
+
   const outputPath = path.join(
     __dirname,
     '../../react/src/stories/data',

@@ -5,10 +5,11 @@
  * and written to JSON files at the end of the test run.
  *
  * Usage:
- *   - Normal test run: `bun test` (spans saved to __traces__/)
+ *   - Normal test run: `bun test` (spans collected in memory, no file written)
+ *   - Export traces: `OTEL_TRACE_EXPORT=true bun test` (writes __traces__/test-run.json)
  *   - Debug mode: `OTEL_CONSOLE_EXPORT=true bun test`
- *   - Custom output: `OTEL_TRACE_OUTPUT=./my-traces.json bun test`
- *   - Canvas output: `OTEL_CANVAS_OUTPUT=true bun test` (also outputs .canvas.json)
+ *   - Custom output: `OTEL_TRACE_EXPORT=true OTEL_TRACE_OUTPUT=./my-traces.json bun test`
+ *   - Canvas output: `OTEL_TRACE_EXPORT=true OTEL_CANVAS_OUTPUT=true bun test` (also outputs .canvas.json)
  */
 
 import { trace, context, SpanStatusCode, type Span } from '@opentelemetry/api';
@@ -210,7 +211,9 @@ afterAll(async () => {
   // Get all collected spans
   const spans = memoryExporter.getFinishedSpans();
 
-  if (spans.length > 0) {
+  // Trace files are unused right now; only write them when explicitly opted in
+  // via OTEL_TRACE_EXPORT=true to avoid churn in __traces__/test-run.json.
+  if (spans.length > 0 && process.env.OTEL_TRACE_EXPORT === 'true') {
     // Convert to JSON format
     const traceExport: TraceExport = {
       exportedAt: new Date().toISOString(),
