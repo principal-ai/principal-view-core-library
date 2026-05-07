@@ -1,0 +1,34 @@
+{
+	"name": "@principal-ai/trail-viewer",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "Standalone Electrobun viewer for Principal ADE trails. Pairs with the principal-ai CLI: `principal-ai trail view <id>` shells into this bundle.",
+	"scripts": {
+		"start": "electrobun dev",
+		"dev": "electrobun dev --watch",
+		"build:canary": "electrobun build --env=canary"
+	},
+	"dependencies": {
+		"@industry-theme/file-city-panel": "^0.5.69",
+		"@principal-ade/dynamic-file-tree": "^0.2.45",
+		"@principal-ade/industry-theme": "^0.1.20",
+		"@principal-ade/panel-framework-core": "^0.5.1",
+		"@principal-ade/panel-layouts": "^0.4.7",
+		"@principal-ade/utcp-panel-event": "^0.1.0",
+		"@principal-ai/file-city-builder": "^0.4.4",
+		"@principal-ai/file-city-react": "^0.5.50",
+		"@principal-ai/principal-view-core": "^0.28.6",
+		"@principal-ai/repository-abstraction": "^0.5.7",
+		"electrobun": "1.16.0",
+		"lucide-react": "^0.469.0",
+		"react": "19.2.0",
+		"react-dom": "19.2.0"
+	},
+	"devDependencies": {
+		"@types/bun": "latest",
+		"@types/react": "^19.2.0",
+		"@types/react-dom": "^19.2.0",
+		"typescript": "^5.7.2"
+	}
+}
