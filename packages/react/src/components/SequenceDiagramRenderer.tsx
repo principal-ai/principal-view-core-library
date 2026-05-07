@@ -12,7 +12,6 @@ import {
   BackgroundVariant,
   Controls,
   ReactFlowProvider,
-  Panel,
   useViewport,
   useStore,
   Handle,
@@ -600,9 +599,11 @@ function SwimlaneHeadersLayer({
   const { theme } = useTheme();
   const [hoveredNamespace, setHoveredNamespace] = useState<string | null>(null);
 
-  // When sticky headers are enabled, compensate for vertical viewport panning
-  // to keep headers at the top of the screen
-  const headerTop = stickyHeaders ? -y / zoom : 0;
+  // When sticky headers are enabled, drop vertical translation from the wrapper
+  // so headers stay locked to the top regardless of vertical pan. The inner
+  // cells then keep their natural `top` values (no per-scroll recompute), which
+  // avoids fighting the CSS transition on `top` used for drill-toggle animations.
+  const wrapperY = stickyHeaders ? 0 : y;
 
   // Build a unified header list: each namespace currently in view (whether a
   // leaf or an opened ancestor) gets ONE DOM element keyed by namespace, so
@@ -653,13 +654,13 @@ function SwimlaneHeadersLayer({
         top: 0,
         left: 0,
         transformOrigin: '0 0',
-        transform: `translate(${x}px, ${y}px) scale(${zoom})`,
+        transform: `translate(${x}px, ${wrapperY}px) scale(${zoom})`,
         pointerEvents: 'none',
         zIndex: 10,
       }}
     >
       {headers.map((header) => {
-        const rowTop = headerTop + (header.depth - 1) * headerHeight;
+        const rowTop = (header.depth - 1) * headerHeight;
         // Child leaves (under an opened parent) get the differentiated, lighter
         // styling. Top-level leaves AND opened parents share the original
         // header look — so the cell you clicked doesn't change appearance, it
@@ -693,13 +694,7 @@ function SwimlaneHeadersLayer({
                   ? `Open ${header.namespace}`
                   : undefined
             }
-            title={
-              header.isOpened
-                ? `${header.namespace} (click to close)`
-                : showOpen
-                  ? `${header.namespace} (click to open)`
-                  : header.namespace
-            }
+            title={header.namespace}
             style={{
               position: 'absolute',
               left: header.x - header.width / 2,
@@ -1117,29 +1112,6 @@ function SequenceDiagramInner({
         transparent={transparent}
       />
 
-      {(swimlanes.some((s) => s.canExpand) || parentHeaders.length > 0) && (
-        <Panel position="top-right">
-          <div
-            style={{
-              background: theme.colors.background,
-              border: `1px solid ${theme.colors.border}`,
-              borderRadius: 4,
-              padding: '6px 10px',
-              fontSize: theme.fontSizes[0],
-              fontFamily: theme.fonts.body,
-              color: theme.colors.textSecondary,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <StackIcon accentColor={theme.colors.primary} />
-            <span>to drill in · click parent header</span>
-            <StackIcon opened accentColor={theme.colors.primary} />
-            <span>to close</span>
-          </div>
-        </Panel>
-      )}
     </ReactFlow>
   );
 }

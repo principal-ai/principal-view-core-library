@@ -91,6 +91,14 @@ export interface UseSequenceLayoutOptions {
   openedNamespaces?: string[] | Set<string>;
 
   /**
+   * Explicit left-to-right order for lanes, by resolved namespace. Listed
+   * namespaces are placed first in the given order; any lanes not present in
+   * the list fall back to first-event order (the order in which their first
+   * event appears in `events`). Unknown entries are ignored.
+   */
+  laneOrder?: string[];
+
+  /**
    * Width of each swimlane
    * @default 250
    */
@@ -216,6 +224,7 @@ export function useSequenceLayout(
 ): UseSequenceLayoutResult {
   const {
     openedNamespaces,
+    laneOrder,
     laneWidth = 250,
     laneGap = 0,
     eventSpacing = 80,
@@ -223,6 +232,11 @@ export function useSequenceLayout(
     nodeWidth = 14,
     nodeHeight = 14,
   } = options;
+
+  const laneOrderKey = useMemo(
+    () => (laneOrder ? laneOrder.join('|') : ''),
+    [laneOrder]
+  );
 
   // Normalize openedNamespaces into a stable string for memo dependency
   const openedKey = useMemo(() => {
@@ -262,8 +276,28 @@ export function useSequenceLayout(
       laneEvents.get(lane)!.push(event.id);
     }
 
-    // Step 2: Order lanes alphabetically (parents naturally sort before children)
-    const laneNames = Array.from(laneEvents.keys()).sort();
+    // Step 2: Order lanes by first-event appearance (Map preserves insertion
+    // order from Step 1). If `laneOrder` is provided, listed namespaces are
+    // placed first in the given order; unlisted lanes follow in first-event
+    // order. Unknown entries in `laneOrder` are ignored.
+    const firstEventOrder = Array.from(laneEvents.keys());
+    let laneNames: string[];
+    if (laneOrder && laneOrder.length > 0) {
+      const seen = new Set<string>();
+      const ordered: string[] = [];
+      for (const ns of laneOrder) {
+        if (laneEvents.has(ns) && !seen.has(ns)) {
+          ordered.push(ns);
+          seen.add(ns);
+        }
+      }
+      for (const ns of firstEventOrder) {
+        if (!seen.has(ns)) ordered.push(ns);
+      }
+      laneNames = ordered;
+    } else {
+      laneNames = firstEventOrder;
+    }
 
     // canExpand is meaningful only when opening would actually fork the lane
     // into multiple child lanes. If every event in the lane would drill into
@@ -497,6 +531,8 @@ export function useSequenceLayout(
     events,
     sequenceEdges,
     openedKey,
+    laneOrderKey,
+    laneOrder,
     laneWidth,
     laneGap,
     eventSpacing,
