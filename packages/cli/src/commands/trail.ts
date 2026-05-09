@@ -8,8 +8,19 @@
  */
 
 import { Command } from 'commander';
-import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { existsSync, readFileSync } from 'node:fs';
+import { isValidPurl, parsePurl } from '@principal-ai/alexandria-core-library';
+import * as trailCache from '../lib/trail-cache.js';
+import { handoffToRunning, type LoadTrailMessage } from '../lib/viewer-ipc.js';
+
+const ONE_HOUR_MS = 60 * 60 * 1000;
+// Anchor `require.resolve` to wherever the CLI is actually running from. Works
+// in both the esbuild CJS bundle (argv[1] = dist/index.cjs) and dev (argv[1] =
+// src/index.ts). Falling back to cwd is a last resort that matters mainly when
+// some wrapper script has rewritten argv.
+const cliRequire = createRequire(process.argv[1] ?? `${process.cwd()}/`);
 
 const BASE_URL = 'https://app.principal-ade.com';
 const RESERVED_TRAIL_IDS = new Set(['publish']);
@@ -101,23 +112,64 @@ interface OwnerRepo {
   repo: string;
 }
 
+function ownerRepoFromPurl(purl: string): OwnerRepo | null {
+  const parsed = parsePurl(purl);
+  if (!parsed || !parsed.namespace) return null;
+  if (parsed.type !== 'github' && parsed.type !== 'gitlab' && parsed.type !== 'bitbucket') {
+    return null;
+  }
+  return { owner: parsed.namespace, repo: parsed.name };
+}
+
+function validateRepoPurls(payload: unknown): void {
+  if (typeof payload !== 'object' || payload === null) return;
+  const repos = (payload as { repos?: Array<{ id?: unknown }> }).repos;
+  if (!Array.isArray(repos)) return;
+  for (let i = 0; i < repos.length; i++) {
+    const id = repos[i]?.id;
+    if (typeof id !== 'string' || !isValidPurl(id)) {
+      process.stderr.write(
+        `repos[${i}].id is not a valid Purl${typeof id === 'string' ? `: ${id}` : ''}. ` +
+          `Mint with \`PurlBuilders.github(owner, repo)\` or \`createLocalRepoPurl(absPath)\` ` +
+          `from @principal-ai/alexandria-core-library.\n`,
+      );
+      process.exit(2);
+    }
+  }
+}
+
 function resolveOwnerRepo(
   payload: unknown,
   flagOwner: string | undefined,
   flagRepo: string | undefined,
+  flagPurl: string | undefined,
 ): OwnerRepo {
-  const remote =
+  if (flagPurl) {
+    const fromFlag = ownerRepoFromPurl(flagPurl);
+    if (!fromFlag) {
+      process.stderr.write(
+        `--purl is not a valid github/gitlab/bitbucket Purl: ${flagPurl}\n`,
+      );
+      process.exit(2);
+    }
+    return { owner: flagOwner ?? fromFlag.owner, repo: flagRepo ?? fromFlag.repo };
+  }
+
+  const repoEntry =
     typeof payload === 'object' && payload !== null
-      ? (payload as { repos?: Array<{ remote?: { owner?: string; name?: string } }> }).repos?.[0]
-          ?.remote
+      ? (payload as { repos?: Array<{ id?: string; remote?: { owner?: string; name?: string } }> })
+          .repos?.[0]
       : undefined;
 
-  const owner = flagOwner ?? remote?.owner;
-  const repo = flagRepo ?? remote?.name;
+  const purlOwnerRepo =
+    typeof repoEntry?.id === 'string' ? ownerRepoFromPurl(repoEntry.id) : null;
+
+  const owner = flagOwner ?? repoEntry?.remote?.owner ?? purlOwnerRepo?.owner;
+  const repo = flagRepo ?? repoEntry?.remote?.name ?? purlOwnerRepo?.repo;
 
   if (!owner || !repo) {
     process.stderr.write(
-      'Could not determine owner/repo. Pass --owner and --repo, or include `repos[0].remote` in the payload.\n',
+      'Could not determine owner/repo. Pass --owner and --repo (or --purl), or include `repos[0].remote`/`repos[0].id` in the payload.\n',
     );
     process.exit(2);
   }
@@ -149,13 +201,10 @@ async function describeHttpError(response: Response): Promise<string> {
   return `${human}${code ? ` [${code}]` : ''}`;
 }
 
-async function fetchTrail(input: string): Promise<void> {
-  const id = parseTrailId(input);
-  if (!id) {
-    process.stderr.write('Invalid trail id\n');
-    process.exit(2);
-  }
-
+/** Fetch + cache a trail by id. Exits the process on any error. */
+async function fetchAndCacheTrail(
+  id: string,
+): Promise<{ body: string; cachePath: string }> {
   const token = resolveToken();
   if (!token) exitWithTokenError();
 
@@ -178,14 +227,36 @@ async function fetchTrail(input: string): Promise<void> {
     process.exit(1);
   }
 
-  const payload = await response.text();
-  process.stdout.write(payload);
-  if (!payload.endsWith('\n')) process.stdout.write('\n');
+  const body = await response.text();
+
+  let cachePath: string;
+  try {
+    const parsed = JSON.parse(body) as unknown;
+    cachePath = trailCache.write(id, body, parsed).path;
+  } catch {
+    // Body wasn't JSON or the cache write failed. Continue without a cache hit
+    // for this call — the caller's contract is "you get the body."
+    cachePath = '';
+  }
+
+  return { body, cachePath };
+}
+
+async function fetchTrail(input: string): Promise<void> {
+  const id = parseTrailId(input);
+  if (!id) {
+    process.stderr.write('Invalid trail id\n');
+    process.exit(2);
+  }
+  const { body } = await fetchAndCacheTrail(id);
+  process.stdout.write(body);
+  if (!body.endsWith('\n')) process.stdout.write('\n');
 }
 
 interface PublishOptions {
   owner?: string;
   repo?: string;
+  purl?: string;
 }
 
 async function publishTrail(file: string | undefined, options: PublishOptions): Promise<void> {
@@ -202,7 +273,9 @@ async function publishTrail(file: string | undefined, options: PublishOptions): 
     process.exit(2);
   }
 
-  const { owner, repo } = resolveOwnerRepo(payload, options.owner, options.repo);
+  validateRepoPurls(payload);
+
+  const { owner, repo } = resolveOwnerRepo(payload, options.owner, options.repo, options.purl);
 
   const token = resolveToken();
   if (!token) exitWithTokenError();
@@ -237,6 +310,275 @@ async function publishTrail(file: string | undefined, options: PublishOptions): 
   process.stdout.write(`${shareUrl}\n`);
 }
 
+interface ViewOptions {
+  refresh?: boolean;
+  remote?: boolean;
+  local?: string | boolean;
+  file?: string;
+  repoRoot?: string;
+  viewerDir?: string;
+}
+
+interface ResolvedRepo {
+  owner: string;
+  name: string;
+  purl: string;
+  authoredAtSha?: string;
+}
+
+function gitRemoteUrl(cwd: string): string | null {
+  const result = spawnSync('git', ['-C', cwd, 'remote', 'get-url', 'origin'], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+  if (result.status !== 0) return null;
+  return result.stdout.trim() || null;
+}
+
+function ownerRepoFromGitRemote(remoteUrl: string): { owner: string; name: string } | null {
+  const match = remoteUrl.match(/[:/]([^/:]+)\/([^/]+?)(?:\.git)?\/?$/);
+  if (!match) return null;
+  return { owner: match[1]!, name: match[2]! };
+}
+
+function resolveTrailRepo(parsed: unknown): ResolvedRepo | null {
+  if (typeof parsed !== 'object' || parsed === null) return null;
+
+  // web-ade wraps the payload as { entry, owner, repo, payload }. Local files
+  // are just the bare TrailPayload. Look in both shapes.
+  const wrapper = parsed as {
+    owner?: string;
+    repo?: string;
+    payload?: unknown;
+  };
+  const inner = (wrapper.payload ?? parsed) as {
+    repos?: Array<{
+      id?: string;
+      remote?: { owner?: string; name?: string };
+      authoredAtSha?: string;
+    }>;
+  };
+
+  // Prefer the explicit per-repo entry (carries Purl + authoredAtSha).
+  const entry = inner.repos?.[0];
+  if (entry?.remote?.owner && entry.remote.name && entry.id) {
+    return {
+      owner: entry.remote.owner,
+      name: entry.remote.name,
+      purl: entry.id,
+      authoredAtSha: entry.authoredAtSha,
+    };
+  }
+
+  // Fallback: web-ade wrapper top-level owner/repo. Synthesize a Purl since the
+  // wrapper doesn't carry one. authoredAtSha is unavailable in this shape — the
+  // viewer will fall back to inner.authoredAt.sha when fetching slices.
+  if (wrapper.owner && wrapper.repo) {
+    return {
+      owner: wrapper.owner,
+      name: wrapper.repo,
+      purl: `pkg:github/${wrapper.owner}/${wrapper.repo}`,
+    };
+  }
+
+  return null;
+}
+
+function cwdIsCloneOf(repo: ResolvedRepo): boolean {
+  const url = gitRemoteUrl(process.cwd());
+  if (!url) return false;
+  const parsed = ownerRepoFromGitRemote(url);
+  if (!parsed) return false;
+  return (
+    parsed.owner.toLowerCase() === repo.owner.toLowerCase() &&
+    parsed.name.toLowerCase() === repo.name.toLowerCase()
+  );
+}
+
+type ViewerLaunch =
+  | { kind: 'installed'; bin: string }
+  | { kind: 'source'; dir: string };
+
+function resolveViewerLaunch(flag: string | undefined): ViewerLaunch {
+  // 1) Explicit override (flag or env) wins. If it points at a source tree we
+  //    use `bun start`; if it points at a published install root we use its
+  //    bin shim. Distinguished by whether `bin/trail-viewer.cjs` exists.
+  const candidate = flag ?? process.env['TRAIL_VIEWER_DIR'];
+  if (candidate) {
+    const overrideBin = `${candidate}/bin/trail-viewer.cjs`;
+    if (existsSync(overrideBin)) return { kind: 'installed', bin: overrideBin };
+    if (existsSync(`${candidate}/package.json`)) return { kind: 'source', dir: candidate };
+    process.stderr.write(`No trail-viewer at ${candidate}; expected a package dir or installed root.\n`);
+    process.exit(2);
+  }
+
+  // 2) Try the installed @principal-ai/trail-viewer optionalDependency.
+  try {
+    const bin = cliRequire.resolve('@principal-ai/trail-viewer/bin/trail-viewer.cjs');
+    return { kind: 'installed', bin };
+  } catch {
+    // not installed (different platform, install skipped, etc.)
+  }
+
+  process.stderr.write(
+    '@principal-ai/trail-viewer is not installed for this platform. Currently only macOS arm64 prebuilds are shipped — pass --viewer-dir <path> to a source checkout if you have one.\n',
+  );
+  process.exit(2);
+}
+
+interface ResolvedTrail {
+  trailFile: string;
+  payload: unknown;
+  label: string;
+}
+
+async function resolveTrailFromFile(filePath: string): Promise<ResolvedTrail> {
+  const absolute = filePath.startsWith('/') ? filePath : `${process.cwd()}/${filePath}`;
+  if (!existsSync(absolute)) {
+    process.stderr.write(`Trail file not found: ${absolute}\n`);
+    process.exit(2);
+  }
+  let body: string;
+  try {
+    body = readFileSync(absolute, 'utf8');
+  } catch (err) {
+    process.stderr.write(`Failed to read ${absolute}: ${(err as Error).message}\n`);
+    process.exit(1);
+  }
+  let payload: unknown;
+  try {
+    payload = JSON.parse(body);
+  } catch (err) {
+    process.stderr.write(`Trail file is not valid JSON: ${(err as Error).message}\n`);
+    process.exit(1);
+  }
+  return { trailFile: absolute, payload, label: absolute };
+}
+
+async function resolveTrailFromId(input: string, refresh: boolean): Promise<ResolvedTrail> {
+  const id = parseTrailId(input);
+  if (!id) {
+    process.stderr.write('Invalid trail id\n');
+    process.exit(2);
+  }
+
+  let body: string;
+  let cachePath: string;
+  const cached = refresh ? null : trailCache.read(id, ONE_HOUR_MS);
+  if (cached) {
+    body = cached.body;
+    cachePath = cached.path;
+  } else {
+    const fetched = await fetchAndCacheTrail(id);
+    body = fetched.body;
+    cachePath = fetched.cachePath;
+    if (!cachePath) {
+      process.stderr.write('Trail JSON could not be cached; aborting.\n');
+      process.exit(1);
+    }
+  }
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(body);
+  } catch (err) {
+    process.stderr.write(`Trail body is not valid JSON: ${(err as Error).message}\n`);
+    process.exit(1);
+  }
+  return { trailFile: cachePath, payload, label: id };
+}
+
+async function viewTrail(input: string | undefined, options: ViewOptions): Promise<void> {
+  if (!input && !options.file) {
+    process.stderr.write('Pass an id/url or --file <path>.\n');
+    process.exit(2);
+  }
+  if (input && options.file) {
+    process.stderr.write('Pass either an id/url OR --file, not both.\n');
+    process.exit(2);
+  }
+
+  const resolved = options.file
+    ? await resolveTrailFromFile(options.file)
+    : await resolveTrailFromId(input as string, options.refresh ?? false);
+
+  // Decide mode. For --file: default to local (the user has the file, presumably
+  // also the working tree). For id-based: auto-detect via cwd's git remote.
+  const repo = resolveTrailRepo(resolved.payload);
+  let mode: 'local' | 'remote';
+  let repoRoot: string | undefined;
+
+  if (options.remote) {
+    mode = 'remote';
+  } else if (options.local !== undefined || options.repoRoot !== undefined) {
+    mode = 'local';
+    repoRoot =
+      options.repoRoot ??
+      (typeof options.local === 'string' ? options.local : process.cwd());
+  } else if (options.file) {
+    // --file default: local mode anchored at cwd. The user will see a "no
+    // sourcePath matched" failure on click if cwd isn't actually the repo —
+    // that's the right signal for them to pass --repo-root.
+    mode = 'local';
+    repoRoot = process.cwd();
+  } else if (repo && cwdIsCloneOf(repo)) {
+    mode = 'local';
+    repoRoot = process.cwd();
+  } else {
+    mode = 'remote';
+  }
+
+  const env: Record<string, string> = {
+    ...process.env as Record<string, string>,
+    TRAIL_FILE: resolved.trailFile,
+    TRAIL_MODE: mode,
+  };
+  if (mode === 'local' && repoRoot) env['TRAIL_REPO_ROOT'] = repoRoot;
+  if (mode === 'remote') {
+    const token = resolveToken();
+    if (token) env['TRAIL_GH_TOKEN'] = token;
+    if (repo) {
+      env['TRAIL_REPO_OWNER'] = repo.owner;
+      env['TRAIL_REPO_NAME'] = repo.name;
+      env['TRAIL_REPO_PURL'] = repo.purl;
+    }
+  }
+
+  // Build the IPC message from the env we'd otherwise spawn with. If a viewer
+  // is already running, hand off and exit — no need to spawn a second process.
+  const ipcMessage: LoadTrailMessage = {
+    kind: 'LOAD_TRAIL',
+    trailFile: resolved.trailFile,
+    mode,
+  };
+  if (mode === 'local' && repoRoot) ipcMessage.repoRoot = repoRoot;
+  if (mode === 'remote') {
+    if (env['TRAIL_GH_TOKEN']) ipcMessage.ghToken = env['TRAIL_GH_TOKEN'];
+    if (env['TRAIL_REPO_OWNER']) ipcMessage.repoOwner = env['TRAIL_REPO_OWNER'];
+    if (env['TRAIL_REPO_NAME']) ipcMessage.repoName = env['TRAIL_REPO_NAME'];
+    if (env['TRAIL_REPO_PURL']) ipcMessage.repoPurl = env['TRAIL_REPO_PURL'];
+  }
+  if (await handoffToRunning(ipcMessage)) {
+    process.stderr.write(`Trail handed off to running viewer (${mode} mode): ${resolved.label}\n`);
+    process.exit(0);
+  }
+
+  const launch = resolveViewerLaunch(options.viewerDir);
+  process.stderr.write(`Launching trail viewer (${mode} mode) for ${resolved.label}\n`);
+
+  const child =
+    launch.kind === 'installed'
+      ? spawn(launch.bin, [], { env, stdio: 'inherit' })
+      : spawn('bun', ['start'], { cwd: launch.dir, env, stdio: 'inherit' });
+  child.on('error', (err) => {
+    process.stderr.write(`Failed to launch viewer: ${err.message}\n`);
+    process.exit(1);
+  });
+  child.on('exit', (code) => {
+    process.exit(code ?? 0);
+  });
+}
+
 export function createTrailCommand(): Command {
   const command = new Command('trail');
 
@@ -255,6 +597,29 @@ export function createTrailCommand(): Command {
     });
 
   command
+    .command('view')
+    .description('Open a trail in the standalone viewer (auto-picks local or remote mode)')
+    .argument(
+      '[id-or-url]',
+      'Trail id, or full https://app.principal-ade.com/trail/<id> URL (omit when using --file)',
+    )
+    .option('--file <path>', 'Open a local TrailPayload JSON file directly (skips fetch + cache)')
+    .option('--repo-root <path>', 'Working tree to resolve slices against; implies local mode')
+    .option('--refresh', 'Bypass the trail JSON cache and re-fetch')
+    .option('--remote', 'Force remote mode (fetch slices from GitHub even if a clone is present)')
+    .option(
+      '--local [path]',
+      'Force local mode; optional path overrides the repo root (default: cwd)',
+    )
+    .option(
+      '--viewer-dir <path>',
+      'Path to the @principal-ai/trail-viewer package (overrides TRAIL_VIEWER_DIR)',
+    )
+    .action(async (input: string | undefined, options: ViewOptions) => {
+      await viewTrail(input, options);
+    });
+
+  command
     .command('publish')
     .description('Publish a slice/flow trail payload to web-ade')
     .argument(
@@ -263,6 +628,10 @@ export function createTrailCommand(): Command {
     )
     .option('--owner <owner>', 'GitHub owner (overrides payload `repos[0].remote.owner`)')
     .option('--repo <repo>', 'GitHub repo (overrides payload `repos[0].remote.name`)')
+    .option(
+      '--purl <purl>',
+      'Anchor share by Purl (e.g. pkg:github/owner/repo); overrides payload-derived owner/repo',
+    )
     .action(async (file: string | undefined, options: PublishOptions) => {
       await publishTrail(file, options);
     });

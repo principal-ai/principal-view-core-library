@@ -19,6 +19,7 @@ import {
 	type PanelContextValue,
 	type PanelEventEmitter,
 } from "@principal-ade/panel-framework-core";
+import { createLocalRepoPurl } from "@principal-ai/alexandria-core-library";
 import {
 	GitFileTreeBuilder,
 	type FileTree,
@@ -35,29 +36,76 @@ import {
 // RPC
 // ---------------------------------------------------------------------------
 
+type ViewerMode = "local" | "remote";
+
+interface TabSummary {
+	id: string;
+	kind: "library" | "trail";
+	title: string;
+	mode?: ViewerMode;
+}
+
+interface TabFullState {
+	ok: boolean;
+	error?: string;
+	id: string;
+	kind: "library" | "trail";
+	title: string;
+	mode?: ViewerMode;
+	repoRoot?: string;
+	trailFilePath?: string;
+	payload?: unknown;
+}
+
+interface LibraryEntry {
+	trailFile: string;
+	id: string;
+	title: string;
+	anchor: string;
+	owner?: string;
+	repo?: string;
+	mtimeMs: number;
+}
+
 type TrailViewerRPC = {
 	bun: {
 		requests: {
-			getInitialTrail: {
+			listTabs: {
 				params: Record<string, never>;
-				response: {
-					ok: boolean;
-					error?: string;
-					payload?: unknown;
-					repoRoot: string;
-					trailFilePath: string | null;
-				};
+				response: { tabs: TabSummary[]; activeTabId: string };
+			};
+			getTab: {
+				params: { id: string };
+				response: TabFullState;
+			};
+			setActiveTab: {
+				params: { id: string };
+				response: { ok: boolean; error?: string };
+			};
+			closeTab: {
+				params: { id: string };
+				response: { ok: boolean; error?: string };
 			};
 			readFile: {
-				params: { path: string };
+				params: { tabId: string; path: string; repo?: string };
 				response: { ok: boolean; content?: string; error?: string };
 			};
 			getFileTree: {
-				params: Record<string, never>;
+				params: { tabId: string };
 				response: { files: Array<{ path: string; size: number }> };
 			};
+			listTrails: {
+				params: Record<string, never>;
+				response: { entries: LibraryEntry[] };
+			};
+			openTrailFromCache: {
+				params: { trailFile: string; mode?: ViewerMode };
+				response: { ok: boolean; error?: string; tabId?: string };
+			};
 		};
-		messages: Record<string, never>;
+		messages: {
+			tabsChanged: null;
+		};
 	};
 	webview: {
 		requests: Record<string, never>;
@@ -65,21 +113,32 @@ type TrailViewerRPC = {
 	};
 };
 
+// Subscribers wired up in App: each becomes a callback that re-runs listTabs.
+// The bun host fires `tabsChanged` after LOAD_TRAIL, setActiveTab, closeTab.
+const reloadSubscribers = new Set<() => void>();
+
 const rpc = Electroview.defineRPC<TrailViewerRPC>({
 	maxRequestTime: 5000,
-	handlers: { requests: {}, messages: {} },
+	handlers: {
+		requests: {},
+		messages: {
+			tabsChanged: () => {
+				for (const fn of reloadSubscribers) fn();
+			},
+		},
+	},
 });
 const electrobun = new Electrobun.Electroview({ rpc });
 
-function callReadFile(path: string): Promise<string> {
-	return electrobun.rpc!.request.readFile({ path }).then((res) => {
+function callReadFile(tabId: string, path: string): Promise<string> {
+	return electrobun.rpc!.request.readFile({ tabId, path }).then((res) => {
 		if (!res.ok) throw new Error(res.error ?? "readFile failed");
 		return res.content ?? "";
 	});
 }
 
 // ---------------------------------------------------------------------------
-// Error boundary — surface unminified errors from anywhere below.
+// Error boundary
 // ---------------------------------------------------------------------------
 
 interface BoundaryState {
@@ -128,11 +187,13 @@ class ErrorBoundary extends Component<
 // View states
 // ---------------------------------------------------------------------------
 
-type LoadedState =
+type TabState =
 	| { kind: "loading" }
+	| { kind: "library" }
 	| { kind: "error"; message: string }
 	| {
 			kind: "ready";
+			id: string;
 			payload: TrailPayload;
 			fileTree: FileTree;
 			repoRoot: string;
@@ -160,8 +221,8 @@ function CenteredMessage({
 	return (
 		<div
 			style={{
-				width: "100vw",
-				height: "100vh",
+				width: "100%",
+				height: "100%",
 				display: "flex",
 				alignItems: "center",
 				justifyContent: "center",
@@ -189,10 +250,131 @@ function CenteredMessage({
 	);
 }
 
+// ---------------------------------------------------------------------------
+// Tab strip
+// ---------------------------------------------------------------------------
+
+function TabStrip({
+	tabs,
+	activeTabId,
+	onSelect,
+	onClose,
+}: {
+	tabs: TabSummary[];
+	activeTabId: string | null;
+	onSelect: (id: string) => void;
+	onClose: (id: string) => void;
+}) {
+	const { theme } = useTheme();
+	if (tabs.length === 0) return null;
+	return (
+		<div
+			style={{
+				display: "flex",
+				gap: 2,
+				padding: "4px 6px 0",
+				background: theme.colors.backgroundSecondary ?? theme.colors.background,
+				borderBottom: `1px solid ${theme.colors.border ?? "#333"}`,
+				overflowX: "auto",
+				flexShrink: 0,
+			}}
+		>
+			{tabs.map((tab) => {
+				const isActive = tab.id === activeTabId;
+				const isLibrary = tab.kind === "library";
+				const dotColor = isLibrary
+					? theme.colors.text
+					: tab.mode === "remote"
+						? theme.colors.accent ?? "#4ec9b0"
+						: theme.colors.textMuted ?? "#888";
+				return (
+					<div
+						key={tab.id}
+						onClick={() => onSelect(tab.id)}
+						style={{
+							display: "flex",
+							alignItems: "center",
+							gap: 6,
+							padding: "6px 10px",
+							borderRadius: "6px 6px 0 0",
+							background: isActive
+								? theme.colors.background
+								: theme.colors.backgroundSecondary ?? "transparent",
+							color: isActive ? theme.colors.text : theme.colors.textSecondary,
+							borderTop: `1px solid ${isActive ? theme.colors.border ?? "#444" : "transparent"}`,
+							borderLeft: `1px solid ${isActive ? theme.colors.border ?? "#444" : "transparent"}`,
+							borderRight: `1px solid ${isActive ? theme.colors.border ?? "#444" : "transparent"}`,
+							cursor: "pointer",
+							fontSize: 12,
+							fontFamily: theme.fonts.body,
+							maxWidth: 240,
+							minWidth: 0,
+							userSelect: "none",
+							marginBottom: -1,
+						}}
+						title={tab.title}
+					>
+						<span
+							style={{
+								width: 6,
+								height: 6,
+								borderRadius: isLibrary ? 1 : "50%",
+								background: dotColor,
+								flexShrink: 0,
+							}}
+						/>
+						<span
+							style={{
+								whiteSpace: "nowrap",
+								overflow: "hidden",
+								textOverflow: "ellipsis",
+								flex: 1,
+								minWidth: 0,
+							}}
+						>
+							{tab.title}
+						</span>
+						{!isLibrary && (
+							<span
+								onClick={(e) => {
+									e.stopPropagation();
+									onClose(tab.id);
+								}}
+								style={{
+									width: 16,
+									height: 16,
+									display: "flex",
+									alignItems: "center",
+									justifyContent: "center",
+									borderRadius: 3,
+									color: theme.colors.textMuted ?? "#888",
+									fontSize: 14,
+									lineHeight: 1,
+									cursor: "pointer",
+								}}
+								title="Close tab"
+							>
+								×
+							</span>
+						)}
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// TrailViewer (active tab content)
+// ---------------------------------------------------------------------------
+
 function TrailViewer({
+	tabId,
 	payload,
 	fileTree,
+	repoRoot,
 }: {
+	tabId: string;
 	payload: TrailPayload;
 	fileTree: FileTree;
 	repoRoot: string;
@@ -205,9 +387,9 @@ function TrailViewer({
 		const repoEntry = payload.repos?.[0];
 		const owner = repoEntry?.remote?.owner ?? "local";
 		const name = repoEntry?.remote?.name ?? repoEntry?.name ?? "repo";
-		const id = repoEntry?.id ?? `${owner}/${name}`;
+		const id = repoEntry?.id ?? createLocalRepoPurl(repoRoot);
 		return { id, owner, name };
-	}, [payload]);
+	}, [payload, repoRoot]);
 
 	const context = useMemo<
 		PanelContextValue<FileCityTrailExplorerPanelContext>
@@ -238,7 +420,7 @@ function TrailViewer({
 		};
 	}, [fileTree, payload, repository]);
 
-	const readFile = useCallback((path: string) => callReadFile(path), []);
+	const readFile = useCallback((path: string) => callReadFile(tabId, path), [tabId]);
 
 	const actions = useMemo<FileCityTrailExplorerPanelActions>(
 		() => ({
@@ -254,42 +436,191 @@ function TrailViewer({
 	return (
 		<div
 			style={{
-				width: "100vw",
-				height: "100vh",
+				flex: 1,
+				minHeight: 0,
 				background: theme.colors.background,
 				color: theme.colors.text,
-				display: "flex",
-				flexDirection: "column",
 			}}
 		>
-			<div style={{ flex: 1, minHeight: 0 }}>
-				<FileCityTrailExplorerPanel
-					context={context}
-					actions={actions}
-					events={events}
-				/>
+			<FileCityTrailExplorerPanel
+				context={context}
+				actions={actions}
+				events={events}
+			/>
+		</div>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Library tab content
+// ---------------------------------------------------------------------------
+
+function relativeTime(ms: number): string {
+	const delta = Date.now() - ms;
+	if (delta < 60_000) return "just now";
+	if (delta < 3_600_000) return `${Math.floor(delta / 60_000)}m ago`;
+	if (delta < 86_400_000) return `${Math.floor(delta / 3_600_000)}h ago`;
+	return `${Math.floor(delta / 86_400_000)}d ago`;
+}
+
+function LibraryView() {
+	const { theme } = useTheme();
+	const [entries, setEntries] = useState<LibraryEntry[] | null>(null);
+	const [error, setError] = useState<string | null>(null);
+
+	const refresh = useCallback(async () => {
+		try {
+			const result = await electrobun.rpc!.request.listTrails({});
+			setEntries(result.entries);
+			setError(null);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : String(err));
+		}
+	}, []);
+
+	useEffect(() => {
+		void refresh();
+	}, [refresh]);
+
+	const onOpen = useCallback(async (entry: LibraryEntry) => {
+		await electrobun.rpc!.request.openTrailFromCache({
+			trailFile: entry.trailFile,
+		});
+	}, []);
+
+	if (error) {
+		return <CenteredMessage title="Could not load library" detail={error} />;
+	}
+	if (entries === null) {
+		return <CenteredMessage title="Loading library…" />;
+	}
+	if (entries.length === 0) {
+		return (
+			<CenteredMessage
+				title="No trails in your cache yet"
+				detail="Run `principal-ai trail view <id>` to fetch one, or `--file <path>` to open a local JSON."
+			/>
+		);
+	}
+
+	return (
+		<div
+			style={{
+				flex: 1,
+				minHeight: 0,
+				overflowY: "auto",
+				padding: "16px 24px",
+				background: theme.colors.background,
+				color: theme.colors.text,
+				fontFamily: theme.fonts.body,
+			}}
+		>
+			<div
+				style={{
+					display: "flex",
+					justifyContent: "space-between",
+					alignItems: "baseline",
+					marginBottom: 16,
+				}}
+			>
+				<div style={{ fontSize: 18, fontWeight: 500 }}>Trail library</div>
+				<div
+					onClick={refresh}
+					style={{
+						fontSize: 11,
+						color: theme.colors.textSecondary,
+						cursor: "pointer",
+						userSelect: "none",
+					}}
+					title="Refresh"
+				>
+					↻ refresh
+				</div>
+			</div>
+			<div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+				{entries.map((entry) => (
+					<div
+						key={entry.trailFile}
+						onClick={() => onOpen(entry)}
+						style={{
+							display: "flex",
+							alignItems: "baseline",
+							gap: 12,
+							padding: "8px 12px",
+							borderRadius: 4,
+							border: `1px solid ${theme.colors.border ?? "#333"}`,
+							background: theme.colors.backgroundSecondary ?? "transparent",
+							cursor: "pointer",
+							fontSize: 13,
+						}}
+					>
+						<div
+							style={{
+								flex: 1,
+								minWidth: 0,
+								whiteSpace: "nowrap",
+								overflow: "hidden",
+								textOverflow: "ellipsis",
+							}}
+						>
+							{entry.title}
+						</div>
+						<div
+							style={{
+								fontSize: 11,
+								color: theme.colors.textSecondary,
+								fontFamily: theme.fonts.monospace,
+								flexShrink: 0,
+							}}
+						>
+							{entry.owner && entry.repo
+								? `${entry.owner}/${entry.repo}`
+								: entry.anchor}
+						</div>
+						<div
+							style={{
+								fontSize: 11,
+								color: theme.colors.textMuted ?? theme.colors.textSecondary,
+								flexShrink: 0,
+								minWidth: 60,
+								textAlign: "right",
+							}}
+						>
+							{relativeTime(entry.mtimeMs)}
+						</div>
+					</div>
+				))}
 			</div>
 		</div>
 	);
 }
 
-function App() {
-	const [state, setState] = useState<LoadedState>({ kind: "loading" });
+// ---------------------------------------------------------------------------
+// Active tab content (loading/error/ready)
+// ---------------------------------------------------------------------------
+
+function ActiveTab({ tabId }: { tabId: string }) {
+	const [state, setState] = useState<TabState>({ kind: "loading" });
 
 	useEffect(() => {
 		let cancelled = false;
+		setState({ kind: "loading" });
 		(async () => {
 			try {
-				const initial = await electrobun.rpc!.request.getInitialTrail({});
+				const tab = await electrobun.rpc!.request.getTab({ id: tabId });
 				if (cancelled) return;
-				if (!initial.ok || !initial.payload) {
+				if (tab.kind === "library") {
+					setState({ kind: "library" });
+					return;
+				}
+				if (!tab.ok || !tab.payload) {
 					setState({
 						kind: "error",
-						message: initial.error ?? "Could not load trail",
+						message: tab.error ?? "Could not load tab",
 					});
 					return;
 				}
-				const tree = await electrobun.rpc!.request.getFileTree({});
+				const tree = await electrobun.rpc!.request.getFileTree({ tabId });
 				if (cancelled) return;
 				const fileTree = new GitFileTreeBuilder().build({
 					files: tree.files,
@@ -299,9 +630,10 @@ function App() {
 				});
 				setState({
 					kind: "ready",
-					payload: initial.payload as TrailPayload,
+					id: tab.id,
+					payload: tab.payload as TrailPayload,
 					fileTree,
-					repoRoot: initial.repoRoot,
+					repoRoot: tab.repoRoot ?? "",
 				});
 			} catch (err) {
 				if (cancelled) return;
@@ -314,20 +646,75 @@ function App() {
 		return () => {
 			cancelled = true;
 		};
-	}, []);
+	}, [tabId]);
 
-	if (state.kind === "loading") {
-		return <CenteredMessage title="Loading trail…" />;
-	}
-	if (state.kind === "error") {
+	if (state.kind === "loading") return <CenteredMessage title="Loading trail…" />;
+	if (state.kind === "library") return <LibraryView />;
+	if (state.kind === "error")
 		return <CenteredMessage title="Could not load trail" detail={state.message} />;
-	}
 	return (
 		<TrailViewer
+			tabId={state.id}
 			payload={state.payload}
 			fileTree={state.fileTree}
 			repoRoot={state.repoRoot}
 		/>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// App — manages tab list + active tab
+// ---------------------------------------------------------------------------
+
+function App() {
+	const { theme } = useTheme();
+	const [tabs, setTabs] = useState<TabSummary[]>([]);
+	const [activeTabId, setActiveTabId] = useState<string>("library");
+
+	useEffect(() => {
+		const refresh = async () => {
+			try {
+				const result = await electrobun.rpc!.request.listTabs({});
+				setTabs(result.tabs);
+				setActiveTabId(result.activeTabId);
+			} catch (err) {
+				console.error("[trail-viewer] listTabs failed:", err);
+			}
+		};
+		void refresh();
+		reloadSubscribers.add(refresh);
+		return () => {
+			reloadSubscribers.delete(refresh);
+		};
+	}, []);
+
+	const onSelect = useCallback((id: string) => {
+		void electrobun.rpc!.request.setActiveTab({ id });
+	}, []);
+
+	const onClose = useCallback((id: string) => {
+		void electrobun.rpc!.request.closeTab({ id });
+	}, []);
+
+	return (
+		<div
+			style={{
+				width: "100vw",
+				height: "100vh",
+				background: theme.colors.background,
+				color: theme.colors.text,
+				display: "flex",
+				flexDirection: "column",
+			}}
+		>
+			<TabStrip
+				tabs={tabs}
+				activeTabId={activeTabId}
+				onSelect={onSelect}
+				onClose={onClose}
+			/>
+			<ActiveTab key={activeTabId} tabId={activeTabId} />
+		</div>
 	);
 }
 
