@@ -9,6 +9,7 @@
  *   - `~/.principal/trails/<purl-namespace>/<purl-name>/<id>.json` — primary.
  */
 
+import { existsSync, statSync } from "node:fs";
 import { promises as fs } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -20,6 +21,14 @@ export interface LibraryEntry {
 	anchor: string; // "<ns>/<name>" or "by-id"
 	owner?: string;
 	repo?: string;
+	/**
+	 * For local-purl trails (`pkg:generic/local/<slug>`) whose decoded slug
+	 * resolves to an existing directory on disk. When set, clicking the entry
+	 * in the library tab opens the trail in `local` mode anchored here, so
+	 * slice resolution reads from the working tree instead of trying to fetch
+	 * from GitHub (which would fail — local trails carry no `repos[].remote`).
+	 */
+	localRepoRoot?: string;
 	mtimeMs: number;
 }
 
@@ -87,6 +96,7 @@ async function collectFlat(
 				anchor,
 				owner: meta.owner,
 				repo: meta.repo,
+				localRepoRoot: localRepoRootFromAnchor(anchor),
 				mtimeMs: stat.mtimeMs,
 			});
 		} catch {
@@ -138,4 +148,57 @@ async function readMetadata(path: string): Promise<CachedMetadata> {
 	}
 
 	return { title, owner, repo };
+}
+
+/**
+ * Decode a `local/<slug>` cache anchor back to a working-tree path on disk.
+ *
+ * The cache writes local trails under `~/.principal/trails/local/<slug>/<id>.json`,
+ * where `<slug>` is the abs repo path with `/` replaced by `-` (per
+ * `encodePathForPurl` from `@principal-ai/alexandria-core-library`). That
+ * encoding is lossy because real path segments can also contain `-`
+ * (`web-ade`, `industry-themed-file-city-panels`), so we recover the original
+ * by walking the filesystem: at each dash boundary, try the next slash
+ * position only if the resulting prefix is an actual directory. Branches that
+ * don't exist prune immediately, so this is cheap in practice.
+ *
+ * Anchor-driven rather than payload-driven on purpose — older trails (pre-
+ * `repos[]` schema) carry only `authoredAt.sha` and no repo identity in the
+ * payload, but they still land in `local/<slug>/` because the host that
+ * authored them used the per-repo cache layout. The directory is the
+ * authoritative signal that "this trail belongs to a working tree on disk."
+ *
+ * Returns `undefined` for non-local anchors and for slugs that don't resolve
+ * to any directory. Callers should treat `undefined` as "fall back to remote
+ * mode."
+ */
+function localRepoRootFromAnchor(anchor: string): string | undefined {
+	const prefix = "local/";
+	if (!anchor.startsWith(prefix)) return undefined;
+	const slug = anchor.slice(prefix.length);
+	if (!slug) return undefined;
+	const parts = slug.split("-");
+	return walkExistingPrefix("/", parts);
+}
+
+function walkExistingPrefix(prefix: string, parts: string[]): string | undefined {
+	if (parts.length === 0) {
+		return isExistingDirectory(prefix) ? prefix : undefined;
+	}
+	for (let i = 1; i <= parts.length; i++) {
+		const segment = parts.slice(0, i).join("-");
+		const next = prefix === "/" ? `/${segment}` : `${prefix}/${segment}`;
+		if (!isExistingDirectory(next)) continue;
+		const result = walkExistingPrefix(next, parts.slice(i));
+		if (result) return result;
+	}
+	return undefined;
+}
+
+function isExistingDirectory(path: string): boolean {
+	try {
+		return existsSync(path) && statSync(path).isDirectory();
+	} catch {
+		return false;
+	}
 }

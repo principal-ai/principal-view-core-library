@@ -15,10 +15,22 @@
  * need that back.
  */
 
-import { BrowserView, BrowserWindow, type RPCSchema } from "electrobun/bun";
+import {
+	ApplicationMenu,
+	BrowserView,
+	BrowserWindow,
+	Utils,
+	type RPCSchema,
+} from "electrobun/bun";
 import { promises as fs } from "node:fs";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import {
+	extractPurlFromRemoteUrl,
+	parsePurl,
+} from "@principal-ai/alexandria-core-library";
 import { readFileRemote as fetchRemoteSlice } from "./remote-files";
 import { handoffToRunning, startIpcServer, type LoadTrailMessage } from "./ipc";
 import { walkLibrary, type LibraryEntry } from "./library";
@@ -286,8 +298,33 @@ type TrailViewerRPC = {
 				response: { entries: LibraryEntry[] };
 			};
 			openTrailFromCache: {
-				params: { trailFile: string; mode?: ViewerMode };
+				params: { trailFile: string; mode?: ViewerMode; repoRoot?: string };
 				response: { ok: boolean; error?: string; tabId?: string };
+			};
+			createTrailNote: {
+				params: { tabId: string; draft: unknown };
+				response: { ok: boolean; error?: string; note?: unknown };
+			};
+			updateTrailNote: {
+				params: { tabId: string; noteId: string; body: string };
+				response: { ok: boolean; error?: string; note?: unknown };
+			};
+			deleteTrailNote: {
+				params: { tabId: string; noteId: string };
+				response: { ok: boolean; error?: string };
+			};
+			openExternal: {
+				params: { url: string };
+				response: { ok: boolean };
+			};
+			shareTrail: {
+				params: { tabId: string };
+				response: {
+					ok: boolean;
+					error?: string;
+					shareId?: string;
+					shareUrl?: string;
+				};
 			};
 		};
 		messages: {
@@ -352,6 +389,77 @@ async function getFileTreeRemote(tab: TrailTabState): Promise<{ files: Array<{ p
 	return { files };
 }
 
+/**
+ * Apply a mutation to the trail's `notes[]` and persist it back to disk.
+ *
+ * Re-reads the file each call so a concurrent rewrite (e.g. the same trail
+ * being edited via another tool's MCP bridge while a tab is open) doesn't get
+ * clobbered by stale in-memory state. The `{ entry, payload }` wrapper from
+ * web-ade fetches is preserved on write — we only ever mutate the inner
+ * payload's `notes` field.
+ *
+ * On success, also patches `tab.loaded.payload.notes` so subsequent
+ * snippet/file-tree resolvers see the new notes array without a reload.
+ */
+function persistNoteMutation<T>(
+	tab: TrailTabState,
+	mutate: (notes: unknown[]) => { notes: unknown[]; result: T },
+): { ok: true; result: T } | { ok: false; error: string } {
+	try {
+		const raw = readFileSync(tab.trailFilePath, "utf8");
+		const root = JSON.parse(raw) as Record<string, unknown>;
+		const wrappedInner =
+			typeof root["payload"] === "object" &&
+			root["payload"] !== null &&
+			"markers" in (root["payload"] as Record<string, unknown>)
+				? (root["payload"] as Record<string, unknown>)
+				: null;
+		const inner = wrappedInner ?? root;
+		const existing = Array.isArray(inner["notes"]) ? (inner["notes"] as unknown[]) : [];
+		const { notes, result } = mutate(existing);
+		inner["notes"] = notes;
+		writeFileSync(tab.trailFilePath, `${JSON.stringify(root, null, 2)}\n`, "utf8");
+		if (tab.loaded.ok && typeof tab.loaded.payload === "object" && tab.loaded.payload !== null) {
+			(tab.loaded.payload as Record<string, unknown>)["notes"] = notes;
+		}
+		return { ok: true, result };
+	} catch (err) {
+		return { ok: false, error: (err as Error).message };
+	}
+}
+
+/**
+ * Set `payload.share = { id }` on the trail file. Mirrors `persistNoteMutation`'s
+ * wrapper-preserving write: re-reads from disk, unwraps `{ entry, payload }`
+ * when present, writes the updated root back. Also patches `tab.loaded.payload`
+ * so the renderer's next slice fetch sees the new share field without needing
+ * a tab reload.
+ */
+function persistShareMutation(
+	tab: TrailTabState,
+	share: { id: string },
+): { ok: true } | { ok: false; error: string } {
+	try {
+		const raw = readFileSync(tab.trailFilePath, "utf8");
+		const root = JSON.parse(raw) as Record<string, unknown>;
+		const wrappedInner =
+			typeof root["payload"] === "object" &&
+			root["payload"] !== null &&
+			"markers" in (root["payload"] as Record<string, unknown>)
+				? (root["payload"] as Record<string, unknown>)
+				: null;
+		const inner = wrappedInner ?? root;
+		inner["share"] = share;
+		writeFileSync(tab.trailFilePath, `${JSON.stringify(root, null, 2)}\n`, "utf8");
+		if (tab.loaded.ok && typeof tab.loaded.payload === "object" && tab.loaded.payload !== null) {
+			(tab.loaded.payload as Record<string, unknown>)["share"] = share;
+		}
+		return { ok: true };
+	} catch (err) {
+		return { ok: false, error: (err as Error).message };
+	}
+}
+
 function summarize(tab: TabState): TabSummary {
 	if (tab.kind === "library") {
 		return { id: tab.id, kind: "library", title: tab.title };
@@ -414,19 +522,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				broadcastTabsChanged();
 				return { ok: true };
 			},
-			closeTab: ({ id }) => {
-				if (id === LIBRARY_TAB_ID) {
-					return { ok: false, error: "library tab cannot be closed" };
-				}
-				if (!tabs.has(id)) return { ok: false, error: `unknown tab: ${id}` };
-				tabs.delete(id);
-				if (activeTabId === id) {
-					const remaining = Array.from(tabs.keys());
-					activeTabId = remaining[remaining.length - 1] ?? LIBRARY_TAB_ID;
-				}
-				broadcastTabsChanged();
-				return { ok: true };
-			},
+			closeTab: ({ id }) => closeTabById(id),
 			readFile: async ({ tabId, path, repo }) => {
 				const tab = getTab(tabId);
 				if (!tab) return { ok: false, error: `unknown tab: ${tabId}` };
@@ -445,13 +541,167 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 					: { files: await walkFiles(tab.repoRoot) };
 			},
 			listTrails: async () => ({ entries: await walkLibrary() }),
-			openTrailFromCache: async ({ trailFile, mode }) => {
+			createTrailNote: ({ tabId, draft }) => {
+				const tab = getTab(tabId);
+				if (!tab || tab.kind === "library") {
+					return { ok: false, error: `unknown trail tab: ${tabId}` };
+				}
+				if (typeof draft !== "object" || draft === null) {
+					return { ok: false, error: "draft must be an object" };
+				}
+				const now = new Date().toISOString();
+				const note = {
+					...(draft as Record<string, unknown>),
+					id: randomUUID(),
+					createdAt: now,
+					updatedAt: now,
+				};
+				const outcome = persistNoteMutation(tab, (notes) => ({
+					notes: [...notes, note],
+					result: note,
+				}));
+				if (!outcome.ok) return { ok: false, error: outcome.error };
+				return { ok: true, note: outcome.result };
+			},
+			updateTrailNote: ({ tabId, noteId, body }) => {
+				const tab = getTab(tabId);
+				if (!tab || tab.kind === "library") {
+					return { ok: false, error: `unknown trail tab: ${tabId}` };
+				}
+				const now = new Date().toISOString();
+				let updated: unknown = null;
+				const outcome = persistNoteMutation(tab, (notes) => {
+					const next = notes.map((n) => {
+						if (typeof n !== "object" || n === null) return n;
+						const obj = n as Record<string, unknown>;
+						if (obj["id"] !== noteId) return n;
+						const patched = { ...obj, body, updatedAt: now };
+						updated = patched;
+						return patched;
+					});
+					return { notes: next, result: updated };
+				});
+				if (!outcome.ok) return { ok: false, error: outcome.error };
+				if (!outcome.result) return { ok: false, error: `note not found: ${noteId}` };
+				return { ok: true, note: outcome.result };
+			},
+			openExternal: ({ url }) => {
+				// Hand-off to the OS shell. The webview never navigates externally —
+				// we always route through this so https links open in the user's
+				// browser rather than replacing the viewer's view stack.
+				const ok = Utils.openExternal(url);
+				return { ok };
+			},
+			shareTrail: ({ tabId }) => {
+				const tab = getTab(tabId);
+				if (!tab || tab.kind === "library") {
+					return { ok: false, error: `unknown trail tab: ${tabId}` };
+				}
+				// 1. Sniff the GitHub remote from the working tree. The publish
+				//    endpoint gates by `<owner>/<repo>` access; without a remote we
+				//    have no identity to publish under.
+				const gitResult = spawnSync(
+					"git",
+					["-C", tab.repoRoot, "remote", "get-url", "origin"],
+					{ encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+				);
+				const remoteUrl = gitResult.stdout?.trim() ?? "";
+				if (gitResult.status !== 0 || !remoteUrl) {
+					return {
+						ok: false,
+						error: `No git origin remote at ${tab.repoRoot}. Add one pointing at GitHub before sharing.`,
+					};
+				}
+				const purl = extractPurlFromRemoteUrl(remoteUrl);
+				const parsed = purl ? parsePurl(purl) : null;
+				if (!parsed || parsed.type !== "github" || !parsed.namespace) {
+					return {
+						ok: false,
+						error: `Share requires a GitHub remote. Current origin: ${remoteUrl}`,
+					};
+				}
+				const owner = parsed.namespace;
+				const repo = parsed.name;
+
+				// 2. Shell out to the published CLI to publish. Keeps token
+				//    resolution (gh / git credential helper) and the POST in one
+				//    place; we just orchestrate. `PRINCIPAL_AI_CLI` overrides the
+				//    npx fallback for local dev where iterating on the CLI matters.
+				const cliOverride = process.env["PRINCIPAL_AI_CLI"];
+				const [command, baseArgs] = cliOverride
+					? [cliOverride, [] as string[]]
+					: ["npx", ["-y", "@principal-ai/principal-view-cli@latest"]];
+				const publishResult = spawnSync(
+					command,
+					[
+						...baseArgs,
+						"trail",
+						"publish",
+						tab.trailFilePath,
+						"--owner",
+						owner,
+						"--repo",
+						repo,
+					],
+					{
+						encoding: "utf8",
+						stdio: ["ignore", "pipe", "pipe"],
+						cwd: tab.repoRoot,
+					},
+				);
+				if (publishResult.status !== 0) {
+					const stderr = publishResult.stderr?.trim();
+					return {
+						ok: false,
+						error: stderr || `Publish failed (exit ${publishResult.status})`,
+					};
+				}
+				const shareUrl = publishResult.stdout?.trim() ?? "";
+				const idMatch = shareUrl.match(/\/trail\/([^/?#]+)/);
+				if (!shareUrl || !idMatch) {
+					return {
+						ok: false,
+						error: `Publish succeeded but returned an unparseable URL: '${shareUrl}'`,
+					};
+				}
+				const shareId = idMatch[1]!;
+
+				// 3. Persist `share: { id }` back to the trail JSON. The renderer
+				//    swaps the header chrome based on this — and the next tab open
+				//    will read the persisted value from disk.
+				const outcome = persistShareMutation(tab, { id: shareId });
+				if (!outcome.ok) return { ok: false, error: outcome.error };
+
+				return { ok: true, shareId, shareUrl };
+			},
+			deleteTrailNote: ({ tabId, noteId }) => {
+				const tab = getTab(tabId);
+				if (!tab || tab.kind === "library") {
+					return { ok: false, error: `unknown trail tab: ${tabId}` };
+				}
+				const outcome = persistNoteMutation(tab, (notes) => {
+					const next = notes.filter((n) => {
+						if (typeof n !== "object" || n === null) return true;
+						return (n as Record<string, unknown>)["id"] !== noteId;
+					});
+					return { notes: next, result: undefined };
+				});
+				if (!outcome.ok) return { ok: false, error: outcome.error };
+				return { ok: true };
+			},
+			openTrailFromCache: async ({ trailFile, mode, repoRoot }) => {
 				try {
+					// Default mode: `local` when the caller (library tab) has resolved
+					// a working tree on disk, otherwise `remote`. Local trails carry no
+					// `repos[].remote`, so remote mode is guaranteed to fail snippet
+					// fetches; the library row decides which it is and passes both.
+					const resolvedMode = mode ?? (repoRoot ? "local" : "remote");
 					const msg: LoadTrailMessage = {
 						kind: "LOAD_TRAIL",
 						trailFile,
-						mode: mode ?? "remote",
+						mode: resolvedMode,
 					};
+					if (repoRoot) msg.repoRoot = repoRoot;
 					const tabId = addTabFromMessage(msg);
 					broadcastTabsChanged();
 					try {
@@ -526,6 +776,56 @@ const browserWindow = new BrowserWindow({
 	url: "views://mainview/index.html",
 	rpc,
 	frame: { width: 1200, height: 800, x: 100, y: 100 },
+});
+
+function closeTabById(id: string): { ok: boolean; error?: string } {
+	if (id === LIBRARY_TAB_ID) {
+		return { ok: false, error: "library tab cannot be closed" };
+	}
+	if (!tabs.has(id)) return { ok: false, error: `unknown tab: ${id}` };
+	tabs.delete(id);
+	if (activeTabId === id) {
+		const remaining = Array.from(tabs.keys());
+		activeTabId = remaining[remaining.length - 1] ?? LIBRARY_TAB_ID;
+	}
+	broadcastTabsChanged();
+	return { ok: true };
+}
+
+// Application menu — without one macOS has no Cmd+Q binding and no way to
+// surface Cmd+W to close the active tab. We register a minimal menu rather
+// than a full standard set to keep the viewer chrome lean; expand if the
+// trail panel grows text-editing affordances that need the Edit menu's
+// native roles.
+ApplicationMenu.setApplicationMenu([
+	{
+		submenu: [
+			{ role: "about", label: "About Trail Viewer" },
+			{ type: "separator" },
+			{ role: "hide" },
+			{ role: "hideOthers" },
+			{ role: "showAll" },
+			{ type: "separator" },
+			{ role: "quit", accelerator: "CommandOrControl+Q" },
+		],
+	},
+	{
+		label: "File",
+		submenu: [
+			{
+				label: "Close Tab",
+				action: "closeActiveTab",
+				accelerator: "CommandOrControl+W",
+			},
+			{ role: "close", label: "Close Window", accelerator: "Shift+CommandOrControl+W" },
+		],
+	},
+]);
+
+ApplicationMenu.on("application-menu-clicked", (event) => {
+	// Electrobun wraps the payload — `{ data: { action, id?, data? } }`.
+	const action = (event as { data?: { action?: string } }).data?.action;
+	if (action === "closeActiveTab") closeTabById(activeTabId);
 });
 
 console.log("[trail-viewer] window opened");

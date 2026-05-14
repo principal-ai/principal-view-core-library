@@ -4,10 +4,11 @@
 
 import "@xyflow/react/dist/style.css";
 
-import { Component, useCallback, useEffect, useMemo, useState } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import Electrobun, { Electroview } from "electrobun/view";
+import { Check, ExternalLink, Github, Loader2, Share2, Terminal } from "lucide-react";
 import {
 	ThemeProvider,
 	slateNeonTheme,
@@ -29,6 +30,8 @@ import {
 	type FileCityTrailExplorerPanelActions,
 	type FileCityTrailExplorerPanelContext,
 	type FileCityTrailExplorerRepository,
+	type HighlightLayer,
+	type TrailNote,
 	type TrailPayload,
 } from "@industry-theme/file-city-panel";
 
@@ -64,6 +67,7 @@ interface LibraryEntry {
 	anchor: string;
 	owner?: string;
 	repo?: string;
+	localRepoRoot?: string;
 	mtimeMs: number;
 }
 
@@ -99,8 +103,33 @@ type TrailViewerRPC = {
 				response: { entries: LibraryEntry[] };
 			};
 			openTrailFromCache: {
-				params: { trailFile: string; mode?: ViewerMode };
+				params: { trailFile: string; mode?: ViewerMode; repoRoot?: string };
 				response: { ok: boolean; error?: string; tabId?: string };
+			};
+			createTrailNote: {
+				params: { tabId: string; draft: unknown };
+				response: { ok: boolean; error?: string; note?: unknown };
+			};
+			updateTrailNote: {
+				params: { tabId: string; noteId: string; body: string };
+				response: { ok: boolean; error?: string; note?: unknown };
+			};
+			deleteTrailNote: {
+				params: { tabId: string; noteId: string };
+				response: { ok: boolean; error?: string };
+			};
+			openExternal: {
+				params: { url: string };
+				response: { ok: boolean };
+			};
+			shareTrail: {
+				params: { tabId: string };
+				response: {
+					ok: boolean;
+					error?: string;
+					shareId?: string;
+					shareUrl?: string;
+				};
 			};
 		};
 		messages: {
@@ -365,6 +394,282 @@ function TabStrip({
 }
 
 // ---------------------------------------------------------------------------
+// TrailHeader — mirrors web-ade's `src/components/trail/TrailHeader.tsx`
+// chrome (Principal AI brand + owner/repo crumbs + Share With Agent + GitHub)
+// adapted for the standalone viewer: no router, no sign-in slot, no centered
+// status, and the GitHub link only renders when the trail carries a remote
+// (local-only trails would have nothing to point at).
+// ---------------------------------------------------------------------------
+
+const COPY_FEEDBACK_MS = 1500;
+const WEB_ADE_BASE = "https://app.principal-ade.com";
+const buildAgentCommand = (shareId: string) =>
+	`npx -y @principal-ai/principal-view-cli@latest trail ${shareId}`;
+
+function TrailHeader({
+	tabId,
+	owner,
+	repo,
+	share,
+	githubUrl,
+}: {
+	tabId: string;
+	owner: string;
+	repo: string;
+	/** When set, the trail has been published and the header swaps to share-mode
+	 *  chrome (agent-copy + external links). When absent, the header shows a
+	 *  Share button that publishes via the bun-side `shareTrail` RPC. */
+	share?: { id: string };
+	githubUrl?: string;
+}) {
+	const { theme } = useTheme();
+	// Local override so a successful publish flips the chrome immediately without
+	// waiting for the parent to refetch the payload. The bun side has already
+	// persisted `share: { id }` to disk, so the next tab open mirrors this.
+	const [optimisticShare, setOptimisticShare] = useState<{ id: string } | null>(null);
+	const [shareError, setShareError] = useState<string | null>(null);
+	const [sharing, setSharing] = useState(false);
+	const [copied, setCopied] = useState(false);
+	const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const effectiveShare = optimisticShare ?? share;
+
+	useEffect(
+		() => () => {
+			if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+			if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+		},
+		[],
+	);
+
+	const onShare = useCallback(async () => {
+		if (sharing) return;
+		setSharing(true);
+		setShareError(null);
+		try {
+			const res = await electrobun.rpc!.request.shareTrail({ tabId });
+			if (!res.ok || !res.shareId) {
+				const msg = res.error ?? "Share failed";
+				setShareError(msg);
+				if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+				errorTimeoutRef.current = setTimeout(() => setShareError(null), 6000);
+				return;
+			}
+			setOptimisticShare({ id: res.shareId });
+		} catch (err) {
+			setShareError(err instanceof Error ? err.message : String(err));
+		} finally {
+			setSharing(false);
+		}
+	}, [tabId, sharing]);
+
+	const onCopyAgent = useCallback(async () => {
+		if (!effectiveShare) return;
+		try {
+			await navigator.clipboard.writeText(buildAgentCommand(effectiveShare.id));
+			setCopied(true);
+			if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+			copyTimeoutRef.current = setTimeout(() => setCopied(false), COPY_FEEDBACK_MS);
+		} catch {
+			// clipboard may be denied — fail quietly
+		}
+	}, [effectiveShare]);
+
+	const onOpenGithub = useCallback(() => {
+		if (!githubUrl) return;
+		void electrobun.rpc!.request.openExternal({ url: githubUrl });
+	}, [githubUrl]);
+
+	const onOpenWebAde = useCallback(() => {
+		if (!effectiveShare) return;
+		void electrobun.rpc!.request.openExternal({
+			url: `${WEB_ADE_BASE}/trail/${effectiveShare.id}`,
+		});
+	}, [effectiveShare]);
+
+	return (
+		<header
+			style={{
+				display: "flex",
+				alignItems: "center",
+				gap: 8,
+				padding: "8px 16px",
+				background: theme.colors.surface,
+				borderBottom: `1px solid ${theme.colors.border}`,
+				flexShrink: 0,
+				fontFamily: theme.fonts.body,
+			}}
+		>
+			<div
+				style={{
+					display: "flex",
+					alignItems: "center",
+					gap: 8,
+					minWidth: 0,
+					flex: 1,
+				}}
+			>
+				<span style={{ fontSize: 20, fontWeight: 700 }}>
+					<span style={{ color: theme.colors.text }}>Principal</span>{" "}
+					<span style={{ color: theme.colors.primary }}>AI</span>
+				</span>
+				<span style={{ color: theme.colors.textMuted, margin: "0 4px" }} aria-hidden>
+					/
+				</span>
+				<span
+					style={{
+						fontSize: 14,
+						fontWeight: 600,
+						color: theme.colors.text,
+						overflow: "hidden",
+						textOverflow: "ellipsis",
+						whiteSpace: "nowrap",
+					}}
+				>
+					{owner}
+				</span>
+				<span style={{ color: theme.colors.textMuted }} aria-hidden>
+					/
+				</span>
+				<span
+					style={{
+						fontSize: 14,
+						fontWeight: 600,
+						color: theme.colors.text,
+						overflow: "hidden",
+						textOverflow: "ellipsis",
+						whiteSpace: "nowrap",
+					}}
+				>
+					{repo}
+				</span>
+				{shareError && (
+					<span
+						style={{
+							marginLeft: 12,
+							fontSize: 12,
+							color: theme.colors.error ?? "#ff6b6b",
+							overflow: "hidden",
+							textOverflow: "ellipsis",
+							whiteSpace: "nowrap",
+							maxWidth: 480,
+						}}
+						title={shareError}
+					>
+						{shareError}
+					</span>
+				)}
+			</div>
+
+			<div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+				{!effectiveShare ? (
+					<button
+						type="button"
+						onClick={onShare}
+						disabled={sharing}
+						title="Publish this trail to web-ade so it can be shared as a link"
+						aria-label="Share trail"
+						style={{
+							display: "flex",
+							alignItems: "center",
+							gap: 6,
+							padding: "0 12px",
+							height: 32,
+							borderRadius: 6,
+							fontSize: 13,
+							fontWeight: 500,
+							fontFamily: theme.fonts.body,
+							background: theme.colors.primary,
+							color: theme.colors.background,
+							border: `1px solid ${theme.colors.primary}`,
+							cursor: sharing ? "wait" : "pointer",
+							opacity: sharing ? 0.7 : 1,
+						}}
+					>
+						{sharing ? (
+							<Loader2 size={16} className="trail-viewer-spin" />
+						) : (
+							<Share2 size={16} />
+						)}
+						<span>{sharing ? "Sharing…" : "Share"}</span>
+					</button>
+				) : (
+					<>
+						<button
+							type="button"
+							onClick={onCopyAgent}
+							title={`Copies: ${buildAgentCommand(effectiveShare.id)}`}
+							aria-label="Copy CLI command for agents"
+							style={{
+								display: "flex",
+								alignItems: "center",
+								gap: 6,
+								padding: "0 12px",
+								height: 32,
+								borderRadius: 6,
+								fontSize: 13,
+								fontWeight: 500,
+								fontFamily: theme.fonts.body,
+								background: copied ? theme.colors.primary : "transparent",
+								color: copied ? theme.colors.background : theme.colors.text,
+								border: `1px solid ${copied ? theme.colors.primary : theme.colors.border}`,
+								cursor: "pointer",
+							}}
+						>
+							{copied ? <Check size={16} /> : <Terminal size={16} />}
+							<span>{copied ? "Copied" : "Share With Agent"}</span>
+						</button>
+						<button
+							type="button"
+							onClick={onOpenWebAde}
+							title="Open shared trail on web-ade"
+							aria-label="Open shared trail on web-ade"
+							style={{
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+								width: 32,
+								height: 32,
+								borderRadius: 6,
+								background: "transparent",
+								border: "none",
+								color: theme.colors.text,
+								cursor: "pointer",
+							}}
+						>
+							<ExternalLink size={18} />
+						</button>
+					</>
+				)}
+				{githubUrl && (
+					<button
+						type="button"
+						onClick={onOpenGithub}
+						title={`Open ${owner}/${repo} on GitHub`}
+						aria-label={`Open ${owner}/${repo} on GitHub`}
+						style={{
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "center",
+							width: 32,
+							height: 32,
+							borderRadius: 6,
+							background: "transparent",
+							border: "none",
+							color: theme.colors.text,
+							cursor: "pointer",
+						}}
+					>
+						<Github size={20} />
+					</button>
+				)}
+			</div>
+		</header>
+	);
+}
+
+// ---------------------------------------------------------------------------
 // TrailViewer (active tab content)
 // ---------------------------------------------------------------------------
 
@@ -416,6 +721,7 @@ function TrailViewer({
 			fileTree: fileTreeSlice,
 			lineCounts: nullSlice("lineCounts"),
 			trail: trailSlice,
+			highlightLayers: nullSlice<HighlightLayer[]>("highlightLayers"),
 			repository,
 		};
 	}, [fileTree, payload, repository]);
@@ -426,27 +732,92 @@ function TrailViewer({
 		() => ({
 			openFile: () => {},
 			readFile,
-			createTrailNote: async () => null,
-			updateTrailNote: async () => null,
-			deleteTrailNote: async () => {},
+			createTrailNote: async (_payloadId, draft) => {
+				const res = await electrobun.rpc!.request.createTrailNote({
+					tabId,
+					draft,
+				});
+				if (!res.ok) {
+					console.warn("[trail-viewer] createTrailNote failed:", res.error);
+					return null;
+				}
+				return (res.note ?? null) as TrailNote | null;
+			},
+			updateTrailNote: async (_payloadId, noteId, body) => {
+				const res = await electrobun.rpc!.request.updateTrailNote({
+					tabId,
+					noteId,
+					body,
+				});
+				if (!res.ok) {
+					console.warn("[trail-viewer] updateTrailNote failed:", res.error);
+					return null;
+				}
+				return (res.note ?? null) as TrailNote | null;
+			},
+			deleteTrailNote: async (_payloadId, noteId) => {
+				const res = await electrobun.rpc!.request.deleteTrailNote({
+					tabId,
+					noteId,
+				});
+				if (!res.ok) {
+					console.warn("[trail-viewer] deleteTrailNote failed:", res.error);
+				}
+			},
+			createTrailSignOff: async () => null,
+			deleteTrailSignOff: async () => {},
 		}),
-		[readFile],
+		[readFile, tabId],
 	);
+
+	const header = useMemo(() => {
+		const repoEntry = payload.repos?.[0];
+		const remoteOwner = repoEntry?.remote?.owner;
+		const remoteName = repoEntry?.remote?.name;
+		// For trails with a remote, mirror web-ade's `<owner>/<repo>` crumbs and
+		// link to the matching GitHub URL. For local-only trails (no `repos[]`
+		// or no `remote`), fall back to `local / <basename-of-repoRoot>` and
+		// hide the GitHub button — there's no URL to point at.
+		if (remoteOwner && remoteName) {
+			return {
+				owner: remoteOwner,
+				repo: remoteName,
+				githubUrl: `https://github.com/${remoteOwner}/${remoteName}`,
+			};
+		}
+		const basename = repoRoot.split("/").filter(Boolean).pop() ?? "repo";
+		return {
+			owner: "local",
+			repo: repoEntry?.name ?? basename,
+			githubUrl: undefined,
+		};
+	}, [payload, repoRoot]);
 
 	return (
 		<div
 			style={{
 				flex: 1,
 				minHeight: 0,
+				display: "flex",
+				flexDirection: "column",
 				background: theme.colors.background,
 				color: theme.colors.text,
 			}}
 		>
-			<FileCityTrailExplorerPanel
-				context={context}
-				actions={actions}
-				events={events}
+			<TrailHeader
+				tabId={tabId}
+				owner={header.owner}
+				repo={header.repo}
+				share={payload.share}
+				githubUrl={header.githubUrl}
 			/>
+			<div style={{ flex: 1, minHeight: 0 }}>
+				<FileCityTrailExplorerPanel
+					context={context}
+					actions={actions}
+					events={events}
+				/>
+			</div>
 		</div>
 	);
 }
@@ -485,6 +856,9 @@ function LibraryView() {
 	const onOpen = useCallback(async (entry: LibraryEntry) => {
 		await electrobun.rpc!.request.openTrailFromCache({
 			trailFile: entry.trailFile,
+			...(entry.localRepoRoot
+				? { mode: "local", repoRoot: entry.localRepoRoot }
+				: {}),
 		});
 	}, []);
 

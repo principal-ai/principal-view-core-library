@@ -17,3 +17,12 @@ body {
 	background: #0d1117;
 	color: #c9d1d9;
 }
+
+@keyframes trail-viewer-spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}
+
+.trail-viewer-spin {
+	animation: trail-viewer-spin 1s linear infinite;
+}
