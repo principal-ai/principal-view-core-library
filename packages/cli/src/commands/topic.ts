@@ -13,9 +13,9 @@
 
 import { Command } from 'commander';
 import { spawnSync } from 'node:child_process';
+import { fetchGitHubMe, fetchGitHubUserByLogin } from '../lib/github-user.js';
 
 const BASE_URL = 'https://app.principal-ade.com';
-const GITHUB_API = 'https://api.github.com';
 
 // Matches the v1 uuid shape web-ade mints for both trails and topics.
 const UUID_PATTERN =
@@ -129,62 +129,6 @@ function parseTrailId(input: string): string {
   const m = trimmed.match(/trail\/([0-9a-f-]+)/i);
   if (m && UUID_PATTERN.test(m[1]!)) return m[1]!;
   return trimmed;
-}
-
-// ============================================================================
-// GitHub user resolution — `topic list` defaults to "me" but accepts --user.
-// ============================================================================
-
-async function fetchGitHubMe(token: string): Promise<{ id: number; login: string }> {
-  const response = await fetch(`${GITHUB_API}/user`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/vnd.github+json',
-      'User-Agent': 'principal-ai-cli',
-    },
-  });
-  if (!response.ok) {
-    process.stderr.write(`GitHub /user failed: HTTP ${response.status}\n`);
-    process.exit(1);
-  }
-  const body = (await response.json()) as { id?: number; login?: string };
-  if (typeof body.id !== 'number' || typeof body.login !== 'string') {
-    process.stderr.write('GitHub /user returned an unexpected shape\n');
-    process.exit(1);
-  }
-  return { id: body.id, login: body.login };
-}
-
-async function fetchGitHubUserByLogin(
-  login: string,
-  token: string,
-): Promise<{ id: number; login: string }> {
-  const response = await fetch(
-    `${GITHUB_API}/users/${encodeURIComponent(login)}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'principal-ai-cli',
-      },
-    },
-  );
-  if (response.status === 404) {
-    process.stderr.write(`GitHub user not found: ${login}\n`);
-    process.exit(1);
-  }
-  if (!response.ok) {
-    process.stderr.write(
-      `GitHub /users/${login} failed: HTTP ${response.status}\n`,
-    );
-    process.exit(1);
-  }
-  const body = (await response.json()) as { id?: number; login?: string };
-  if (typeof body.id !== 'number' || typeof body.login !== 'string') {
-    process.stderr.write('GitHub /users returned an unexpected shape\n');
-    process.exit(1);
-  }
-  return { id: body.id, login: body.login };
 }
 
 // ============================================================================

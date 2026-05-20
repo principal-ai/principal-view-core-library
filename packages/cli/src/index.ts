@@ -29,7 +29,7 @@ import { createTrailCommand } from './commands/trail.js';
 import { createTopicCommand } from './commands/topic.js';
 
 // Version is injected at build time via package.json
-const VERSION = '0.21.0';
+const VERSION = '0.22.0';
 
 const program = new Command();
 

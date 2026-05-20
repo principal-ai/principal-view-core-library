@@ -14,6 +14,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { isValidPurl, parsePurl } from '@principal-ai/alexandria-core-library';
 import * as trailCache from '../lib/trail-cache.js';
 import { handoffToRunning, type LoadTrailMessage } from '../lib/viewer-ipc.js';
+import { fetchGitHubMe, fetchGitHubUserByLogin } from '../lib/github-user.js';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 // Anchor `require.resolve` to wherever the CLI is actually running from. Works
@@ -23,7 +24,7 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
 const cliRequire = createRequire(process.argv[1] ?? `${process.cwd()}/`);
 
 const BASE_URL = 'https://app.principal-ade.com';
-const RESERVED_TRAIL_IDS = new Set(['publish']);
+const RESERVED_TRAIL_IDS = new Set(['publish', 'list']);
 
 function parseTrailId(input: string): string {
   try {
@@ -579,6 +580,52 @@ async function viewTrail(input: string | undefined, options: ViewOptions): Promi
   });
 }
 
+interface ListOptions {
+  user?: string;
+  id?: string;
+}
+
+async function listTrails(options: ListOptions): Promise<void> {
+  let githubId: number;
+
+  if (options.id) {
+    const parsed = Number(options.id);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      process.stderr.write(`--id must be a positive number, got: ${options.id}\n`);
+      process.exit(2);
+    }
+    githubId = parsed;
+  } else {
+    // `--user` resolves login → numeric id via GitHub; the bare form
+    // resolves the authenticated user via /user. Both paths need a token.
+    const token = resolveToken();
+    if (!token) exitWithTokenError();
+    const user = options.user
+      ? await fetchGitHubUserByLogin(options.user, token)
+      : await fetchGitHubMe(token);
+    githubId = user.id;
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}/api/trails/by-user/${githubId}`, {
+      headers: { Accept: 'application/json' },
+    });
+  } catch (err) {
+    process.stderr.write(`Network error listing trails: ${(err as Error).message}\n`);
+    process.exit(1);
+  }
+
+  if (!response.ok) {
+    process.stderr.write(`${await describeHttpError(response)}\n`);
+    process.exit(1);
+  }
+
+  const body = await response.text();
+  process.stdout.write(body);
+  if (!body.endsWith('\n')) process.stdout.write('\n');
+}
+
 export function createTrailCommand(): Command {
   const command = new Command('trail');
 
@@ -634,6 +681,15 @@ export function createTrailCommand(): Command {
     )
     .action(async (file: string | undefined, options: PublishOptions) => {
       await publishTrail(file, options);
+    });
+
+  command
+    .command('list')
+    .description('List trails published by a user (defaults to the authenticated user)')
+    .option('--user <login>', 'GitHub login to list trails for (resolves to numeric id)')
+    .option('--id <githubId>', 'GitHub numeric user id (skips the lookup)')
+    .action(async (options: ListOptions) => {
+      await listTrails(options);
     });
 
   return command;
