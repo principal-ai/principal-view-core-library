@@ -26,6 +26,7 @@ import { createEventsCommand } from './commands/events/index.js';
 import { createCollectorCommand } from './commands/collector/index.js';
 import { createTraceCommand } from './commands/trace/index.js';
 import { createTrailCommand } from './commands/trail.js';
+import { createTopicCommand } from './commands/topic.js';
 
 // Version is injected at build time via package.json
 const VERSION = '0.16.8';
@@ -58,6 +59,7 @@ program.addCommand(createEventsCommand());
 program.addCommand(createCollectorCommand());
 program.addCommand(createTraceCommand());
 program.addCommand(createTrailCommand());
+program.addCommand(createTopicCommand());
 
 // Parse command line arguments
 program.parse(process.argv);
