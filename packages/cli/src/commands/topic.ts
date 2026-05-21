@@ -234,6 +234,68 @@ async function addTrailToTopic(topicArg: string, trailArg: string): Promise<void
   process.stdout.write(`${BASE_URL}/topic/${topicId}\n`);
 }
 
+interface UpdateOptions {
+  title?: string;
+  description?: string;
+}
+
+async function updateTopic(topicArg: string, options: UpdateOptions): Promise<void> {
+  const topicId = parseTopicId(topicArg);
+  if (!UUID_PATTERN.test(topicId)) {
+    process.stderr.write(`Not a valid topic id or URL: ${topicArg}\n`);
+    process.exit(2);
+  }
+
+  const hasTitle = typeof options.title === 'string';
+  const hasDescription = typeof options.description === 'string';
+  if (!hasTitle && !hasDescription) {
+    process.stderr.write('Pass at least one of --title or --description\n');
+    process.exit(2);
+  }
+
+  const patch: { title?: string; description?: string } = {};
+  if (hasTitle) {
+    const trimmed = options.title!.trim();
+    if (!trimmed) {
+      process.stderr.write('--title must not be empty (omit the flag to leave it unchanged)\n');
+      process.exit(2);
+    }
+    patch.title = trimmed;
+  }
+  if (hasDescription) {
+    patch.description = options.description!;
+  }
+
+  const token = resolveToken();
+  if (!token) exitWithTokenError();
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `${BASE_URL}/api/topics/by-id/${encodeURIComponent(topicId)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(patch),
+      },
+    );
+  } catch (err) {
+    process.stderr.write(`Network error updating topic: ${(err as Error).message}\n`);
+    process.exit(1);
+  }
+
+  if (!response.ok) {
+    process.stderr.write(`${await describeHttpError(response)}\n`);
+    process.exit(1);
+  }
+
+  process.stdout.write(`${BASE_URL}/topic/${topicId}\n`);
+}
+
 async function viewTopic(input: string): Promise<void> {
   const id = parseTopicId(input);
   if (!UUID_PATTERN.test(id)) {
@@ -349,6 +411,19 @@ export function createTopicCommand(): Command {
     .argument('<trail-id-or-url>', 'Trail id or URL to add')
     .action(async (topicArg: string, trailArg: string) => {
       await addTrailToTopic(topicArg, trailArg);
+    });
+
+  command
+    .command('update')
+    .description("Update a topic's title and/or description (owner only)")
+    .argument('<id-or-url>', 'Topic id or URL')
+    .option('--title <title>', 'New title (≤200 chars); omit to leave unchanged')
+    .option(
+      '--description <text>',
+      'New description, markdown (≤8000 chars); omit to leave unchanged. Pass an empty string to clear.',
+    )
+    .action(async (input: string, options: UpdateOptions) => {
+      await updateTopic(input, options);
     });
 
   command
