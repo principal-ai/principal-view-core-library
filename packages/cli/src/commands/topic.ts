@@ -94,6 +94,49 @@ async function describeHttpError(response: Response): Promise<string> {
   return `${human}${code ? ` [${code}]` : ''}`;
 }
 
+/**
+ * Comment-route error mapper — the comment endpoints surface a different
+ * vocabulary than the topic endpoints (COMMENT_FORBIDDEN vs NOT_OWNER,
+ * COMMENT_TOO_LONG with a dedicated 413, etc.). Map by `code` first so we
+ * stay accurate when the same status carries different meanings (e.g. 404
+ * for an unknown topic vs an unknown comment).
+ */
+async function describeCommentHttpError(response: Response): Promise<string> {
+  let serverMessage = '';
+  let code = '';
+  try {
+    const body = (await response.clone().json()) as {
+      error?: string;
+      code?: string;
+    };
+    serverMessage = body.error ?? '';
+    code = body.code ?? '';
+  } catch {
+    // body wasn't JSON — fall through to status-only message
+  }
+  const byCode: Record<string, string> = {
+    NOT_AUTHENTICATED: 'GitHub token required — run `gh auth login`',
+    NOT_FOUND: 'Topic not found',
+    COMMENT_NOT_FOUND: 'Comment not found',
+    COMMENT_FORBIDDEN: 'Not allowed to modify this comment',
+    COMMENT_TOO_LONG: 'Comment exceeds the 8000-character limit',
+    COMMENT_LIMIT_REACHED: 'This topic has reached its comment limit',
+  };
+  const fallback =
+    byCode[code] ??
+    (response.status === 404
+      ? 'Topic or comment not found'
+      : response.status === 403
+        ? 'Not allowed to modify this comment'
+        : response.status === 401
+          ? 'GitHub token rejected'
+          : response.status === 413
+            ? 'Comment exceeds the 8000-character limit'
+            : `HTTP ${response.status}`);
+  const human = serverMessage || fallback;
+  return `${human}${code ? ` [${code}]` : ''}`;
+}
+
 // ============================================================================
 // Id / URL parsers
 // ============================================================================
@@ -381,6 +424,155 @@ async function listTopics(options: ListOptions): Promise<void> {
 }
 
 // ============================================================================
+// Comment subcommands
+// ============================================================================
+
+interface CommentAddOptions {
+  body?: string;
+}
+
+async function addComment(
+  topicArg: string,
+  options: CommentAddOptions,
+): Promise<void> {
+  const topicId = parseTopicId(topicArg);
+  if (!UUID_PATTERN.test(topicId)) {
+    process.stderr.write(`Not a valid topic id or URL: ${topicArg}\n`);
+    process.exit(2);
+  }
+  const body = (options.body ?? '').trim();
+  if (!body) {
+    process.stderr.write('--body is required and must not be empty\n');
+    process.exit(2);
+  }
+
+  const token = resolveToken();
+  if (!token) exitWithTokenError();
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `${BASE_URL}/api/topics/by-id/${encodeURIComponent(topicId)}/comments`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ body }),
+      },
+    );
+  } catch (err) {
+    process.stderr.write(
+      `Network error posting comment: ${(err as Error).message}\n`,
+    );
+    process.exit(1);
+  }
+
+  if (!response.ok) {
+    process.stderr.write(`${await describeCommentHttpError(response)}\n`);
+    process.exit(1);
+  }
+
+  const data = (await response.json()) as { comment?: { id?: string } };
+  if (!data.comment?.id) {
+    process.stderr.write('Server response missing comment id\n');
+    process.exit(1);
+  }
+  // Stdout is just the new id so it can be piped into `comment delete`.
+  process.stdout.write(`${data.comment.id}\n`);
+}
+
+async function listComments(topicArg: string): Promise<void> {
+  const topicId = parseTopicId(topicArg);
+  if (!UUID_PATTERN.test(topicId)) {
+    process.stderr.write(`Not a valid topic id or URL: ${topicArg}\n`);
+    process.exit(2);
+  }
+
+  // GET /comments is public — attach a token if present so rate limits favor
+  // authenticated callers, but don't error out if there isn't one.
+  const token = resolveToken();
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `${BASE_URL}/api/topics/by-id/${encodeURIComponent(topicId)}/comments`,
+      {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Accept: 'application/json',
+        },
+      },
+    );
+  } catch (err) {
+    process.stderr.write(
+      `Network error fetching comments: ${(err as Error).message}\n`,
+    );
+    process.exit(1);
+  }
+
+  if (!response.ok) {
+    process.stderr.write(`${await describeCommentHttpError(response)}\n`);
+    process.exit(1);
+  }
+
+  const body = await response.text();
+  process.stdout.write(body);
+  if (!body.endsWith('\n')) process.stdout.write('\n');
+}
+
+async function deleteComment(
+  topicArg: string,
+  commentIdArg: string,
+): Promise<void> {
+  const topicId = parseTopicId(topicArg);
+  if (!UUID_PATTERN.test(topicId)) {
+    process.stderr.write(`Not a valid topic id or URL: ${topicArg}\n`);
+    process.exit(2);
+  }
+  const commentId = commentIdArg.trim();
+  if (!UUID_PATTERN.test(commentId)) {
+    process.stderr.write(`Not a valid comment id: ${commentIdArg}\n`);
+    process.exit(2);
+  }
+
+  const token = resolveToken();
+  if (!token) exitWithTokenError();
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `${BASE_URL}/api/topics/by-id/${encodeURIComponent(
+        topicId,
+      )}/comments/${encodeURIComponent(commentId)}`,
+      {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+      },
+    );
+  } catch (err) {
+    process.stderr.write(
+      `Network error deleting comment: ${(err as Error).message}\n`,
+    );
+    process.exit(1);
+  }
+
+  if (!response.ok && response.status !== 204) {
+    process.stderr.write(`${await describeCommentHttpError(response)}\n`);
+    process.exit(1);
+  }
+
+  // 204 No Content is the happy path — keep stdout clean (scriptable) and
+  // mirror the topic URL on success so users see *what* they just mutated.
+  process.stdout.write(`${BASE_URL}/topic/${topicId}\n`);
+}
+
+// ============================================================================
 // Command wiring
 // ============================================================================
 
@@ -442,6 +634,43 @@ export function createTopicCommand(): Command {
     .action(async (options: ListOptions) => {
       await listTopics(options);
     });
+
+  // ---- comment subcommands -------------------------------------------------
+  // Flat thread attached to a topic. `add` and `delete` need a token; `list`
+  // is public and attaches one only when available.
+  const commentCommand = new Command('comment').description(
+    'Post or browse comments on a topic',
+  );
+
+  commentCommand
+    .command('add')
+    .description('Post a new comment on a topic')
+    .argument('<topic-id-or-url>', 'Topic id or URL')
+    .requiredOption('--body <text>', 'Comment body, markdown (≤8000 chars)')
+    .action(async (topicArg: string, options: CommentAddOptions) => {
+      await addComment(topicArg, options);
+    });
+
+  commentCommand
+    .command('list')
+    .description('List the comments on a topic (public; token attached if present)')
+    .argument('<topic-id-or-url>', 'Topic id or URL')
+    .action(async (topicArg: string) => {
+      await listComments(topicArg);
+    });
+
+  commentCommand
+    .command('delete')
+    .description(
+      'Delete a comment (author or topic owner). Comment id is the uuid printed by `comment add`.',
+    )
+    .argument('<topic-id-or-url>', 'Topic id or URL')
+    .argument('<comment-id>', 'Comment uuid')
+    .action(async (topicArg: string, commentIdArg: string) => {
+      await deleteComment(topicArg, commentIdArg);
+    });
+
+  command.addCommand(commentCommand);
 
   return command;
 }
