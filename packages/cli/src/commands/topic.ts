@@ -14,6 +14,7 @@
 import { Command } from 'commander';
 import { spawnSync } from 'node:child_process';
 import { fetchGitHubMe, fetchGitHubUserByLogin } from '../lib/github-user.js';
+import { openInBrowser } from '../lib/open-url.js';
 
 const BASE_URL = 'https://app.principal-ade.com';
 
@@ -424,6 +425,23 @@ async function listTopics(options: ListOptions): Promise<void> {
 }
 
 // ============================================================================
+// open — launch the topic page in the default browser
+// ============================================================================
+
+function openTopic(input: string): void {
+  const id = parseTopicId(input);
+  if (!UUID_PATTERN.test(id)) {
+    process.stderr.write(`Not a valid topic id or URL: ${input}\n`);
+    process.exit(2);
+  }
+  const url = `${BASE_URL}/topic/${id}`;
+  // Print first so the URL is captured in scrollback / pipes even if the
+  // platform opener fails (headless / no DISPLAY / missing xdg-open).
+  process.stdout.write(`${url}\n`);
+  openInBrowser(url);
+}
+
+// ============================================================================
 // Comment subcommands
 // ============================================================================
 
@@ -624,6 +642,14 @@ export function createTopicCommand(): Command {
     .argument('<id-or-url>', 'Topic id or URL')
     .action(async (input: string) => {
       await viewTopic(input);
+    });
+
+  command
+    .command('open')
+    .description('Open the topic page in the default browser')
+    .argument('<id-or-url>', 'Topic id or URL')
+    .action((input: string) => {
+      openTopic(input);
     });
 
   command

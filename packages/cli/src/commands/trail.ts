@@ -15,6 +15,7 @@ import { isValidPurl, parsePurl } from '@principal-ai/alexandria-core-library';
 import * as trailCache from '../lib/trail-cache.js';
 import { handoffToRunning, type LoadTrailMessage } from '../lib/viewer-ipc.js';
 import { fetchGitHubMe, fetchGitHubUserByLogin } from '../lib/github-user.js';
+import { openInBrowser } from '../lib/open-url.js';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 // Anchor `require.resolve` to wherever the CLI is actually running from. Works
@@ -690,6 +691,19 @@ export function createTrailCommand(): Command {
     .option('--id <githubId>', 'GitHub numeric user id (skips the lookup)')
     .action(async (options: ListOptions) => {
       await listTrails(options);
+    });
+
+  // `open-web` (not `open`) keeps the existing `trail view` standalone-viewer
+  // surface unambiguous — this one launches the web app in a browser tab.
+  command
+    .command('open-web')
+    .description('Open the trail page in the default browser (web app, not the standalone viewer)')
+    .argument('<id-or-url>', 'Trail id, or full https://app.principal-ade.com/trail/<id> URL')
+    .action((input: string) => {
+      const id = parseTrailId(input);
+      const url = `${BASE_URL}/trail/${id}`;
+      process.stdout.write(`${url}\n`);
+      openInBrowser(url);
     });
 
   return command;
