@@ -138,6 +138,46 @@ async function describeCommentHttpError(response: Response): Promise<string> {
   return `${human}${code ? ` [${code}]` : ''}`;
 }
 
+/**
+ * Suggestion-route error mapper — the suggest endpoint has its own vocabulary
+ * (SUGGESTION_DUPLICATE, SUGGESTION_LIMIT_REACHED) plus a 404 that can mean
+ * either an unknown topic or an unknown trail. Map by `code` first so the
+ * user sees the precise reason rather than a generic "Topic not found".
+ */
+async function describeSuggestionHttpError(response: Response): Promise<string> {
+  let serverMessage = '';
+  let code = '';
+  try {
+    const body = (await response.clone().json()) as {
+      error?: string;
+      code?: string;
+    };
+    serverMessage = body.error ?? '';
+    code = body.code ?? '';
+  } catch {
+    // body wasn't JSON — fall through to status-only message
+  }
+  const byCode: Record<string, string> = {
+    NOT_AUTHENTICATED: 'GitHub token required — run `gh auth login`',
+    NOT_FOUND: 'Topic not found',
+    TRAIL_NOT_FOUND: 'Trail not found',
+    TRAIL_ALREADY_ADDED: 'That trail is already in this topic',
+    SUGGESTION_DUPLICATE:
+      'You already have a pending suggestion of that trail for this topic',
+    SUGGESTION_LIMIT_REACHED:
+      'This topic has reached its pending-suggestion limit',
+  };
+  const fallback =
+    byCode[code] ??
+    (response.status === 404
+      ? 'Topic or trail not found'
+      : response.status === 401
+        ? 'GitHub token rejected'
+        : `HTTP ${response.status}`);
+  const human = serverMessage || fallback;
+  return `${human}${code ? ` [${code}]` : ''}`;
+}
+
 // ============================================================================
 // Id / URL parsers
 // ============================================================================
@@ -275,6 +315,80 @@ async function addTrailToTopic(topicArg: string, trailArg: string): Promise<void
     process.exit(1);
   }
 
+  process.stdout.write(`${BASE_URL}/topic/${topicId}\n`);
+}
+
+interface SuggestOptions {
+  reason?: string;
+}
+
+/**
+ * Suggest a trail for a topic. Any GitHub-authenticated user can suggest any
+ * resolvable trail (their own or someone else's) — the topic owner reviews
+ * and accepts or rejects via the web UI. Prints the suggestion uuid so the
+ * suggester can refer to it later (e.g. to withdraw).
+ */
+async function suggestTrail(
+  topicArg: string,
+  trailArg: string,
+  options: SuggestOptions,
+): Promise<void> {
+  const topicId = parseTopicId(topicArg);
+  const trailId = parseTrailId(trailArg);
+  if (!UUID_PATTERN.test(topicId)) {
+    process.stderr.write(`Not a valid topic id or URL: ${topicArg}\n`);
+    process.exit(2);
+  }
+  if (!UUID_PATTERN.test(trailId)) {
+    process.stderr.write(`Not a valid trail id or URL: ${trailArg}\n`);
+    process.exit(2);
+  }
+
+  const reason = options.reason?.trim();
+  if (reason !== undefined && reason.length > 500) {
+    process.stderr.write('--reason exceeds the 500-character limit\n');
+    process.exit(2);
+  }
+
+  const token = resolveToken();
+  if (!token) exitWithTokenError();
+
+  const payload: { trailId: string; reason?: string } = { trailId };
+  if (reason) payload.reason = reason;
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `${BASE_URL}/api/topics/by-id/${encodeURIComponent(topicId)}/suggestions`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(payload),
+      },
+    );
+  } catch (err) {
+    process.stderr.write(
+      `Network error suggesting trail: ${(err as Error).message}\n`,
+    );
+    process.exit(1);
+  }
+
+  if (!response.ok) {
+    process.stderr.write(`${await describeSuggestionHttpError(response)}\n`);
+    process.exit(1);
+  }
+
+  const body = (await response.json()) as {
+    suggestion?: { id?: string };
+  };
+  const suggestionId = body.suggestion?.id;
+  if (suggestionId) {
+    process.stdout.write(`${suggestionId}\n`);
+  }
   process.stdout.write(`${BASE_URL}/topic/${topicId}\n`);
 }
 
@@ -622,6 +736,20 @@ export function createTopicCommand(): Command {
     .action(async (topicArg: string, trailArg: string) => {
       await addTrailToTopic(topicArg, trailArg);
     });
+
+  command
+    .command('suggest')
+    .description(
+      'Suggest a trail for a topic — owner reviews and accepts/rejects. Any authenticated user can suggest any resolvable trail.',
+    )
+    .argument('<topic-id-or-url>', 'Topic id or URL')
+    .argument('<trail-id-or-url>', 'Trail id or URL to suggest')
+    .option('--reason <text>', 'Why this trail fits (≤500 chars)')
+    .action(
+      async (topicArg: string, trailArg: string, options: SuggestOptions) => {
+        await suggestTrail(topicArg, trailArg, options);
+      },
+    );
 
   command
     .command('update')
