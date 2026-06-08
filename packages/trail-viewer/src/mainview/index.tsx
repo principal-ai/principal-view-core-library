@@ -3,6 +3,12 @@
  */
 
 import "@xyflow/react/dist/style.css";
+// NB: the <link rel="stylesheet" href="index.css"> in index.html is silently
+// dropped — electrobun's views:// scheme serves .css with a non-text/css MIME
+// so WebKit ignores it. Importing it here gets the reset injected as a <style>
+// tag via the JS bundle, which always applies. Without it the UA default
+// `body { margin: 8px }` leaks back in (16px vertical overflow + top/left gap).
+import "./index.css";
 
 import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
@@ -838,7 +844,7 @@ function TrailViewer({
 				share={payload.share}
 				githubUrl={header.githubUrl}
 			/>
-			<div style={{ flex: 1, minHeight: 0 }}>
+			<div style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: "hidden" }}>
 				<FileCityTrailExplorerPanel
 					context={context}
 					actions={actions}
@@ -1111,12 +1117,13 @@ function App() {
 	return (
 		<div
 			style={{
-				width: "100vw",
+				width: "100%",
 				height: "100vh",
 				background: theme.colors.background,
 				color: theme.colors.text,
 				display: "flex",
 				flexDirection: "column",
+				overflow: "hidden",
 			}}
 		>
 			<TabStrip
