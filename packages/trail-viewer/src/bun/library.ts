@@ -9,10 +9,15 @@
  *   - `~/.principal/trails/<purl-namespace>/<purl-name>/<id>.json` — primary.
  */
 
+import { spawnSync } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import { promises as fs } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
+import {
+	extractPurlFromRemoteUrl,
+	parsePurl,
+} from "@principal-ai/alexandria-core-library";
 
 export interface LibraryEntry {
 	trailFile: string;
@@ -29,6 +34,12 @@ export interface LibraryEntry {
 	 * from GitHub (which would fail — local trails carry no `repos[].remote`).
 	 */
 	localRepoRoot?: string;
+	/**
+	 * True when the trail file carries a `share.id` — i.e. it has been published
+	 * to web-ade. Drives the Draft/Published badge in the library list. Read-only
+	 * derivation of the existing share field; no new on-disk state.
+	 */
+	published: boolean;
 	mtimeMs: number;
 }
 
@@ -89,14 +100,25 @@ async function collectFlat(
 		try {
 			const stat = await fs.stat(trailFile);
 			const meta = await readMetadata(trailFile);
+			const localRepoRoot = localRepoRootFromAnchor(anchor);
+			// Local trails rarely record a remote in their payload; recover the
+			// owner/repo from the working tree's git origin instead.
+			let owner = meta.owner;
+			let repo = meta.repo;
+			if ((!owner || !repo) && localRepoRoot) {
+				const identity = resolveLocalRepoIdentity(localRepoRoot);
+				owner = owner ?? identity.owner;
+				repo = repo ?? identity.repo;
+			}
 			out.push({
 				trailFile,
 				id,
 				title: meta.title ?? id,
 				anchor,
-				owner: meta.owner,
-				repo: meta.repo,
-				localRepoRoot: localRepoRootFromAnchor(anchor),
+				owner,
+				repo,
+				localRepoRoot,
+				published: meta.published,
 				mtimeMs: stat.mtimeMs,
 			});
 		} catch {
@@ -109,6 +131,7 @@ interface CachedMetadata {
 	title?: string;
 	owner?: string;
 	repo?: string;
+	published: boolean;
 }
 
 async function readMetadata(path: string): Promise<CachedMetadata> {
@@ -117,9 +140,9 @@ async function readMetadata(path: string): Promise<CachedMetadata> {
 	try {
 		parsed = JSON.parse(raw);
 	} catch {
-		return {};
+		return { published: false };
 	}
-	if (typeof parsed !== "object" || parsed === null) return {};
+	if (typeof parsed !== "object" || parsed === null) return { published: false };
 	const obj = parsed as Record<string, unknown>;
 
 	// web-ade wrapper: { entry, owner, repo, payload }.
@@ -147,7 +170,16 @@ async function readMetadata(path: string): Promise<CachedMetadata> {
 		}
 	}
 
-	return { title, owner, repo };
+	// Published iff the trail carries a `share.id` — same field the open-trail
+	// header and `persistShareMutation` use. Lives on `inner` (the payload for
+	// wrapped files), mirroring where the share is written.
+	const share = inner["share"];
+	const published =
+		typeof share === "object" &&
+		share !== null &&
+		typeof (share as { id?: unknown }).id === "string";
+
+	return { title, owner, repo, published };
 }
 
 /**
@@ -172,6 +204,49 @@ async function readMetadata(path: string): Promise<CachedMetadata> {
  * to any directory. Callers should treat `undefined` as "fall back to remote
  * mode."
  */
+/**
+ * Identity for a `local/` trail, resolved from the working tree rather than the
+ * payload — local trails almost never record a remote, but the directory they
+ * live in usually has a GitHub `origin`. Mirrors the publish path's remote
+ * sniffing (`git remote get-url origin` → purl → owner/repo). When there's no
+ * GitHub origin we fall back to `local / <dir basename>` so the row at least
+ * shows the repo folder instead of the dash-encoded cache path.
+ *
+ * Memoized by repoRoot: many trails share one working tree, and a fresh
+ * `walkLibrary` (on every refresh) would otherwise re-shell `git` per file.
+ */
+const repoIdentityCache = new Map<string, { owner: string; repo: string }>();
+
+function resolveLocalRepoIdentity(repoRoot: string): { owner: string; repo: string } {
+	const cached = repoIdentityCache.get(repoRoot);
+	if (cached) return cached;
+
+	let identity: { owner: string; repo: string } = {
+		owner: "local",
+		repo: basename(repoRoot),
+	};
+	try {
+		const git = spawnSync(
+			"git",
+			["-C", repoRoot, "remote", "get-url", "origin"],
+			{ encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+		);
+		const remoteUrl = git.stdout?.trim() ?? "";
+		if (git.status === 0 && remoteUrl) {
+			const purl = extractPurlFromRemoteUrl(remoteUrl);
+			const parsed = purl ? parsePurl(purl) : null;
+			if (parsed && parsed.type === "github" && parsed.namespace && parsed.name) {
+				identity = { owner: parsed.namespace, repo: parsed.name };
+			}
+		}
+	} catch {
+		// best-effort: keep the basename fallback
+	}
+
+	repoIdentityCache.set(repoRoot, identity);
+	return identity;
+}
+
 function localRepoRootFromAnchor(anchor: string): string | undefined {
 	const prefix = "local/";
 	if (!anchor.startsWith(prefix)) return undefined;

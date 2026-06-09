@@ -22,7 +22,7 @@
         "typescript": "5.7.2",
       },
       "optionalDependencies": {
-        "@principal-ai/trail-viewer": "^0.2.0",
+        "@principal-ai/trail-viewer": "^0.3.0",
       },
     },
   },
@@ -118,6 +118,8 @@
     "@principal-ai/quality-lens-registry": ["@principal-ai/quality-lens-registry@0.3.3", "", {}, "sha512-+ln796H5BvVTEgiot9GIsTbEnZWF2aDNqYEG4AfBi0jmEJpHO68Gk2+fa6E4LvQ1da0Pa52JmQvnKptbeoEmaw=="],
 
     "@principal-ai/repository-abstraction": ["@principal-ai/repository-abstraction@0.5.7", "", { "peerDependencies": { "globby": "^16.1.0" }, "optionalPeers": ["globby"] }, "sha512-2LZ4HnaD6PKFXmM2Kwq1kqLKguna/EpHaqFI7tTqMtiwLkVCNMBPJFRMcfqihbAj66DNRiMrbMJ+E154kmFF4A=="],
+
+    "@principal-ai/trail-viewer": ["@principal-ai/trail-viewer@0.3.0", "", { "os": "darwin", "cpu": "arm64", "bin": { "principal-trail-viewer": "bin/trail-viewer.cjs" } }, "sha512-QaXK49xlN3ZYXZd7mNB2eZT1OJY16UVJfSIUIGpKWk/tYbyjaTFffCjrm+rJ8PURZ4H4ERuS0xkXx+Aw5QmB7Q=="],
 
     "@protobufjs/aspromise": ["@protobufjs/aspromise@1.1.2", "", {}, "sha512-j+gKExEuLmKwvz3OgROXtrJ2UG2x8Ch2YZUxahh+s1F2HZ+wAceUNLkvy6zKCPVRkU++ZWQrdxsUeQXmcg4uoQ=="],
 

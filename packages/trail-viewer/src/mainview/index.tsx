@@ -3,18 +3,21 @@
  */
 
 import "@xyflow/react/dist/style.css";
-// NB: the <link rel="stylesheet" href="index.css"> in index.html is silently
-// dropped — electrobun's views:// scheme serves .css with a non-text/css MIME
-// so WebKit ignores it. Importing it here gets the reset injected as a <style>
-// tag via the JS bundle, which always applies. Without it the UA default
+// NB: electrobun's views:// scheme serves .css with a non-text/css MIME, so the
+// <link> in index.html is dropped AND the bundler's `import "./index.css"` only
+// emits a sibling .css that nothing loads — so in practice neither path applies
+// the reset. We still import it so the rules ship in the bundle, but the
+// critical layout reset is injected imperatively in `injectReset()` below, which
+// is the only mechanism that reliably lands. Without it the UA default
 // `body { margin: 8px }` leaks back in (16px vertical overflow + top/left gap).
 import "./index.css";
 
 import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import { createRoot } from "react-dom/client";
+import { createPortal } from "react-dom";
 import Electrobun, { Electroview } from "electrobun/view";
-import { Check, ExternalLink, Loader2, Share2, Terminal } from "lucide-react";
+import { Check, Download, Link, Loader2, RefreshCw, Share2, Terminal } from "lucide-react";
 import {
 	ThemeProvider,
 	slateNeonTheme,
@@ -75,6 +78,8 @@ interface LibraryEntry {
 	owner?: string;
 	repo?: string;
 	localRepoRoot?: string;
+	/** True once the trail has been published to web-ade (carries a `share.id`). */
+	published: boolean;
 	mtimeMs: number;
 }
 
@@ -152,6 +157,15 @@ type TrailViewerRPC = {
 // Subscribers wired up in App: each becomes a callback that re-runs listTabs.
 // The bun host fires `tabsChanged` after LOAD_TRAIL, setActiveTab, closeTab.
 const reloadSubscribers = new Set<() => void>();
+
+// The mounted LibraryView registers its refresh here so the top-level AppHeader
+// can trigger a re-fetch of the trail list without prop-drilling through
+// ActiveTab. Only the library tab's view registers, so this is effectively a
+// single-entry set.
+const libraryRefreshers = new Set<() => void>();
+function refreshLibrary(): void {
+	for (const fn of libraryRefreshers) fn();
+}
 
 const rpc = Electroview.defineRPC<TrailViewerRPC>({
 	maxRequestTime: 5000,
@@ -287,6 +301,109 @@ function CenteredMessage({
 }
 
 // ---------------------------------------------------------------------------
+// AppHeader — persistent app chrome above the tab strip. Carries the Principal
+// AI brand (moved up out of the per-trail TrailHeader so it shows on every tab,
+// including the library) and the Download app CTA.
+// ---------------------------------------------------------------------------
+
+const DOWNLOAD_APP_URL = "https://principal-ade.com/download";
+
+function AppHeader({ libraryActive }: { libraryActive: boolean }) {
+	const { theme } = useTheme();
+
+	const onDownload = useCallback(() => {
+		void electrobun.rpc!.request.openExternal({ url: DOWNLOAD_APP_URL });
+	}, []);
+
+	return (
+		<header
+			style={{
+				display: "flex",
+				alignItems: "center",
+				gap: 8,
+				padding: "8px 16px",
+				background: theme.colors.surface,
+				borderBottom: `1px solid ${theme.colors.border}`,
+				flexShrink: 0,
+				fontFamily: theme.fonts.body,
+			}}
+		>
+			<div
+				style={{
+					display: "flex",
+					alignItems: "center",
+					gap: 8,
+					flex: 1,
+					minWidth: 0,
+				}}
+			>
+				<FileCityLogo
+					width={26}
+					height={26}
+					mark="P"
+					primary="#ff6b35"
+					accent="#0893d2"
+					color="#d0e5ea"
+					background="transparent"
+				/>
+				<span style={{ fontSize: 20, fontWeight: 700 }}>
+					<span style={{ color: theme.colors.text }}>Principal</span>{" "}
+					<span style={{ color: theme.colors.primary }}>AI</span>
+				</span>
+			</div>
+			{libraryActive && (
+				<button
+					type="button"
+					onClick={refreshLibrary}
+					title="Refresh trail library"
+					aria-label="Refresh trail library"
+					style={{
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+						width: 32,
+						height: 32,
+						borderRadius: 6,
+						background: "transparent",
+						border: "none",
+						color: theme.colors.text,
+						cursor: "pointer",
+						flexShrink: 0,
+					}}
+				>
+					<RefreshCw size={16} />
+				</button>
+			)}
+			<button
+				type="button"
+				onClick={onDownload}
+				title="Download the Principal ADE desktop app"
+				aria-label="Download app"
+				style={{
+					display: "flex",
+					alignItems: "center",
+					gap: 6,
+					padding: "0 12px",
+					height: 32,
+					borderRadius: 6,
+					fontSize: 13,
+					fontWeight: 500,
+					fontFamily: theme.fonts.body,
+					background: theme.colors.primary,
+					color: theme.colors.background,
+					border: `1px solid ${theme.colors.primary}`,
+					cursor: "pointer",
+					flexShrink: 0,
+				}}
+			>
+				<Download size={16} />
+				<span>Download app</span>
+			</button>
+		</header>
+	);
+}
+
+// ---------------------------------------------------------------------------
 // Tab strip
 // ---------------------------------------------------------------------------
 
@@ -312,6 +429,10 @@ function TabStrip({
 				background: theme.colors.backgroundSecondary ?? theme.colors.background,
 				borderBottom: `1px solid ${theme.colors.border ?? "#333"}`,
 				overflowX: "auto",
+				// Pin overflowY: a lone `overflow-x: auto` computes overflow-y to
+				// `auto` too, and the tabs' `marginBottom: -1` (overlapping the
+				// bottom border) spills 1px vertically → a stray scrollbar here.
+				overflowY: "hidden",
 				flexShrink: 0,
 			}}
 		>
@@ -454,7 +575,11 @@ function TrailHeader({
 	const [shareError, setShareError] = useState<string | null>(null);
 	const [sharing, setSharing] = useState(false);
 	const [copied, setCopied] = useState(false);
+	const [linkCopied, setLinkCopied] = useState(false);
+	// Opens once on a successful publish to confirm + offer the share link.
+	const [showPublishedModal, setShowPublishedModal] = useState(false);
 	const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const linkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const effectiveShare = optimisticShare ?? share;
@@ -462,6 +587,7 @@ function TrailHeader({
 	useEffect(
 		() => () => {
 			if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+			if (linkTimeoutRef.current) clearTimeout(linkTimeoutRef.current);
 			if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
 		},
 		[],
@@ -474,13 +600,16 @@ function TrailHeader({
 		try {
 			const res = await electrobun.rpc!.request.shareTrail({ tabId });
 			if (!res.ok || !res.shareId) {
-				const msg = res.error ?? "Share failed";
+				const msg = res.error ?? "Publish failed";
 				setShareError(msg);
 				if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
 				errorTimeoutRef.current = setTimeout(() => setShareError(null), 6000);
 				return;
 			}
 			setOptimisticShare({ id: res.shareId });
+			setShowPublishedModal(true);
+			// Flip the library tab's Draft badge to Published without a manual refresh.
+			refreshLibrary();
 		} catch (err) {
 			setShareError(err instanceof Error ? err.message : String(err));
 		} finally {
@@ -505,14 +634,26 @@ function TrailHeader({
 		void electrobun.rpc!.request.openExternal({ url: githubUrl });
 	}, [githubUrl]);
 
-	const onOpenWebAde = useCallback(() => {
+	const onCopyLink = useCallback(async () => {
 		if (!effectiveShare) return;
-		void electrobun.rpc!.request.openExternal({
-			url: `${WEB_ADE_BASE}/trail/${effectiveShare.id}`,
-		});
+		try {
+			await navigator.clipboard.writeText(
+				`${WEB_ADE_BASE}/trail/${effectiveShare.id}`,
+			);
+			setLinkCopied(true);
+			if (linkTimeoutRef.current) clearTimeout(linkTimeoutRef.current);
+			linkTimeoutRef.current = setTimeout(() => setLinkCopied(false), COPY_FEEDBACK_MS);
+		} catch {
+			// clipboard may be denied — fail quietly
+		}
 	}, [effectiveShare]);
 
+	const shareUrl = effectiveShare
+		? `${WEB_ADE_BASE}/trail/${effectiveShare.id}`
+		: "";
+
 	return (
+		<>
 		<header
 			style={{
 				display: "flex",
@@ -534,21 +675,28 @@ function TrailHeader({
 					flex: 1,
 				}}
 			>
-				<FileCityLogo
-					width={26}
-					height={26}
-					mark="P"
-					primary="#ff6b35"
-					accent="#0893d2"
-					color="#d0e5ea"
-					background="transparent"
-				/>
-				<span style={{ fontSize: 20, fontWeight: 700 }}>
-					<span style={{ color: theme.colors.text }}>Principal</span>{" "}
-					<span style={{ color: theme.colors.primary }}>AI</span>
-				</span>
-				<span style={{ color: theme.colors.textMuted, margin: "0 4px" }} aria-hidden>
-					/
+				<span
+					style={{
+						flexShrink: 0,
+						fontSize: 10,
+						fontWeight: 600,
+						letterSpacing: 0.3,
+						textTransform: "uppercase",
+						padding: "2px 7px",
+						borderRadius: 999,
+						...(effectiveShare
+							? {
+									background: theme.colors.accent ?? theme.colors.primary,
+									color: theme.colors.background,
+								}
+							: {
+									background: "transparent",
+									color: theme.colors.textMuted ?? theme.colors.textSecondary,
+									border: `1px solid ${theme.colors.border ?? "#333"}`,
+								}),
+					}}
+				>
+					{effectiveShare ? "Published" : "Draft"}
 				</span>
 				<span
 					style={{
@@ -602,7 +750,7 @@ function TrailHeader({
 						onClick={onShare}
 						disabled={sharing}
 						title="Publish this trail to web-ade so it can be shared as a link"
-						aria-label="Share trail"
+						aria-label="Publish trail"
 						style={{
 							display: "flex",
 							alignItems: "center",
@@ -625,7 +773,7 @@ function TrailHeader({
 						) : (
 							<Share2 size={16} />
 						)}
-						<span>{sharing ? "Sharing…" : "Share"}</span>
+						<span>{sharing ? "Publishing…" : "Publish"}</span>
 					</button>
 				) : (
 					<>
@@ -655,23 +803,27 @@ function TrailHeader({
 						</button>
 						<button
 							type="button"
-							onClick={onOpenWebAde}
-							title="Open shared trail on web-ade"
-							aria-label="Open shared trail on web-ade"
+							onClick={onCopyLink}
+							title="Copy the web-ade share link to the clipboard"
+							aria-label="Copy share link"
 							style={{
 								display: "flex",
 								alignItems: "center",
-								justifyContent: "center",
-								width: 32,
+								gap: 6,
+								padding: "0 12px",
 								height: 32,
 								borderRadius: 6,
-								background: "transparent",
-								border: "none",
-								color: theme.colors.text,
+								fontSize: 13,
+								fontWeight: 500,
+								fontFamily: theme.fonts.body,
+								background: linkCopied ? theme.colors.primary : "transparent",
+								color: linkCopied ? theme.colors.background : theme.colors.text,
+								border: `1px solid ${linkCopied ? theme.colors.primary : theme.colors.border}`,
 								cursor: "pointer",
 							}}
 						>
-							<ExternalLink size={18} />
+							{linkCopied ? <Check size={16} /> : <Link size={16} />}
+							<span>{linkCopied ? "Copied" : "Copy link"}</span>
 						</button>
 					</>
 				)}
@@ -699,6 +851,126 @@ function TrailHeader({
 				)}
 			</div>
 		</header>
+		{showPublishedModal && effectiveShare && createPortal(
+			<div
+				role="dialog"
+				aria-modal
+				aria-label="Trail published"
+				onClick={() => setShowPublishedModal(false)}
+				style={{
+					position: "fixed",
+					inset: 0,
+					zIndex: 2147483000,
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					background: "rgba(0,0,0,0.55)",
+					fontFamily: theme.fonts.body,
+				}}
+			>
+				<div
+					onClick={(e) => e.stopPropagation()}
+					style={{
+						width: "min(520px, calc(100vw - 48px))",
+						background: theme.colors.surface,
+						border: `1px solid ${theme.colors.border}`,
+						borderRadius: 12,
+						padding: 24,
+						boxShadow: "0 12px 48px rgba(0,0,0,0.4)",
+						color: theme.colors.text,
+					}}
+				>
+					<div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+						<span
+							style={{
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+								width: 28,
+								height: 28,
+								borderRadius: "50%",
+								background: theme.colors.primary,
+								color: theme.colors.background,
+								flexShrink: 0,
+							}}
+						>
+							<Check size={18} />
+						</span>
+						<span style={{ fontSize: 18, fontWeight: 700 }}>Trail published</span>
+					</div>
+					<div
+						style={{
+							fontSize: 13,
+							color: theme.colors.textMuted ?? theme.colors.textSecondary,
+							marginBottom: 16,
+						}}
+					>
+						Your trail is live on web-ade. Share this link so anyone can open it.
+					</div>
+					<div
+						style={{
+							fontSize: 12,
+							fontFamily: theme.fonts.monospace,
+							color: theme.colors.text,
+							background: theme.colors.background,
+							border: `1px solid ${theme.colors.border}`,
+							borderRadius: 6,
+							padding: "10px 12px",
+							marginBottom: 16,
+							overflowX: "auto",
+							whiteSpace: "nowrap",
+							userSelect: "all",
+						}}
+					>
+						{shareUrl}
+					</div>
+					<div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+						<button
+							type="button"
+							onClick={() => setShowPublishedModal(false)}
+							style={{
+								padding: "0 14px",
+								height: 36,
+								borderRadius: 6,
+								fontSize: 13,
+								fontWeight: 500,
+								fontFamily: theme.fonts.body,
+								background: "transparent",
+								color: theme.colors.text,
+								border: `1px solid ${theme.colors.border}`,
+								cursor: "pointer",
+							}}
+						>
+							Done
+						</button>
+						<button
+							type="button"
+							onClick={onCopyLink}
+							style={{
+								display: "flex",
+								alignItems: "center",
+								gap: 6,
+								padding: "0 14px",
+								height: 36,
+								borderRadius: 6,
+								fontSize: 13,
+								fontWeight: 600,
+								fontFamily: theme.fonts.body,
+								background: theme.colors.primary,
+								color: theme.colors.background,
+								border: `1px solid ${theme.colors.primary}`,
+								cursor: "pointer",
+							}}
+						>
+							{linkCopied ? <Check size={16} /> : <Link size={16} />}
+							<span>{linkCopied ? "Copied" : "Copy link"}</span>
+						</button>
+					</div>
+				</div>
+			</div>,
+			document.body,
+		)}
+		</>
 	);
 }
 
@@ -884,6 +1156,11 @@ function LibraryView() {
 
 	useEffect(() => {
 		void refresh();
+		// Expose this refresh to the top-level AppHeader's refresh button.
+		libraryRefreshers.add(refresh);
+		return () => {
+			libraryRefreshers.delete(refresh);
+		};
 	}, [refresh]);
 
 	const onOpen = useCallback(async (entry: LibraryEntry) => {
@@ -922,39 +1199,6 @@ function LibraryView() {
 				fontFamily: theme.fonts.body,
 			}}
 		>
-			<div
-				style={{
-					display: "flex",
-					justifyContent: "space-between",
-					alignItems: "baseline",
-					marginBottom: 16,
-				}}
-			>
-				<div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-					<FileCityLogo
-						width={24}
-						height={24}
-						mark="P"
-						primary="#ff6b35"
-						accent="#0893d2"
-						color="#d0e5ea"
-						background="transparent"
-					/>
-					<div style={{ fontSize: 18, fontWeight: 500 }}>Trail library</div>
-				</div>
-				<div
-					onClick={refresh}
-					style={{
-						fontSize: 11,
-						color: theme.colors.textSecondary,
-						cursor: "pointer",
-						userSelect: "none",
-					}}
-					title="Refresh"
-				>
-					↻ refresh
-				</div>
-			</div>
 			<div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
 				{entries.map((entry) => (
 					<div
@@ -972,6 +1216,32 @@ function LibraryView() {
 							fontSize: 13,
 						}}
 					>
+						<span
+							style={{
+								flexShrink: 0,
+								boxSizing: "border-box",
+								minWidth: 76,
+								textAlign: "center",
+								fontSize: 10,
+								fontWeight: 600,
+								letterSpacing: 0.3,
+								textTransform: "uppercase",
+								padding: "2px 7px",
+								borderRadius: 999,
+								...(entry.published
+									? {
+											background: theme.colors.accent ?? theme.colors.primary,
+											color: theme.colors.background,
+										}
+									: {
+											background: "transparent",
+											color: theme.colors.textMuted ?? theme.colors.textSecondary,
+											border: `1px solid ${theme.colors.border ?? "#333"}`,
+										}),
+							}}
+						>
+							{entry.published ? "Published" : "Draft"}
+						</span>
 						<div
 							style={{
 								flex: 1,
@@ -1114,6 +1384,10 @@ function App() {
 		void electrobun.rpc!.request.closeTab({ id });
 	}, []);
 
+	const libraryActive =
+		tabs.find((t) => t.id === activeTabId)?.kind === "library" ||
+		(tabs.length === 0 && activeTabId === "library");
+
 	return (
 		<div
 			style={{
@@ -1126,6 +1400,7 @@ function App() {
 				overflow: "hidden",
 			}}
 		>
+			<AppHeader libraryActive={libraryActive} />
 			<TabStrip
 				tabs={tabs}
 				activeTabId={activeTabId}
@@ -1136,6 +1411,22 @@ function App() {
 		</div>
 	);
 }
+
+// electrobun drops bundled .css (wrong MIME on the views:// scheme), so the
+// reset in index.css never reaches WebKit. Inject the critical layout rules
+// imperatively — a JS-built <style> always applies. Without this the UA default
+// `body { margin: 8px }` survives and the 100vh app overflows the viewport by
+// 16px, scrolling the whole window. Keep in sync with index.css.
+function injectReset(): void {
+	const style = document.createElement("style");
+	style.setAttribute("data-trail-viewer-reset", "");
+	style.textContent = [
+		"* { box-sizing: border-box; margin: 0; padding: 0; }",
+		"html, body, #root { width: 100%; height: 100%; overflow: hidden; }",
+	].join("\n");
+	document.head.appendChild(style);
+}
+injectReset();
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Missing #root");

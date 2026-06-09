@@ -1,10 +1,14 @@
 {
 	"name": "@principal-ai/trail-viewer",
-	"version": "0.2.3",
+	"version": "0.3.0",
 	"description": "Standalone viewer for Principal ADE trails. Pairs with the principal-ai CLI: `principal-ai trail view <id>` shells into this bundle.",
 	"type": "module",
-	"os": ["darwin"],
-	"cpu": ["arm64"],
+	"os": [
+		"darwin"
+	],
+	"cpu": [
+		"arm64"
+	],
 	"bin": {
 		"principal-trail-viewer": "bin/trail-viewer.cjs"
 	},

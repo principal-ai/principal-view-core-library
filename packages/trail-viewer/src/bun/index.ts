@@ -92,7 +92,7 @@ interface TrailTabState {
 interface LibraryTabState {
 	id: typeof LIBRARY_TAB_ID;
 	kind: "library";
-	title: "Library";
+	title: "Trail Library";
 }
 
 type TabState = LibraryTabState | TrailTabState;
@@ -101,7 +101,7 @@ const tabs = new Map<string, TabState>();
 tabs.set(LIBRARY_TAB_ID, {
 	id: LIBRARY_TAB_ID,
 	kind: "library",
-	title: "Library",
+	title: "Trail Library",
 });
 let activeTabId: string = LIBRARY_TAB_ID;
 let nextTabId = 1;
@@ -586,6 +586,10 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				return { ok: true, note: outcome.result };
 			},
 			openExternal: ({ url }) => {
+				if (url.startsWith("debug:")) {
+					console.log("[scroll-debug] " + url.slice(6));
+					return { ok: true };
+				}
 				// Hand-off to the OS shell. The webview never navigates externally —
 				// we always route through this so https links open in the user's
 				// browser rather than replacing the viewer's view stack.
@@ -617,7 +621,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				if (!parsed || parsed.type !== "github" || !parsed.namespace) {
 					return {
 						ok: false,
-						error: `Share requires a GitHub remote. Current origin: ${remoteUrl}`,
+						error: `Publishing requires a GitHub remote. Current origin: ${remoteUrl}`,
 					};
 				}
 				const owner = parsed.namespace;
