@@ -33,7 +33,7 @@ import {
 } from "@principal-ai/alexandria-core-library";
 import { readFileRemote as fetchRemoteSlice } from "./remote-files";
 import { handoffToRunning, startIpcServer, type LoadTrailMessage } from "./ipc";
-import { walkLibrary, type LibraryEntry } from "./library";
+import { walkLibrary, resolveLocalRepoIdentity, type LibraryEntry } from "./library";
 
 const LIBRARY_TAB_ID = "library";
 
@@ -264,6 +264,11 @@ interface TabFullState {
 	repoRoot?: string;
 	trailFilePath?: string;
 	payload?: unknown;
+	// Repo identity resolved host-side so the tab header can match the library
+	// rows. `owner === "local"` means no GitHub origin was found (repo is then
+	// the working-tree folder name); any other owner is a real GitHub identity.
+	owner?: string;
+	repo?: string;
 }
 
 type TrailViewerRPC = {
@@ -483,6 +488,15 @@ function fullState(tab: TabState): TabFullState {
 			trailFilePath: tab.trailFilePath,
 		};
 	}
+	// Resolve repo identity the same way the library listing does: prefer an
+	// explicit owner/name carried by the open message (web-ade / remote trails),
+	// otherwise recover it from the working tree's git origin. This is what lets
+	// the tab header show `owner/name` (+ GitHub link) for local trails instead
+	// of `local / <path>`.
+	const identity =
+		tab.repoOwner && tab.repoName
+			? { owner: tab.repoOwner, repo: tab.repoName }
+			: resolveLocalRepoIdentity(tab.repoRoot);
 	return {
 		ok: true,
 		id: tab.id,
@@ -492,6 +506,8 @@ function fullState(tab: TabState): TabFullState {
 		repoRoot: tab.repoRoot,
 		trailFilePath: tab.trailFilePath,
 		payload: tab.loaded.payload,
+		owner: identity.owner,
+		repo: identity.repo,
 	};
 }
 
@@ -776,11 +792,19 @@ if (initialMessage) {
 // ---------------------------------------------------------------------------
 
 const browserWindow = new BrowserWindow({
-	title: "Trail Viewer",
+	title: "Principal AI",
 	url: "views://mainview/index.html",
 	rpc,
+	// Initial frame is just the fallback the window briefly opens at before we
+	// maximize it below; it's also what `unmaximize` restores to.
 	frame: { width: 1200, height: 800, x: 100, y: 100 },
 });
+
+// Open filling the screen's work area. We maximize rather than hardcode a size
+// so it adapts to whatever display the user is on; `setFullScreen(true)` would
+// instead push it into the borderless macOS fullscreen space, which isn't what
+// we want for a windowed viewer.
+browserWindow.maximize();
 
 function closeTabById(id: string): { ok: boolean; error?: string } {
 	if (id === LIBRARY_TAB_ID) {

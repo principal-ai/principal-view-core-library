@@ -2,15 +2,18 @@
  * Trail viewer mainview.
  */
 
-import "@xyflow/react/dist/style.css";
-// NB: electrobun's views:// scheme serves .css with a non-text/css MIME, so the
-// <link> in index.html is dropped AND the bundler's `import "./index.css"` only
-// emits a sibling .css that nothing loads — so in practice neither path applies
-// the reset. We still import it so the rules ship in the bundle, but the
-// critical layout reset is injected imperatively in `injectReset()` below, which
-// is the only mechanism that reliably lands. Without it the UA default
-// `body { margin: 8px }` leaks back in (16px vertical overflow + top/left gap).
-import "./index.css";
+// electrobun's views:// scheme serves .css with a non-text/css MIME, so neither
+// the <link> in index.html nor a bundled CSS-import sibling .css ever loads —
+// both paths are silently dropped by WebKit. A plain `import "...style.css"`
+// would just emit one of those dead siblings. So we import both stylesheets as
+// *text* (the `{ type: "text" }` loader inlines the CSS into this JS bundle as a
+// string) and inject them imperatively in `injectStyles()` below, which is the
+// only mechanism that reliably lands. Without this the UA `body { margin: 8px }`
+// leaks back in (16px overflow + top/left gap) and React Flow — which the
+// FileCityTrailExplorerPanel's sequence view renders — ships completely
+// unstyled.
+import xyflowStyles from "@xyflow/react/dist/style.css" with { type: "text" };
+import resetStyles from "./index.css" with { type: "text" };
 
 import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
@@ -68,6 +71,11 @@ interface TabFullState {
 	repoRoot?: string;
 	trailFilePath?: string;
 	payload?: unknown;
+	/** Repo identity resolved by the bun host (git origin / explicit remote).
+	 *  `owner === "local"` means no GitHub origin; any other owner is a GitHub
+	 *  identity the header can link to. Mirrors the library rows. */
+	owner?: string;
+	repo?: string;
 }
 
 interface LibraryEntry {
@@ -247,6 +255,8 @@ type TabState =
 			payload: TrailPayload;
 			fileTree: FileTree;
 			repoRoot: string;
+			owner?: string;
+			repo?: string;
 		};
 
 function nullSlice<T>(name: string): DataSlice<T | null> {
@@ -282,11 +292,11 @@ function CenteredMessage({
 			}}
 		>
 			<div style={{ textAlign: "center", maxWidth: 640, padding: 24 }}>
-				<div style={{ fontSize: 18, marginBottom: 8 }}>{title}</div>
+				<div style={{ fontSize: theme.fontSizes[3], marginBottom: 8 }}>{title}</div>
 				{detail && (
 					<div
 						style={{
-							fontSize: 12,
+							fontSize: theme.fontSizes[0],
 							color: theme.colors.textMuted ?? theme.colors.textSecondary,
 							fontFamily: theme.fonts.monospace,
 							whiteSpace: "pre-wrap",
@@ -346,9 +356,9 @@ function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 					color="#d0e5ea"
 					background="transparent"
 				/>
-				<span style={{ fontSize: 20, fontWeight: 700 }}>
-					<span style={{ color: theme.colors.text }}>Principal</span>{" "}
-					<span style={{ color: theme.colors.primary }}>AI</span>
+				<span style={{ fontSize: theme.fontSizes[4], fontWeight: 700 }}>
+					<span style={{ color: theme.colors.text }}>ElectroBun</span>{" "}
+					<span style={{ color: theme.colors.primary }}>Trail Viewer</span>
 				</span>
 			</div>
 			{libraryActive && (
@@ -386,7 +396,7 @@ function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 					padding: "0 12px",
 					height: 32,
 					borderRadius: 6,
-					fontSize: 13,
+					fontSize: theme.fontSizes[1],
 					fontWeight: 500,
 					fontFamily: theme.fonts.body,
 					background: theme.colors.primary,
@@ -462,7 +472,7 @@ function TabStrip({
 							borderLeft: `1px solid ${isActive ? theme.colors.border ?? "#444" : "transparent"}`,
 							borderRight: `1px solid ${isActive ? theme.colors.border ?? "#444" : "transparent"}`,
 							cursor: "pointer",
-							fontSize: 12,
+							fontSize: theme.fontSizes[1],
 							fontFamily: theme.fonts.body,
 							maxWidth: 240,
 							minWidth: 0,
@@ -505,7 +515,7 @@ function TabStrip({
 									justifyContent: "center",
 									borderRadius: 3,
 									color: theme.colors.textMuted ?? "#888",
-									fontSize: 14,
+									fontSize: theme.fontSizes[1],
 									lineHeight: 1,
 									cursor: "pointer",
 								}}
@@ -678,7 +688,7 @@ function TrailHeader({
 				<span
 					style={{
 						flexShrink: 0,
-						fontSize: 10,
+						fontSize: theme.fontSizes[0],
 						fontWeight: 600,
 						letterSpacing: 0.3,
 						textTransform: "uppercase",
@@ -700,7 +710,7 @@ function TrailHeader({
 				</span>
 				<span
 					style={{
-						fontSize: 14,
+						fontSize: theme.fontSizes[1],
 						fontWeight: 600,
 						color: theme.colors.text,
 						overflow: "hidden",
@@ -715,7 +725,7 @@ function TrailHeader({
 				</span>
 				<span
 					style={{
-						fontSize: 14,
+						fontSize: theme.fontSizes[1],
 						fontWeight: 600,
 						color: theme.colors.text,
 						overflow: "hidden",
@@ -729,7 +739,7 @@ function TrailHeader({
 					<span
 						style={{
 							marginLeft: 12,
-							fontSize: 12,
+							fontSize: theme.fontSizes[0],
 							color: theme.colors.error ?? "#ff6b6b",
 							overflow: "hidden",
 							textOverflow: "ellipsis",
@@ -758,7 +768,7 @@ function TrailHeader({
 							padding: "0 12px",
 							height: 32,
 							borderRadius: 6,
-							fontSize: 13,
+							fontSize: theme.fontSizes[1],
 							fontWeight: 500,
 							fontFamily: theme.fonts.body,
 							background: theme.colors.primary,
@@ -789,7 +799,7 @@ function TrailHeader({
 								padding: "0 12px",
 								height: 32,
 								borderRadius: 6,
-								fontSize: 13,
+								fontSize: theme.fontSizes[1],
 								fontWeight: 500,
 								fontFamily: theme.fonts.body,
 								background: copied ? theme.colors.primary : "transparent",
@@ -813,7 +823,7 @@ function TrailHeader({
 								padding: "0 12px",
 								height: 32,
 								borderRadius: 6,
-								fontSize: 13,
+								fontSize: theme.fontSizes[1],
 								fontWeight: 500,
 								fontFamily: theme.fonts.body,
 								background: linkCopied ? theme.colors.primary : "transparent",
@@ -896,11 +906,11 @@ function TrailHeader({
 						>
 							<Check size={18} />
 						</span>
-						<span style={{ fontSize: 18, fontWeight: 700 }}>Trail published</span>
+						<span style={{ fontSize: theme.fontSizes[3], fontWeight: 700 }}>Trail published</span>
 					</div>
 					<div
 						style={{
-							fontSize: 13,
+							fontSize: theme.fontSizes[1],
 							color: theme.colors.textMuted ?? theme.colors.textSecondary,
 							marginBottom: 16,
 						}}
@@ -909,7 +919,7 @@ function TrailHeader({
 					</div>
 					<div
 						style={{
-							fontSize: 12,
+							fontSize: theme.fontSizes[0],
 							fontFamily: theme.fonts.monospace,
 							color: theme.colors.text,
 							background: theme.colors.background,
@@ -932,7 +942,7 @@ function TrailHeader({
 								padding: "0 14px",
 								height: 36,
 								borderRadius: 6,
-								fontSize: 13,
+								fontSize: theme.fontSizes[1],
 								fontWeight: 500,
 								fontFamily: theme.fonts.body,
 								background: "transparent",
@@ -953,7 +963,7 @@ function TrailHeader({
 								padding: "0 14px",
 								height: 36,
 								borderRadius: 6,
-								fontSize: 13,
+								fontSize: theme.fontSizes[1],
 								fontWeight: 600,
 								fontFamily: theme.fonts.body,
 								background: theme.colors.primary,
@@ -983,11 +993,17 @@ function TrailViewer({
 	payload,
 	fileTree,
 	repoRoot,
+	hostOwner,
+	hostRepo,
 }: {
 	tabId: string;
 	payload: TrailPayload;
 	fileTree: FileTree;
 	repoRoot: string;
+	/** Repo identity the bun host resolved (git origin / explicit remote).
+	 *  Preferred over the payload so the header matches the library rows. */
+	hostOwner?: string;
+	hostRepo?: string;
 }) {
 	const { theme } = useTheme();
 
@@ -1077,26 +1093,36 @@ function TrailViewer({
 
 	const header = useMemo(() => {
 		const repoEntry = payload.repos?.[0];
-		const remoteOwner = repoEntry?.remote?.owner;
-		const remoteName = repoEntry?.remote?.name;
+		// Prefer the identity the bun host resolved — it mirrors the library rows
+		// by recovering `owner/name` from the working tree's git origin, which
+		// the payload almost never carries for local trails. The host returns the
+		// `"local"` sentinel when there's no GitHub origin, so only treat a
+		// non-"local" owner as a real remote. Fall back to the payload's own
+		// remote (older trails / web-ade) before the local label.
+		const githubOwner =
+			hostOwner && hostOwner !== "local" ? hostOwner : repoEntry?.remote?.owner;
+		const githubName =
+			hostOwner && hostOwner !== "local" ? hostRepo : repoEntry?.remote?.name;
 		// For trails with a remote, mirror web-ade's `<owner>/<repo>` crumbs and
-		// link to the matching GitHub URL. For local-only trails (no `repos[]`
-		// or no `remote`), fall back to `local / <basename-of-repoRoot>` and
-		// hide the GitHub button — there's no URL to point at.
-		if (remoteOwner && remoteName) {
+		// link to the matching GitHub URL. For local-only trails (no GitHub
+		// origin), fall back to `local / <repo-folder>` and hide the GitHub
+		// button — there's no URL to point at.
+		if (githubOwner && githubName) {
 			return {
-				owner: remoteOwner,
-				repo: remoteName,
-				githubUrl: `https://github.com/${remoteOwner}/${remoteName}`,
+				owner: githubOwner,
+				repo: githubName,
+				githubUrl: `https://github.com/${githubOwner}/${githubName}`,
 			};
 		}
 		const basename = repoRoot.split("/").filter(Boolean).pop() ?? "repo";
 		return {
 			owner: "local",
-			repo: repoEntry?.name ?? basename,
+			// `hostRepo` is the working-tree folder name when there's no origin —
+			// nicer than the dash-encoded path some payloads carry.
+			repo: hostRepo ?? repoEntry?.name ?? basename,
 			githubUrl: undefined,
 		};
-	}, [payload, repoRoot]);
+	}, [payload, repoRoot, hostOwner, hostRepo]);
 
 	return (
 		<div
@@ -1121,6 +1147,7 @@ function TrailViewer({
 					context={context}
 					actions={actions}
 					events={events}
+					briefSide="leading"
 				/>
 			</div>
 		</div>
@@ -1213,7 +1240,7 @@ function LibraryView() {
 							border: `1px solid ${theme.colors.border ?? "#333"}`,
 							background: theme.colors.backgroundSecondary ?? "transparent",
 							cursor: "pointer",
-							fontSize: 13,
+							fontSize: theme.fontSizes[2],
 						}}
 					>
 						<span
@@ -1222,7 +1249,7 @@ function LibraryView() {
 								boxSizing: "border-box",
 								minWidth: 76,
 								textAlign: "center",
-								fontSize: 10,
+								fontSize: theme.fontSizes[0],
 								fontWeight: 600,
 								letterSpacing: 0.3,
 								textTransform: "uppercase",
@@ -1255,7 +1282,7 @@ function LibraryView() {
 						</div>
 						<div
 							style={{
-								fontSize: 11,
+								fontSize: theme.fontSizes[0],
 								color: theme.colors.textSecondary,
 								fontFamily: theme.fonts.monospace,
 								flexShrink: 0,
@@ -1267,7 +1294,7 @@ function LibraryView() {
 						</div>
 						<div
 							style={{
-								fontSize: 11,
+								fontSize: theme.fontSizes[0],
 								color: theme.colors.textMuted ?? theme.colors.textSecondary,
 								flexShrink: 0,
 								minWidth: 60,
@@ -1322,6 +1349,8 @@ function ActiveTab({ tabId }: { tabId: string }) {
 					payload: tab.payload as TrailPayload,
 					fileTree,
 					repoRoot: tab.repoRoot ?? "",
+					owner: tab.owner,
+					repo: tab.repo,
 				});
 			} catch (err) {
 				if (cancelled) return;
@@ -1346,6 +1375,8 @@ function ActiveTab({ tabId }: { tabId: string }) {
 			payload={state.payload}
 			fileTree={state.fileTree}
 			repoRoot={state.repoRoot}
+			hostOwner={state.owner}
+			hostRepo={state.repo}
 		/>
 	);
 }
@@ -1412,21 +1443,26 @@ function App() {
 	);
 }
 
-// electrobun drops bundled .css (wrong MIME on the views:// scheme), so the
-// reset in index.css never reaches WebKit. Inject the critical layout rules
-// imperatively — a JS-built <style> always applies. Without this the UA default
-// `body { margin: 8px }` survives and the 100vh app overflows the viewport by
-// 16px, scrolling the whole window. Keep in sync with index.css.
-function injectReset(): void {
-	const style = document.createElement("style");
-	style.setAttribute("data-trail-viewer-reset", "");
-	style.textContent = [
-		"* { box-sizing: border-box; margin: 0; padding: 0; }",
-		"html, body, #root { width: 100%; height: 100%; overflow: hidden; }",
-	].join("\n");
-	document.head.appendChild(style);
+// electrobun drops bundled/linked .css (wrong MIME on the views:// scheme), so
+// neither our reset (index.css) nor React Flow's stylesheet reaches WebKit
+// through the normal paths. Both are imported above as text (inlined into this
+// bundle); inject them with <style> tags here — a JS-built <style> always
+// applies. The reset goes in first so React Flow's rules win any overlap.
+// Without index.css the UA `body { margin: 8px }` survives and the 100vh app
+// overflows by 16px; without the React Flow CSS the sequence-view panes, edges,
+// and controls render unstyled.
+function injectStyles(): void {
+	for (const [marker, css] of [
+		["data-trail-viewer-reset", resetStyles],
+		["data-xyflow-react", xyflowStyles],
+	] as const) {
+		const style = document.createElement("style");
+		style.setAttribute(marker, "");
+		style.textContent = css;
+		document.head.appendChild(style);
+	}
 }
-injectReset();
+injectStyles();
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Missing #root");

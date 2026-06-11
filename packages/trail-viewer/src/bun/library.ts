@@ -217,7 +217,7 @@ async function readMetadata(path: string): Promise<CachedMetadata> {
  */
 const repoIdentityCache = new Map<string, { owner: string; repo: string }>();
 
-function resolveLocalRepoIdentity(repoRoot: string): { owner: string; repo: string } {
+export function resolveLocalRepoIdentity(repoRoot: string): { owner: string; repo: string } {
 	const cached = repoIdentityCache.get(repoRoot);
 	if (cached) return cached;
 
