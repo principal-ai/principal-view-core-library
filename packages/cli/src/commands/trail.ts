@@ -397,11 +397,13 @@ function cwdIsCloneOf(repo: ResolvedRepo): boolean {
   );
 }
 
-type ViewerLaunch =
+export type ViewerLaunch =
   | { kind: 'installed'; bin: string }
   | { kind: 'source'; dir: string };
 
-function resolveViewerLaunch(flag: string | undefined): ViewerLaunch {
+// Shared with the `tour` command — both launch the same standalone viewer
+// bundle; only the payload (trail vs *.tour.json) differs.
+export function resolveViewerLaunch(flag: string | undefined): ViewerLaunch {
   // 1) Explicit override (flag or env) wins. If it points at a source tree we
   //    use `bun start`; if it points at a published install root we use its
   //    bin shim. Distinguished by whether `bin/trail-viewer.cjs` exists.
