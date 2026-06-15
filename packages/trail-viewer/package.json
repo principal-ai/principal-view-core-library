@@ -1,6 +1,6 @@
 {
 	"name": "@principal-ai/trail-viewer",
-	"version": "0.3.1",
+	"version": "0.4.0",
 	"description": "Standalone viewer for Principal ADE trails. Pairs with the principal-ai CLI: `principal-ai trail view <id>` shells into this bundle.",
 	"type": "module",
 	"os": [

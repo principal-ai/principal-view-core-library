@@ -31,6 +31,7 @@ import {
 	extractPurlFromRemoteUrl,
 	parsePurl,
 } from "@principal-ai/alexandria-core-library";
+import { parseTourOrThrow } from "@principal-ai/file-city-builder";
 import { readFileRemote as fetchRemoteSlice } from "./remote-files";
 import { handoffToRunning, startIpcServer, type LoadTrailMessage } from "./ipc";
 import { walkLibrary, resolveLocalRepoIdentity, type LibraryEntry } from "./library";
@@ -80,6 +81,10 @@ interface TrailTabState {
 	kind: "trail";
 	title: string;
 	mode: ViewerMode;
+	/** Whether this tab holds a trail (`markers`/`views`) or a File City
+	 *  introduction tour (`steps` + `focusDirectory`). Both render in the same
+	 *  tab machinery; only the renderer's panel choice differs. */
+	payloadKind: PayloadKind;
 	trailFilePath: string;
 	repoRoot: string;
 	loaded: LoadedTrail;
@@ -108,9 +113,26 @@ let nextTabId = 1;
 
 // Pre-load the payload so the renderer's first read is synchronous and any
 // parse error surfaces at boot rather than after the window is up.
+type PayloadKind = "trail" | "tour";
+
 type LoadedTrail =
-	| { ok: true; payload: unknown; path: string }
+	| { ok: true; payload: unknown; path: string; payloadKind: PayloadKind }
 	| { ok: false; error: string };
+
+/**
+ * Distinguish a File City introduction tour from a trail. The filename is the
+ * canonical signal — the tours skill always writes `*.tour.json` — with a
+ * payload-shape fallback (`steps[]` and no `markers`) for files that don't
+ * carry the suffix.
+ */
+function detectPayloadKind(path: string, payload: unknown): PayloadKind {
+	if (/\.tour\.json$/i.test(path)) return "tour";
+	if (typeof payload === "object" && payload !== null) {
+		const obj = payload as Record<string, unknown>;
+		if (Array.isArray(obj["steps"]) && !("markers" in obj)) return "tour";
+	}
+	return "trail";
+}
 
 /**
  * web-ade's `/api/trails/by-id/<id>` returns a wrapper around the trail
@@ -143,7 +165,11 @@ function loadTrailFile(path: string | null): LoadedTrail {
 	try {
 		const raw = readFileSync(path, "utf8");
 		const parsed = unwrapPayload(JSON.parse(raw));
-		return { ok: true, payload: parsed, path };
+		const payloadKind = detectPayloadKind(path, parsed);
+		// Validate tours up front so a malformed *.tour.json fails at load with a
+		// clear message rather than silently rendering an idle, empty city.
+		if (payloadKind === "tour") parseTourOrThrow(JSON.stringify(parsed));
+		return { ok: true, payload: parsed, path, payloadKind };
 	} catch (err) {
 		return {
 			ok: false,
@@ -192,11 +218,19 @@ function addTabFromMessage(msg: LoadTrailMessage): string {
 	const id = String(nextTabId++);
 	const repoRoot = msg.repoRoot ?? dirname(trailFilePath);
 	const loaded = loadTrailFile(trailFilePath);
+	const payloadKind: PayloadKind = loaded.ok
+		? loaded.payloadKind
+		: detectPayloadKind(trailFilePath, null);
+	// Tours reference whole directories (`focusDirectory`), so they can only be
+	// served from a local working tree — there's no marker list to derive a
+	// remote file set from. Pin them to 'local' regardless of the incoming mode.
+	const mode: ViewerMode = payloadKind === "tour" ? "local" : msg.mode;
 	const tab: TabState = {
 		id,
 		kind: "trail",
 		title: deriveTitle(loaded, trailFilePath),
-		mode: msg.mode,
+		mode,
+		payloadKind,
 		trailFilePath,
 		repoRoot,
 		loaded,
@@ -207,7 +241,7 @@ function addTabFromMessage(msg: LoadTrailMessage): string {
 	};
 	tabs.set(id, tab);
 	activeTabId = id;
-	console.log(`[trail-viewer] tab ${id} added: ${trailFilePath} (${msg.mode})`);
+	console.log(`[trail-viewer] tab ${id} added: ${trailFilePath} (${payloadKind}, ${mode})`);
 	return id;
 }
 
@@ -252,6 +286,7 @@ interface TabSummary {
 	kind: "library" | "trail";
 	title: string;
 	mode?: ViewerMode;
+	payloadKind?: PayloadKind;
 }
 
 interface TabFullState {
@@ -261,6 +296,7 @@ interface TabFullState {
 	kind: "library" | "trail";
 	title: string;
 	mode?: ViewerMode;
+	payloadKind?: PayloadKind;
 	repoRoot?: string;
 	trailFilePath?: string;
 	payload?: unknown;
@@ -469,7 +505,13 @@ function summarize(tab: TabState): TabSummary {
 	if (tab.kind === "library") {
 		return { id: tab.id, kind: "library", title: tab.title };
 	}
-	return { id: tab.id, kind: "trail", title: tab.title, mode: tab.mode };
+	return {
+		id: tab.id,
+		kind: "trail",
+		title: tab.title,
+		mode: tab.mode,
+		payloadKind: tab.payloadKind,
+	};
 }
 
 function fullState(tab: TabState): TabFullState {
@@ -484,6 +526,7 @@ function fullState(tab: TabState): TabFullState {
 			kind: "trail",
 			title: tab.title,
 			mode: tab.mode,
+			payloadKind: tab.payloadKind,
 			repoRoot: tab.repoRoot,
 			trailFilePath: tab.trailFilePath,
 		};
@@ -503,6 +546,7 @@ function fullState(tab: TabState): TabFullState {
 		kind: "trail",
 		title: tab.title,
 		mode: tab.mode,
+		payloadKind: tab.payloadKind,
 		repoRoot: tab.repoRoot,
 		trailFilePath: tab.trailFilePath,
 		payload: tab.loaded.payload,
@@ -562,6 +606,9 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				if (!tab || tab.kind === "library") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
+				if (tab.payloadKind === "tour") {
+					return { ok: false, error: "tours do not support notes" };
+				}
 				if (typeof draft !== "object" || draft === null) {
 					return { ok: false, error: "draft must be an object" };
 				}
@@ -583,6 +630,9 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				const tab = getTab(tabId);
 				if (!tab || tab.kind === "library") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
+				}
+				if (tab.payloadKind === "tour") {
+					return { ok: false, error: "tours do not support notes" };
 				}
 				const now = new Date().toISOString();
 				let updated: unknown = null;
@@ -616,6 +666,9 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				const tab = getTab(tabId);
 				if (!tab || tab.kind === "library") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
+				}
+				if (tab.payloadKind === "tour") {
+					return { ok: false, error: "tours cannot be shared" };
 				}
 				// 1. Sniff the GitHub remote from the working tree. The publish
 				//    endpoint gates by `<owner>/<repo>` access; without a remote we
@@ -698,6 +751,9 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				const tab = getTab(tabId);
 				if (!tab || tab.kind === "library") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
+				}
+				if (tab.payloadKind === "tour") {
+					return { ok: false, error: "tours do not support notes" };
 				}
 				const outcome = persistNoteMutation(tab, (notes) => {
 					const next = notes.filter((n) => {
