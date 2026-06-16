@@ -532,6 +532,19 @@ export {
 export type { FileSystemAdapter } from '@principal-ai/repository-abstraction';
 export { InMemoryFileSystemAdapter } from '@principal-ai/repository-abstraction';
 
+// Canonical topic storage contract (browser-safe types + Draft->Published
+// projection). The file-per-topic store that reads/writes these is node-only;
+// import it from '@principal-ai/principal-view-core/node'.
+export { publishedFromDraft } from './storage/topic-types';
+export type {
+  DraftTopic,
+  PublishedTopic,
+  PublishProjection,
+  TopicStatus,
+  TopicAsset,
+  TopicCreator,
+} from './storage/topic-types';
+
 // NOTE: The following require Node.js dependencies and are NOT exported in the main bundle.
 // Use '@principal-ai/principal-view-core/node' for Node.js-specific functionality:
 //

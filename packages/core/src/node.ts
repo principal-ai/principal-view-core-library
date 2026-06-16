@@ -13,6 +13,30 @@
 // Export all types (safe in all environments)
 export * from './types';
 
+// File-per-topic store (~/.principal/topics) — node:fs only. The browser-safe
+// topic types it reads/writes are also re-exported here for node consumers.
+export {
+  TopicStore,
+  PRINCIPAL_DIR,
+  TOPICS_DIR,
+  LEGACY_TOPICS_BLOB,
+} from './storage/topicStore';
+export type {
+  TopicIndexEntry,
+  TopicCreate,
+  TopicUpdate,
+  MigrationResult,
+} from './storage/topicStore';
+export { publishedFromDraft } from './storage/topic-types';
+export type {
+  DraftTopic,
+  PublishedTopic,
+  PublishProjection,
+  TopicStatus,
+  TopicAsset,
+  TopicCreator,
+} from './storage/topic-types';
+
 // Export core classes (Node.js processing)
 export { EventProcessor } from './EventProcessor';
 export type { ProcessingResult } from './EventProcessor';
