@@ -22,7 +22,7 @@
         "typescript": "5.7.2",
       },
       "optionalDependencies": {
-        "@principal-ai/trail-viewer": "^0.3.1",
+        "@principal-ai/trail-viewer": "^0.4.1",
       },
     },
   },
@@ -119,7 +119,7 @@
 
     "@principal-ai/repository-abstraction": ["@principal-ai/repository-abstraction@0.5.7", "", { "peerDependencies": { "globby": "^16.1.0" }, "optionalPeers": ["globby"] }, "sha512-2LZ4HnaD6PKFXmM2Kwq1kqLKguna/EpHaqFI7tTqMtiwLkVCNMBPJFRMcfqihbAj66DNRiMrbMJ+E154kmFF4A=="],
 
-    "@principal-ai/trail-viewer": ["@principal-ai/trail-viewer@0.3.1", "", { "os": "darwin", "cpu": "arm64", "bin": { "principal-trail-viewer": "bin/trail-viewer.cjs" } }, "sha512-gOMVKpcB+SpoJpc8G/Y6jU5E4++4QENKCBKTI+wJkyoV/DZUBfK/LodmfGQ4o6tFEDoPOtZ+PVUmx3GmI4kSZQ=="],
+    "@principal-ai/trail-viewer": ["@principal-ai/trail-viewer@0.4.1", "", { "os": "darwin", "cpu": "arm64", "bin": { "principal-trail-viewer": "bin/trail-viewer.cjs" } }, "sha512-1SYXLdaSR3wLA0VLAl+asVY+xAX0V9chT9SG1JrpeUPuUzE1ATZ3INKY/HZyGBJY8IipgU4NOuVfmwQEmE+PXg=="],
 
     "@protobufjs/aspromise": ["@protobufjs/aspromise@1.1.2", "", {}, "sha512-j+gKExEuLmKwvz3OgROXtrJ2UG2x8Ch2YZUxahh+s1F2HZ+wAceUNLkvy6zKCPVRkU++ZWQrdxsUeQXmcg4uoQ=="],
 

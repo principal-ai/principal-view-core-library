@@ -28,9 +28,10 @@ import { createTraceCommand } from './commands/trace/index.js';
 import { createTrailCommand } from './commands/trail.js';
 import { createTourCommand } from './commands/tour.js';
 import { createTopicCommand } from './commands/topic.js';
+import { createInboxCommand } from './commands/inbox.js';
 
 // Version is injected at build time via package.json
-const VERSION = '0.22.0';
+const VERSION = '0.28.1';
 
 const program = new Command();
 
@@ -62,6 +63,7 @@ program.addCommand(createTraceCommand());
 program.addCommand(createTrailCommand());
 program.addCommand(createTourCommand());
 program.addCommand(createTopicCommand());
+program.addCommand(createInboxCommand());
 
 // Parse command line arguments
 program.parse(process.argv);
