@@ -247,6 +247,148 @@ export function resolveLocalRepoIdentity(repoRoot: string): { owner: string; rep
 	return identity;
 }
 
+/**
+ * The identity of the person *using* the viewer (distinct from the repo owner
+ * resolved above). Layered, best-effort:
+ *   1. `gh api user`           — GitHub login + avatar, if the gh CLI is authed.
+ *   2. `TRAIL_GH_TOKEN`        — same shape via api.github.com when a token was
+ *                                handed to the host but gh isn't installed.
+ *   3. `git config user.*`     — the commit identity; always present in a repo
+ *                                even with no GitHub auth. No avatar/login.
+ *
+ * `source` names which one drives the header chip (GitHub wins when present).
+ * The local `git` config is *always* read and attached, even when signed in to
+ * GitHub, so the provenance modal can show both identities side by side.
+ * Returns `{ source: "none" }` when nothing resolves (e.g. bare dir, no git).
+ */
+export interface GitConfigIdentity {
+	name?: string;
+	email?: string;
+}
+
+export interface UserIdentity {
+	login?: string;
+	name?: string;
+	avatarUrl?: string;
+	htmlUrl?: string;
+	source: "gh" | "token" | "git" | "none";
+	/** Local `git config user.name` / `user.email`, resolved regardless of the
+	 *  GitHub sign-in state. Absent when the working tree has no git identity. */
+	git?: GitConfigIdentity;
+}
+
+let userIdentityCache: UserIdentity | null = null;
+
+interface GitHubUserResponse {
+	login?: string;
+	name?: string;
+	avatar_url?: string;
+	html_url?: string;
+}
+
+function fromGitHubUser(
+	raw: GitHubUserResponse,
+	source: "gh" | "token",
+): UserIdentity | null {
+	if (!raw.login) return null;
+	return {
+		login: raw.login,
+		name: raw.name ?? undefined,
+		avatarUrl: raw.avatar_url ?? undefined,
+		htmlUrl: raw.html_url ?? undefined,
+		source,
+	};
+}
+
+async function resolveGitHubUserFromToken(
+	token: string,
+): Promise<UserIdentity | null> {
+	try {
+		const res = await fetch("https://api.github.com/user", {
+			headers: {
+				Authorization: `Bearer ${token}`,
+				Accept: "application/vnd.github+json",
+				"User-Agent": "principal-trail-viewer",
+			},
+		});
+		if (!res.ok) return null;
+		return fromGitHubUser((await res.json()) as GitHubUserResponse, "token");
+	} catch {
+		return null;
+	}
+}
+
+/** Read `git config user.name` / `user.email`. Always attempted, independent of
+ *  GitHub sign-in. When a repoRoot is given we read it with `-C` (picks up any
+ *  repo-local override); otherwise we run git plain so the *global* identity
+ *  still resolves — the common case when the library tab is showing and no trail
+ *  (hence no repoRoot) is open. Returns undefined when neither value is set. */
+function readGitConfigIdentity(
+	repoRoot: string | undefined,
+): GitConfigIdentity | undefined {
+	const scope = repoRoot ? ["-C", repoRoot] : [];
+	const read = (key: string): string | undefined => {
+		try {
+			const r = spawnSync("git", [...scope, "config", key], {
+				encoding: "utf8",
+				stdio: ["ignore", "pipe", "ignore"],
+			});
+			const value = r.status === 0 ? r.stdout?.trim() : "";
+			return value || undefined;
+		} catch {
+			return undefined;
+		}
+	};
+	const name = read("user.name");
+	const email = read("user.email");
+	if (!name && !email) return undefined;
+	return { name, email };
+}
+
+export async function resolveUserIdentity(
+	repoRoot: string | undefined,
+	ghToken?: string,
+): Promise<UserIdentity> {
+	if (userIdentityCache) return userIdentityCache;
+
+	let identity: UserIdentity = { source: "none" };
+
+	// 1. gh CLI — richest, gives login + avatar in one shot.
+	try {
+		const gh = spawnSync("gh", ["api", "user"], {
+			encoding: "utf8",
+			stdio: ["ignore", "pipe", "ignore"],
+		});
+		if (gh.status === 0 && gh.stdout) {
+			const parsed = fromGitHubUser(
+				JSON.parse(gh.stdout) as GitHubUserResponse,
+				"gh",
+			);
+			if (parsed) identity = parsed;
+		}
+	} catch {
+		// gh missing or unauthed — fall through.
+	}
+
+	// 2. Token handed to the host.
+	if (identity.source === "none" && ghToken) {
+		const fromToken = await resolveGitHubUserFromToken(ghToken);
+		if (fromToken) identity = fromToken;
+	}
+
+	// Local git identity — read unconditionally so the modal can show it even
+	// when GitHub auth already drove the chip. Also serves as the floor source
+	// when no GitHub identity resolved.
+	const gitIdentity = readGitConfigIdentity(repoRoot);
+	if (identity.source === "none" && gitIdentity?.name) {
+		identity = { name: gitIdentity.name, source: "git" };
+	}
+	if (gitIdentity) identity.git = gitIdentity;
+
+	userIdentityCache = identity;
+	return identity;
+}
+
 function localRepoRootFromAnchor(anchor: string): string | undefined {
 	const prefix = "local/";
 	if (!anchor.startsWith(prefix)) return undefined;

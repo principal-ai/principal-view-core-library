@@ -34,7 +34,13 @@ import {
 import { parseTourOrThrow } from "@principal-ai/file-city-builder";
 import { readFileRemote as fetchRemoteSlice } from "./remote-files";
 import { handoffToRunning, startIpcServer, type LoadTrailMessage } from "./ipc";
-import { walkLibrary, resolveLocalRepoIdentity, type LibraryEntry } from "./library";
+import {
+	walkLibrary,
+	resolveLocalRepoIdentity,
+	resolveUserIdentity,
+	type LibraryEntry,
+	type UserIdentity,
+} from "./library";
 
 const LIBRARY_TAB_ID = "library";
 
@@ -367,6 +373,10 @@ type TrailViewerRPC = {
 					shareUrl?: string;
 				};
 			};
+			getUserIdentity: {
+				params: Record<string, never>;
+				response: UserIdentity;
+			};
 		};
 		messages: {
 			// Fired when the tab list or active tab changes (LOAD_TRAIL, close,
@@ -661,6 +671,18 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				// browser rather than replacing the viewer's view stack.
 				const ok = Utils.openExternal(url);
 				return { ok };
+			},
+			getUserIdentity: async () => {
+				// Source repoRoot/token from a trail tab (active first, else any) for
+				// the git/token fallbacks. The gh-CLI path needs neither.
+				const active = getTab(activeTabId);
+				const trailTab =
+					active && active.kind === "trail"
+						? active
+						: (Array.from(tabs.values()).find(
+								(t): t is TrailTabState => t.kind === "trail",
+						  ) ?? null);
+				return resolveUserIdentity(trailTab?.repoRoot, trailTab?.ghToken);
 			},
 			shareTrail: ({ tabId }) => {
 				const tab = getTab(tabId);
