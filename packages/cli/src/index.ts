@@ -30,8 +30,8 @@ import { createTourCommand } from './commands/tour.js';
 import { createTopicCommand } from './commands/topic.js';
 import { createInboxCommand } from './commands/inbox.js';
 
-// Version is injected at build time via package.json
-const VERSION = '0.28.1';
+// Keep in sync with package.json "version"
+const VERSION = '0.29.0';
 
 const program = new Command();
 

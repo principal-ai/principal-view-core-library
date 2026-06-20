@@ -1,21 +1,36 @@
 /**
- * Tour command — open a File City introduction tour (`*.tour.json`) in the
- * standalone viewer.
+ * Tour command — author, validate, analyze, and open File City introduction
+ * tours (`*.tour.json`).
  *
  * Tours are the sibling of trails: a trail pins markers to `file:line`, a tour
- * scopes steps to a `focusDirectory` + highlight layers. Because steps address
- * whole directories, the viewer always needs the working tree — so tours are
- * local-mode only (no fetch, no remote slice resolution, no token). This is the
- * lighter cousin of `trail view --file`, reusing the same viewer-launch + IPC
- * handoff plumbing.
+ * scopes steps to a `focusDirectory` + highlight layers. This command bundles
+ * the full tour lifecycle:
+ *
+ *   principal-ai tour init      scaffold a tour from a template
+ *   principal-ai tour validate  validate a tour against the spec
+ *   principal-ai tour stats      timing/length analysis vs. the guidelines
+ *   principal-ai tour view      open a tour in the standalone viewer
+ *
+ * `init`/`validate`/`stats` were folded in from the deprecated
+ * `@principal-ai/file-city-cli`; they delegate all schema work to
+ * `@principal-ai/file-city-builder` (`parseTour`, `IntroductionTour`). `view`
+ * is the lighter cousin of `trail view --file`, reusing the same viewer-launch
+ * + IPC handoff plumbing — and because steps address whole directories, tours
+ * are local-mode only (no fetch, no remote slice resolution, no token).
  */
 
 import { Command } from 'commander';
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { basename, resolve } from 'node:path';
+import chalk from 'chalk';
+import { parseTour, type IntroductionTour } from '@principal-ai/file-city-builder';
 import { handoffToRunning, type LoadTrailMessage } from '../lib/viewer-ipc.js';
 import { resolveViewerLaunch } from './trail.js';
+
+// ---------------------------------------------------------------------------
+// view
+// ---------------------------------------------------------------------------
 
 interface TourViewOptions {
   repoRoot?: string;
@@ -106,23 +121,500 @@ async function viewTour(file: string, options: TourViewOptions): Promise<void> {
   });
 }
 
+// ---------------------------------------------------------------------------
+// init
+// ---------------------------------------------------------------------------
+
+type TemplateType = 'minimal' | 'onboarding' | 'architecture';
+
+interface InitOptions {
+  template?: TemplateType;
+  output?: string;
+}
+
+function getMinimalTemplate(): IntroductionTour {
+  return {
+    id: 'quick-start',
+    title: 'Quick Start Guide',
+    description: 'Get started with the codebase in 5 minutes',
+    version: '1.0.0',
+    audience: 'New Users & AI Assistants',
+    steps: [
+      {
+        id: 'step-1-welcome',
+        title: 'Welcome!',
+        description: 'This is a simple introduction to the project structure.',
+        estimatedTime: 30,
+        // Last step must focus on repository root ("") for a complete overview.
+        focusDirectory: '',
+        colorMode: 'fileTypes',
+      },
+    ],
+  };
+}
+
+function getOnboardingTemplate(): IntroductionTour {
+  return {
+    id: 'codebase-onboarding',
+    title: 'Codebase Onboarding Tour',
+    description: 'Learn the structure and key components of this codebase',
+    version: '1.0.0',
+    audience: 'New Developers',
+    prerequisites: ['Basic understanding of the technology stack'],
+    steps: [
+      {
+        id: 'step-1-overview',
+        title: 'Project Overview',
+        description: 'Welcome to the codebase! This tour will guide you through the main areas.',
+        estimatedTime: 60,
+        colorMode: 'fileTypes',
+      },
+      {
+        id: 'step-2-core',
+        title: 'Core Components',
+        description: 'These are the main building blocks of the application.',
+        estimatedTime: 120,
+        focusDirectory: 'src',
+        highlightLayers: [
+          {
+            id: 'core-layer',
+            name: 'Core Files',
+            color: '#3b82f6',
+            items: [
+              { path: 'src/index.ts', type: 'file' },
+              { path: 'src/components', type: 'directory' },
+            ],
+            opacity: 0.7,
+            borderWidth: 2,
+          },
+        ],
+        colorMode: 'fileTypes',
+      },
+      {
+        id: 'step-3-configuration',
+        title: 'Configuration',
+        description: 'Configuration files that control the application behavior.',
+        estimatedTime: 60,
+        highlightFiles: ['package.json', 'tsconfig.json'],
+        // Last step focuses on repository root ("") for a complete overview.
+        focusDirectory: '',
+        colorMode: 'fileTypes',
+      },
+    ],
+    metadata: {
+      author: 'Your Name',
+      createdAt: new Date().toISOString(),
+      tags: ['onboarding', 'tutorial'],
+    },
+  };
+}
+
+function getArchitectureTemplate(): IntroductionTour {
+  return {
+    id: 'architecture-overview',
+    title: 'Architecture Overview',
+    description: 'Understand the architectural decisions and patterns in this codebase',
+    version: '1.0.0',
+    audience: 'Engineers & Architects',
+    steps: [
+      {
+        id: 'step-1-layered-architecture',
+        title: 'Layered Architecture',
+        description: 'The application follows a layered architecture pattern.',
+        estimatedTime: 120,
+        // Steps with highlightLayers must set focusDirectory; "" frames the
+        // whole tree so all three layers are visible at once.
+        focusDirectory: '',
+        highlightLayers: [
+          {
+            id: 'presentation-layer',
+            name: 'Presentation Layer',
+            color: '#10b981',
+            items: [{ path: 'src/components', type: 'directory' }],
+            opacity: 0.6,
+          },
+          {
+            id: 'business-layer',
+            name: 'Business Logic',
+            color: '#f59e0b',
+            items: [{ path: 'src/services', type: 'directory' }],
+            opacity: 0.6,
+          },
+          {
+            id: 'data-layer',
+            name: 'Data Layer',
+            color: '#ef4444',
+            items: [{ path: 'src/models', type: 'directory' }],
+            opacity: 0.6,
+          },
+        ],
+        colorMode: 'fileTypes',
+      },
+      {
+        id: 'step-2-patterns',
+        title: 'Design Patterns',
+        description: 'Key design patterns used throughout the codebase.',
+        estimatedTime: 180,
+        // Last step focuses on repository root ("") for a complete overview.
+        focusDirectory: '',
+        resources: [
+          {
+            title: 'Design Patterns Documentation',
+            url: 'https://refactoring.guru/design-patterns',
+            type: 'documentation',
+          },
+        ],
+        colorMode: 'fileTypes',
+      },
+    ],
+    metadata: {
+      author: 'Architecture Team',
+      createdAt: new Date().toISOString(),
+      tags: ['architecture', 'patterns', 'advanced'],
+    },
+  };
+}
+
+function getTemplate(templateType: TemplateType): IntroductionTour {
+  switch (templateType) {
+    case 'onboarding':
+      return getOnboardingTemplate();
+    case 'architecture':
+      return getArchitectureTemplate();
+    case 'minimal':
+    default:
+      return getMinimalTemplate();
+  }
+}
+
+function initTour(options: InitOptions): void {
+  const template = options.template || 'minimal';
+  const tour = getTemplate(template);
+
+  const outputFile = options.output || `${tour.id}.tour.json`;
+  const absolutePath = resolve(process.cwd(), outputFile);
+
+  try {
+    writeFileSync(absolutePath, JSON.stringify(tour, null, 2), 'utf-8');
+  } catch (error) {
+    console.error(chalk.red(`\n✗ ${error instanceof Error ? error.message : 'Unknown error'}\n`));
+    process.exit(1);
+  }
+
+  console.log(chalk.green(`✓ Tour file created: ${outputFile}`));
+  console.log(chalk.dim(`  Template: ${template}`));
+  console.log(chalk.dim(`  Tour ID: ${tour.id}`));
+  console.log(chalk.dim(`  Steps: ${tour.steps.length}`));
+  console.log('\nNext steps:');
+  console.log('  1. Edit the tour file to customize it for your codebase');
+  console.log(`  2. Validate the tour: principal-ai tour validate ${outputFile}`);
+  console.log('  3. Place the tour file in your repository root\n');
+}
+
+// ---------------------------------------------------------------------------
+// validate
+// ---------------------------------------------------------------------------
+
+interface ValidateOptions {
+  json?: boolean;
+}
+
+function validateTourFile(file: string, options: ValidateOptions): void {
+  const absolutePath = resolve(process.cwd(), file);
+  const fileName = basename(absolutePath);
+
+  let content: string;
+  try {
+    content = readFileSync(absolutePath, 'utf-8');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    if (options.json) {
+      console.log(JSON.stringify({ valid: false, error: message }, null, 2));
+    } else {
+      console.error(chalk.red(`\n✗ Error: ${message}\n`));
+    }
+    process.exit(1);
+  }
+
+  const result = parseTour(content);
+
+  if (options.json) {
+    console.log(
+      JSON.stringify(
+        {
+          file: fileName,
+          valid: result.success,
+          errors: result.errors?.map((e) => ({
+            message: e.message,
+            field: e.field,
+            value: e.value,
+          })),
+          tour: result.tour
+            ? {
+                id: result.tour.id,
+                title: result.tour.title,
+                version: result.tour.version,
+                stepCount: result.tour.steps.length,
+              }
+            : undefined,
+        },
+        null,
+        2,
+      ),
+    );
+    if (!result.success) process.exit(1);
+    return;
+  }
+
+  if (result.success && result.tour) {
+    console.log(chalk.green(`✓ Tour "${fileName}" is valid!`));
+    console.log(chalk.dim(`  Tour ID: ${result.tour.id}`));
+    console.log(chalk.dim(`  Title: ${result.tour.title}`));
+    console.log(chalk.dim(`  Version: ${result.tour.version}`));
+    console.log(chalk.dim(`  Steps: ${result.tour.steps.length}`));
+    if (result.tour.audience) {
+      console.log(chalk.dim(`  Audience: ${result.tour.audience}`));
+    }
+    return;
+  }
+
+  console.error(chalk.red(`\n✗ Tour "${fileName}" is invalid:\n`));
+  for (const e of result.errors ?? []) {
+    const where = e.field ? chalk.dim(` (${e.field})`) : '';
+    console.error(chalk.red(`  • ${e.message}`) + where);
+  }
+  console.error('');
+  process.exit(1);
+}
+
+// ---------------------------------------------------------------------------
+// stats
+// ---------------------------------------------------------------------------
+
+interface StatsOptions {
+  json?: boolean;
+}
+
+interface StepStats {
+  id: string;
+  title: string;
+  estimatedTime: number;
+  characterCount: number;
+  hasTime: boolean;
+}
+
+interface TourStats {
+  stepCount: number;
+  totalTime: number;
+  hasAllTimes: boolean;
+  totalCharacters: number;
+  steps: StepStats[];
+  recommendations: string[];
+}
+
+/**
+ * Estimate time for a step from character count. Guideline: 200-250 chars take
+ * ~20-30s — roughly 10 chars/second covering reading + viewing + interaction.
+ */
+function estimateStepTime(charCount: number): number {
+  return Math.round(charCount / 10 / 5) * 5;
+}
+
+function analyzeTour(tour: IntroductionTour): TourStats {
+  const steps: StepStats[] = tour.steps.map((step) => {
+    const characterCount = step.description.length;
+    const hasTime = step.estimatedTime !== undefined;
+    const estimatedTime = hasTime ? (step.estimatedTime as number) : estimateStepTime(characterCount);
+    return { id: step.id, title: step.title, estimatedTime, characterCount, hasTime };
+  });
+
+  const totalCharacters = steps.reduce((sum, s) => sum + s.characterCount, 0);
+  const totalTime = steps.reduce((sum, s) => sum + s.estimatedTime, 0);
+  const hasAllTimes = steps.every((s) => s.hasTime);
+  const stepCount = steps.length;
+
+  const recommendations: string[] = [];
+
+  for (const step of steps.filter((s) => s.characterCount > 300)) {
+    const excess = step.characterCount - 300;
+    recommendations.push(`Reduce "${step.title}" by ${excess} character${excess > 1 ? 's' : ''}`);
+  }
+
+  if (stepCount > 8) {
+    recommendations.push(`Reduce step count from ${stepCount} to 6-8 steps (consolidate related concepts)`);
+  } else if (stepCount > 6) {
+    recommendations.push(`Consider reducing from ${stepCount} to 4-6 steps for ideal 2-minute duration`);
+  }
+
+  if (totalTime > 180) {
+    recommendations.push(`Reduce total duration by ~${Math.round((totalTime - 180) / 60)}m to meet 3-minute maximum`);
+  } else if (totalTime > 120) {
+    recommendations.push(`Consider reducing duration by ~${Math.round((totalTime - 120) / 60)}m to meet 2-minute ideal`);
+  }
+
+  if (totalCharacters > 2000) {
+    recommendations.push(`Reduce total text by ${totalCharacters - 2000} characters to meet 2,000 char limit`);
+  } else if (totalCharacters > 1500) {
+    recommendations.push(`Consider reducing text by ${totalCharacters - 1500} characters to meet ideal range`);
+  }
+
+  if (!hasAllTimes) {
+    recommendations.push('Add `estimatedTime` field to all steps for accurate tracking');
+  }
+
+  return { stepCount, totalTime, hasAllTimes, totalCharacters, steps, recommendations };
+}
+
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return mins === 0 ? `${secs}s` : `${mins}m ${secs}s`;
+}
+
+function statusIndicator(value: number, idealMax: number, acceptableMax: number): string {
+  if (value <= idealMax) return chalk.green('✓');
+  if (value <= acceptableMax) return chalk.yellow('⚠');
+  return chalk.red('✗');
+}
+
+function printStats(tour: IntroductionTour, stats: TourStats): void {
+  console.log('');
+  console.log(chalk.bold.cyan(`Tour Statistics: "${tour.title}"`));
+  console.log(chalk.cyan('━'.repeat(60)));
+  console.log('');
+
+  console.log(chalk.bold('Steps:              ') + `${stats.stepCount} step${stats.stepCount !== 1 ? 's' : ''}`);
+  const timeStr = stats.hasAllTimes ? formatTime(stats.totalTime) : `${formatTime(stats.totalTime)} (estimated)`;
+  console.log(chalk.bold('Total duration:     ') + timeStr);
+  console.log(chalk.bold('Total description:  ') + `${stats.totalCharacters} characters`);
+  console.log('');
+
+  console.log(chalk.bold('Target Guidelines:'));
+  console.log(`  ${statusIndicator(stats.stepCount, 6, 8)} Steps: ${stats.stepCount} (4-6 ideal, 6-8 acceptable, >8 over)`);
+  console.log(`  ${statusIndicator(stats.totalTime, 120, 180)} Duration: ${formatTime(stats.totalTime)} (2min ideal, 3min max)`);
+  console.log(`  ${statusIndicator(stats.totalCharacters, 1500, 2000)} Characters: ${stats.totalCharacters} (800-1,500 ideal, 2,000 max)`);
+  console.log('');
+
+  console.log(chalk.bold('Per-Step Breakdown:'));
+  stats.steps.forEach((step, index) => {
+    const timeStr = step.hasTime ? formatTime(step.estimatedTime) : `${formatTime(step.estimatedTime)} est`;
+    const charStatus =
+      step.characterCount > 300
+        ? chalk.red('✗ Exceeds 300 char limit')
+        : step.characterCount >= 280
+          ? chalk.yellow('⚠ Approaching limit')
+          : chalk.green('✓');
+    console.log(
+      `  ${(index + 1).toString().padStart(2)}. ${step.title.padEnd(30)} (${timeStr.padEnd(7)}, ${step.characterCount} chars) ${charStatus}`,
+    );
+  });
+  console.log('');
+
+  if (!stats.hasAllTimes) {
+    console.log(chalk.yellow('⚠ Missing `estimatedTime` field on some steps (values estimated)'));
+    console.log('');
+  }
+
+  if (stats.recommendations.length > 0) {
+    console.log(chalk.bold('Recommendations:'));
+    for (const rec of stats.recommendations) console.log(`  • ${rec}`);
+    console.log('');
+  } else {
+    console.log(chalk.green.bold('✓ Tour meets all guidelines!'));
+    console.log('');
+  }
+}
+
+function statsTourFile(file: string, options: StatsOptions): void {
+  const absolutePath = resolve(process.cwd(), file);
+  const fileName = basename(absolutePath);
+
+  let content: string;
+  try {
+    content = readFileSync(absolutePath, 'utf-8');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    if (options.json) console.log(JSON.stringify({ error: message }, null, 2));
+    else console.error(chalk.red(`\n✗ Error: ${message}\n`));
+    process.exit(1);
+  }
+
+  const result = parseTour(content);
+  if (!result.success || !result.tour) {
+    console.error(chalk.red('\n✗ Cannot analyze tour — validation failed. Run `tour validate` first.\n'));
+    process.exit(1);
+  }
+
+  const stats = analyzeTour(result.tour);
+
+  if (options.json) {
+    console.log(
+      JSON.stringify(
+        {
+          file: fileName,
+          tour: { id: result.tour.id, title: result.tour.title, version: result.tour.version },
+          stats: {
+            stepCount: stats.stepCount,
+            totalTime: stats.totalTime,
+            totalCharacters: stats.totalCharacters,
+            hasAllTimes: stats.hasAllTimes,
+            steps: stats.steps,
+            recommendations: stats.recommendations,
+          },
+          meetsGuidelines: stats.recommendations.length === 0,
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+
+  printStats(result.tour, stats);
+}
+
+// ---------------------------------------------------------------------------
+// command wiring
+// ---------------------------------------------------------------------------
+
 export function createTourCommand(): Command {
   const command = new Command('tour');
 
-  command.description('Open File City introduction tours in the standalone viewer');
+  command.description('Author, validate, analyze, and open File City introduction tours');
+
+  command
+    .command('init')
+    .description('Scaffold a new *.tour.json from a template')
+    .option('-t, --template <type>', 'Template type (minimal, onboarding, architecture)', 'minimal')
+    .option('-o, --output <file>', 'Output filename')
+    .action((options: InitOptions) => {
+      initTour(options);
+    });
+
+  command
+    .command('validate')
+    .description('Validate a *.tour.json against the spec')
+    .argument('<file>', 'Path to a *.tour.json file')
+    .option('-j, --json', 'Output results as JSON')
+    .action((file: string, options: ValidateOptions) => {
+      validateTourFile(file, options);
+    });
+
+  command
+    .command('stats')
+    .description('Show tour timing/length analysis vs. the authoring guidelines')
+    .argument('<file>', 'Path to a *.tour.json file')
+    .option('-j, --json', 'Output results as JSON')
+    .action((file: string, options: StatsOptions) => {
+      statsTourFile(file, options);
+    });
 
   command
     .command('view')
     .description('Open a *.tour.json in the standalone viewer (local mode)')
     .argument('<file>', 'Path to a *.tour.json file')
-    .option(
-      '--repo-root <path>',
-      'Working tree the tour is authored against (default: cwd)',
-    )
-    .option(
-      '--viewer-dir <path>',
-      'Path to the @principal-ai/trail-viewer package (overrides TRAIL_VIEWER_DIR)',
-    )
+    .option('--repo-root <path>', 'Working tree the tour is authored against (default: cwd)')
+    .option('--viewer-dir <path>', 'Path to the @principal-ai/trail-viewer package (overrides TRAIL_VIEWER_DIR)')
     .action(async (file: string, options: TourViewOptions) => {
       await viewTour(file, options);
     });
