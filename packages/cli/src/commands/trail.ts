@@ -24,7 +24,12 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
 // some wrapper script has rewritten argv.
 const cliRequire = createRequire(process.argv[1] ?? `${process.cwd()}/`);
 
-const BASE_URL = 'https://app.principal-ade.com';
+// Shared with the `tour` command (see `./tour.ts`) — both target the same
+// web-ade backend with the same local GitHub-token auth. `PRINCIPAL_ADE_BASE_URL`
+// overrides the default for pointing at a local dev server.
+export const BASE_URL =
+  process.env.PRINCIPAL_ADE_BASE_URL?.replace(/\/+$/, '') ||
+  'https://app.principal-ade.com';
 const RESERVED_TRAIL_IDS = new Set(['publish', 'list']);
 
 function parseTrailId(input: string): string {
@@ -68,11 +73,11 @@ function resolveTokenViaGitCredential(): string | null {
   return null;
 }
 
-function resolveToken(): string | null {
+export function resolveToken(): string | null {
   return resolveTokenViaGh() ?? resolveTokenViaGitCredential();
 }
 
-function exitWithTokenError(): never {
+export function exitWithTokenError(): never {
   process.stderr.write(
     'Could not resolve a GitHub token. Run `gh auth login`, or configure a git credential helper for github.com.\n',
   );
@@ -178,7 +183,7 @@ function resolveOwnerRepo(
   return { owner, repo };
 }
 
-async function describeHttpError(response: Response): Promise<string> {
+export async function describeHttpError(response: Response): Promise<string> {
   let serverMessage = '';
   let code = '';
   try {
@@ -328,7 +333,7 @@ interface ResolvedRepo {
   authoredAtSha?: string;
 }
 
-function gitRemoteUrl(cwd: string): string | null {
+export function gitRemoteUrl(cwd: string): string | null {
   const result = spawnSync('git', ['-C', cwd, 'remote', 'get-url', 'origin'], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'ignore'],
@@ -337,7 +342,7 @@ function gitRemoteUrl(cwd: string): string | null {
   return result.stdout.trim() || null;
 }
 
-function ownerRepoFromGitRemote(remoteUrl: string): { owner: string; name: string } | null {
+export function ownerRepoFromGitRemote(remoteUrl: string): { owner: string; name: string } | null {
   const match = remoteUrl.match(/[:/]([^/:]+)\/([^/]+?)(?:\.git)?\/?$/);
   if (!match) return null;
   return { owner: match[1]!, name: match[2]! };

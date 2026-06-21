@@ -22,11 +22,40 @@
 import { Command } from 'commander';
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { basename, join, resolve } from 'node:path';
 import chalk from 'chalk';
-import { parseTour, type IntroductionTour } from '@principal-ai/file-city-builder';
+import { parseTour, type IntroductionTour, type TourRepoRef } from '@principal-ai/file-city-builder';
 import { handoffToRunning, type LoadTrailMessage } from '../lib/viewer-ipc.js';
-import { resolveViewerLaunch } from './trail.js';
+import * as tourCache from '../lib/tour-cache.js';
+import {
+  BASE_URL,
+  describeHttpError,
+  exitWithTokenError,
+  gitRemoteUrl,
+  ownerRepoFromGitRemote,
+  resolveToken,
+  resolveViewerLaunch,
+} from './trail.js';
+
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
+/**
+ * Extract a tour id from a bare id or a web-ade `/tour/<id>` URL. Falls back to
+ * the input unchanged when it isn't a URL.
+ */
+function parseTourId(input: string): string {
+  try {
+    const url = new URL(input);
+    const match = url.pathname.match(/\/tour\/([^/]+)\/?$/);
+    if (match) return match[1];
+    const segments = url.pathname.split('/').filter(Boolean);
+    if (segments.length) return segments[segments.length - 1];
+  } catch {
+    // not a URL — treat as a bare id
+  }
+  return input;
+}
 
 // ---------------------------------------------------------------------------
 // view
@@ -35,6 +64,197 @@ import { resolveViewerLaunch } from './trail.js';
 interface TourViewOptions {
   repoRoot?: string;
   viewerDir?: string;
+  file?: string;
+  refresh?: boolean;
+}
+
+interface TourOwnerRepoOptions {
+  owner?: string;
+  repo?: string;
+  purl?: string;
+}
+
+/**
+ * Resolve the `{ owner, repo }` a tour publishes under. Unlike trails, a tour
+ * document carries no `repos[]`, so we look at explicit flags first, then fall
+ * back to the cwd's `origin` git remote. Exits with guidance when neither
+ * yields an owner/repo.
+ */
+function resolveTourOwnerRepo(options: TourOwnerRepoOptions): {
+  owner: string;
+  repo: string;
+} {
+  if (options.purl) {
+    const match = options.purl.match(/^pkg:(?:github|gitlab|bitbucket)\/([^/]+)\/([^/@]+)/);
+    if (!match) {
+      process.stderr.write(
+        `--purl is not a valid github/gitlab/bitbucket Purl: ${options.purl}\n`,
+      );
+      process.exit(2);
+    }
+    return { owner: options.owner ?? match[1], repo: options.repo ?? match[2] };
+  }
+
+  if (options.owner && options.repo) {
+    return { owner: options.owner, repo: options.repo };
+  }
+
+  const remote = gitRemoteUrl(process.cwd());
+  const fromRemote = remote ? ownerRepoFromGitRemote(remote) : null;
+  const owner = options.owner ?? fromRemote?.owner;
+  const repo = options.repo ?? fromRemote?.name;
+
+  if (!owner || !repo) {
+    process.stderr.write(
+      'Could not determine owner/repo. Pass --owner and --repo (or --purl), or run inside a clone with an `origin` remote.\n',
+    );
+    process.exit(2);
+  }
+  return { owner, repo };
+}
+
+/** Build a tour's primary repo ref from resolved owner/repo. */
+function tourRepoRefFor(owner: string, repo: string): TourRepoRef {
+  return {
+    id: `pkg:github/${owner.toLowerCase()}/${repo}`,
+    name: repo,
+    remote: { host: 'github', owner, name: repo },
+  };
+}
+
+/** Fetch + cache a tour by id. Exits the process on any error. */
+async function fetchAndCacheTour(
+  id: string,
+): Promise<{ body: string; cachePath: string }> {
+  const token = resolveToken();
+  if (!token) exitWithTokenError();
+
+  const url = `${BASE_URL}/api/tours/by-id/${encodeURIComponent(id)}`;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    });
+  } catch (err) {
+    process.stderr.write(`Network error fetching tour: ${(err as Error).message}\n`);
+    process.exit(1);
+  }
+
+  if (!response.ok) {
+    process.stderr.write(`${await describeHttpError(response)}\n`);
+    process.exit(1);
+  }
+
+  const body = await response.text();
+  let cachePath: string;
+  try {
+    cachePath = tourCache.write(id, body).path;
+  } catch {
+    // Cache write failed — continue without a cache hit for this call.
+    cachePath = '';
+  }
+  return { body, cachePath };
+}
+
+async function fetchTour(input: string): Promise<void> {
+  const id = parseTourId(input);
+  if (!id) {
+    process.stderr.write('Invalid tour id\n');
+    process.exit(2);
+  }
+  const { body } = await fetchAndCacheTour(id);
+  process.stdout.write(body);
+  if (!body.endsWith('\n')) process.stdout.write('\n');
+}
+
+/**
+ * Publish a tour document to web-ade. The server mints the share id and pins
+ * audio coordinates; we print the resulting share URL to stdout.
+ */
+async function publishTour(
+  file: string | undefined,
+  options: TourOwnerRepoOptions,
+): Promise<void> {
+  const path = file && file !== '-' ? resolve(process.cwd(), file) : undefined;
+  if (!path) {
+    process.stderr.write('Pass the path to a *.tour.json file to publish.\n');
+    process.exit(2);
+  }
+  if (!existsSync(path)) {
+    process.stderr.write(`Tour file not found: ${path}\n`);
+    process.exit(2);
+  }
+
+  let tour: unknown;
+  try {
+    tour = JSON.parse(readFileSync(path, 'utf8'));
+  } catch (err) {
+    process.stderr.write(`Tour file is not valid JSON: ${(err as Error).message}\n`);
+    process.exit(1);
+  }
+
+  // Resolve the publish target and stamp it as the tour's primary repo. Tours
+  // require `repos[]`, but an author's file usually omits it — so we derive it
+  // from flags / the git remote and inject it (preserving any extra repos the
+  // author declared for a multi-repo tour) before validating. The server
+  // re-stamps repos[0] authoritatively; this keeps local validation honest and
+  // the published artifact consistent.
+  const { owner, repo } = resolveTourOwnerRepo(options);
+  const existingRepos =
+    tour && typeof tour === 'object' && Array.isArray((tour as { repos?: unknown }).repos)
+      ? (tour as { repos: TourRepoRef[] }).repos.slice(1)
+      : [];
+  const stampedTour = {
+    ...(tour as Record<string, unknown>),
+    repos: [tourRepoRefFor(owner, repo), ...existingRepos],
+  };
+
+  // Validate locally before the round-trip so authors get the spec errors here
+  // rather than as a 400 from the server.
+  const parsed = parseTour(JSON.stringify(stampedTour));
+  if (!parsed.success || !parsed.tour) {
+    const detail =
+      parsed.errors?.map((e) => e.message).join(', ') || 'unknown error';
+    process.stderr.write(`Invalid tour: ${detail}\n`);
+    process.exit(2);
+  }
+
+  const token = resolveToken();
+  if (!token) exitWithTokenError();
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `${BASE_URL}/api/tours/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ owner, repo, tour: parsed.tour }),
+      },
+    );
+  } catch (err) {
+    process.stderr.write(`Network error publishing tour: ${(err as Error).message}\n`);
+    process.exit(1);
+  }
+
+  if (!response.ok) {
+    process.stderr.write(`${await describeHttpError(response)}\n`);
+    process.exit(1);
+  }
+
+  const resBody = (await response.json()) as { id?: string; url?: string };
+  if (!resBody.url) {
+    process.stderr.write('Server response missing share URL\n');
+    process.exit(1);
+  }
+  const shareUrl = resBody.url.startsWith('http')
+    ? resBody.url
+    : `${BASE_URL}${resBody.url}`;
+  process.stdout.write(`${shareUrl}\n`);
 }
 
 /**
@@ -70,13 +290,82 @@ function assertLooksLikeTour(absolute: string): void {
   }
 }
 
-async function viewTour(file: string, options: TourViewOptions): Promise<void> {
-  const absolute = resolve(process.cwd(), file);
-  if (!existsSync(absolute)) {
-    process.stderr.write(`Tour file not found: ${absolute}\n`);
+/**
+ * Materialize a viewer-ready *.tour.json from a store id. The by-id response is
+ * a `{ owner, repo, entry, payload }` wrapper where `payload` is the tour; we
+ * pull it out and write it to a temp `*.tour.json` the viewer can load. The
+ * fetched wrapper is still cached verbatim by `fetchAndCacheTour` for `fetch`.
+ */
+async function resolveTourFileFromId(
+  input: string,
+  refresh: boolean,
+): Promise<string> {
+  const id = parseTourId(input);
+  if (!id) {
+    process.stderr.write('Invalid tour id\n');
     process.exit(2);
   }
-  assertLooksLikeTour(absolute);
+
+  const cached = refresh ? null : tourCache.read(id, ONE_HOUR_MS);
+  const body = cached ? cached.body : (await fetchAndCacheTour(id)).body;
+
+  let wrapper: unknown;
+  try {
+    wrapper = JSON.parse(body);
+  } catch (err) {
+    process.stderr.write(`Tour body is not valid JSON: ${(err as Error).message}\n`);
+    process.exit(1);
+  }
+
+  // The by-id response wraps the tour as `{ owner, repo, entry, payload }`,
+  // where `payload` IS the tour. A bare local file is already the tour. Accept
+  // either shape.
+  const tour =
+    typeof wrapper === 'object' && wrapper !== null
+      ? ((wrapper as { payload?: unknown }).payload ?? wrapper)
+      : wrapper;
+
+  const viewerPath = join(
+    tmpdir(),
+    `principal-tour-${id.replace(/[^A-Za-z0-9._-]/g, '_')}.tour.json`,
+  );
+  writeFileSync(viewerPath, JSON.stringify(tour), 'utf8');
+  assertLooksLikeTour(viewerPath);
+  return viewerPath;
+}
+
+async function viewTour(
+  input: string | undefined,
+  options: TourViewOptions,
+): Promise<void> {
+  if (!input && !options.file) {
+    process.stderr.write('Pass a *.tour.json path/id-or-url, or --file <path>.\n');
+    process.exit(2);
+  }
+  if (input && options.file) {
+    process.stderr.write('Pass either a path/id-or-url OR --file, not both.\n');
+    process.exit(2);
+  }
+
+  let absolute: string;
+  if (options.file) {
+    absolute = resolve(process.cwd(), options.file);
+    if (!existsSync(absolute)) {
+      process.stderr.write(`Tour file not found: ${absolute}\n`);
+      process.exit(2);
+    }
+    assertLooksLikeTour(absolute);
+  } else {
+    // A positional arg that resolves to an existing file is a local tour; any
+    // other value is treated as a store id/url and fetched.
+    const maybePath = resolve(process.cwd(), input as string);
+    if (existsSync(maybePath)) {
+      absolute = maybePath;
+      assertLooksLikeTour(absolute);
+    } else {
+      absolute = await resolveTourFileFromId(input as string, options.refresh ?? false);
+    }
+  }
 
   // Default the repo root to cwd. The user sees "no directory matched" framing
   // in the viewer if cwd isn't actually the repo the tour was authored against,
@@ -132,7 +421,7 @@ interface InitOptions {
   output?: string;
 }
 
-function getMinimalTemplate(): IntroductionTour {
+function getMinimalTemplate(): Omit<IntroductionTour, 'repos'> {
   return {
     id: 'quick-start',
     title: 'Quick Start Guide',
@@ -153,7 +442,7 @@ function getMinimalTemplate(): IntroductionTour {
   };
 }
 
-function getOnboardingTemplate(): IntroductionTour {
+function getOnboardingTemplate(): Omit<IntroductionTour, 'repos'> {
   return {
     id: 'codebase-onboarding',
     title: 'Codebase Onboarding Tour',
@@ -209,7 +498,7 @@ function getOnboardingTemplate(): IntroductionTour {
   };
 }
 
-function getArchitectureTemplate(): IntroductionTour {
+function getArchitectureTemplate(): Omit<IntroductionTour, 'repos'> {
   return {
     id: 'architecture-overview',
     title: 'Architecture Overview',
@@ -275,7 +564,7 @@ function getArchitectureTemplate(): IntroductionTour {
   };
 }
 
-function getTemplate(templateType: TemplateType): IntroductionTour {
+function getTemplate(templateType: TemplateType): Omit<IntroductionTour, 'repos'> {
   switch (templateType) {
     case 'onboarding':
       return getOnboardingTemplate();
@@ -289,7 +578,22 @@ function getTemplate(templateType: TemplateType): IntroductionTour {
 
 function initTour(options: InitOptions): void {
   const template = options.template || 'minimal';
-  const tour = getTemplate(template);
+  const base = getTemplate(template);
+
+  // Tours require `repos[]`. Anchor to the cwd git remote when there is one;
+  // otherwise scaffold an obvious placeholder for the author to edit.
+  const remote = gitRemoteUrl(process.cwd());
+  const fromRemote = remote ? ownerRepoFromGitRemote(remote) : null;
+  const repos: TourRepoRef[] = fromRemote
+    ? [tourRepoRefFor(fromRemote.owner, fromRemote.name)]
+    : [
+        {
+          id: 'pkg:github/OWNER/REPO',
+          name: 'REPO',
+          remote: { host: 'github', owner: 'OWNER', name: 'REPO' },
+        },
+      ];
+  const tour: IntroductionTour = { ...base, repos };
 
   const outputFile = options.output || `${tour.id}.tour.json`;
   const absolutePath = resolve(process.cwd(), outputFile);
@@ -305,10 +609,18 @@ function initTour(options: InitOptions): void {
   console.log(chalk.dim(`  Template: ${template}`));
   console.log(chalk.dim(`  Tour ID: ${tour.id}`));
   console.log(chalk.dim(`  Steps: ${tour.steps.length}`));
+  console.log(chalk.dim(`  Repo: ${repos[0]!.id}`));
+  if (!fromRemote) {
+    console.log(
+      chalk.yellow(
+        '  ⚠ No git remote found — edit `repos[0]` to point at the real repository.',
+      ),
+    );
+  }
   console.log('\nNext steps:');
   console.log('  1. Edit the tour file to customize it for your codebase');
   console.log(`  2. Validate the tour: principal-ai tour validate ${outputFile}`);
-  console.log('  3. Place the tour file in your repository root\n');
+  console.log(`  3. Publish it: principal-ai tour publish ${outputFile}\n`);
 }
 
 // ---------------------------------------------------------------------------
@@ -611,12 +923,33 @@ export function createTourCommand(): Command {
 
   command
     .command('view')
-    .description('Open a *.tour.json in the standalone viewer (local mode)')
-    .argument('<file>', 'Path to a *.tour.json file')
+    .description('Open a tour in the standalone viewer (local mode): a *.tour.json path, or a store id/url')
+    .argument('[file-or-id]', 'Path to a *.tour.json file, a tour id, or a /tour/<id> URL (omit when using --file)')
+    .option('--file <path>', 'Open a local *.tour.json file directly (skips fetch + cache)')
     .option('--repo-root <path>', 'Working tree the tour is authored against (default: cwd)')
+    .option('--refresh', 'Bypass the tour JSON cache and re-fetch (id/url only)')
     .option('--viewer-dir <path>', 'Path to the @principal-ai/trail-viewer package (overrides TRAIL_VIEWER_DIR)')
-    .action(async (file: string, options: TourViewOptions) => {
-      await viewTour(file, options);
+    .action(async (input: string | undefined, options: TourViewOptions) => {
+      await viewTour(input, options);
+    });
+
+  command
+    .command('fetch')
+    .description('Fetch a tour by id/url from web-ade and print its JSON (also caches locally)')
+    .argument('<id-or-url>', 'Tour id, or full https://app.principal-ade.com/tour/<id> URL')
+    .action(async (input: string) => {
+      await fetchTour(input);
+    });
+
+  command
+    .command('publish')
+    .description('Publish a *.tour.json to web-ade')
+    .argument('<file>', 'Path to a *.tour.json file')
+    .option('--owner <owner>', 'GitHub owner to publish under (overrides the git remote)')
+    .option('--repo <repo>', 'GitHub repo to publish under (overrides the git remote)')
+    .option('--purl <purl>', 'Anchor by Purl (e.g. pkg:github/owner/repo); overrides --owner/--repo derivation')
+    .action(async (file: string, options: TourOwnerRepoOptions) => {
+      await publishTour(file, options);
     });
 
   return command;
