@@ -6,7 +6,7 @@
       "dependencies": {
         "@principal-ai/alexandria-core-library": "^0.4.0",
         "@principal-ai/codebase-composition": "^0.2.57",
-        "@principal-ai/file-city-builder": "^0.4.11",
+        "@principal-ai/file-city-builder": "^0.5.0",
         "@principal-ai/principal-view-core": "^0.28.6",
         "@principal-ai/repository-abstraction": "^0.5.7",
         "chalk": "5.6.2",
@@ -23,7 +23,7 @@
         "typescript": "5.7.2",
       },
       "optionalDependencies": {
-        "@principal-ai/trail-viewer": "^0.4.1",
+        "@principal-ai/trail-viewer": "^0.5.0",
       },
     },
   },
@@ -114,7 +114,7 @@
 
     "@principal-ai/codebase-quality-lenses": ["@principal-ai/codebase-quality-lenses@0.1.66", "", { "peerDependencies": { "@a24z/alexandria-cli": ">=0.2.0", "@principal-ai/principal-view-core": ">=0.28.0" }, "optionalPeers": ["@a24z/alexandria-cli", "@principal-ai/principal-view-core"] }, "sha512-1x8Um/AN4/07dW19rv+g5xBtzc5HTqN0guSNw7Au+oICmAceixd0kPQ0AQ1GSnCmWSu9m53cUFMR6c/YS1p5rA=="],
 
-    "@principal-ai/file-city-builder": ["@principal-ai/file-city-builder@0.4.11", "", { "dependencies": { "@principal-ai/repository-abstraction": "^0.2.4", "d3-hierarchy": "^3.1.2", "minimatch": "^10.0.3", "picomatch": "^4.0.3" } }, "sha512-U25e7+WCugC0hIAQ1uuKLj+71ZNFjTIffm9dCEXl/9Y4/pChySECGtyjb8TC86EEpqGkqwlpAmYyeLu2tvTM/g=="],
+    "@principal-ai/file-city-builder": ["@principal-ai/file-city-builder@0.5.0", "", { "dependencies": { "@principal-ai/repository-abstraction": "^0.2.4", "d3-hierarchy": "^3.1.2", "minimatch": "^10.0.3", "picomatch": "^4.0.3" } }, "sha512-P/7xtC/ZZ+LiHxBpGRE76wybfi8Zy4ib0coa9L+u3z57ggLhajt7/JXwpd1P6xH0owW1Q4xjHdLleOXdipe+3g=="],
 
     "@principal-ai/principal-view-core": ["@principal-ai/principal-view-core@0.28.6", "", { "dependencies": { "@opentelemetry/api": "1.9.0", "@opentelemetry/exporter-trace-otlp-http": "0.208.0", "@opentelemetry/otlp-transformer": "^0.211.0", "@opentelemetry/resources": "2.2.0", "@opentelemetry/sdk-trace-base": "2.2.0", "@opentelemetry/semantic-conventions": "1.38.0", "@principal-ai/repository-abstraction": "^0.5.7", "date-fns": "3.0.0", "handlebars": "^4.7.8", "js-yaml": "4.1.0", "zod": "3.22.0" }, "peerDependencies": { "@principal-ai/codebase-composition": "^0.2.43" } }, "sha512-ApDr3hM37/GcfNoe4AdnVgK/osF5jFbB2A7605opMfEIw3LPApF+oaQn2FW9r2t3X7PZZ++yq+fE7m766PaPmA=="],
 
@@ -122,7 +122,7 @@
 
     "@principal-ai/repository-abstraction": ["@principal-ai/repository-abstraction@0.5.7", "", { "peerDependencies": { "globby": "^16.1.0" }, "optionalPeers": ["globby"] }, "sha512-2LZ4HnaD6PKFXmM2Kwq1kqLKguna/EpHaqFI7tTqMtiwLkVCNMBPJFRMcfqihbAj66DNRiMrbMJ+E154kmFF4A=="],
 
-    "@principal-ai/trail-viewer": ["@principal-ai/trail-viewer@0.4.1", "", { "os": "darwin", "cpu": "arm64", "bin": { "principal-trail-viewer": "bin/trail-viewer.cjs" } }, "sha512-1SYXLdaSR3wLA0VLAl+asVY+xAX0V9chT9SG1JrpeUPuUzE1ATZ3INKY/HZyGBJY8IipgU4NOuVfmwQEmE+PXg=="],
+    "@principal-ai/trail-viewer": ["@principal-ai/trail-viewer@0.5.0", "", { "os": "darwin", "cpu": "arm64", "bin": { "principal-trail-viewer": "bin/trail-viewer.cjs" } }, "sha512-oV/9Y2Swq0/lyExlbVThV8TvJjHiaq6BjMxCtVTvxx+OerirKFYzagHVFk94cZp76u2/dFzAADIlb0WzOj4HnA=="],
 
     "@protobufjs/aspromise": ["@protobufjs/aspromise@1.1.2", "", {}, "sha512-j+gKExEuLmKwvz3OgROXtrJ2UG2x8Ch2YZUxahh+s1F2HZ+wAceUNLkvy6zKCPVRkU++ZWQrdxsUeQXmcg4uoQ=="],
 
