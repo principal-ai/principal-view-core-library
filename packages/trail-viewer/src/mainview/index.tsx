@@ -87,6 +87,10 @@ interface TabFullState {
 }
 
 interface LibraryEntry {
+	/** "trail" or a File City introduction "tour". Drives the row badge and how
+	 *  the row opens (tours are always local-mode). Mirrors `LibraryEntry.kind`
+	 *  in bun/library.ts. */
+	kind: "trail" | "tour";
 	trailFile: string;
 	id: string;
 	title: string;
@@ -94,7 +98,8 @@ interface LibraryEntry {
 	owner?: string;
 	repo?: string;
 	localRepoRoot?: string;
-	/** True once the trail has been published to web-ade (carries a `share.id`). */
+	/** True once the trail has been published to web-ade (carries a `share.id`).
+	 *  Always false for tours, which badge as "Tour" instead of Draft/Published. */
 	published: boolean;
 	mtimeMs: number;
 }
@@ -1829,11 +1834,21 @@ function LibraryView() {
 	}, [refresh]);
 
 	const onOpen = useCallback(async (entry: LibraryEntry) => {
+		// Tours can only render against a local working tree (they reference whole
+		// directories, not a marker-derived remote file set), so always open them
+		// in local mode. We don't pass a repoRoot — the host resolves the tour's
+		// repo from the Alexandria registry, and surfaces a clear message if it
+		// can't find a local checkout.
+		const localOpen =
+			entry.kind === "tour" || entry.localRepoRoot
+				? {
+						mode: "local" as const,
+						...(entry.localRepoRoot ? { repoRoot: entry.localRepoRoot } : {}),
+					}
+				: {};
 		await electrobun.rpc!.request.openTrailFromCache({
 			trailFile: entry.trailFile,
-			...(entry.localRepoRoot
-				? { mode: "local", repoRoot: entry.localRepoRoot }
-				: {}),
+			...localOpen,
 		});
 	}, []);
 
@@ -1846,8 +1861,8 @@ function LibraryView() {
 	if (entries.length === 0) {
 		return (
 			<CenteredMessage
-				title="No trails in your cache yet"
-				detail="Run `principal-ai trail view <id>` to fetch one, or `--file <path>` to open a local JSON."
+				title="Nothing in your cache yet"
+				detail="Run `principal-ai trail view <id>` or `tour view <id>` to fetch one, or `--file <path>` to open a local JSON."
 			/>
 		);
 	}
@@ -1893,19 +1908,28 @@ function LibraryView() {
 								textTransform: "uppercase",
 								padding: "2px 7px",
 								borderRadius: 999,
-								...(entry.published
+								...(entry.kind === "tour"
 									? {
-											background: theme.colors.accent ?? theme.colors.primary,
+											background: theme.colors.primary,
 											color: theme.colors.background,
 										}
-									: {
-											background: "transparent",
-											color: theme.colors.textMuted ?? theme.colors.textSecondary,
-											border: `1px solid ${theme.colors.border ?? "#333"}`,
-										}),
+									: entry.published
+										? {
+												background: theme.colors.accent ?? theme.colors.primary,
+												color: theme.colors.background,
+											}
+										: {
+												background: "transparent",
+												color: theme.colors.textMuted ?? theme.colors.textSecondary,
+												border: `1px solid ${theme.colors.border ?? "#333"}`,
+											}),
 							}}
 						>
-							{entry.published ? "Published" : "Draft"}
+							{entry.kind === "tour"
+								? "Tour"
+								: entry.published
+									? "Published"
+									: "Draft"}
 						</span>
 						<div
 							style={{

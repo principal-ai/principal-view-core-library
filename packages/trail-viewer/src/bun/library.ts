@@ -20,6 +20,10 @@ import {
 } from "@principal-ai/alexandria-core-library";
 
 export interface LibraryEntry {
+	/** Whether this row is a trail (`markers`/`views`) or a File City
+	 *  introduction tour (`steps` + `focusDirectory`). Drives the badge in the
+	 *  library list and how the row opens (tours are always local-mode). */
+	kind: "trail" | "tour";
 	trailFile: string;
 	id: string;
 	title: string;
@@ -111,6 +115,7 @@ async function collectFlat(
 				repo = repo ?? identity.repo;
 			}
 			out.push({
+				kind: "trail",
 				trailFile,
 				id,
 				title: meta.title ?? id,
@@ -125,6 +130,96 @@ async function collectFlat(
 			// best-effort: a malformed file shouldn't break the whole listing
 		}
 	}
+}
+
+const TOURS_ROOT = join(homedir(), ".principal", "tours", "by-id");
+
+/**
+ * Walks the tour JSON cache (`~/.principal/tours/by-id/<id>.json`) to surface
+ * cached File City introduction tours in the same library tab as trails.
+ *
+ * Tours are stored flat and verbatim as the web-ade wrapper
+ * (`{ owner, repo, entry, payload }`), so unlike trails they carry an explicit
+ * owner/repo but no on-disk path back to the working tree they were authored
+ * against. We recover a best-effort `localRepoRoot` by matching that owner/repo
+ * against the local checkouts the trails cache already knows about — clicking a
+ * tour then opens it against a real working tree when one is on disk, and falls
+ * back to the viewer's "no directory matched" framing when it isn't.
+ */
+export async function walkTours(): Promise<LibraryEntry[]> {
+	let files;
+	try {
+		files = await fs.readdir(TOURS_ROOT, { withFileTypes: true });
+	} catch {
+		return [];
+	}
+
+	const out: LibraryEntry[] = [];
+	for (const f of files) {
+		if (!f.isFile() || !f.name.endsWith(".json")) continue;
+		const trailFile = join(TOURS_ROOT, f.name);
+		const id = f.name.replace(/\.json$/, "");
+		try {
+			const stat = await fs.stat(trailFile);
+			const meta = await readTourMetadata(trailFile);
+			out.push({
+				kind: "tour",
+				trailFile,
+				id,
+				title: meta.title ?? id,
+				anchor: "by-id",
+				owner: meta.owner,
+				repo: meta.repo,
+				// The local checkout is resolved from Alexandria at open time (the
+				// registry is authoritative and may change between list and click).
+				localRepoRoot: undefined,
+				// Tours aren't draft/published like trails; the badge renders "Tour".
+				published: false,
+				mtimeMs: stat.mtimeMs,
+			});
+		} catch {
+			// best-effort: a malformed file shouldn't break the whole listing
+		}
+	}
+	return out;
+}
+
+interface CachedTourMetadata {
+	title?: string;
+	owner?: string;
+	repo?: string;
+}
+
+/**
+ * Pull title + owner/repo out of a cached tour wrapper. Title prefers the
+ * lightweight `entry.title` (always present on a store fetch) and falls back to
+ * the full `payload.title`; owner/repo come from the wrapper's top level, which
+ * web-ade always stamps.
+ */
+async function readTourMetadata(path: string): Promise<CachedTourMetadata> {
+	const raw = await fs.readFile(path, "utf8");
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		return {};
+	}
+	if (typeof parsed !== "object" || parsed === null) return {};
+	const obj = parsed as Record<string, unknown>;
+
+	const owner = typeof obj["owner"] === "string" ? (obj["owner"] as string) : undefined;
+	const repo = typeof obj["repo"] === "string" ? (obj["repo"] as string) : undefined;
+
+	const entryTitle =
+		typeof (obj["entry"] as { title?: unknown } | undefined)?.title === "string"
+			? (obj["entry"] as { title: string }).title
+			: undefined;
+	const payloadTitle =
+		typeof (obj["payload"] as { title?: unknown } | undefined)?.title === "string"
+			? (obj["payload"] as { title: string }).title
+			: undefined;
+
+	return { title: entryTitle ?? payloadTitle, owner, repo };
 }
 
 interface CachedMetadata {

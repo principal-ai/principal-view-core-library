@@ -36,11 +36,13 @@ import { readFileRemote as fetchRemoteSlice } from "./remote-files";
 import { handoffToRunning, startIpcServer, type LoadTrailMessage } from "./ipc";
 import {
 	walkLibrary,
+	walkTours,
 	resolveLocalRepoIdentity,
 	resolveUserIdentity,
 	type LibraryEntry,
 	type UserIdentity,
 } from "./library";
+import { resolveRepoRootFromAlexandria } from "./alexandria";
 
 const LIBRARY_TAB_ID = "library";
 
@@ -103,7 +105,7 @@ interface TrailTabState {
 interface LibraryTabState {
 	id: typeof LIBRARY_TAB_ID;
 	kind: "library";
-	title: "Trail Library";
+	title: "Library";
 }
 
 type TabState = LibraryTabState | TrailTabState;
@@ -112,7 +114,7 @@ const tabs = new Map<string, TabState>();
 tabs.set(LIBRARY_TAB_ID, {
 	id: LIBRARY_TAB_ID,
 	kind: "library",
-	title: "Trail Library",
+	title: "Library",
 });
 let activeTabId: string = LIBRARY_TAB_ID;
 let nextTabId = 1;
@@ -123,7 +125,7 @@ type PayloadKind = "trail" | "tour";
 
 type LoadedTrail =
 	| { ok: true; payload: unknown; path: string; payloadKind: PayloadKind }
-	| { ok: false; error: string };
+	| { ok: false; error: string; payloadKind: PayloadKind };
 
 /**
  * Distinguish a File City introduction tour from a trail. The filename is the
@@ -144,7 +146,8 @@ function detectPayloadKind(path: string, payload: unknown): PayloadKind {
  * web-ade's `/api/trails/by-id/<id>` returns a wrapper around the trail
  * payload: `{ entry, owner, repo, payload }`. Hand-authored / local files are
  * just the bare TrailPayload. Detect the wrapper and unwrap so the renderer
- * always sees `{ markers, views, ... }` directly.
+ * always sees `{ markers, views, ... }` directly. (Tours are handled separately
+ * by `extractTourPayload`, which copes with their extra nesting.)
  */
 function unwrapPayload(raw: unknown): unknown {
 	if (typeof raw !== "object" || raw === null) return raw;
@@ -160,28 +163,106 @@ function unwrapPayload(raw: unknown): unknown {
 	return raw;
 }
 
+/**
+ * Locate the renderable tour inside a cached/loaded file, coping with every
+ * shape the store and CLI emit:
+ *   - a bare tour                       — `{ steps, ... }`
+ *   - the by-id wrapper                 — `{ owner, repo, entry, payload: <tour> }`
+ *   - the newer audio envelope          — `{ ..., payload: { tour: <tour>, audio } }`
+ * We pick the first object carrying a `steps[]` array. A tour authored against
+ * a repo but cached without `repos[]` (the audio-envelope format drops it) is
+ * repaired from the wrapper's `owner`/`repo` so strict `parseTourOrThrow`
+ * validation — and the panel's repo resolution — still has a repo to anchor to.
+ *
+ * Returns `null` when no tour is present (the file is a trail or unrecognized).
+ */
+function extractTourPayload(raw: unknown): Record<string, unknown> | null {
+	if (typeof raw !== "object" || raw === null) return null;
+	const root = raw as Record<string, unknown>;
+	const payload =
+		typeof root["payload"] === "object" && root["payload"] !== null
+			? (root["payload"] as Record<string, unknown>)
+			: undefined;
+	const nestedTour =
+		payload && typeof payload["tour"] === "object" && payload["tour"] !== null
+			? (payload["tour"] as Record<string, unknown>)
+			: undefined;
+
+	let tour: Record<string, unknown> | null = null;
+	for (const candidate of [root, payload, nestedTour]) {
+		if (candidate && Array.isArray(candidate["steps"])) {
+			tour = candidate;
+			break;
+		}
+	}
+	if (!tour) return null;
+
+	if (!Array.isArray(tour["repos"]) || (tour["repos"] as unknown[]).length === 0) {
+		const owner = typeof root["owner"] === "string" ? (root["owner"] as string) : undefined;
+		const name = typeof root["repo"] === "string" ? (root["repo"] as string) : undefined;
+		if (owner && name) {
+			tour = {
+				...tour,
+				repos: [
+					{
+						id: `pkg:github/${owner.toLowerCase()}/${name}`,
+						name,
+						remote: { host: "github", owner, name },
+					},
+				],
+			};
+		}
+	}
+	return tour;
+}
+
 function loadTrailFile(path: string | null): LoadedTrail {
 	if (!path) {
 		return {
 			ok: false,
 			error:
 				"No trail file. Pass a path as the first arg or set TRAIL_FILE=<path>.",
+			payloadKind: "trail",
 		};
 	}
+	// Determine the kind first, from the file contents, so that even a tour that
+	// fails to load is reported as a tour. Otherwise the renderer would fall back
+	// to the trail panel and crash dereferencing `views[0]` on a tour payload.
+	let json: unknown;
 	try {
-		const raw = readFileSync(path, "utf8");
-		const parsed = unwrapPayload(JSON.parse(raw));
-		const payloadKind = detectPayloadKind(path, parsed);
-		// Validate tours up front so a malformed *.tour.json fails at load with a
-		// clear message rather than silently rendering an idle, empty city.
-		if (payloadKind === "tour") parseTourOrThrow(JSON.stringify(parsed));
-		return { ok: true, payload: parsed, path, payloadKind };
+		json = JSON.parse(readFileSync(path, "utf8"));
 	} catch (err) {
 		return {
 			ok: false,
 			error: `Failed to load ${path}: ${(err as Error).message}`,
+			payloadKind: detectPayloadKind(path, null),
 		};
 	}
+
+	const tour = extractTourPayload(json);
+	if (tour || /\.tour\.json$/i.test(path)) {
+		if (!tour) {
+			return {
+				ok: false,
+				error: `Failed to load ${path}: file has a .tour.json name but no tour steps`,
+				payloadKind: "tour",
+			};
+		}
+		// Validate up front so a malformed tour fails at load with a clear message
+		// rather than silently rendering an idle, empty city.
+		try {
+			parseTourOrThrow(JSON.stringify(tour));
+		} catch (err) {
+			return {
+				ok: false,
+				error: `Failed to load ${path}: ${(err as Error).message}`,
+				payloadKind: "tour",
+			};
+		}
+		return { ok: true, payload: tour, path, payloadKind: "tour" };
+	}
+
+	return { ok: true, payload: unwrapPayload(json), path, payloadKind: "trail" };
 }
 
 /**
@@ -197,6 +278,27 @@ function resolveSandboxed(repoRoot: string, rawPath: string): string {
 		throw new Error(`Path escapes repo root: ${rawPath}`);
 	}
 	return absolute;
+}
+
+/**
+ * The GitHub `owner/name` a tour was authored against, read from its (possibly
+ * repaired) `repos[0].remote`. `extractTourPayload` guarantees this is present
+ * for every shape we accept, so it's how a library-opened tour finds its repo.
+ */
+function tourRepoIdentity(
+	loaded: LoadedTrail,
+): { owner: string; name: string } | null {
+	if (!loaded.ok || typeof loaded.payload !== "object" || loaded.payload === null) {
+		return null;
+	}
+	const repos = (loaded.payload as { repos?: unknown }).repos;
+	if (!Array.isArray(repos) || repos.length === 0) return null;
+	const remote = (repos[0] as { remote?: { owner?: unknown; name?: unknown } })
+		.remote;
+	if (typeof remote?.owner === "string" && typeof remote?.name === "string") {
+		return { owner: remote.owner, name: remote.name };
+	}
+	return null;
 }
 
 function deriveTitle(loaded: LoadedTrail, fallbackPath: string): string {
@@ -222,14 +324,37 @@ function addTabFromMessage(msg: LoadTrailMessage): string {
 	}
 
 	const id = String(nextTabId++);
-	const repoRoot = msg.repoRoot ?? dirname(trailFilePath);
-	const loaded = loadTrailFile(trailFilePath);
-	const payloadKind: PayloadKind = loaded.ok
-		? loaded.payloadKind
-		: detectPayloadKind(trailFilePath, null);
-	// Tours reference whole directories (`focusDirectory`), so they can only be
-	// served from a local working tree — there's no marker list to derive a
-	// remote file set from. Pin them to 'local' regardless of the incoming mode.
+	let loaded = loadTrailFile(trailFilePath);
+	const payloadKind: PayloadKind = loaded.payloadKind;
+
+	// Tours render against a whole working tree, not a marker-derived remote file
+	// set, so they're always local. The CLI `tour view` passes the repoRoot
+	// (cwd); a tour opened from the library carries none, so we resolve it from
+	// the Alexandria registry by the GitHub owner/repo the tour was authored
+	// against. When the registry doesn't know that repo we can't render the city,
+	// so we fail the tab with a clear message rather than an empty/idle view.
+	let repoRoot: string;
+	if (payloadKind === "tour" && !msg.repoRoot) {
+		const identity = tourRepoIdentity(loaded);
+		const resolved = identity
+			? resolveRepoRootFromAlexandria(identity.owner, identity.name)
+			: null;
+		if (resolved) {
+			repoRoot = resolved;
+		} else {
+			repoRoot = "";
+			const repoLabel = identity
+				? `${identity.owner}/${identity.name}`
+				: "this tour's repository";
+			loaded = {
+				ok: false,
+				error: `We couldn't find a local checkout of ${repoLabel}. This tour renders against the repository's files, but it isn't in your Alexandria registry — open the repo once in the Principal desktop app (or clone it) and reopen the tour.`,
+				payloadKind: "tour",
+			};
+		}
+	} else {
+		repoRoot = msg.repoRoot ?? dirname(trailFilePath);
+	}
 	const mode: ViewerMode = payloadKind === "tour" ? "local" : msg.mode;
 	const tab: TabState = {
 		id,
@@ -610,7 +735,18 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 					? getFileTreeRemote(tab)
 					: { files: await walkFiles(tab.repoRoot) };
 			},
-			listTrails: async () => ({ entries: await walkLibrary() }),
+			listTrails: async () => {
+				// Merge cached trails and tours into one mtime-sorted list; each row
+				// carries a `kind` so the renderer badges and opens it correctly.
+				const [trails, tours] = await Promise.all([
+					walkLibrary(),
+					walkTours(),
+				]);
+				const entries = [...trails, ...tours].sort(
+					(a, b) => b.mtimeMs - a.mtimeMs,
+				);
+				return { entries };
+			},
 			createTrailNote: ({ tabId, draft }) => {
 				const tab = getTab(tabId);
 				if (!tab || tab.kind === "library") {

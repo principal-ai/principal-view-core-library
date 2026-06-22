@@ -1,6 +1,6 @@
 {
 	"name": "@principal-ai/trail-viewer",
-	"version": "0.4.1",
+	"version": "0.5.0",
 	"description": "Standalone viewer for Principal ADE trails. Pairs with the principal-ai CLI: `principal-ai trail view <id>` shells into this bundle.",
 	"type": "module",
 	"os": [
@@ -36,7 +36,7 @@
 		"@principal-ade/utcp-panel-event": "^0.1.0",
 		"@principal-ai/alexandria-core-library": "^0.6.2",
 		"@principal-ai/file-city-builder": "^0.5.0",
-		"@principal-ai/file-city-react": "^0.5.56",
+		"@principal-ai/file-city-react": "^0.5.57",
 		"@principal-ai/logo-component": "^0.1.23",
 		"@principal-ai/principal-view-core": "^0.28.7",
 		"@principal-ai/repository-abstraction": "^0.5.7",
