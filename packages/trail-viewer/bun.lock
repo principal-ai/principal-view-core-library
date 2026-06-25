@@ -4,15 +4,15 @@
     "": {
       "name": "@principal-ai/trail-viewer",
       "devDependencies": {
-        "@industry-theme/file-city-panel": "^0.5.162",
+        "@industry-theme/file-city-panel": "^0.5.169",
         "@principal-ade/dynamic-file-tree": "^0.2.45",
         "@principal-ade/industry-theme": "^0.1.24",
         "@principal-ade/panel-framework-core": "^0.5.1",
         "@principal-ade/panel-layouts": "^0.4.8",
         "@principal-ade/utcp-panel-event": "^0.1.0",
-        "@principal-ai/alexandria-core-library": "^0.6.2",
+        "@principal-ai/alexandria-core-library": "^0.7.0",
         "@principal-ai/file-city-builder": "^0.5.0",
-        "@principal-ai/file-city-react": "^0.5.57",
+        "@principal-ai/file-city-react": "^0.5.63",
         "@principal-ai/logo-component": "^0.1.23",
         "@principal-ai/principal-view-core": "^0.28.7",
         "@principal-ai/repository-abstraction": "^0.5.7",
@@ -20,7 +20,7 @@
         "@types/react": "^19.2.17",
         "@types/react-dom": "^19.2.3",
         "electrobun": "1.18.1",
-        "lucide-react": "^1.17.0",
+        "lucide-react": "^1.21.0",
         "react": "19.2.7",
         "react-dom": "19.2.7",
         "themed-markdown": "^0.1.103",
@@ -65,7 +65,7 @@
 
     "@iconify/utils": ["@iconify/utils@3.1.3", "", { "dependencies": { "@antfu/install-pkg": "^1.1.0", "@iconify/types": "^2.0.0", "import-meta-resolve": "^4.2.0" } }, "sha512-LPKOXPn/zV+zis1oOfGWogaXVpqUybF3ZS6SCZIsz8vg0ivVp9+fVqyYB7xq0aiST/VhUQYGO1qo6uoYSiEJqw=="],
 
-    "@industry-theme/file-city-panel": ["@industry-theme/file-city-panel@0.5.162", "", { "dependencies": { "clsx": "^2.1.1", "fuse.js": "^7.3.0" }, "peerDependencies": { "@pierre/diffs": ">=1.1.20", "@pierre/trees": ">=1.0.0-beta.3", "@principal-ade/dynamic-file-tree": ">=0.2.45", "@principal-ade/industry-theme": ">=0.1.20", "@principal-ade/panel-framework-core": ">=0.5.1", "@principal-ade/panel-layouts": ">=0.4.8", "@principal-ade/utcp-panel-event": ">=0.1.0", "@principal-ai/alexandria-core-library": ">=0.3.6", "@principal-ai/codebase-composition": ">=0.2.57", "@principal-ai/file-city-builder": ">=0.4.2", "@principal-ai/file-city-react": ">=0.5.48", "@principal-ai/principal-view-core": ">=0.28.6", "@principal-ai/principal-view-react": ">=0.15.9", "@principal-ai/quality-lens-registry": ">=0.3.3", "@principal-ai/repository-abstraction": ">=0.5.7", "@react-spring/three": ">=10.0.0", "@react-three/drei": ">=10.0.0", "@react-three/fiber": ">=9.0.0", "hast-util-sanitize": ">=5.0.2", "highlight.js": ">=11.11.1", "lucide-react": ">=0.563.0", "react": ">=19.0.0", "react-dom": ">=19.0.0", "react-markdown": ">=10.1.0", "react-resizable-panels": ">=4.11.0", "react-zoom-pan-pinch": ">=3.7.0", "rehype-highlight": ">=7.0.2", "rehype-raw": ">=7.0.0", "rehype-sanitize": ">=6.0.0", "rehype-slug": ">=6.0.0", "remark-gfm": ">=4.0.1", "themed-markdown": ">=0.1.87", "three": ">=0.170.0" } }, "sha512-sqSZ+VvwggjeCV8zWnmzKCwETcP9tIgdvWfWwgyBog02iiOWXWvzGnslpchynUneoD+sqUAtiyUBsx2XtKTKtg=="],
+    "@industry-theme/file-city-panel": ["@industry-theme/file-city-panel@0.5.169", "", { "dependencies": { "clsx": "^2.1.1", "fuse.js": "^7.3.0" }, "peerDependencies": { "@pierre/diffs": ">=1.1.20", "@pierre/trees": ">=1.0.0-beta.3", "@principal-ade/dynamic-file-tree": ">=0.2.45", "@principal-ade/industry-theme": ">=0.1.20", "@principal-ade/panel-framework-core": ">=0.5.1", "@principal-ade/panel-layouts": ">=0.4.8", "@principal-ade/utcp-panel-event": ">=0.1.0", "@principal-ai/alexandria-core-library": ">=0.7.0", "@principal-ai/codebase-composition": ">=0.2.57", "@principal-ai/file-city-builder": ">=0.5.0", "@principal-ai/file-city-react": ">=0.5.48", "@principal-ai/principal-view-core": ">=0.28.6", "@principal-ai/principal-view-react": ">=0.15.9", "@principal-ai/quality-lens-registry": ">=0.3.3", "@principal-ai/repository-abstraction": ">=0.5.7", "@react-spring/three": ">=10.0.0", "@react-three/drei": ">=10.0.0", "@react-three/fiber": ">=9.0.0", "hast-util-sanitize": ">=5.0.2", "highlight.js": ">=11.11.1", "lucide-react": ">=0.563.0", "react": ">=19.0.0", "react-dom": ">=19.0.0", "react-markdown": ">=10.1.0", "react-resizable-panels": ">=4.11.0", "react-zoom-pan-pinch": ">=3.7.0", "rehype-highlight": ">=7.0.2", "rehype-raw": ">=7.0.0", "rehype-sanitize": ">=6.0.0", "rehype-slug": ">=6.0.0", "remark-gfm": ">=4.0.1", "themed-markdown": ">=0.1.87", "three": ">=0.170.0" } }, "sha512-Xa702TI00+5L5eRDraQu+sxVW5ufOPp32rKcocdE1c6Yv9vXpXhgupRgyu/4+V4CdW5eanzX/soXui+M1Xjp/w=="],
 
     "@malept/cross-spawn-promise": ["@malept/cross-spawn-promise@1.1.1", "", { "dependencies": { "cross-spawn": "^7.0.1" } }, "sha512-RTBGWL5FWQcg9orDOCcp4LvItNzUPcyEU9bwaeJX0rJ1IQxzucC48Y0/sQLp/g6t99IQgAlGIaesJS+gTn7tVQ=="],
 
@@ -119,7 +119,7 @@
 
     "@principal-ade/utcp-panel-event": ["@principal-ade/utcp-panel-event@0.1.0", "", {}, "sha512-HOaazmDDo/9R5a0vDEEaJFQqmwlmlyOZXmpWCdZldrj/622E0aOLXJLz6SpfWrg5ZtIfYPhBXODrBdzsra3Hiw=="],
 
-    "@principal-ai/alexandria-core-library": ["@principal-ai/alexandria-core-library@0.6.2", "", { "dependencies": { "@principal-ai/repository-abstraction": "^0.2.5" }, "peerDependencies": { "globby": "^16.0.0" }, "optionalPeers": ["globby"] }, "sha512-7qgSSzXce0oTI5D2RFqbAbCUX0acV1AnWGYxVZqy2AG4Y3m42pJFpyhwe4T2Yl0ZKBFtUeMofHGn1Zn5e2ORyw=="],
+    "@principal-ai/alexandria-core-library": ["@principal-ai/alexandria-core-library@0.7.0", "", { "dependencies": { "@principal-ai/repository-abstraction": "^0.2.5" }, "peerDependencies": { "globby": "^16.0.0" }, "optionalPeers": ["globby"] }, "sha512-uUqS/TPG3Im7ZpbUOPN0LX2FbEXvK2hviyrddIlbMDupse1jYIcgdKVfPo6kVBwziLKUEBDV3/u2NzJmguT2FQ=="],
 
     "@principal-ai/codebase-composition": ["@principal-ai/codebase-composition@0.2.57", "", { "dependencies": { "@principal-ai/codebase-quality-lenses": "^0.1.66", "@principal-ai/quality-lens-registry": "^0.3.0", "@principal-ai/repository-abstraction": "^0.2.2", "ignore": "^5.3.0", "typescript": "^5.0.4" }, "optionalDependencies": { "pip-requirements-js": "^0.2.1", "smol-toml": "^1.6.0" } }, "sha512-voj3/vMxo2mJeEOS7FVF/QAGORXFoZ7jHfOFPZLehyRwdbMtbzOIc4iW6Zfm2LqeK6+KLegMnhUEsYqJJWsa8w=="],
 
@@ -127,7 +127,7 @@
 
     "@principal-ai/file-city-builder": ["@principal-ai/file-city-builder@0.5.0", "", { "dependencies": { "@principal-ai/repository-abstraction": "^0.2.4", "d3-hierarchy": "^3.1.2", "minimatch": "^10.0.3", "picomatch": "^4.0.3" } }, "sha512-P/7xtC/ZZ+LiHxBpGRE76wybfi8Zy4ib0coa9L+u3z57ggLhajt7/JXwpd1P6xH0owW1Q4xjHdLleOXdipe+3g=="],
 
-    "@principal-ai/file-city-react": ["@principal-ai/file-city-react@0.5.57", "", { "dependencies": { "lucide-react": "^0.563.0", "reactflow": "^11.11.4" }, "peerDependencies": { "@principal-ai/file-city-builder": ">=0.4.5", "@react-spring/three": ">=10.0.0", "@react-three/drei": ">=10.0.0", "@react-three/fiber": ">=9.0.0", "react": "^19.0.0", "three": ">=0.170.0" } }, "sha512-HZZ/U3uEWNe5xMBJ5Ejy0Kb9omDOL7h6h5p10rpx+9TwqQzhuKAwT3E6YDXpSmVJlYt7ozAon1v14cSzyUl5WQ=="],
+    "@principal-ai/file-city-react": ["@principal-ai/file-city-react@0.5.63", "", { "dependencies": { "lucide-react": "^0.563.0", "reactflow": "^11.11.4" }, "peerDependencies": { "@principal-ai/file-city-builder": ">=0.4.5", "@react-spring/three": ">=10.0.0", "@react-three/drei": ">=10.0.0", "@react-three/fiber": ">=9.0.0", "react": "^19.0.0", "three": ">=0.170.0" } }, "sha512-bTj0gSuVXaPs/6CTpO6sPc3QQHLcOo/VPzQDgl7OLFQcG7PPYTwve6+XvRu0smQmxmzyQi1EgTHt9gYO6VpYIA=="],
 
     "@principal-ai/logo-component": ["@principal-ai/logo-component@0.1.23", "", { "dependencies": { "opentype.js": "^1.3.4" }, "peerDependencies": { "react": "^18.0.0 || ^19.0.0" } }, "sha512-V3oLwpojZr4GcfwgAJCFCl6+rQ4HOiplObUAmJoIt0BrK9JFtfwCQb5GQSqnrGx6UKU48Dng6yHzQ/WpQBOKmQ=="],
 
@@ -715,7 +715,7 @@
 
     "lru_map": ["lru_map@0.4.1", "", {}, "sha512-I+lBvqMMFfqaV8CJCISjI3wbjmwVu/VyOoU7+qtu9d7ioW5klMgsTTiUOUp+DJvfTTzKXoPbyC6YfgkNcyPSOg=="],
 
-    "lucide-react": ["lucide-react@1.17.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-9FA9evdox/JQL5PT57fdA1x/yg8T7knJ98+zjTL3UfKza6pflQUUh3XtaQIHKvnsJw1lmsEyHVlt5jchYxOQ5w=="],
+    "lucide-react": ["lucide-react@1.21.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-reEZMXq8Qdd5jg5XYkQ5TR1fB/GiQ7ih4vcrthYDtgjSDwh0i6/YLiGjsWsIwgN49gpAnd4J2elSNzncMEEUUQ=="],
 
     "maath": ["maath@0.10.8", "", { "peerDependencies": { "@types/three": ">=0.134.0", "three": ">=0.134.0" } }, "sha512-tRvbDF0Pgqz+9XUa4jjfgAQ8/aPKmQdWXilFu2tMy4GWj4NOsx99HlULO4IeREfbO3a0sA145DZYyvXPkybm0g=="],
 
