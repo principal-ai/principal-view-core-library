@@ -136,8 +136,16 @@ export type TopicUpdate = Partial<
  * Fields a caller may set when creating a topic. `id`, `createdAt`,
  * `updatedAt` are filled in when omitted; passing `id` lets a caller control
  * it (e.g. round-tripping a server id).
+ *
+ * `id`/`createdAt`/`updatedAt` are Omit-ted from `DraftTopic` (where they are
+ * required) before being re-added as optional. Intersecting `& { id?: string }`
+ * onto a still-required `id: string` would NOT widen it — an intersection keeps
+ * the stricter member — which would leave `id` wrongly required for callers.
  */
-export type TopicCreate = Omit<DraftTopic, 'createdAt' | 'updatedAt'> & {
+export type TopicCreate = Omit<
+  DraftTopic,
+  'id' | 'createdAt' | 'updatedAt'
+> & {
   id?: string;
   createdAt?: string;
   updatedAt?: string;
