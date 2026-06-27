@@ -10,7 +10,7 @@
  * from the producer side.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, unlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createConnection } from 'node:net';
@@ -46,8 +46,19 @@ export async function handoffToRunning(message: LoadTrailMessage): Promise<boole
     }, CONNECT_TIMEOUT_MS);
 
     let buffer = '';
-    client.on('error', () => {
+    client.on('error', (err: NodeJS.ErrnoException) => {
       clearTimeout(timer);
+      // Stale socket file: the viewer died without cleaning up its `.sock`, so
+      // connecting refuses (ECONNREFUSED). Unlink it so it doesn't linger and
+      // cause repeated connect attempts/hangs, and so a fresh viewer can bind
+      // the path cleanly on spawn.
+      if (err.code === 'ECONNREFUSED') {
+        try {
+          unlinkSync(SOCKET_PATH);
+        } catch {
+          // already gone, or a racing viewer re-bound it — nothing to do.
+        }
+      }
       resolve(false);
     });
     client.on('data', (chunk) => {

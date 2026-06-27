@@ -14,6 +14,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { isValidPurl, parsePurl } from '@principal-ai/alexandria-core-library';
 import * as trailCache from '../lib/trail-cache.js';
 import { handoffToRunning, type LoadTrailMessage } from '../lib/viewer-ipc.js';
+import { handoffToBridge } from '../lib/bridge-ipc.js';
 import { fetchGitHubMe, fetchGitHubUserByLogin } from '../lib/github-user.js';
 import { openInBrowser } from '../lib/open-url.js';
 
@@ -323,6 +324,7 @@ interface ViewOptions {
   local?: string | boolean;
   file?: string;
   repoRoot?: string;
+  viewer?: boolean;
   viewerDir?: string;
 }
 
@@ -507,6 +509,27 @@ async function viewTrail(input: string | undefined, options: ViewOptions): Promi
     process.exit(2);
   }
 
+  // Prefer a running desktop app for a bare `trail view <id>`: its bridge reads
+  // the same on-disk trail store, so a *local* id opens in the app without a
+  // remote fetch or GitHub token (the path resolveTrailFromId would otherwise
+  // take). Skipped when the caller pinned the standalone trail-viewer — either
+  // explicitly (--viewer / --viewer-dir) or implicitly via a mode/working-tree
+  // flag (--remote, --local/--repo-root) or --file. A miss — app down, or trail
+  // not in its store — falls through to the existing fetch + socket/spawn path.
+  const pinsViewer =
+    options.viewer === true ||
+    options.viewerDir !== undefined ||
+    options.remote === true ||
+    options.repoRoot !== undefined ||
+    options.local !== undefined;
+  if (input && !options.file && !pinsViewer) {
+    const id = parseTrailId(input);
+    if (id && (await handoffToBridge(id))) {
+      process.stderr.write(`Trail opened in running desktop app: ${id}\n`);
+      process.exit(0);
+    }
+  }
+
   const resolved = options.file
     ? await resolveTrailFromFile(options.file)
     : await resolveTrailFromId(input as string, options.refresh ?? false);
@@ -665,6 +688,10 @@ export function createTrailCommand(): Command {
     .option(
       '--local [path]',
       'Force local mode; optional path overrides the repo root (default: cwd)',
+    )
+    .option(
+      '--viewer',
+      'Open in the standalone trail-viewer instead of routing to a running desktop app',
     )
     .option(
       '--viewer-dir <path>',
