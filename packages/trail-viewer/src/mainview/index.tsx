@@ -39,11 +39,11 @@ import {
 	type FileTree,
 } from "@principal-ai/repository-abstraction";
 import {
-	FileCityTourExplorerPanel,
+	FileCityGuidePanel,
 	FileCityTrailExplorerPanel,
-	type FileCityTourExplorerPanelActions,
-	type FileCityTourExplorerPanelContext,
-	type FileCityTourExplorerRepository,
+	type FileCityGuidePanelActions,
+	type FileCityGuidePanelContext,
+	type FileCityGuideRepository,
 	type FileCityTrailExplorerPanelActions,
 	type FileCityTrailExplorerPanelContext,
 	type FileCityTrailExplorerRepository,
@@ -1690,7 +1690,7 @@ function TourHeader({
 
 // ---------------------------------------------------------------------------
 // TourViewer (active tab content) — renders a File City introduction tour via
-// the panel library's FileCityTourExplorerPanel, the sibling of the trail
+// the panel library's FileCityGuidePanel, the sibling of the trail
 // explorer. Tour steps drive the city's focusDirectory + highlight layers; the
 // panel derives its own layers per step, so the host highlightLayers slice is
 // left null. Audio is disabled (no fetchAudioUrls action) for the standalone
@@ -1727,7 +1727,7 @@ function TourViewer({
 		return { owner: "local", repo: hostRepo ?? basename, githubUrl: undefined };
 	}, [repoRoot, hostOwner, hostRepo]);
 
-	const repository = useMemo<FileCityTourExplorerRepository>(
+	const repository = useMemo<FileCityGuideRepository>(
 		() => ({
 			id: createLocalRepoPurl(repoRoot),
 			path: repoRoot,
@@ -1738,7 +1738,7 @@ function TourViewer({
 	);
 
 	const context = useMemo<
-		PanelContextValue<FileCityTourExplorerPanelContext>
+		PanelContextValue<FileCityGuidePanelContext>
 	>(() => {
 		const fileTreeSlice: DataSlice<FileTree> = {
 			scope: "repository",
@@ -1767,7 +1767,7 @@ function TourViewer({
 		};
 	}, [fileTree, tour, repository]);
 
-	const actions = useMemo<FileCityTourExplorerPanelActions>(
+	const actions = useMemo<FileCityGuidePanelActions>(
 		// No editor to open into in the standalone viewer, and audio is disabled
 		// (omitting fetchAudioUrls hides the panel's Play / Auto-play controls).
 		() => ({ openFile: () => {} }),
@@ -1787,7 +1787,7 @@ function TourViewer({
 		>
 			<TourHeader owner={header.owner} repo={header.repo} githubUrl={header.githubUrl} />
 			<div style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: "hidden" }}>
-				<FileCityTourExplorerPanel
+				<FileCityGuidePanel
 					context={context}
 					actions={actions}
 					events={events}
