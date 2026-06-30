@@ -129,7 +129,7 @@ export interface MigrationResult {
  * `trailIds`, and `id`/`createdAt` are immutable.
  */
 export type TopicUpdate = Partial<
-  Pick<DraftTopic, 'title' | 'description' | 'status' | 'createdBy' | 'assets'>
+  Pick<DraftTopic, 'title' | 'description' | 'status' | 'createdBy' | 'assets' | 'repos'>
 >;
 
 /**

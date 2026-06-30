@@ -7,7 +7,7 @@ import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'fs
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { TopicStore } from './topicStore';
-import type { DraftTopic } from './topic-types';
+import { publishedFromDraft, type DraftTopic } from './topic-types';
 
 let dir: string;
 let topicsDir: string;
@@ -52,6 +52,43 @@ describe('CRUD', () => {
     expect(updated.description).toBe('hi');
     expect(updated.createdAt).toBe(t.createdAt);
     expect(updated.trailIds).toEqual(['t1']);
+  });
+
+  test('repos (PURL strings) persist on create and are updatable', async () => {
+    const store = makeStore();
+    const created = await store.createTopic({
+      id: 'topic-repos',
+      title: 'Repo-scoped',
+      trailIds: [],
+      repos: ['pkg:github/acme/web'],
+    });
+    expect(created.repos).toEqual(['pkg:github/acme/web']);
+
+    const reread = await store.getTopic('topic-repos');
+    expect(reread?.repos).toEqual(['pkg:github/acme/web']);
+
+    const updated = await store.updateTopic('topic-repos', {
+      repos: ['pkg:github/acme/web', 'pkg:github/acme/api'],
+    });
+    expect(updated.repos).toEqual(['pkg:github/acme/web', 'pkg:github/acme/api']);
+  });
+
+  test('publishedFromDraft carries repos through the projection', () => {
+    const draft: DraftTopic = {
+      id: 'topic-pub',
+      title: 'Pub',
+      description: 'has a description',
+      trailIds: ['local-1'],
+      repos: ['pkg:github/acme/web'],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+    };
+    const published = publishedFromDraft(draft, {
+      trailIds: ['remote-1'],
+      createdBy: { githubId: 1, githubLogin: 'u1' },
+      visibility: 'private',
+    });
+    expect(published.repos).toEqual(['pkg:github/acme/web']);
   });
 
   test('trail membership add/remove/reorder', async () => {

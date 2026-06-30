@@ -124,6 +124,14 @@ export interface DraftTopic {
   description?: string;
   /** Ordered list of LOCAL trail ids — foreign keys into the local trail store. */
   trailIds: string[];
+  /**
+   * Repositories this topic is about, as PURL strings (e.g.
+   * `pkg:github/owner/repo`). The topic's own source of truth for "which repos"
+   * — portable and machine-independent, matching `WorkspaceMembership.repositoryId`.
+   * Machine-local clone paths stay a workspace-membership concern and never
+   * appear here, so this round-trips across machines on publish/fetch.
+   */
+  repos?: string[];
   /** ISO 8601. */
   createdAt: string;
   /** ISO 8601. */
@@ -154,6 +162,12 @@ export interface PublishedTopic {
   description: string;
   /** Ordered list of REMOTE trail ids. */
   trailIds: string[];
+  /**
+   * Repositories this topic is about, as PURL strings (e.g.
+   * `pkg:github/owner/repo`). Travels with the topic across the wire so a
+   * received shared topic carries its repos; preserved on publish/fetch.
+   */
+  repos?: string[];
   /** ISO 8601. */
   createdAt: string;
   /** ISO 8601. */
@@ -211,6 +225,7 @@ export function publishedFromDraft(
     title: draft.title,
     description,
     trailIds: projection.trailIds,
+    ...(draft.repos !== undefined ? { repos: draft.repos } : {}),
     createdAt: draft.createdAt,
     updatedAt: draft.updatedAt,
     createdBy: projection.createdBy,
