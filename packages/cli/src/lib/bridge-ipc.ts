@@ -104,3 +104,35 @@ export async function handoffToBridge(trailId: string): Promise<boolean> {
     (typeof data.broadcastTo === 'number' && data.broadcastTo > 0);
   return data.success === true && surfaced;
 }
+
+/**
+ * Ask a running desktop app to open `topicId` from its local store. Mirrors
+ * `handoffToBridge` but targets the topic activate route.
+ */
+export async function handoffTopicToBridge(topicId: string): Promise<boolean> {
+  const base = await reachableBase();
+  if (!base) return false;
+
+  let res: Response;
+  try {
+    res = await fetch(`${base}/api/topics/${encodeURIComponent(topicId)}/activate`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(ACTIVATE_TIMEOUT_MS),
+    });
+  } catch {
+    return false;
+  }
+  if (!res.ok) return false;
+
+  let data: { success?: boolean; windowOpened?: string; delivered?: number };
+  try {
+    data = (await res.json()) as { success?: boolean; windowOpened?: string; delivered?: number };
+  } catch {
+    return false;
+  }
+
+  const surfaced =
+    (data.windowOpened !== undefined && data.windowOpened !== 'none') ||
+    (typeof data.delivered === 'number' && data.delivered > 0);
+  return data.success === true && surfaced;
+}

@@ -13,6 +13,7 @@
 
 import { Command } from 'commander';
 import { spawnSync } from 'node:child_process';
+import { handoffTopicToBridge } from '../lib/bridge-ipc.js';
 import { fetchGitHubMe, fetchGitHubUserByLogin } from '../lib/github-user.js';
 import { openInBrowser } from '../lib/open-url.js';
 
@@ -542,12 +543,23 @@ async function listTopics(options: ListOptions): Promise<void> {
 // open — launch the topic page in the default browser
 // ============================================================================
 
-function openTopic(input: string): void {
+async function openTopic(input: string): Promise<void> {
   const id = parseTopicId(input);
-  if (!UUID_PATTERN.test(id)) {
+  const isLocalId = id.startsWith('topic-');
+
+  // Local topic-* ids bypass the UUID check (they're minted by the desktop app).
+  if (!isLocalId && !UUID_PATTERN.test(id)) {
     process.stderr.write(`Not a valid topic id or URL: ${input}\n`);
     process.exit(2);
   }
+
+  // Prefer the running desktop app when available (local topic-* ids only).
+  if (isLocalId && (await handoffTopicToBridge(id))) {
+    process.stderr.write(`Topic opened in running desktop app: ${id}\n`);
+    process.exit(0);
+  }
+
+  // Fall back to web-ade in the browser.
   const url = `${BASE_URL}/topic/${id}`;
   // Print first so the URL is captured in scrollback / pipes even if the
   // platform opener fails (headless / no DISPLAY / missing xdg-open).
@@ -776,8 +788,8 @@ export function createTopicCommand(): Command {
     .command('open')
     .description('Open the topic page in the default browser')
     .argument('<id-or-url>', 'Topic id or URL')
-    .action((input: string) => {
-      openTopic(input);
+    .action(async (input: string) => {
+      await openTopic(input);
     });
 
   command
