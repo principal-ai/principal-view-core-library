@@ -60,9 +60,23 @@ import type { IntroductionTour } from "@principal-ai/file-city-builder";
 type ViewerMode = "local" | "remote";
 type PayloadKind = "trail" | "tour";
 
+interface SessionSummary {
+	id: string;
+	title: string;
+	slug: string;
+	createdAt: string;
+	durationMs: number;
+	eventCount: number;
+}
+
+interface SessionGroup {
+	parent: SessionSummary;
+	children: SessionSummary[];
+}
+
 interface TabSummary {
 	id: string;
-	kind: "library" | "trail";
+	kind: "library" | "trail" | "sessions";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -72,7 +86,7 @@ interface TabFullState {
 	ok: boolean;
 	error?: string;
 	id: string;
-	kind: "library" | "trail";
+	kind: "library" | "trail" | "sessions";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -151,6 +165,10 @@ type TrailViewerRPC = {
 			listTrails: {
 				params: Record<string, never>;
 				response: { entries: LibraryEntry[] };
+			};
+			listSessions: {
+				params: Record<string, never>;
+				response: { groups: SessionGroup[]; standalone: SessionSummary[] };
 			};
 			openTrailFromCache: {
 				params: { trailFile: string; mode?: ViewerMode; repoRoot?: string };
@@ -282,6 +300,7 @@ class ErrorBoundary extends Component<
 type TabState =
 	| { kind: "loading" }
 	| { kind: "library" }
+	| { kind: "sessions" }
 	| { kind: "error"; message: string }
 	| {
 			kind: "ready";
@@ -876,12 +895,14 @@ function TabStrip({
 		>
 			{tabs.map((tab) => {
 				const isActive = tab.id === activeTabId;
-				const isLibrary = tab.kind === "library";
-				const dotColor = isLibrary
-					? theme.colors.text
-					: tab.mode === "remote"
-						? theme.colors.accent ?? "#4ec9b0"
-						: theme.colors.textMuted ?? "#888";
+				const isPermanent = tab.kind === "library" || tab.kind === "sessions";
+				const dotColor = tab.kind === "sessions"
+					? theme.colors.accent ?? "#4ec9b0"
+					: isPermanent
+						? theme.colors.text
+						: tab.mode === "remote"
+							? theme.colors.accent ?? "#4ec9b0"
+							: theme.colors.textMuted ?? "#888";
 				return (
 					<div
 						key={tab.id}
@@ -913,7 +934,7 @@ function TabStrip({
 							style={{
 								width: 6,
 								height: 6,
-								borderRadius: isLibrary ? 1 : "50%",
+								borderRadius: tab.kind === "library" ? 1 : "50%",
 								background: dotColor,
 								flexShrink: 0,
 							}}
@@ -929,7 +950,7 @@ function TabStrip({
 						>
 							{tab.title}
 						</span>
-						{!isLibrary && (
+						{!isPermanent && (
 							<span
 								onClick={(e) => {
 									e.stopPropagation();
@@ -1973,6 +1994,284 @@ function LibraryView() {
 }
 
 // ---------------------------------------------------------------------------
+// Sessions Library tab content
+// ---------------------------------------------------------------------------
+
+function formatDuration(ms: number): string {
+	if (ms <= 0) return "";
+	const totalSec = Math.floor(ms / 1000);
+	if (totalSec < 60) return `${totalSec}s`;
+	const min = Math.floor(totalSec / 60);
+	const sec = totalSec % 60;
+	if (min < 60) return sec > 0 ? `${min}m ${sec}s` : `${min}m`;
+	const hrs = Math.floor(min / 60);
+	const remainMin = min % 60;
+	return remainMin > 0 ? `${hrs}h ${remainMin}m` : `${hrs}h`;
+}
+
+function formatTime(iso: string): string {
+	if (!iso) return "";
+	const d = new Date(iso);
+	return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function SessionRow({ session, depth, theme }: {
+	session: SessionSummary;
+	depth: number;
+	theme: ReturnType<typeof useTheme>["theme"];
+}) {
+	const hours = Math.floor(session.durationMs / 3600000);
+	const msHour = 3600000;
+	const remainingMin = Math.floor((session.durationMs % 3600000) / 60000);
+	const secs = Math.floor((session.durationMs % 60000) / 1000);
+	const showShapes = session.durationMs >= 60000;
+	const startDate = new Date(session.createdAt);
+	const startDay = localDateKey(startDate);
+	const sessionEndMs = startDate.getTime() + session.durationMs;
+
+	const durLabel = session.durationMs < 10000 ? `${secs}s`
+		: showShapes ? [hours > 0 && `${hours}h`, remainingMin > 0 && `${remainingMin}m`].filter(Boolean).join(" ")
+		: formatDuration(session.durationMs);
+
+	// Build day rows with active hour slot ranges
+	const dayRows: { dayKey: string; startSlot: number; endSlot: number; isOtherDay: boolean }[] = [];
+	let cursor = startDate.getTime();
+	while (cursor < sessionEndMs) {
+		const d = new Date(cursor);
+		const dayKey = localDateKey(d);
+		const dayStart = new Date(d);
+		dayStart.setHours(0, 0, 0, 0);
+		const nextMidnight = new Date(dayStart);
+		nextMidnight.setDate(nextMidnight.getDate() + 1);
+		const blockEnd = Math.min(sessionEndMs, nextMidnight.getTime());
+		const startSlot = d.getHours();
+		const endSlot = Math.min(24, startSlot + Math.ceil((blockEnd - cursor) / msHour));
+		dayRows.push({ dayKey, startSlot, endSlot, isOtherDay: dayKey !== startDay });
+		cursor = nextMidnight.getTime();
+	}
+
+	return (
+		<div
+			style={{
+				display: "flex",
+				alignItems: "center",
+				gap: 12,
+				padding: "6px 12px",
+				paddingLeft: 12 + depth * 20,
+				borderRadius: 4,
+				border: depth === 0 ? `1px solid ${theme.colors.border ?? "#333"}` : "1px solid transparent",
+				background: depth === 0 ? (theme.colors.backgroundSecondary ?? "transparent") : "transparent",
+				fontSize: depth === 0 ? theme.fontSizes[2] : theme.fontSizes[1],
+				minHeight: 32,
+			}}
+		>
+			{depth > 0 && (
+				<div style={{ color: theme.colors.textTertiary, flexShrink: 0, fontSize: theme.fontSizes[0] }}>
+					└─
+				</div>
+			)}
+			<div
+				style={{
+					flex: 1,
+					minWidth: 0,
+					whiteSpace: "nowrap",
+					overflow: "hidden",
+					textOverflow: "ellipsis",
+				}}
+			>
+				{depth === 0 ? (
+					<>
+						<span style={{ fontWeight: 500 }}>{session.slug || session.title}</span>
+						<span style={{ color: theme.colors.textTertiary, marginLeft: 8 }}>
+							{formatTime(session.createdAt)} · {session.eventCount}e
+						</span>
+					</>
+				) : (
+					<span style={{ color: theme.colors.textTertiary }}>{session.title}</span>
+				)}
+			</div>
+			{depth === 0 && (
+				<div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+					{showShapes && (
+						<div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+							{dayRows.slice().reverse().map((row) => {
+								const todayKey = localDateKey(new Date());
+								const currentHour = new Date().getHours();
+								const isToday = row.dayKey === todayKey;
+								return (
+									<div key={row.dayKey} style={{ display: "flex", alignItems: "center", gap: 1 }}>
+										{Array.from({ length: 24 }, (_, slot) => {
+											const isActive = slot >= row.startSlot && slot < row.endSlot;
+											const isFuture = isToday && slot > currentHour;
+											if (isFuture) return <span key={slot} style={{ display: "inline-block", width: 7, height: 7, flexShrink: 0 }} />;
+											const isCurrent = isToday && slot === currentHour && isActive;
+											const bg = isActive
+												? (row.isOtherDay ? theme.colors.accent ?? "#00ff00" : theme.colors.primary ?? "#6366f1")
+												: (theme.colors.textTertiary ?? "#888");
+											return (
+												<span key={slot} style={{ marginLeft: slot % 6 === 0 && slot > 0 ? 3 : 0 }}>
+													<span
+														className={isCurrent ? "trail-blip" : undefined}
+														style={{
+															display: "inline-block",
+															width: 7,
+															height: 7,
+															borderRadius: "50%",
+															background: bg,
+															opacity: isActive ? 1 : 0.1,
+															flexShrink: 0,
+														}}
+													/>
+												</span>
+											);
+										})}
+									</div>
+								);
+							})}
+						</div>
+					)}
+					<div
+						style={{
+							fontSize: theme.fontSizes[0],
+							color: theme.colors.textTertiary,
+							fontFamily: theme.fonts.monospace,
+						}}
+					>
+						{durLabel}
+					</div>
+				</div>
+			)}
+		</div>
+	);
+}
+
+interface DaySection {
+	date: string;
+	label: string;
+	groups: SessionGroup[];
+	standalone: SessionSummary[];
+}
+
+function formatDayLabel(isoDate: string): string {
+	const d = new Date(isoDate);
+	const now = new Date();
+	const todayKey = localDateKey(now);
+	const dateKey = localDateKey(d);
+	if (dateKey === todayKey) return "Today";
+	const yesterdayDate = new Date(now);
+	yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+	if (localDateKey(yesterdayDate) === dateKey) return "Yesterday";
+	const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+	return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+function localDateKey(d: Date): string {
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function SessionsLibraryView() {
+	const { theme } = useTheme();
+	const [data, setData] = useState<{ groups: SessionGroup[]; standalone: SessionSummary[] } | null>(null);
+	const [error, setError] = useState<string | null>(null);
+
+	const refresh = useCallback(async () => {
+		try {
+			const result = await electrobun.rpc!.request.listSessions({});
+			setData({ groups: result.groups, standalone: result.standalone });
+			setError(null);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : String(err));
+		}
+	}, []);
+
+	useEffect(() => {
+		void refresh();
+	}, [refresh]);
+
+	if (error) {
+		return <CenteredMessage title="Could not load sessions" detail={error} />;
+	}
+	if (data === null) {
+		return <CenteredMessage title="Loading sessions…" />;
+	}
+	const totalSessions = data.groups.reduce((s, g) => s + 1 + g.children.length, 0) + data.standalone.length;
+	if (totalSessions === 0) {
+		return (
+			<CenteredMessage
+				title="No opencode sessions found"
+				detail="Start an opencode session, or check that opencode.db exists and is readable."
+			/>
+		);
+	}
+
+	const dayMap = new Map<string, DaySection>();
+	const dateKey = (iso: string) => localDateKey(new Date(iso));
+	for (const group of data.groups) {
+		const key = dateKey(group.parent.createdAt);
+		let section = dayMap.get(key);
+		if (!section) {
+			section = { date: key, label: formatDayLabel(group.parent.createdAt), groups: [], standalone: [] };
+			dayMap.set(key, section);
+		}
+		section.groups.push(group);
+	}
+	for (const session of data.standalone) {
+		const key = dateKey(session.createdAt);
+		let section = dayMap.get(key);
+		if (!section) {
+			section = { date: key, label: formatDayLabel(session.createdAt), groups: [], standalone: [] };
+			dayMap.set(key, section);
+		}
+		section.standalone.push(session);
+	}
+
+	const sections = Array.from(dayMap.values()).sort((a, b) => b.date.localeCompare(a.date));
+
+	return (
+		<div
+			style={{
+				flex: 1,
+				minHeight: 0,
+				overflowY: "auto",
+				padding: "16px 24px",
+				background: theme.colors.background,
+				color: theme.colors.text,
+				fontFamily: theme.fonts.body,
+			}}
+		>
+			{sections.map((section) => (
+				<div key={section.date} style={{ marginBottom: 20 }}>
+					<div
+						style={{
+							fontSize: theme.fontSizes[1],
+							fontWeight: 600,
+							color: theme.colors.textSecondary,
+							marginBottom: 8,
+							paddingLeft: 4,
+						}}
+					>
+						{section.label}
+					</div>
+					<div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+						{section.groups.map((group) => (
+							<div key={group.parent.id}>
+								<SessionRow session={group.parent} depth={0} theme={theme} />
+								{group.children.map((child) => (
+									<SessionRow key={child.id} session={child} depth={1} theme={theme} />
+								))}
+							</div>
+						))}
+						{section.standalone.map((session) => (
+							<SessionRow key={session.id} session={session} depth={0} theme={theme} />
+						))}
+					</div>
+				</div>
+			))}
+		</div>
+	);
+}
+
+// ---------------------------------------------------------------------------
 // Active tab content (loading/error/ready)
 // ---------------------------------------------------------------------------
 
@@ -1988,6 +2287,10 @@ function ActiveTab({ tabId }: { tabId: string }) {
 				if (cancelled) return;
 				if (tab.kind === "library") {
 					setState({ kind: "library" });
+					return;
+				}
+				if (tab.kind === "sessions") {
+					setState({ kind: "sessions" });
 					return;
 				}
 				if (!tab.ok || !tab.payload) {
@@ -2041,6 +2344,7 @@ function ActiveTab({ tabId }: { tabId: string }) {
 
 	if (state.kind === "loading") return <CenteredMessage title="Loading trail…" />;
 	if (state.kind === "library") return <LibraryView />;
+	if (state.kind === "sessions") return <SessionsLibraryView />;
 	if (state.kind === "error")
 		return <CenteredMessage title="Could not load trail" detail={state.message} />;
 	if (state.kind === "ready-tour") {
@@ -2074,7 +2378,7 @@ function ActiveTab({ tabId }: { tabId: string }) {
 function App() {
 	const { theme } = useTheme();
 	const [tabs, setTabs] = useState<TabSummary[]>([]);
-	const [activeTabId, setActiveTabId] = useState<string>("library");
+	const [activeTabId, setActiveTabId] = useState<string>("sessions");
 
 	useEffect(() => {
 		const refresh = async () => {

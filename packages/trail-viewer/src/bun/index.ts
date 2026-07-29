@@ -44,7 +44,16 @@ import {
 } from "./library";
 import { resolveRepoRootFromAlexandria } from "./alexandria";
 
+function openCodeDBPath(): string {
+	const env = process.env as Record<string, string | undefined>;
+	if (env["OPENCODE_DATA_DIR"]) return `${env["OPENCODE_DATA_DIR"]}/opencode/opencode.db`;
+	const home = env["HOME"] || env["USERPROFILE"] || "/root";
+	const xdgData = env["XDG_DATA_HOME"] || `${home}/.local/share`;
+	return `${xdgData}/opencode/opencode.db`;
+}
+
 const LIBRARY_TAB_ID = "library";
+const SESSIONS_TAB_ID = "sessions";
 
 // ---------------------------------------------------------------------------
 // CLI args / env
@@ -108,7 +117,27 @@ interface LibraryTabState {
 	title: "Library";
 }
 
-type TabState = LibraryTabState | TrailTabState;
+interface SessionsTabState {
+	id: typeof SESSIONS_TAB_ID;
+	kind: "sessions";
+	title: "Sessions";
+}
+
+interface SessionSummary {
+	id: string;
+	title: string;
+	slug: string;
+	createdAt: string;
+	durationMs: number;
+	eventCount: number;
+}
+
+interface SessionGroup {
+	parent: SessionSummary;
+	children: SessionSummary[];
+}
+
+type TabState = LibraryTabState | SessionsTabState | TrailTabState;
 
 const tabs = new Map<string, TabState>();
 tabs.set(LIBRARY_TAB_ID, {
@@ -116,7 +145,12 @@ tabs.set(LIBRARY_TAB_ID, {
 	kind: "library",
 	title: "Library",
 });
-let activeTabId: string = LIBRARY_TAB_ID;
+tabs.set(SESSIONS_TAB_ID, {
+	id: SESSIONS_TAB_ID,
+	kind: "sessions",
+	title: "Sessions",
+});
+let activeTabId: string = SESSIONS_TAB_ID;
 let nextTabId = 1;
 
 // Pre-load the payload so the renderer's first read is synchronous and any
@@ -414,7 +448,7 @@ async function walkFiles(
 
 interface TabSummary {
 	id: string;
-	kind: "library" | "trail";
+	kind: "library" | "trail" | "sessions";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -424,7 +458,7 @@ interface TabFullState {
 	ok: boolean;
 	error?: string;
 	id: string;
-	kind: "library" | "trail";
+	kind: "library" | "trail" | "sessions";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -468,6 +502,10 @@ type TrailViewerRPC = {
 			listTrails: {
 				params: Record<string, never>;
 				response: { entries: LibraryEntry[] };
+			};
+			listSessions: {
+				params: Record<string, never>;
+				response: { groups: SessionGroup[]; standalone: SessionSummary[] };
 			};
 			openTrailFromCache: {
 				params: { trailFile: string; mode?: ViewerMode; repoRoot?: string };
@@ -637,8 +675,8 @@ function persistShareMutation(
 }
 
 function summarize(tab: TabState): TabSummary {
-	if (tab.kind === "library") {
-		return { id: tab.id, kind: "library", title: tab.title };
+	if (tab.kind === "library" || tab.kind === "sessions") {
+		return { id: tab.id, kind: tab.kind, title: tab.title };
 	}
 	return {
 		id: tab.id,
@@ -650,8 +688,8 @@ function summarize(tab: TabState): TabSummary {
 }
 
 function fullState(tab: TabState): TabFullState {
-	if (tab.kind === "library") {
-		return { ok: true, id: tab.id, kind: "library", title: tab.title };
+	if (tab.kind === "library" || tab.kind === "sessions") {
+		return { ok: true, id: tab.id, kind: tab.kind, title: tab.title };
 	}
 	if (!tab.loaded.ok) {
 		return {
@@ -721,8 +759,8 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			readFile: async ({ tabId, path, repo }) => {
 				const tab = getTab(tabId);
 				if (!tab) return { ok: false, error: `unknown tab: ${tabId}` };
-				if (tab.kind === "library") {
-					return { ok: false, error: "library tab does not serve files" };
+				if (tab.kind === "library" || tab.kind === "sessions") {
+					return { ok: false, error: `${tab.kind} tab does not serve files` };
 				}
 				return tab.mode === "remote"
 					? readFileRemote(tab, path, repo)
@@ -730,7 +768,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			getFileTree: async ({ tabId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library") return { files: [] };
+				if (!tab || tab.kind === "library" || tab.kind === "sessions") return { files: [] };
 				return tab.mode === "remote"
 					? getFileTreeRemote(tab)
 					: { files: await walkFiles(tab.repoRoot) };
@@ -747,9 +785,120 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				);
 				return { entries };
 			},
+			listSessions: async () => {
+				const dbPath = openCodeDBPath();
+				let db: import("bun:sqlite").Database | null = null;
+				try {
+					const { Database } = await import("bun:sqlite");
+					db = new Database(dbPath, { readonly: true });
+					const sevenDaysAgo = Date.now() - 7 * 86400000;
+					const firstEvents = db
+						.prepare(
+							`SELECT
+								e.aggregate_id,
+								e.data,
+								(SELECT COUNT(*) FROM event WHERE aggregate_id = e.aggregate_id) AS event_count,
+								(SELECT MAX(json_extract(e2.data, '$.info.time.created')) FROM event e2 WHERE e2.aggregate_id = e.aggregate_id) AS last_created
+							FROM event e
+							WHERE e.seq = (SELECT MIN(e2.seq) FROM event e2 WHERE e2.aggregate_id = e.aggregate_id)
+								AND json_extract(e.data, '$.info.time.created') > ?
+							ORDER BY e.seq DESC`,
+						)
+						.all(sevenDaysAgo) as Array<{
+						aggregate_id: string;
+						data: string;
+						event_count: number;
+						last_created: number | null;
+					}>;
+					const idToSummary = new Map<string, SessionSummary>();
+					for (const row of firstEvents) {
+						let title = row.aggregate_id.slice(0, 12);
+						let slug = "";
+						let createdAtStr = "";
+						let durationMs = 0;
+						try {
+							const parsed = JSON.parse(row.data) as Record<string, unknown>;
+							const info = parsed["info"] as Record<string, unknown> | undefined;
+							const rawTitle = info?.["title"];
+							if (typeof rawTitle === "string") {
+								title = rawTitle;
+							}
+							const rawSlug = info?.["slug"];
+							if (typeof rawSlug === "string") {
+								slug = rawSlug;
+							}
+							const rawTime = info?.["time"] as Record<string, unknown> | undefined;
+							const rawCreated = rawTime?.["created"];
+							if (typeof rawCreated === "number") {
+								createdAtStr = new Date(rawCreated).toISOString();
+								if (typeof row.last_created === "number") {
+									durationMs = row.last_created - rawCreated;
+								}
+							}
+						} catch {
+							// best-effort parse
+						}
+						idToSummary.set(row.aggregate_id, {
+							id: row.aggregate_id,
+							title,
+							slug,
+							createdAt: createdAtStr,
+							durationMs,
+							eventCount: row.event_count,
+						});
+					}
+					const relations = db
+						.prepare(
+							`SELECT DISTINCT
+								json_extract(data, '$.part.state.metadata.parentSessionId') AS parent_id,
+								json_extract(data, '$.part.state.metadata.sessionId') AS child_id
+							FROM event
+							WHERE json_extract(data, '$.part.type') = 'tool'
+								AND json_extract(data, '$.part.tool') = 'task'
+								AND json_extract(data, '$.part.state.metadata.sessionId') IS NOT NULL`,
+						)
+						.all() as Array<{ parent_id: string; child_id: string }>;
+					const childIds = new Set<string>();
+					const groups: SessionGroup[] = [];
+					for (const rel of relations) {
+						if (!rel.parent_id || !rel.child_id) continue;
+						const parent = idToSummary.get(rel.parent_id);
+						const child = idToSummary.get(rel.child_id);
+						if (parent && child) {
+							childIds.add(rel.child_id);
+						}
+					}
+					for (const summary of idToSummary.values()) {
+						if (childIds.has(summary.id)) continue;
+						const childList: SessionSummary[] = [];
+						for (const rel of relations) {
+							if (rel.parent_id === summary.id) {
+								const child = idToSummary.get(rel.child_id);
+								if (child) childList.push(child);
+							}
+						}
+						if (childList.length > 0) {
+							groups.push({ parent: { ...summary }, children: childList });
+						}
+					}
+					const standalone: SessionSummary[] = [];
+					for (const summary of idToSummary.values()) {
+						if (childIds.has(summary.id)) continue;
+						if (!groups.some((g) => g.parent.id === summary.id)) {
+							standalone.push(summary);
+						}
+					}
+					return { groups, standalone };
+				} catch (err) {
+					console.warn(`[trail-viewer] listSessions failed: ${(err as Error).message}`);
+					return { groups: [], standalone: [] };
+				} finally {
+					db?.close();
+				}
+			},
 			createTrailNote: ({ tabId, draft }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library") {
+				if (!tab || tab.kind === "library" || tab.kind === "sessions") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -774,7 +923,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			updateTrailNote: ({ tabId, noteId, body }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library") {
+				if (!tab || tab.kind === "library" || tab.kind === "sessions") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -822,7 +971,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			shareTrail: ({ tabId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library") {
+				if (!tab || tab.kind === "library" || tab.kind === "sessions") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -907,7 +1056,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			deleteTrailNote: ({ tabId, noteId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library") {
+				if (!tab || tab.kind === "library" || tab.kind === "sessions") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1021,8 +1170,8 @@ const browserWindow = new BrowserWindow({
 browserWindow.maximize();
 
 function closeTabById(id: string): { ok: boolean; error?: string } {
-	if (id === LIBRARY_TAB_ID) {
-		return { ok: false, error: "library tab cannot be closed" };
+	if (id === LIBRARY_TAB_ID || id === SESSIONS_TAB_ID) {
+		return { ok: false, error: "permanent tab cannot be closed" };
 	}
 	if (!tabs.has(id)) return { ok: false, error: `unknown tab: ${id}` };
 	tabs.delete(id);

@@ -549,6 +549,7 @@ export type {
 // Use '@principal-ai/principal-view-core/node' for Node.js-specific functionality:
 //
 // - EventProcessor, ValidationEngine, ConfigurationValidator (Node.js processing)
+// - OpenCodeEventStore, OpenCodeEventRetriever (opencode event reading)
 // - GraphInstrumentationHelper (Node.js utilities)
 // - PathMatcher, GraphConverter (Node.js utilities)
 // - EventValidator, createValidatedEmitter (Node.js telemetry)

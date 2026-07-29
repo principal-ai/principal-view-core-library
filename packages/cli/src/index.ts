@@ -29,9 +29,12 @@ import { createTrailCommand } from './commands/trail.js';
 import { createTourCommand } from './commands/tour.js';
 import { createTopicCommand } from './commands/topic.js';
 import { createInboxCommand } from './commands/inbox.js';
+import { createStarredCollectionsCommand } from './commands/starred-collections.js';
+import { createRepoCommand } from './commands/repo.js';
+import { createOpencodeCommand } from './commands/opencode/index.js';
 
 // Keep in sync with package.json "version"
-const VERSION = '0.29.0';
+const VERSION = '0.32.0';
 
 const program = new Command();
 
@@ -64,6 +67,9 @@ program.addCommand(createTrailCommand());
 program.addCommand(createTourCommand());
 program.addCommand(createTopicCommand());
 program.addCommand(createInboxCommand());
+program.addCommand(createStarredCollectionsCommand());
+program.addCommand(createRepoCommand());
+program.addCommand(createOpencodeCommand());
 
 // Parse command line arguments
 program.parse(process.argv);

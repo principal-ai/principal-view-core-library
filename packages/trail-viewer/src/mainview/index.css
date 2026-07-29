@@ -26,3 +26,11 @@ body {
 .trail-viewer-spin {
 	animation: trail-viewer-spin 1s linear infinite;
 }
+
+@keyframes trail-blip {
+	50% { opacity: 0.2; }
+}
+
+.trail-blip {
+	animation: trail-blip 1s step-end infinite;
+}

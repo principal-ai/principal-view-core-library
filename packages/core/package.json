@@ -43,6 +43,7 @@
     "@opentelemetry/sdk-trace-base": "2.2.0",
     "@opentelemetry/semantic-conventions": "1.38.0",
     "@principal-ai/repository-abstraction": "^0.5.7",
+    "better-sqlite3": "^13.0.0",
     "date-fns": "3.0.0",
     "handlebars": "^4.7.8",
     "js-yaml": "4.1.0",
@@ -54,6 +55,7 @@
   "devDependencies": {
     "@principal-ai/codebase-composition": "^0.2.43",
     "@principal-ai/principal-view-core": "0.24.10",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/handlebars": "^4.1.0",
     "@types/jest": "30.0.0",
     "@types/js-yaml": "4.0.9",

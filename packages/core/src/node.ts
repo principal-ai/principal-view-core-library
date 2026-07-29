@@ -138,6 +138,10 @@ export { LibraryLoader } from './LibraryLoader';
 export { EventRegistry } from './registry/EventRegistry';
 export type { EventSource } from './registry/EventRegistry';
 
+// Export opencode event retrieval (Node.js only - SQLite)
+export { OpenCodeEventStore, defaultOpenCodeDBPath } from './opencode/OpenCodeEventStore';
+export type { OpenCodeRawEvent, OpenCodeSessionEvents, OpenCodeEventRetriever, OpenCodeStoreOptions, SessionSummary, SessionListResult } from './opencode/types';
+
 // Re-export FileSystemAdapter from repository-abstraction
 export type { FileSystemAdapter } from '@principal-ai/repository-abstraction';
 export { InMemoryFileSystemAdapter } from '@principal-ai/repository-abstraction';
