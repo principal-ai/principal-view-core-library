@@ -137,6 +137,8 @@ interface SessionSummary {
 	createdAt: string;
 	durationMs: number;
 	eventCount: number;
+	repoRoot?: string;
+	repos?: RepoInfo[];
 }
 
 interface SessionGroup {
@@ -495,6 +497,14 @@ interface SessionEventRow {
 	accumulated: AccRecord | null;
 }
 
+interface RepoInfo {
+	root: string;
+	fileCount: number;
+	owner: string | null;
+	name: string | null;
+	editing: boolean;
+}
+
 type TrailViewerRPC = {
 	bun: RPCSchema<{
 		requests: {
@@ -536,7 +546,11 @@ type TrailViewerRPC = {
 			};
 			getSessionEvents: {
 				params: { sessionId: string };
-				response: { ok: boolean; error?: string; events?: SessionEventRow[]; repoRoot?: string; session?: { slug: string; title: string } };
+				response: { ok: boolean; error?: string; events?: SessionEventRow[]; repoRoot?: string; repos?: RepoInfo[]; session?: { slug: string; title: string } };
+			};
+			discoverSessionsRepos: {
+				params: { sessionIds: string[] };
+				response: { repos: Record<string, { repoRoot: string; repos: RepoInfo[] }> };
 			};
 			openSessionTab: {
 				params: { sessionId: string; title: string };
@@ -882,6 +896,48 @@ function normalizeV1Event(type: string, data: Record<string, unknown>): V1Normal
 		default:
 			return { eventType: "unknown", sessionId, timestamp, workingDirectory };
 	}
+}
+
+async function discoverGitRepos(paths: string[]): Promise<RepoInfo[]> {
+	if (paths.length === 0) return [];
+	const dirCache = new Map<string, string | null>();
+	const repoFiles = new Map<string, number>();
+
+	async function findGitRoot(dir: string): Promise<string | null> {
+		const cached = dirCache.get(dir);
+		if (cached !== undefined) return cached;
+		try {
+			const s = await fs.stat(join(dir, ".git"));
+			if (s.isDirectory() || s.isFile()) {
+				dirCache.set(dir, dir);
+				return dir;
+			}
+		} catch {}
+		const parent = dirname(dir);
+		if (parent === dir || parent.length >= dir.length) {
+			dirCache.set(dir, null);
+			return null;
+		}
+		const result = await findGitRoot(parent);
+		dirCache.set(dir, result);
+		return result;
+	}
+
+	const unique = new Set(paths);
+	for (const fp of unique) {
+		const dir = dirname(fp);
+		const gitRoot = await findGitRoot(dir);
+		if (gitRoot) {
+			repoFiles.set(gitRoot, (repoFiles.get(gitRoot) ?? 0) + 1);
+		}
+	}
+
+	return Array.from(repoFiles.entries())
+		.sort((a, b) => b[1] - a[1])
+		.map(([root, fileCount]) => {
+			const parts = root.replace(/\/+$/, "").split("/");
+			return { root, fileCount, owner: null, name: parts[parts.length - 1] ?? null, editing: false };
+		});
 }
 
 function summarize(tab: TabState): TabSummary {
@@ -1350,7 +1406,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 						activeFiles: new Map(),
 						modified: new Set(),
 					};
-					let repoRoot = "";
+					const allPaths = new Set<string>();
 					const events: SessionEventRow[] = [];
 					for (const row of rows) {
 						let raw: unknown = {};
@@ -1360,11 +1416,6 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							// best-effort parse
 						}
 						const rawObj = raw as Record<string, unknown>;
-						// Extract repoRoot from first event's info.directory
-						if (!repoRoot) {
-							const info = rawObj.info as Record<string, unknown> | undefined;
-							if (info && typeof info.directory === "string") repoRoot = info.directory;
-						}
 						const normalized = normalizeV1Event(row.type, rawObj);
 						const accResult = accOp(accState, normalized.eventType, normalized.toolName, normalized.rawFilePaths, normalized.callID);
 						events.push({
@@ -1374,13 +1425,79 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							normalized,
 							accumulated: accResult,
 						});
+						if (normalized.rawFilePaths) {
+							for (const fp of normalized.rawFilePaths) {
+								if (fp.startsWith("/")) allPaths.add(fp);
+							}
+						}
 					}
-					return { ok: true, events, repoRoot: repoRoot || undefined, session: { slug: sessionSlug, title: sessionTitle } };
+					// Discover git repos from event file paths
+					const repos = await discoverGitRepos(Array.from(allPaths));
+					const repoRoot = repos.length > 0 ? repos[0].root : undefined;
+					return { ok: true, events, repoRoot, repos, session: { slug: sessionSlug, title: sessionTitle } };
 				} catch (err) {
 					return { ok: false, error: (err as Error).message };
 				} finally {
 					db?.close();
 				}
+			},
+			discoverSessionsRepos: async ({ sessionIds }) => {
+				const dbPath = openCodeDBPath();
+				let db: import("bun:sqlite").Database | null = null;
+				const result: Record<string, { repoRoot: string; repos: RepoInfo[] }> = {};
+				try {
+					const { Database } = await import("bun:sqlite");
+					db = new Database(dbPath, { readonly: true });
+					for (const sessionId of sessionIds) {
+						const rows = db
+							.prepare(
+								`SELECT seq, type, data FROM event WHERE aggregate_id = ? ORDER BY seq ASC`,
+							)
+							.all(sessionId) as Array<{ seq: number; type: string; data: string }>;
+						const allPaths = new Set<string>();
+						const accState: AccState = {
+							readingFiles: new Map(),
+							greppingFiles: new Map(),
+							activeFiles: new Map(),
+							modified: new Set(),
+						};
+						const editPaths = new Set<string>();
+						for (const row of rows) {
+							let raw: Record<string, unknown> = {};
+							try { raw = JSON.parse(row.data) as Record<string, unknown>; } catch {}
+							const normalized = normalizeV1Event(row.type, raw);
+							const accResult = accOp(accState, normalized.eventType, normalized.toolName, normalized.rawFilePaths, normalized.callID);
+							if (accResult?.operation === "editing" && normalized.rawFilePaths) {
+								for (const fp of normalized.rawFilePaths) {
+									if (fp.startsWith("/")) editPaths.add(fp);
+								}
+							}
+							if (normalized.rawFilePaths) {
+								for (const fp of normalized.rawFilePaths) {
+									if (fp.startsWith("/")) allPaths.add(fp);
+								}
+							}
+						}
+						const repoInfo = await discoverGitRepos(Array.from(allPaths));
+						// Determine which repos had edit operations
+						const editRepoRoots = new Set<string>();
+						if (editPaths.size > 0) {
+							const editRepoInfo = await discoverGitRepos(Array.from(editPaths));
+							for (const r of editRepoInfo) editRepoRoots.add(r.root);
+						}
+						const repos: RepoInfo[] = repoInfo.map((r) => ({
+							...r,
+							editing: editRepoRoots.has(r.root),
+						}));
+						const repoRoot = repos.length > 0 ? repos[0].root : "";
+						result[sessionId] = { repoRoot, repos };
+					}
+				} catch (err) {
+					console.warn("[trail-viewer] discoverSessionsRepos failed:", err);
+				} finally {
+					db?.close();
+				}
+				return { repos: result };
 			},
 			openSessionTab: ({ sessionId, title }) => {
 				for (const existing of tabs.values()) {

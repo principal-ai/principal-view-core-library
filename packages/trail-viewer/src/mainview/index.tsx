@@ -73,6 +73,8 @@ interface SessionSummary {
 	createdAt: string;
 	durationMs: number;
 	eventCount: number;
+	repoRoot?: string;
+	repos?: Array<{ root: string; fileCount: number; name: string | null; owner: string | null; editing: boolean }>;
 }
 
 interface SessionGroup {
@@ -2042,19 +2044,20 @@ function formatTime(iso: string): string {
 	const d = new Date(iso);
 	return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
-
-function SessionRow({ session, depth, theme }: {
+function SessionRow({ session, depth, theme, parentStartDay }: {
 	session: SessionSummary;
 	depth: number;
 	theme: ReturnType<typeof useTheme>["theme"];
+	parentStartDay?: string;
 }) {
+
 	const hours = Math.floor(session.durationMs / 3600000);
 	const msHour = 3600000;
 	const remainingMin = Math.floor((session.durationMs % 3600000) / 60000);
 	const secs = Math.floor((session.durationMs % 60000) / 1000);
 	const showShapes = session.durationMs >= 60000;
 	const startDate = new Date(session.createdAt);
-	const startDay = localDateKey(startDate);
+	const startDay = depth > 0 && parentStartDay ? parentStartDay : localDateKey(startDate);
 	const sessionEndMs = startDate.getTime() + session.durationMs;
 
 	const durLabel = session.durationMs < 10000 ? `${secs}s`
@@ -2116,65 +2119,75 @@ function SessionRow({ session, depth, theme }: {
 				{depth === 0 ? (
 					<>
 						<span style={{ fontWeight: 500 }}>{session.slug || session.title}</span>
-						<span style={{ color: theme.colors.textTertiary, marginLeft: 8 }}>
-							{formatTime(session.createdAt)} · {session.eventCount}e
-						</span>
+						{session.repos && session.repos.length > 0 && (
+							<span style={{ display: "inline-flex", gap: 3, marginLeft: 6 }}>
+								{session.repos.map((r, i) => (
+									<span key={i} style={{
+										fontSize: theme.fontSizes[0],
+										color: r.editing ? "#4fc3f7" : "#888",
+										border: `1px solid ${r.editing ? "#4fc3f733" : "#666"}33`,
+										borderRadius: 3,
+										padding: "0 4px",
+										lineHeight: "16px",
+									}}>{r.name || "?"}</span>
+								))}
+							</span>
+						)}
 					</>
 				) : (
 					<span style={{ color: theme.colors.textTertiary }}>{session.title}</span>
 				)}
 			</div>
-			{depth === 0 && (
-				<div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-					{showShapes && (
-						<div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-							{dayRows.slice().reverse().map((row) => {
-								const todayKey = localDateKey(new Date());
-								const currentHour = new Date().getHours();
-								const isToday = row.dayKey === todayKey;
-								return (
-									<div key={row.dayKey} style={{ display: "flex", alignItems: "center", gap: 1 }}>
-										{Array.from({ length: 24 }, (_, slot) => {
-											const isActive = slot >= row.startSlot && slot < row.endSlot;
-											const isFuture = isToday && slot > currentHour;
-											if (isFuture) return <span key={slot} style={{ display: "inline-block", width: 7, height: 7, flexShrink: 0 }} />;
-											const isCurrent = isToday && slot === currentHour && isActive;
-											const bg = isActive
-												? (row.isOtherDay ? theme.colors.accent ?? "#00ff00" : theme.colors.primary ?? "#6366f1")
-												: (theme.colors.textTertiary ?? "#888");
-											return (
-												<span key={slot} style={{ marginLeft: slot % 6 === 0 && slot > 0 ? 3 : 0 }}>
-													<span
-														className={isCurrent ? "trail-blip" : undefined}
-														style={{
-															display: "inline-block",
-															width: 7,
-															height: 7,
-															borderRadius: "50%",
-															background: bg,
-															opacity: isActive ? 1 : 0.1,
-															flexShrink: 0,
-														}}
-													/>
-												</span>
-											);
-										})}
-									</div>
-								);
-							})}
-						</div>
-					)}
-					<div
-						style={{
-							fontSize: theme.fontSizes[0],
-							color: theme.colors.textTertiary,
-							fontFamily: theme.fonts.monospace,
-						}}
-					>
-						{durLabel}
+			<div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+				<div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+					{dayRows.slice().reverse().map((row) => {
+							const todayKey = localDateKey(new Date());
+							const currentHour = new Date().getHours();
+							const isToday = row.dayKey === todayKey;
+							return (
+								<div key={row.dayKey} style={{ display: "flex", alignItems: "center", gap: 1 }}>
+									{Array.from({ length: 24 }, (_, slot) => {
+										const isActive = slot >= row.startSlot && slot < row.endSlot;
+										const isFuture = isToday && slot > currentHour;
+										if (isFuture) return <span key={slot} style={{ display: "inline-block", width: 7, height: 7, flexShrink: 0 }} />;
+										const isCurrent = isToday && slot === currentHour && isActive;
+										const bg = isActive
+											? (row.isOtherDay ? theme.colors.accent ?? "#00ff00" : theme.colors.primary ?? "#6366f1")
+											: (theme.colors.textTertiary ?? "#888");
+										return (
+											<span key={slot} style={{ marginLeft: slot % 6 === 0 && slot > 0 ? 3 : 0 }}>
+												<span
+													className={isCurrent ? "trail-blip" : undefined}
+													style={{
+														display: "inline-block",
+														width: 7,
+														height: 7,
+														borderRadius: "50%",
+														background: bg,
+														opacity: isActive ? 1 : 0.1,
+														flexShrink: 0,
+													}}
+												/>
+											</span>
+										);
+									})}
+								</div>
+							);
+						})}
 					</div>
+				<div
+					style={{
+						width: 60,
+						textAlign: "right",
+						fontSize: theme.fontSizes[0],
+						color: theme.colors.textTertiary,
+						fontFamily: theme.fonts.monospace,
+						flexShrink: 0,
+					}}
+				>
+					{durLabel}
 				</div>
-			)}
+			</div>
 		</div>
 	);
 }
@@ -2203,15 +2216,21 @@ function localDateKey(d: Date): string {
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+let sessionsCache: { groups: SessionGroup[]; standalone: SessionSummary[] } | null = null;
+
 function SessionsLibraryView() {
 	const { theme } = useTheme();
-	const [data, setData] = useState<{ groups: SessionGroup[]; standalone: SessionSummary[] } | null>(null);
+	const [data, setData] = useState<{ groups: SessionGroup[]; standalone: SessionSummary[] } | null>(sessionsCache);
 	const [error, setError] = useState<string | null>(null);
+	const [filterRepo, setFilterRepo] = useState<string | null>(null);
+	const reposDiscovered = useRef(false);
 
 	const refresh = useCallback(async () => {
 		try {
 			const result = await electrobun.rpc!.request.listSessions({});
-			setData({ groups: result.groups, standalone: result.standalone });
+			const d = { groups: result.groups, standalone: result.standalone };
+			sessionsCache = d;
+			setData(d);
 			setError(null);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
@@ -2222,13 +2241,105 @@ function SessionsLibraryView() {
 		void refresh();
 	}, [refresh]);
 
-	if (error) {
+	// Background repo discovery (fire once after data loads)
+	useEffect(() => {
+		if (!data || reposDiscovered.current) return;
+		reposDiscovered.current = true;
+		let cancelled = false;
+		(async () => {
+			const allIds = new Set<string>();
+			for (const g of data.groups) {
+				allIds.add(g.parent.id);
+				for (const c of g.children) allIds.add(c.id);
+			}
+			for (const s of data.standalone) allIds.add(s.id);
+			const ids = Array.from(allIds);
+			if (ids.length === 0 || ids.length > 500) return;
+			try {
+				const repoRes = await electrobun.rpc!.request.discoverSessionsRepos({ sessionIds: ids });
+				if (cancelled || !repoRes.repos) return;
+				setData((prev) => {
+					if (!prev) return prev;
+					for (const g of prev.groups) {
+						const info = repoRes.repos[g.parent.id];
+						if (info) { g.parent.repoRoot = info.repoRoot; g.parent.repos = info.repos.map((r) => ({ root: r.root, fileCount: r.fileCount, name: r.name, owner: null, editing: r.editing })); }
+						for (const c of g.children) {
+							const ci = repoRes.repos[c.id];
+							if (ci) { c.repoRoot = ci.repoRoot; c.repos = ci.repos.map((r) => ({ root: r.root, fileCount: r.fileCount, name: r.name, owner: null, editing: r.editing })); }
+						}
+					}
+					for (const s of prev.standalone) {
+						const si = repoRes.repos[s.id];
+						if (si) { s.repoRoot = si.repoRoot; s.repos = si.repos.map((r) => ({ root: r.root, fileCount: r.fileCount, name: r.name, owner: null, editing: r.editing })); }
+					}
+					return { ...prev };
+				});
+			} catch (err) {
+				console.warn("[SessionsLibraryView] repo discovery failed:", err);
+			}
+		})();
+		return () => { cancelled = true; };
+	}, [data]);
+
+	const allRepos = useMemo(() => {
+		if (!data) return [];
+		const names = new Set<string>();
+		for (const g of data.groups) {
+			if (g.parent.repos) for (const r of g.parent.repos) if (r.name) names.add(r.name);
+			for (const c of g.children) if (c.repos) for (const r of c.repos) if (r.name) names.add(r.name);
+		}
+		for (const s of data.standalone) if (s.repos) for (const r of s.repos) if (r.name) names.add(r.name);
+		return Array.from(names).sort();
+	}, [data]);
+
+	const filteredSections = useMemo(() => {
+		if (!data) return [];
+		const dayMap = new Map<string, DaySection>();
+		const dateKey = (iso: string) => localDateKey(new Date(iso));
+		for (const group of data.groups) {
+			const key = dateKey(group.parent.createdAt);
+			let section = dayMap.get(key);
+			if (!section) { section = { date: key, label: formatDayLabel(group.parent.createdAt), groups: [], standalone: [] }; dayMap.set(key, section); }
+			section.groups.push(group);
+		}
+		for (const session of data.standalone) {
+			const key = dateKey(session.createdAt);
+			let section = dayMap.get(key);
+			if (!section) { section = { date: key, label: formatDayLabel(session.createdAt), groups: [], standalone: [] }; dayMap.set(key, section); }
+			section.standalone.push(session);
+		}
+		const sections = Array.from(dayMap.values()).sort((a, b) => b.date.localeCompare(a.date));
+		if (!filterRepo) return sections;
+		return sections
+			.map((sec) => ({
+				...sec,
+				groups: sec.groups.filter(
+					(g) =>
+						g.parent.repos?.some((r) => r.name === filterRepo) ||
+						g.children.some((c) => c.repos?.some((r) => r.name === filterRepo)),
+				),
+				standalone: sec.standalone.filter((s) => s.repos?.some((r) => r.name === filterRepo)),
+			}))
+			.filter((sec) => sec.groups.length > 0 || sec.standalone.length > 0);
+	}, [data, filterRepo]);
+
+	const activeRepoData = useMemo(() => {
+		if (!filterRepo) return null;
+		let count = 0;
+		for (const g of filteredSections) {
+			count += g.groups.reduce((s, gr) => s + 1 + gr.children.length, 0) + g.standalone.length;
+		}
+		return { count };
+	}, [filteredSections, filterRepo]);
+
+	const totalSessions = data ? data.groups.reduce((s, g) => s + 1 + g.children.length, 0) + data.standalone.length : 0;
+
+	if (data === null && error) {
 		return <CenteredMessage title="Could not load sessions" detail={error} />;
 	}
 	if (data === null) {
 		return <CenteredMessage title="Loading sessions…" />;
 	}
-	const totalSessions = data.groups.reduce((s, g) => s + 1 + g.children.length, 0) + data.standalone.length;
 	if (totalSessions === 0) {
 		return (
 			<CenteredMessage
@@ -2237,29 +2348,6 @@ function SessionsLibraryView() {
 			/>
 		);
 	}
-
-	const dayMap = new Map<string, DaySection>();
-	const dateKey = (iso: string) => localDateKey(new Date(iso));
-	for (const group of data.groups) {
-		const key = dateKey(group.parent.createdAt);
-		let section = dayMap.get(key);
-		if (!section) {
-			section = { date: key, label: formatDayLabel(group.parent.createdAt), groups: [], standalone: [] };
-			dayMap.set(key, section);
-		}
-		section.groups.push(group);
-	}
-	for (const session of data.standalone) {
-		const key = dateKey(session.createdAt);
-		let section = dayMap.get(key);
-		if (!section) {
-			section = { date: key, label: formatDayLabel(session.createdAt), groups: [], standalone: [] };
-			dayMap.set(key, section);
-		}
-		section.standalone.push(session);
-	}
-
-	const sections = Array.from(dayMap.values()).sort((a, b) => b.date.localeCompare(a.date));
 
 	return (
 		<div
@@ -2273,7 +2361,63 @@ function SessionsLibraryView() {
 				fontFamily: theme.fonts.body,
 			}}
 		>
-			{sections.map((section) => (
+			{allRepos.length > 0 && (
+				<div
+					style={{
+						display: "flex",
+						flexWrap: "wrap",
+						gap: 6,
+						marginBottom: 16,
+						paddingBottom: 12,
+						borderBottom: `1px solid ${theme.colors.border ?? "#333"}`,
+					}}
+				>
+					<button
+						onClick={() => setFilterRepo(null)}
+						style={{
+							fontSize: 11,
+							padding: "2px 10px",
+							borderRadius: 4,
+							border: `1px solid ${filterRepo === null ? theme.colors.primary ?? "#6366f1" : theme.colors.border ?? "#555"}`,
+							background: filterRepo === null ? (theme.colors.primary ?? "#6366f1") + "22" : "transparent",
+							color: filterRepo === null ? (theme.colors.primary ?? "#6366f1") : theme.colors.textSecondary,
+							cursor: "pointer",
+						}}
+					>
+						All{filterRepo === null && allRepos.length > 0 && ` (${totalSessions})`}
+					</button>
+					{allRepos.map((name) => (
+						<button
+							key={name}
+							onClick={() => setFilterRepo(name)}
+							style={{
+								fontSize: 11,
+								padding: "2px 10px",
+								borderRadius: 4,
+								border: `1px solid ${filterRepo === name ? "#4fc3f7" : theme.colors.border ?? "#555"}`,
+								background: filterRepo === name ? "#4fc3f722" : "transparent",
+								color: filterRepo === name ? "#4fc3f7" : theme.colors.textSecondary,
+								cursor: "pointer",
+							}}
+						>
+							{name}
+						</button>
+					))}
+					{filterRepo !== null && activeRepoData && (
+						<span style={{ fontSize: 11, color: theme.colors.textTertiary, alignSelf: "center", marginLeft: 4 }}>
+							{activeRepoData.count} sessions
+						</span>
+					)}
+				</div>
+			)}
+			{filteredSections.length === 0 && filterRepo !== null ? (
+				<CenteredMessage
+					title={`No sessions for ${filterRepo}`}
+					detail="Try a different repo filter."
+				/>
+			) : (
+				filteredSections.map((section) => {
+					return (
 				<div key={section.date} style={{ marginBottom: 20 }}>
 					<div
 						style={{
@@ -2290,8 +2434,8 @@ function SessionsLibraryView() {
 						{section.groups.map((group) => (
 							<div key={group.parent.id}>
 								<SessionRow session={group.parent} depth={0} theme={theme} />
-								{group.children.map((child) => (
-									<SessionRow key={child.id} session={child} depth={1} theme={theme} />
+								{group.children.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((child) => (
+									<SessionRow key={child.id} session={child} depth={1} theme={theme} parentStartDay={localDateKey(new Date(group.parent.createdAt))} />
 								))}
 							</div>
 						))}
@@ -2300,7 +2444,7 @@ function SessionsLibraryView() {
 						))}
 					</div>
 				</div>
-			))}
+			);}))}
 		</div>
 	);
 }
@@ -2325,18 +2469,27 @@ function EventJSON({ data }: { data: unknown }) {
 	);
 }
 
+const eventDataCache = new Map<string, {
+	events: SessionEventRow[];
+	repoRoot: string | null;
+	repos: Array<{ root: string; fileCount: number; name: string | null }>;
+	sessionMeta: { slug: string; title: string } | null;
+}>();
+
 function SessionEventsView({ tabId, sessionId, title }: {
 	tabId: string;
 	sessionId: string;
 	title: string;
 }) {
 	const { theme } = useTheme();
-	const [events, setEvents] = useState<SessionEventRow[] | null>(null);
+	const cached = eventDataCache.get(sessionId);
+	const [events, setEvents] = useState<SessionEventRow[] | null>(cached?.events ?? null);
 	const [error, setError] = useState<string | null>(null);
 	const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-	const [repoRoot, setRepoRoot] = useState<string | null>(null);
+	const [repoRoot, setRepoRoot] = useState<string | null>(cached?.repoRoot ?? null);
 	const [fileTree, setFileTree] = useState<FileTree | null>(null);
-	const [sessionMeta, setSessionMeta] = useState<{ slug: string; title: string } | null>(null);
+	const [sessionMeta, setSessionMeta] = useState<{ slug: string; title: string } | null>(cached?.sessionMeta ?? null);
+	const [repos, setRepos] = useState<Array<{ root: string; fileCount: number; name: string | null }>>(cached?.repos ?? []);
 
 	// Load events
 	useEffect(() => {
@@ -2349,9 +2502,17 @@ function SessionEventsView({ tabId, sessionId, title }: {
 					setError(res.error ?? "failed to load events");
 					return;
 				}
-				setEvents(res.events ?? []);
-				if (res.repoRoot) setRepoRoot(res.repoRoot);
-				if (res.session) setSessionMeta(res.session);
+				const evs = res.events ?? [];
+				const rrs = res.repoRoot ?? null;
+				const rps = res.repos
+					? (res.repos as Array<{ root: string; fileCount: number; name: string | null }>).map((r) => ({ root: r.root, fileCount: r.fileCount, name: r.name }))
+					: [];
+				const sm = res.session ?? null;
+				eventDataCache.set(sessionId, { events: evs, repoRoot: rrs, repos: rps, sessionMeta: sm });
+				setEvents(evs);
+				if (rrs) setRepoRoot(rrs);
+				if (rps.length > 0) setRepos(rps);
+				if (sm) setSessionMeta(sm);
 			} catch (err) {
 				if (cancelled) return;
 				setError(err instanceof Error ? err.message : String(err));
@@ -2537,6 +2698,17 @@ function SessionEventsView({ tabId, sessionId, title }: {
 				<span style={{ color: "#888", fontWeight: 400, fontSize: 11 }}>{events.length} events</span>
 				{repoRoot && <span style={{ color: "#555", fontSize: 10, marginLeft: "auto" }}>{repoRoot}</span>}
 			</div>
+			{repos.length > 0 && (
+				<div style={{ padding: "3px 16px", borderBottom: "1px solid #222", fontSize: 10, display: "flex", gap: 16, alignItems: "center", color: "#888" }}>
+					{repos.map((r, i) => (
+						<span key={i} style={{ display: "flex", gap: 4, alignItems: "center" }}>
+							<span style={{ color: "#4fc3f7", fontWeight: 600 }}>{r.name || "?"}</span>
+							<span>{r.fileCount} files</span>
+							<span style={{ color: "#555" }}>{r.root}</span>
+						</span>
+					))}
+				</div>
+			)}
 
 			<div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
 				{/* Event list (left) */}
