@@ -123,6 +123,13 @@ interface SessionsTabState {
 	title: "Sessions";
 }
 
+interface SessionEventsTabState {
+	id: string;
+	kind: "session-events";
+	title: string;
+	sessionId: string;
+}
+
 interface SessionSummary {
 	id: string;
 	title: string;
@@ -137,7 +144,7 @@ interface SessionGroup {
 	children: SessionSummary[];
 }
 
-type TabState = LibraryTabState | SessionsTabState | TrailTabState;
+type TabState = LibraryTabState | SessionsTabState | SessionEventsTabState | TrailTabState;
 
 const tabs = new Map<string, TabState>();
 tabs.set(LIBRARY_TAB_ID, {
@@ -448,7 +455,7 @@ async function walkFiles(
 
 interface TabSummary {
 	id: string;
-	kind: "library" | "trail" | "sessions";
+	kind: "library" | "trail" | "sessions" | "session-events";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -458,18 +465,34 @@ interface TabFullState {
 	ok: boolean;
 	error?: string;
 	id: string;
-	kind: "library" | "trail" | "sessions";
+	kind: "library" | "trail" | "sessions" | "session-events";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
 	repoRoot?: string;
 	trailFilePath?: string;
+	sessionId?: string;
 	payload?: unknown;
 	// Repo identity resolved host-side so the tab header can match the library
 	// rows. `owner === "local"` means no GitHub origin was found (repo is then
 	// the working-tree folder name); any other owner is a real GitHub identity.
 	owner?: string;
 	repo?: string;
+}
+
+interface AccRecord {
+	operation: string;
+	description: string;
+	files: string[];
+	dependencies: string[];
+}
+
+interface SessionEventRow {
+	seq: number;
+	type: string;
+	raw: unknown;
+	normalized: Record<string, unknown>;
+	accumulated: AccRecord | null;
 }
 
 type TrailViewerRPC = {
@@ -496,7 +519,7 @@ type TrailViewerRPC = {
 				response: { ok: boolean; content?: string; error?: string };
 			};
 			getFileTree: {
-				params: { tabId: string };
+				params: { tabId: string; path?: string };
 				response: { files: Array<{ path: string; size: number }> };
 			};
 			listTrails: {
@@ -509,6 +532,14 @@ type TrailViewerRPC = {
 			};
 			openTrailFromCache: {
 				params: { trailFile: string; mode?: ViewerMode; repoRoot?: string };
+				response: { ok: boolean; error?: string; tabId?: string };
+			};
+			getSessionEvents: {
+				params: { sessionId: string };
+				response: { ok: boolean; error?: string; events?: SessionEventRow[]; repoRoot?: string; session?: { slug: string; title: string } };
+			};
+			openSessionTab: {
+				params: { sessionId: string; title: string };
 				response: { ok: boolean; error?: string; tabId?: string };
 			};
 			createTrailNote: {
@@ -674,8 +705,187 @@ function persistShareMutation(
 	}
 }
 
+// Per-event accumulator state machine — mirrors agentSessionEventAccumulator's
+// eventOp() but returns a result for every normalized event (null if no visible
+// state change). Used to show the three-column raw / normalized / accumulated view.
+type AccOp = "reading" | "grepping" | "editing" | "errored" | "starting" | "finished";
+
+interface AccState {
+	readingFiles: Map<string, string>;
+	greppingFiles: Map<string, string[]>;
+	activeFiles: Map<string, string>;
+	modified: Set<string>;
+}
+
+function accOp(
+	state: AccState,
+	eventType: string,
+	toolName?: string,
+	rawFilePaths?: string[],
+	callID?: string,
+): { operation: AccOp; description: string; files: string[]; dependencies: string[] } | null {
+	const files = rawFilePaths ?? [];
+	const tool = toolName?.toLowerCase() ?? "";
+
+	switch (eventType) {
+		case "pre-tool-use":
+		case "tool-executing": {
+			if (files.length === 0) return null;
+			if (["read", "ls"].includes(tool)) {
+				if (callID) state.readingFiles.set(callID, files[0]);
+				return { operation: "reading", description: `reading ${files.map(f => f.split("/").pop()).join(", ")}`, files, dependencies: [] };
+			}
+			if (["grep", "glob", "search"].includes(tool)) {
+				if (callID) state.greppingFiles.set(callID, files);
+				return { operation: "grepping", description: `grepping ${files.map(f => f.split("/").pop()).join(", ")}`, files, dependencies: [] };
+			}
+			if (["write", "edit", "multiedit"].includes(tool)) {
+				if (callID) state.activeFiles.set(callID, files[0]);
+				return { operation: "editing", description: `editing ${files.map(f => f.split("/").pop()).join(", ")}`, files, dependencies: [] };
+			}
+			return null;
+		}
+		case "post-tool-use":
+		case "post-tool-use-failure": {
+			if (["read", "ls"].includes(tool)) { if (callID) state.readingFiles.delete(callID); return null; }
+			if (["grep", "glob", "search"].includes(tool)) { if (callID) state.greppingFiles.delete(callID); return null; }
+			if (["write", "edit", "multiedit"].includes(tool)) {
+				const fp = callID ? (state.activeFiles.get(callID) ?? null) : null;
+				if (callID) state.activeFiles.delete(callID);
+				if (fp) { state.modified.add(fp); return { operation: "editing", description: `modified ${fp.split("/").pop()}`, files: [fp], dependencies: [] }; }
+				return null;
+			}
+			return null;
+		}
+		case "file-changed": {
+			for (const f of files) state.modified.add(f);
+			if (files.length === 0) return null;
+			return { operation: "editing", description: `patched ${files.map(f => f.split("/").pop()).join(", ")}`, files, dependencies: [] };
+		}
+		default:
+			return null;
+	}
+}
+
+// Lightweight V1 event normalizer (mirrors V1EventBridgeProcessor logic).
+type V1NormalizedEvent = {
+	eventType: string;
+	sessionId: string;
+	timestamp: number;
+	workingDirectory: string;
+	toolName?: string;
+	toolInput?: unknown;
+	toolOutput?: string;
+	callID?: string;
+	rawFilePaths?: string[];
+	data?: Record<string, unknown>;
+};
+
+function normalizeV1Event(type: string, data: Record<string, unknown>): V1NormalizedEvent {
+	const info = (data.info ?? {}) as Record<string, unknown>;
+	const time = info.time as Record<string, unknown> | undefined;
+	const sessionId = (typeof data.sessionID === "string" ? data.sessionID : "") as string;
+	const workingDirectory = (typeof info.directory === "string" ? info.directory : "") as string;
+	let timestamp = 0;
+	if (time && typeof time.created === "number") timestamp = time.created;
+
+	switch (type) {
+		case "session.created.1": {
+			const ev = { eventType: "session-start", sessionId, timestamp, workingDirectory, data: {} as Record<string, unknown> };
+			const d = ev.data!;
+			if (info.title) d.title = info.title;
+			if (info.agent) d.agent = info.agent;
+			if (info.slug) d.slug = info.slug;
+			if (info.parentID) d.parentID = info.parentID;
+			return ev;
+		}
+		case "session.updated.1": {
+			const ev = { eventType: "session-update", sessionId, timestamp, workingDirectory, data: {} as Record<string, unknown> };
+			const d = ev.data!;
+			if (info.cost) d.cost = info.cost;
+			if (info.tokens) d.tokens = info.tokens;
+			return ev;
+		}
+		case "message.updated.1": {
+			const role = typeof info.role === "string" ? info.role : "";
+			const eventType = role === "user" ? "user-prompt-submit" : "message-display";
+			const ev = { eventType, sessionId, timestamp, workingDirectory: "", data: {} as Record<string, unknown> };
+			const d = ev.data!;
+			if (info.agent) d.agent = info.agent;
+			if (info.parentID) d.parentID = info.parentID;
+			return ev;
+		}
+		case "message.part.updated.1": {
+			const part = data.part as Record<string, unknown> | undefined;
+			if (!part) return { eventType: "unknown", sessionId, timestamp, workingDirectory };
+			const partType = typeof part.type === "string" ? part.type : "";
+			if (partType === "tool") {
+				const state = (part.state ?? {}) as Record<string, unknown>;
+				const status = typeof state.status === "string" ? state.status : "";
+				const toolName = typeof part.tool === "string" ? part.tool.charAt(0).toUpperCase() + part.tool.slice(1) : "";
+				const callID = typeof part.callID === "string" ? part.callID : undefined;
+				let eventType = "unknown";
+				if (status === "pending") eventType = "pre-tool-use";
+				else if (status === "running") eventType = "tool-executing";
+				else if (status === "completed") eventType = "post-tool-use";
+				else if (status === "error") eventType = "post-tool-use-failure";
+				// Extract file paths from tool input
+				let rawFilePaths: string[] | undefined;
+				const input = state.input as Record<string, unknown> | undefined;
+				if (input) {
+					const fp = input.filePath ?? input.file_path ?? input.path;
+					if (typeof fp === "string") rawFilePaths = [fp];
+					else if (part.files && Array.isArray(part.files)) {
+						rawFilePaths = part.files.filter((f): f is string => typeof f === "string");
+					}
+				} else if (part.files && Array.isArray(part.files)) {
+					rawFilePaths = part.files.filter((f): f is string => typeof f === "string");
+				}
+				return {
+					eventType,
+					sessionId,
+					timestamp,
+					workingDirectory,
+					toolName,
+					toolInput: state.input,
+					toolOutput: status === "error" ? (typeof state.error === "string" ? state.error : undefined) : (typeof state.output === "string" ? state.output : undefined),
+					callID,
+					rawFilePaths,
+				};
+			}
+			if (partType === "text") {
+				return { eventType: "notification", sessionId, timestamp, workingDirectory, data: { message: part.text } as Record<string, unknown> };
+			}
+			if (partType === "reasoning") {
+				return { eventType: "model-reasoning", sessionId, timestamp, workingDirectory, data: { message: part.text } as Record<string, unknown> };
+			}
+			if (partType === "step-start") {
+				return { eventType: "step-start", sessionId, timestamp, workingDirectory };
+			}
+			if (partType === "step-finish") {
+				return { eventType: "step-finish", sessionId, timestamp, workingDirectory, data: { reason: part.reason } as Record<string, unknown> };
+			}
+			if (partType === "patch") {
+				const rawFilePaths = part.files && Array.isArray(part.files)
+					? part.files.filter((f): f is string => typeof f === "string")
+					: undefined;
+				return { eventType: "file-changed", sessionId, timestamp, workingDirectory, rawFilePaths };
+			}
+			if (partType === "compaction") {
+				return { eventType: "post-compact", sessionId, timestamp, workingDirectory };
+			}
+			return { eventType: "unknown", sessionId, timestamp, workingDirectory };
+		}
+		case "message.removed.1": {
+			return { eventType: "message-removed", sessionId, timestamp: 0, workingDirectory: "", data: { messageID: data.messageID } as Record<string, unknown> };
+		}
+		default:
+			return { eventType: "unknown", sessionId, timestamp, workingDirectory };
+	}
+}
+
 function summarize(tab: TabState): TabSummary {
-	if (tab.kind === "library" || tab.kind === "sessions") {
+	if (tab.kind === "library" || tab.kind === "sessions" || tab.kind === "session-events") {
 		return { id: tab.id, kind: tab.kind, title: tab.title };
 	}
 	return {
@@ -690,6 +900,9 @@ function summarize(tab: TabState): TabSummary {
 function fullState(tab: TabState): TabFullState {
 	if (tab.kind === "library" || tab.kind === "sessions") {
 		return { ok: true, id: tab.id, kind: tab.kind, title: tab.title };
+	}
+	if (tab.kind === "session-events") {
+		return { ok: true, id: tab.id, kind: tab.kind, title: tab.title, sessionId: tab.sessionId };
 	}
 	if (!tab.loaded.ok) {
 		return {
@@ -759,19 +972,23 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			readFile: async ({ tabId, path, repo }) => {
 				const tab = getTab(tabId);
 				if (!tab) return { ok: false, error: `unknown tab: ${tabId}` };
-				if (tab.kind === "library" || tab.kind === "sessions") {
+				if (tab.kind === "library" || tab.kind === "sessions" || tab.kind === "session-events") {
 					return { ok: false, error: `${tab.kind} tab does not serve files` };
 				}
 				return tab.mode === "remote"
 					? readFileRemote(tab, path, repo)
 					: readFileLocal(tab, path);
 			},
-			getFileTree: async ({ tabId }) => {
-				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "sessions") return { files: [] };
-				return tab.mode === "remote"
-					? getFileTreeRemote(tab)
-					: { files: await walkFiles(tab.repoRoot) };
+			getFileTree: async ({ tabId, path }) => {
+				const walkPath = path ?? null;
+				if (!walkPath) {
+					const tab = getTab(tabId);
+					if (!tab || tab.kind === "library" || tab.kind === "sessions" || tab.kind === "session-events") return { files: [] };
+					return tab.mode === "remote"
+						? getFileTreeRemote(tab)
+						: { files: await walkFiles(tab.repoRoot) };
+				}
+				return { files: await walkFiles(walkPath) };
 			},
 			listTrails: async () => {
 				// Merge cached trails and tours into one mtime-sorted list; each row
@@ -898,7 +1115,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			createTrailNote: ({ tabId, draft }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "sessions") {
+				if (!tab || tab.kind === "library" || tab.kind === "sessions" || tab.kind === "session-events") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -923,7 +1140,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			updateTrailNote: ({ tabId, noteId, body }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "sessions") {
+				if (!tab || tab.kind === "library" || tab.kind === "sessions" || tab.kind === "session-events") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -971,7 +1188,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			shareTrail: ({ tabId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "sessions") {
+				if (!tab || tab.kind === "library" || tab.kind === "sessions" || tab.kind === "session-events") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1056,7 +1273,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			deleteTrailNote: ({ tabId, noteId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "sessions") {
+				if (!tab || tab.kind === "library" || tab.kind === "sessions" || tab.kind === "session-events") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1096,6 +1313,94 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				} catch (err) {
 					return { ok: false, error: (err as Error).message };
 				}
+			},
+			getSessionEvents: async ({ sessionId }) => {
+				const dbPath = openCodeDBPath();
+				let db: import("bun:sqlite").Database | null = null;
+				try {
+					const { Database } = await import("bun:sqlite");
+					db = new Database(dbPath, { readonly: true });
+					const rows = db
+						.prepare(
+							`SELECT seq, type, data FROM event WHERE aggregate_id = ? ORDER BY seq ASC`,
+						)
+						.all(sessionId) as Array<{
+						seq: number;
+						type: string;
+						data: string;
+					}>;
+					// Extract session metadata from first event
+					let sessionSlug = "";
+					let sessionTitle = sessionId.slice(0, 12);
+					if (rows.length > 0) {
+						try {
+							const firstParsed = JSON.parse(rows[0].data) as Record<string, unknown>;
+							const info = firstParsed["info"] as Record<string, unknown> | undefined;
+							const rawTitle = info?.["title"];
+							if (typeof rawTitle === "string") sessionTitle = rawTitle;
+							const rawSlug = info?.["slug"];
+							if (typeof rawSlug === "string") sessionSlug = rawSlug;
+						} catch {
+							// best-effort
+						}
+					}
+					const accState: AccState = {
+						readingFiles: new Map(),
+						greppingFiles: new Map(),
+						activeFiles: new Map(),
+						modified: new Set(),
+					};
+					let repoRoot = "";
+					const events: SessionEventRow[] = [];
+					for (const row of rows) {
+						let raw: unknown = {};
+						try {
+							raw = JSON.parse(row.data);
+						} catch {
+							// best-effort parse
+						}
+						const rawObj = raw as Record<string, unknown>;
+						// Extract repoRoot from first event's info.directory
+						if (!repoRoot) {
+							const info = rawObj.info as Record<string, unknown> | undefined;
+							if (info && typeof info.directory === "string") repoRoot = info.directory;
+						}
+						const normalized = normalizeV1Event(row.type, rawObj);
+						const accResult = accOp(accState, normalized.eventType, normalized.toolName, normalized.rawFilePaths, normalized.callID);
+						events.push({
+							seq: row.seq,
+							type: row.type,
+							raw,
+							normalized,
+							accumulated: accResult,
+						});
+					}
+					return { ok: true, events, repoRoot: repoRoot || undefined, session: { slug: sessionSlug, title: sessionTitle } };
+				} catch (err) {
+					return { ok: false, error: (err as Error).message };
+				} finally {
+					db?.close();
+				}
+			},
+			openSessionTab: ({ sessionId, title }) => {
+				for (const existing of tabs.values()) {
+					if (existing.kind === "session-events" && existing.sessionId === sessionId) {
+						activeTabId = existing.id;
+						broadcastTabsChanged();
+						return { ok: true, tabId: existing.id };
+					}
+				}
+				const id = String(nextTabId++);
+				const tab: SessionEventsTabState = {
+					id,
+					kind: "session-events",
+					title,
+					sessionId,
+				};
+				tabs.set(id, tab);
+				activeTabId = id;
+				broadcastTabsChanged();
+				return { ok: true, tabId: id };
 			},
 		},
 		messages: {},

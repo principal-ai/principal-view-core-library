@@ -41,6 +41,12 @@ import {
 import {
 	FileCityGuidePanel,
 	FileCityTrailExplorerPanel,
+	type AgentSessionEvent,
+	type AgentSessionEventOperation,
+	type AgentSessionsView,
+	type AgentSessionState,
+	type AgentSessionView,
+	type CommitFileChange,
 	type FileCityGuidePanelActions,
 	type FileCityGuidePanelContext,
 	type FileCityGuideRepository,
@@ -74,9 +80,24 @@ interface SessionGroup {
 	children: SessionSummary[];
 }
 
+interface AccRecord {
+	operation: string;
+	description: string;
+	files: string[];
+	dependencies: string[];
+}
+
+interface SessionEventRow {
+	seq: number;
+	type: string;
+	raw: unknown;
+	normalized: Record<string, unknown>;
+	accumulated: AccRecord | null;
+}
+
 interface TabSummary {
 	id: string;
-	kind: "library" | "trail" | "sessions";
+	kind: "library" | "trail" | "sessions" | "session-events";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -86,12 +107,13 @@ interface TabFullState {
 	ok: boolean;
 	error?: string;
 	id: string;
-	kind: "library" | "trail" | "sessions";
+	kind: "library" | "trail" | "sessions" | "session-events";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
 	repoRoot?: string;
 	trailFilePath?: string;
+	sessionId?: string;
 	payload?: unknown;
 	/** Repo identity resolved by the bun host (git origin / explicit remote).
 	 *  `owner === "local"` means no GitHub origin; any other owner is a GitHub
@@ -319,6 +341,12 @@ type TabState =
 			repoRoot: string;
 			owner?: string;
 			repo?: string;
+		}
+	| {
+			kind: "session-events";
+			id: string;
+			sessionId: string;
+			title: string;
 		};
 
 function nullSlice<T>(name: string): DataSlice<T | null> {
@@ -2050,8 +2078,13 @@ function SessionRow({ session, depth, theme }: {
 		cursor = nextMidnight.getTime();
 	}
 
+	const handleClick = useCallback(() => {
+		void electrobun.rpc!.request.openSessionTab({ sessionId: session.id, title: session.title });
+	}, [session.id, session.title]);
+
 	return (
 		<div
+			onClick={handleClick}
 			style={{
 				display: "flex",
 				alignItems: "center",
@@ -2059,6 +2092,7 @@ function SessionRow({ session, depth, theme }: {
 				padding: "6px 12px",
 				paddingLeft: 12 + depth * 20,
 				borderRadius: 4,
+				cursor: "pointer",
 				border: depth === 0 ? `1px solid ${theme.colors.border ?? "#333"}` : "1px solid transparent",
 				background: depth === 0 ? (theme.colors.backgroundSecondary ?? "transparent") : "transparent",
 				fontSize: depth === 0 ? theme.fontSizes[2] : theme.fontSizes[1],
@@ -2272,6 +2306,308 @@ function SessionsLibraryView() {
 }
 
 // ---------------------------------------------------------------------------
+// Session events detail (raw + normalized split view)
+// ---------------------------------------------------------------------------
+
+function EventJSON({ data }: { data: unknown }) {
+	const text = JSON.stringify(data, null, 2);
+	return (
+		<pre
+			style={{
+				margin: 0,
+				whiteSpace: "pre",
+				overflow: "auto",
+				fontSize: 11,
+				lineHeight: "1.4",
+				fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+			}}
+		>{text}</pre>
+	);
+}
+
+function SessionEventsView({ tabId, sessionId, title }: {
+	tabId: string;
+	sessionId: string;
+	title: string;
+}) {
+	const { theme } = useTheme();
+	const [events, setEvents] = useState<SessionEventRow[] | null>(null);
+	const [error, setError] = useState<string | null>(null);
+	const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+	const [repoRoot, setRepoRoot] = useState<string | null>(null);
+	const [fileTree, setFileTree] = useState<FileTree | null>(null);
+	const [sessionMeta, setSessionMeta] = useState<{ slug: string; title: string } | null>(null);
+
+	// Load events
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			try {
+				const res = await electrobun.rpc!.request.getSessionEvents({ sessionId });
+				if (cancelled) return;
+				if (!res.ok) {
+					setError(res.error ?? "failed to load events");
+					return;
+				}
+				setEvents(res.events ?? []);
+				if (res.repoRoot) setRepoRoot(res.repoRoot);
+				if (res.session) setSessionMeta(res.session);
+			} catch (err) {
+				if (cancelled) return;
+				setError(err instanceof Error ? err.message : String(err));
+			}
+		})();
+		return () => { cancelled = true; };
+	}, [sessionId]);
+
+	// Load file tree once repoRoot is known
+	useEffect(() => {
+		if (!repoRoot) return;
+		let cancelled = false;
+		(async () => {
+			try {
+				const res = await electrobun.rpc!.request.getFileTree({ tabId, path: repoRoot });
+				if (cancelled) return;
+				const tree = new GitFileTreeBuilder().build({
+					files: res.files,
+					rootPath: "/local",
+					commitSha: "local",
+					branch: "local",
+				});
+				console.log("[SessionEventsView] fileTree loaded", tree.allFiles.length, "files, root", repoRoot);
+				setFileTree(tree);
+			} catch (err) {
+				console.error("[SessionEventsView] getFileTree failed:", err);
+			}
+		})();
+		return () => { cancelled = true; };
+	}, [repoRoot, tabId]);
+
+	const selected = selectedIdx !== null && events ? events[selectedIdx] : null;
+	const showDetail = selected !== null;
+
+	const panelEvents = useMemo<PanelEventEmitter>(() => new PanelEventBus(), []);
+	const repository = useMemo<FileCityGuideRepository>(() => ({
+		id: repoRoot ? createLocalRepoPurl(repoRoot) : "local",
+		path: repoRoot ?? "",
+		owner: null,
+		name: repoRoot ? repoRoot.split("/").filter(Boolean).pop() ?? "repo" : "repo",
+	}), [repoRoot]);
+
+	function toRepoRelative(fp: string): string {
+		if (!repoRoot) return fp;
+		const prefix = repoRoot.endsWith("/") ? repoRoot : repoRoot + "/";
+		if (fp.startsWith(prefix)) return fp.slice(prefix.length);
+		return fp;
+	}
+
+	// Build AgentSessionsView from accumulated events for the FileCityGuidePanel's agent session mode
+	const agentSessionsView = useMemo<AgentSessionsView | null>(() => {
+		if (!events || events.length === 0) return null;
+
+		const sessionName = sessionMeta?.slug || "opencode";
+		const sessionColor = "#a855f7";
+		const editedFileSet = new Set<string>();
+		const readingFileSet = new Set<string>();
+		const greppingFileSet = new Set<string>();
+		const agentSessionEvents: AgentSessionEvent[] = [];
+
+		let firstTimestamp = 0;
+
+		for (const ev of events) {
+			if (!ev.accumulated) continue;
+			const acc = ev.accumulated;
+			const timestamp = (ev.normalized as Record<string, unknown>).timestamp as number || 0;
+			if (firstTimestamp === 0 || timestamp < firstTimestamp) firstTimestamp = timestamp;
+
+			for (const fp of acc.files) {
+				const relPath = toRepoRelative(fp);
+				if (acc.operation === "reading") readingFileSet.add(relPath);
+				else if (acc.operation === "grepping") greppingFileSet.add(relPath);
+				else editedFileSet.add(relPath);
+			}
+
+			agentSessionEvents.push({
+				id: `${sessionId}-${ev.seq}`,
+				timestamp,
+				sessionId,
+				sessionName,
+				sessionColor,
+				operation: acc.operation as AgentSessionEventOperation,
+				files: acc.files.map(toRepoRelative),
+				dependencies: acc.dependencies,
+				description: acc.description,
+				layers: [],
+			});
+		}
+
+		let state: AgentSessionState = "working";
+		if (agentSessionEvents.length > 0) {
+			const lastOp = agentSessionEvents[agentSessionEvents.length - 1].operation;
+			if (lastOp === "finished") state = "done";
+			else if (lastOp === "errored") state = "errored";
+		}
+
+		const commitFiles: CommitFileChange[] = Array.from(editedFileSet).map(p => ({
+			path: p,
+			status: "modified" as const,
+		}));
+
+		const stats = {
+			filesChanged: editedFileSet.size,
+			additions: 0,
+			deletions: 0,
+		};
+
+		const task = sessionMeta?.title || title;
+
+		const agentSession: AgentSessionView = {
+			id: sessionId,
+			name: sessionName,
+			agent: "opencode",
+			owner: { name: "opencode", login: "opencode" },
+			state,
+			task,
+			message: task,
+			color: sessionColor,
+			files: commitFiles,
+			readingFiles: Array.from(readingFileSet),
+			greppingFiles: Array.from(greppingFileSet),
+			activeFiles: [],
+			startedAt: firstTimestamp ? new Date(firstTimestamp).toISOString() : undefined,
+			stats,
+		};
+
+		const repoOwner = repoRoot?.includes("principal") ? "principal-ai" : null;
+		const repoName = repoRoot ? repoRoot.split("/").filter(Boolean).pop() ?? null : null;
+
+		return {
+			sessions: [agentSession],
+			selectedSessionId: sessionId,
+			events: agentSessionEvents,
+			repository: repoOwner && repoName ? { owner: repoOwner, name: repoName } : null,
+		};
+	}, [events, sessionId, sessionMeta, title, repoRoot]);
+
+	const guideContext = useMemo<PanelContextValue<FileCityGuidePanelContext>>(() => {
+		const fileTreeSlice: DataSlice<FileTree> = {
+			scope: "repository",
+			name: "fileTree",
+			data: fileTree,
+			loading: !fileTree,
+			error: null,
+			refresh: async () => {},
+		};
+		const nullSliceInst: DataSlice<null> = { scope: "repository", name: "null", data: null, loading: false, error: null, refresh: async () => {} };
+		return {
+			currentScope: { type: "repository" },
+			refresh: async () => {},
+			fileTree: fileTreeSlice,
+			lineCounts: nullSliceInst,
+			tour: nullSliceInst,
+			highlightLayers: nullSliceInst,
+			agentSessions: {
+				scope: "repository",
+				name: "agentSessions",
+				data: agentSessionsView,
+				loading: false,
+				error: null,
+				refresh: async () => {},
+			},
+			repository,
+		};
+	}, [fileTree, agentSessionsView, repository]);
+
+	const guideActions = useMemo<FileCityGuidePanelActions>(
+		() => ({ openFile: () => {} }),
+		[],
+	);
+
+	if (error) {
+		return <CenteredMessage title="Could not load session events" detail={error} />;
+	}
+	if (!events) {
+		return <CenteredMessage title="Loading events…" />;
+	}
+
+	return (
+		<div style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
+			<div style={{ padding: "8px 16px", borderBottom: "1px solid #333", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+				{title}
+				<span style={{ color: "#888", fontWeight: 400, fontSize: 11 }}>{events.length} events</span>
+				{repoRoot && <span style={{ color: "#555", fontSize: 10, marginLeft: "auto" }}>{repoRoot}</span>}
+			</div>
+
+			<div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+				{/* Event list (left) */}
+				<div style={{ width: 240, minWidth: 180, overflow: "auto", borderRight: "1px solid #333" }}>
+					{events.map((ev, i) => {
+						const accDotColor = ev.accumulated
+							? ({ reading: "#a855f7", grepping: "#e879f9", editing: "#22c55e", errored: "#ef4444", starting: "#3b82f6", finished: "#888" } as Record<string, string>)[ev.accumulated.operation] ?? "#888"
+							: "#333";
+						return (
+							<div
+								key={ev.seq}
+								onClick={() => setSelectedIdx(i)}
+								style={{
+									display: "flex", alignItems: "flex-start", gap: 8,
+									padding: "5px 10px", borderBottom: "1px solid #222",
+									cursor: "pointer", fontSize: 12,
+									background: selectedIdx === i ? "#1a3a5c" : "transparent",
+								}}
+							>
+								<div style={{ width: 8, height: 8, borderRadius: "50%", background: accDotColor, flexShrink: 0, marginTop: 3 }} />
+								<div style={{ flex: 1, minWidth: 0 }}>
+									<div style={{ color: "#888", fontSize: 10 }}>#{ev.seq}</div>
+									<div style={{ color: "#4fc3f7", fontWeight: 600, fontSize: 11 }}>{ev.type}</div>
+									<div style={{ color: "#aaa", fontSize: 10, marginTop: 1 }}>{ev.normalized.eventType as string}</div>
+								</div>
+							</div>
+						);
+					})}
+				</div>
+				{/* FileCity guide panel with agent session mode (main) */}
+				<div style={{ flex: 1, minWidth: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+					{fileTree ? (
+						<div style={{ flex: 1, minHeight: 0 }}>
+							<FileCityGuidePanel context={guideContext} actions={guideActions} events={panelEvents} />
+						</div>
+					) : repoRoot ? (
+						<CenteredMessage title="Loading city…" />
+					) : (
+						<CenteredMessage title="No repo root" detail="No working directory found in session data" />
+					)}
+					{/* Detail panel (bottom) */}
+					{showDetail && (
+						<div style={{ height: 200, borderTop: "1px solid #333", display: "flex", overflow: "hidden" }}>
+							<div style={{ flex: 1, overflow: "auto", borderRight: "1px solid #333", padding: 6 }}>
+								<div style={{ fontSize: 9, color: "#888", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>RAW</div>
+								<EventJSON data={selected!.raw} />
+							</div>
+							<div style={{ flex: 1, overflow: "auto", borderRight: "1px solid #333", padding: 6 }}>
+								<div style={{ fontSize: 9, color: "#888", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>NORMALIZED</div>
+								<EventJSON data={selected!.normalized} />
+							</div>
+							<div style={{ flex: 1, overflow: "auto", padding: 6 }}>
+								<div style={{ fontSize: 9, color: "#888", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>ACCUMULATED</div>
+								{selected!.accumulated ? (
+									<div>
+										<div style={{ fontSize: 10, color: "#4fc3f7", fontWeight: 600 }}>{selected!.accumulated.operation}</div>
+										<div style={{ fontSize: 10, color: "#ccc" }}>{selected!.accumulated.description}</div>
+									</div>
+								) : (
+									<div style={{ fontSize: 10, color: "#555", fontStyle: "italic" }}>no accumulated output</div>
+								)}
+							</div>
+						</div>
+					)}
+				</div>
+			</div>
+		</div>
+	);
+}
+
+// ---------------------------------------------------------------------------
 // Active tab content (loading/error/ready)
 // ---------------------------------------------------------------------------
 
@@ -2291,6 +2627,10 @@ function ActiveTab({ tabId }: { tabId: string }) {
 				}
 				if (tab.kind === "sessions") {
 					setState({ kind: "sessions" });
+					return;
+				}
+				if (tab.kind === "session-events") {
+					setState({ kind: "session-events", id: tab.id, sessionId: tab.sessionId ?? "", title: tab.title });
 					return;
 				}
 				if (!tab.ok || !tab.payload) {
@@ -2345,6 +2685,8 @@ function ActiveTab({ tabId }: { tabId: string }) {
 	if (state.kind === "loading") return <CenteredMessage title="Loading trail…" />;
 	if (state.kind === "library") return <LibraryView />;
 	if (state.kind === "sessions") return <SessionsLibraryView />;
+	if (state.kind === "session-events")
+		return <SessionEventsView tabId={state.id} sessionId={state.sessionId} title={state.title} />;
 	if (state.kind === "error")
 		return <CenteredMessage title="Could not load trail" detail={state.message} />;
 	if (state.kind === "ready-tour") {
