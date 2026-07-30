@@ -36,6 +36,7 @@ import {
 import {
 	ProjectRegistryStore,
 	type FileSystemAdapter,
+	type ValidatedRepositoryPath,
 } from "@principal-ai/alexandria-core-library";
 
 /**
@@ -121,7 +122,7 @@ function registry(): ProjectRegistryStore {
  * boundary. The capture is non-greedy up to an optional trailing `.git`, so the
  * full name — dots included — survives.
  */
-function githubIdentityFromRemoteUrl(
+export function githubIdentityFromRemoteUrl(
 	url: string,
 ): { owner: string; name: string } | null {
 	const match = url.match(/github\.com[:/]([^/]+)\/(.+?)(?:\.git)?\/?$/i);
@@ -130,14 +131,46 @@ function githubIdentityFromRemoteUrl(
 }
 
 /**
- * Find a local checkout for a GitHub `owner/name`, or `null` if Alexandria
- * doesn't know one. We match on each entry's `remoteUrl` rather than its stored
- * purl, because clones registered without GitHub enrichment carry a
- * `pkg:generic/local/...` purl while still recording the GitHub remote.
- * Comparison is case-insensitive (`Principal-Forks` vs `principal-forks`). Only
- * paths that still exist on disk are returned, so a stale registry row doesn't
- * resolve to a deleted directory.
+ * Load all registered repo paths from the Alexandria registry.
+ * Returns a Map of filesystem path -> { root, remoteUrl, owner, repo }.
+ * Empty map if the registry doesn't exist or is unreadable.
  */
+export function loadAlexandriaRepos(): Map<string, { root: string; remoteUrl?: string; owner?: string; repo?: string }> {
+	const map = new Map<string, { root: string; remoteUrl?: string; owner?: string; repo?: string }>();
+	try {
+		const entries = registry().listProjects();
+		for (const entry of entries) {
+			let owner: string | undefined;
+			let repoName: string | undefined;
+			const gh = entry.github;
+			if (gh?.owner && gh?.name) {
+				owner = gh.owner;
+				repoName = gh.name;
+			} else if (entry.remoteUrl) {
+				const identity = githubIdentityFromRemoteUrl(entry.remoteUrl);
+				if (identity) {
+					owner = identity.owner;
+					repoName = identity.name;
+				}
+			}
+			repoName = repoName ?? entry.name;
+			map.set(entry.path, { root: entry.path, remoteUrl: entry.remoteUrl, owner, repo: repoName });
+		}
+	} catch {}
+	return map;
+}
+
+/**
+ * Register a project in the Alexandria registry so future normalization
+ * lookups find it via the prefix-match cache instead of walking the fs.
+ * Idempotent — same path already registered is a no-op.
+ */
+export function registerProjectInAlexandria(gitRoot: string, remoteUrl?: string): void {
+	try {
+		registry().registerProject(gitRoot as ValidatedRepositoryPath, remoteUrl);
+	} catch {}
+}
+
 export function resolveRepoRootFromAlexandria(
 	owner: string,
 	name: string,

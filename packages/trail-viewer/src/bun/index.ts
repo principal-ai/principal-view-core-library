@@ -42,7 +42,14 @@ import {
 	type LibraryEntry,
 	type UserIdentity,
 } from "./library";
-import { resolveRepoRootFromAlexandria } from "./alexandria";
+import {
+	resolveRepoRootFromAlexandria,
+	loadAlexandriaRepos,
+	registerProjectInAlexandria,
+} from "./alexandria";
+import { V1EventBridgeProcessor, eventOp, PathNormalizationService } from "@principal-ai/agent-monitoring";
+import type { AccumulatedState, AgentSessionEvent, UniversalAgentSessionEvent, RepositoryInfo } from "@principal-ai/agent-monitoring";
+import { BunNormalizationAdapter } from "./normalizationAdapter";
 
 function openCodeDBPath(): string {
 	const env = process.env as Record<string, string | undefined>;
@@ -137,6 +144,7 @@ interface SessionSummary {
 	createdAt: string;
 	durationMs: number;
 	eventCount: number;
+	isFinished: boolean;
 	repoRoot?: string;
 	repos?: RepoInfo[];
 }
@@ -482,19 +490,12 @@ interface TabFullState {
 	repo?: string;
 }
 
-interface AccRecord {
-	operation: string;
-	description: string;
-	files: string[];
-	dependencies: string[];
-}
-
 interface SessionEventRow {
 	seq: number;
 	type: string;
 	raw: unknown;
 	normalized: Record<string, unknown>;
-	accumulated: AccRecord | null;
+	accumulated: AgentSessionEvent | null;
 }
 
 interface RepoInfo {
@@ -719,226 +720,7 @@ function persistShareMutation(
 	}
 }
 
-// Per-event accumulator state machine — mirrors agentSessionEventAccumulator's
-// eventOp() but returns a result for every normalized event (null if no visible
-// state change). Used to show the three-column raw / normalized / accumulated view.
-type AccOp = "reading" | "grepping" | "editing" | "errored" | "starting" | "finished";
 
-interface AccState {
-	readingFiles: Map<string, string>;
-	greppingFiles: Map<string, string[]>;
-	activeFiles: Map<string, string>;
-	modified: Set<string>;
-}
-
-function accOp(
-	state: AccState,
-	eventType: string,
-	toolName?: string,
-	rawFilePaths?: string[],
-	callID?: string,
-): { operation: AccOp; description: string; files: string[]; dependencies: string[] } | null {
-	const files = rawFilePaths ?? [];
-	const tool = toolName?.toLowerCase() ?? "";
-
-	switch (eventType) {
-		case "pre-tool-use":
-		case "tool-executing": {
-			if (files.length === 0) return null;
-			if (["read", "ls"].includes(tool)) {
-				if (callID) state.readingFiles.set(callID, files[0]);
-				return { operation: "reading", description: `reading ${files.map(f => f.split("/").pop()).join(", ")}`, files, dependencies: [] };
-			}
-			if (["grep", "glob", "search"].includes(tool)) {
-				if (callID) state.greppingFiles.set(callID, files);
-				return { operation: "grepping", description: `grepping ${files.map(f => f.split("/").pop()).join(", ")}`, files, dependencies: [] };
-			}
-			if (["write", "edit", "multiedit"].includes(tool)) {
-				if (callID) state.activeFiles.set(callID, files[0]);
-				return { operation: "editing", description: `editing ${files.map(f => f.split("/").pop()).join(", ")}`, files, dependencies: [] };
-			}
-			return null;
-		}
-		case "post-tool-use":
-		case "post-tool-use-failure": {
-			if (["read", "ls"].includes(tool)) { if (callID) state.readingFiles.delete(callID); return null; }
-			if (["grep", "glob", "search"].includes(tool)) { if (callID) state.greppingFiles.delete(callID); return null; }
-			if (["write", "edit", "multiedit"].includes(tool)) {
-				const fp = callID ? (state.activeFiles.get(callID) ?? null) : null;
-				if (callID) state.activeFiles.delete(callID);
-				if (fp) { state.modified.add(fp); return { operation: "editing", description: `modified ${fp.split("/").pop()}`, files: [fp], dependencies: [] }; }
-				return null;
-			}
-			return null;
-		}
-		case "file-changed": {
-			for (const f of files) state.modified.add(f);
-			if (files.length === 0) return null;
-			return { operation: "editing", description: `patched ${files.map(f => f.split("/").pop()).join(", ")}`, files, dependencies: [] };
-		}
-		default:
-			return null;
-	}
-}
-
-// Lightweight V1 event normalizer (mirrors V1EventBridgeProcessor logic).
-type V1NormalizedEvent = {
-	eventType: string;
-	sessionId: string;
-	timestamp: number;
-	workingDirectory: string;
-	toolName?: string;
-	toolInput?: unknown;
-	toolOutput?: string;
-	callID?: string;
-	rawFilePaths?: string[];
-	data?: Record<string, unknown>;
-};
-
-function normalizeV1Event(type: string, data: Record<string, unknown>): V1NormalizedEvent {
-	const info = (data.info ?? {}) as Record<string, unknown>;
-	const time = info.time as Record<string, unknown> | undefined;
-	const sessionId = (typeof data.sessionID === "string" ? data.sessionID : "") as string;
-	const workingDirectory = (typeof info.directory === "string" ? info.directory : "") as string;
-	let timestamp = 0;
-	if (time && typeof time.created === "number") timestamp = time.created;
-
-	switch (type) {
-		case "session.created.1": {
-			const ev = { eventType: "session-start", sessionId, timestamp, workingDirectory, data: {} as Record<string, unknown> };
-			const d = ev.data!;
-			if (info.title) d.title = info.title;
-			if (info.agent) d.agent = info.agent;
-			if (info.slug) d.slug = info.slug;
-			if (info.parentID) d.parentID = info.parentID;
-			return ev;
-		}
-		case "session.updated.1": {
-			const ev = { eventType: "session-update", sessionId, timestamp, workingDirectory, data: {} as Record<string, unknown> };
-			const d = ev.data!;
-			if (info.cost) d.cost = info.cost;
-			if (info.tokens) d.tokens = info.tokens;
-			return ev;
-		}
-		case "message.updated.1": {
-			const role = typeof info.role === "string" ? info.role : "";
-			const eventType = role === "user" ? "user-prompt-submit" : "message-display";
-			const ev = { eventType, sessionId, timestamp, workingDirectory: "", data: {} as Record<string, unknown> };
-			const d = ev.data!;
-			if (info.agent) d.agent = info.agent;
-			if (info.parentID) d.parentID = info.parentID;
-			return ev;
-		}
-		case "message.part.updated.1": {
-			const part = data.part as Record<string, unknown> | undefined;
-			if (!part) return { eventType: "unknown", sessionId, timestamp, workingDirectory };
-			const partType = typeof part.type === "string" ? part.type : "";
-			if (partType === "tool") {
-				const state = (part.state ?? {}) as Record<string, unknown>;
-				const status = typeof state.status === "string" ? state.status : "";
-				const toolName = typeof part.tool === "string" ? part.tool.charAt(0).toUpperCase() + part.tool.slice(1) : "";
-				const callID = typeof part.callID === "string" ? part.callID : undefined;
-				let eventType = "unknown";
-				if (status === "pending") eventType = "pre-tool-use";
-				else if (status === "running") eventType = "tool-executing";
-				else if (status === "completed") eventType = "post-tool-use";
-				else if (status === "error") eventType = "post-tool-use-failure";
-				// Extract file paths from tool input
-				let rawFilePaths: string[] | undefined;
-				const input = state.input as Record<string, unknown> | undefined;
-				if (input) {
-					const fp = input.filePath ?? input.file_path ?? input.path;
-					if (typeof fp === "string") rawFilePaths = [fp];
-					else if (part.files && Array.isArray(part.files)) {
-						rawFilePaths = part.files.filter((f): f is string => typeof f === "string");
-					}
-				} else if (part.files && Array.isArray(part.files)) {
-					rawFilePaths = part.files.filter((f): f is string => typeof f === "string");
-				}
-				return {
-					eventType,
-					sessionId,
-					timestamp,
-					workingDirectory,
-					toolName,
-					toolInput: state.input,
-					toolOutput: status === "error" ? (typeof state.error === "string" ? state.error : undefined) : (typeof state.output === "string" ? state.output : undefined),
-					callID,
-					rawFilePaths,
-				};
-			}
-			if (partType === "text") {
-				return { eventType: "notification", sessionId, timestamp, workingDirectory, data: { message: part.text } as Record<string, unknown> };
-			}
-			if (partType === "reasoning") {
-				return { eventType: "model-reasoning", sessionId, timestamp, workingDirectory, data: { message: part.text } as Record<string, unknown> };
-			}
-			if (partType === "step-start") {
-				return { eventType: "step-start", sessionId, timestamp, workingDirectory };
-			}
-			if (partType === "step-finish") {
-				return { eventType: "step-finish", sessionId, timestamp, workingDirectory, data: { reason: part.reason } as Record<string, unknown> };
-			}
-			if (partType === "patch") {
-				const rawFilePaths = part.files && Array.isArray(part.files)
-					? part.files.filter((f): f is string => typeof f === "string")
-					: undefined;
-				return { eventType: "file-changed", sessionId, timestamp, workingDirectory, rawFilePaths };
-			}
-			if (partType === "compaction") {
-				return { eventType: "post-compact", sessionId, timestamp, workingDirectory };
-			}
-			return { eventType: "unknown", sessionId, timestamp, workingDirectory };
-		}
-		case "message.removed.1": {
-			return { eventType: "message-removed", sessionId, timestamp: 0, workingDirectory: "", data: { messageID: data.messageID } as Record<string, unknown> };
-		}
-		default:
-			return { eventType: "unknown", sessionId, timestamp, workingDirectory };
-	}
-}
-
-async function discoverGitRepos(paths: string[]): Promise<RepoInfo[]> {
-	if (paths.length === 0) return [];
-	const dirCache = new Map<string, string | null>();
-	const repoFiles = new Map<string, number>();
-
-	async function findGitRoot(dir: string): Promise<string | null> {
-		const cached = dirCache.get(dir);
-		if (cached !== undefined) return cached;
-		try {
-			const s = await fs.stat(join(dir, ".git"));
-			if (s.isDirectory() || s.isFile()) {
-				dirCache.set(dir, dir);
-				return dir;
-			}
-		} catch {}
-		const parent = dirname(dir);
-		if (parent === dir || parent.length >= dir.length) {
-			dirCache.set(dir, null);
-			return null;
-		}
-		const result = await findGitRoot(parent);
-		dirCache.set(dir, result);
-		return result;
-	}
-
-	const unique = new Set(paths);
-	for (const fp of unique) {
-		const dir = dirname(fp);
-		const gitRoot = await findGitRoot(dir);
-		if (gitRoot) {
-			repoFiles.set(gitRoot, (repoFiles.get(gitRoot) ?? 0) + 1);
-		}
-	}
-
-	return Array.from(repoFiles.entries())
-		.sort((a, b) => b[1] - a[1])
-		.map(([root, fileCount]) => {
-			const parts = root.replace(/\/+$/, "").split("/");
-			return { root, fileCount, owner: null, name: parts[parts.length - 1] ?? null, editing: false };
-		});
-}
 
 function summarize(tab: TabState): TabSummary {
 	if (tab.kind === "library" || tab.kind === "sessions" || tab.kind === "session-events") {
@@ -1118,19 +900,26 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							createdAt: createdAtStr,
 							durationMs,
 							eventCount: row.event_count,
+							isFinished: false,
 						});
 					}
 					const relations = db
 						.prepare(
-							`SELECT DISTINCT
+							`SELECT
 								json_extract(data, '$.part.state.metadata.parentSessionId') AS parent_id,
-								json_extract(data, '$.part.state.metadata.sessionId') AS child_id
+								json_extract(data, '$.part.state.metadata.sessionId') AS child_id,
+								json_extract(data, '$.part.state.status') AS status
 							FROM event
-							WHERE json_extract(data, '$.part.type') = 'tool'
-								AND json_extract(data, '$.part.tool') = 'task'
-								AND json_extract(data, '$.part.state.metadata.sessionId') IS NOT NULL`,
+							WHERE seq IN (
+								SELECT MAX(seq)
+								FROM event
+								WHERE json_extract(data, '$.part.type') = 'tool'
+									AND json_extract(data, '$.part.tool') = 'task'
+									AND json_extract(data, '$.part.state.metadata.sessionId') IS NOT NULL
+								GROUP BY json_extract(data, '$.part.state.metadata.sessionId')
+							)`,
 						)
-						.all() as Array<{ parent_id: string; child_id: string }>;
+						.all() as Array<{ parent_id: string; child_id: string; status: string | null }>;
 					const childIds = new Set<string>();
 					const groups: SessionGroup[] = [];
 					for (const rel of relations) {
@@ -1138,6 +927,9 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 						const parent = idToSummary.get(rel.parent_id);
 						const child = idToSummary.get(rel.child_id);
 						if (parent && child) {
+							if (rel.status === "completed" || rel.status === "error") {
+								child.isFinished = true;
+							}
 							childIds.add(rel.child_id);
 						}
 					}
@@ -1400,14 +1192,21 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							// best-effort
 						}
 					}
-					const accState: AccState = {
-						readingFiles: new Map(),
-						greppingFiles: new Map(),
-						activeFiles: new Map(),
-						modified: new Set(),
-					};
-					const allPaths = new Set<string>();
-					const events: SessionEventRow[] = [];
+					const processor = new V1EventBridgeProcessor();
+					const alexandriaRepos = loadAlexandriaRepos();
+					const knownRoots = new Map<string, RepositoryInfo>();
+					for (const [path, repo] of alexandriaRepos) {
+						knownRoots.set(path, {
+							root: repo.root,
+							remoteUrl: repo.remoteUrl,
+							owner: repo.owner,
+							repo: repo.repo,
+						});
+					}
+					const adapter = new BunNormalizationAdapter(knownRoots);
+					const normalizationService = new PathNormalizationService(adapter);
+					const rawEvents: UniversalAgentSessionEvent[] = [];
+					const rawDataMap = new Map<number, unknown>();
 					for (const row of rows) {
 						let raw: unknown = {};
 						try {
@@ -1416,23 +1215,54 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							// best-effort parse
 						}
 						const rawObj = raw as Record<string, unknown>;
-						const normalized = normalizeV1Event(row.type, rawObj);
-						const accResult = accOp(accState, normalized.eventType, normalized.toolName, normalized.rawFilePaths, normalized.callID);
+						const normalizedEvent = processor.normalize({ type: row.type as "session.created.1" | "session.updated.1" | "message.updated.1" | "message.part.updated.1" | "message.removed.1", data: rawObj, id: "", aggregateId: "", seq: row.seq });
+						rawEvents.push(normalizedEvent);
+						rawDataMap.set(row.seq, raw);
+					}
+					const normalizedEvents = await normalizationService.normalizePathsBatch(rawEvents, "");
+					// Auto-register any newly discovered git roots
+					for (const discovered of adapter.newlyDiscovered) {
+						registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
+					}
+					const accState: AccumulatedState = {
+						sessionName: "",
+						sessionColor: "",
+						readingFiles: new Map(),
+						greppingFiles: new Map(),
+						activeFiles: new Map(),
+						files: new Map(),
+						tools: new Map(),
+						lastState: "starting",
+					};
+					const events: SessionEventRow[] = [];
+					const repoSet = new Map<string, { root: string; fileCount: number }>();
+					for (const normalizedEvent of normalizedEvents) {
+						const accResult = eventOp(accState, normalizedEvent);
+						const seq = (normalizedEvent.raw as Record<string, unknown>)["seq"] as number ?? 0;
 						events.push({
-							seq: row.seq,
-							type: row.type,
-							raw,
-							normalized,
+							seq,
+							type: (normalizedEvent.raw as Record<string, unknown>)["type"] as string ?? "",
+							raw: rawDataMap.get(seq),
+							normalized: normalizedEvent as unknown as Record<string, unknown>,
 							accumulated: accResult,
 						});
-						if (normalized.rawFilePaths) {
-							for (const fp of normalized.rawFilePaths) {
-								if (fp.startsWith("/")) allPaths.add(fp);
+						if (normalizedEvent.files) {
+							for (const f of normalizedEvent.files) {
+								const root = f.repository?.gitRoot;
+								if (root) {
+									const entry = repoSet.get(root) ?? { root, fileCount: 0 };
+									entry.fileCount++;
+									repoSet.set(root, entry);
+								}
 							}
 						}
 					}
-					// Discover git repos from event file paths
-					const repos = await discoverGitRepos(Array.from(allPaths));
+					const repos = Array.from(repoSet.values())
+						.sort((a, b) => b.fileCount - a.fileCount)
+						.map((r) => {
+							const parts = r.root.replace(/\/+$/, "").split("/");
+							return { root: r.root, fileCount: r.fileCount, owner: null as string | null, name: parts[parts.length - 1] ?? null, editing: false };
+						});
 					const repoRoot = repos.length > 0 ? repos[0].root : undefined;
 					return { ok: true, events, repoRoot, repos, session: { slug: sessionSlug, title: sessionTitle } };
 				} catch (err) {
@@ -1448,49 +1278,72 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				try {
 					const { Database } = await import("bun:sqlite");
 					db = new Database(dbPath, { readonly: true });
+					const processor = new V1EventBridgeProcessor();
+					const alexandriaRepos = loadAlexandriaRepos();
+					const knownRoots = new Map<string, RepositoryInfo>();
+					for (const [path, repo] of alexandriaRepos) {
+						knownRoots.set(path, {
+							root: repo.root,
+							remoteUrl: repo.remoteUrl,
+							owner: repo.owner,
+							repo: repo.repo,
+						});
+					}
+					const adapter = new BunNormalizationAdapter(knownRoots);
+					const normalizationService = new PathNormalizationService(adapter);
 					for (const sessionId of sessionIds) {
 						const rows = db
 							.prepare(
 								`SELECT seq, type, data FROM event WHERE aggregate_id = ? ORDER BY seq ASC`,
 							)
 							.all(sessionId) as Array<{ seq: number; type: string; data: string }>;
-						const allPaths = new Set<string>();
-						const accState: AccState = {
-							readingFiles: new Map(),
-							greppingFiles: new Map(),
-							activeFiles: new Map(),
-							modified: new Set(),
-						};
-						const editPaths = new Set<string>();
+						const rawEvents: UniversalAgentSessionEvent[] = [];
 						for (const row of rows) {
 							let raw: Record<string, unknown> = {};
 							try { raw = JSON.parse(row.data) as Record<string, unknown>; } catch {}
-							const normalized = normalizeV1Event(row.type, raw);
-							const accResult = accOp(accState, normalized.eventType, normalized.toolName, normalized.rawFilePaths, normalized.callID);
-							if (accResult?.operation === "editing" && normalized.rawFilePaths) {
-								for (const fp of normalized.rawFilePaths) {
-									if (fp.startsWith("/")) editPaths.add(fp);
-								}
-							}
-							if (normalized.rawFilePaths) {
-								for (const fp of normalized.rawFilePaths) {
-									if (fp.startsWith("/")) allPaths.add(fp);
-								}
-							}
+							const normalizedEvent = processor.normalize({ type: row.type as "session.created.1" | "session.updated.1" | "message.updated.1" | "message.part.updated.1" | "message.removed.1", data: raw, id: "", aggregateId: "", seq: row.seq });
+							rawEvents.push(normalizedEvent);
 						}
-						const repoInfo = await discoverGitRepos(Array.from(allPaths));
-						// Determine which repos had edit operations
+						const normalizedEvents = await normalizationService.normalizePathsBatch(rawEvents, "");
+						// Collect distinct repos and track editing repos via accumulated state
+						const accState: AccumulatedState = {
+							sessionName: "",
+							sessionColor: "",
+							readingFiles: new Map(),
+							greppingFiles: new Map(),
+							activeFiles: new Map(),
+							files: new Map(),
+							tools: new Map(),
+							lastState: "starting",
+						};
+						const repoFileCount = new Map<string, number>();
 						const editRepoRoots = new Set<string>();
-						if (editPaths.size > 0) {
-							const editRepoInfo = await discoverGitRepos(Array.from(editPaths));
-							for (const r of editRepoInfo) editRepoRoots.add(r.root);
+						for (const normalizedEvent of normalizedEvents) {
+							const accResult = eventOp(accState, normalizedEvent);
+							if (normalizedEvent.files) {
+								for (const f of normalizedEvent.files) {
+									const root = f.repository?.gitRoot;
+									if (root) {
+										repoFileCount.set(root, (repoFileCount.get(root) ?? 0) + 1);
+										if (accResult?.operation === "editing") {
+											editRepoRoots.add(root);
+										}
+									}
+								}
+							}
 						}
-						const repos: RepoInfo[] = repoInfo.map((r) => ({
-							...r,
-							editing: editRepoRoots.has(r.root),
-						}));
+						const repos: RepoInfo[] = Array.from(repoFileCount.entries())
+							.sort((a, b) => b[1] - a[1])
+							.map(([root, fileCount]) => {
+								const parts = root.replace(/\/+$/, "").split("/");
+								return { root, fileCount, owner: null as string | null, name: parts[parts.length - 1] ?? null, editing: editRepoRoots.has(root) };
+							});
 						const repoRoot = repos.length > 0 ? repos[0].root : "";
 						result[sessionId] = { repoRoot, repos };
+					}
+					// Auto-register any newly discovered git roots
+					for (const discovered of adapter.newlyDiscovered) {
+						registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
 					}
 				} catch (err) {
 					console.warn("[trail-viewer] discoverSessionsRepos failed:", err);

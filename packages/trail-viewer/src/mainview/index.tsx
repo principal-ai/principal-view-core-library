@@ -66,6 +66,14 @@ import type { IntroductionTour } from "@principal-ai/file-city-builder";
 type ViewerMode = "local" | "remote";
 type PayloadKind = "trail" | "tour";
 
+interface RepoInfo {
+	root: string;
+	fileCount: number;
+	owner: string | null;
+	name: string | null;
+	editing: boolean;
+}
+
 interface SessionSummary {
 	id: string;
 	title: string;
@@ -73,8 +81,9 @@ interface SessionSummary {
 	createdAt: string;
 	durationMs: number;
 	eventCount: number;
+	isFinished: boolean;
 	repoRoot?: string;
-	repos?: Array<{ root: string; fileCount: number; name: string | null; owner: string | null; editing: boolean }>;
+	repos?: RepoInfo[];
 }
 
 interface SessionGroup {
@@ -82,19 +91,12 @@ interface SessionGroup {
 	children: SessionSummary[];
 }
 
-interface AccRecord {
-	operation: string;
-	description: string;
-	files: string[];
-	dependencies: string[];
-}
-
 interface SessionEventRow {
 	seq: number;
 	type: string;
 	raw: unknown;
 	normalized: Record<string, unknown>;
-	accumulated: AccRecord | null;
+	accumulated: AgentSessionEvent | null;
 }
 
 interface TabSummary {
@@ -183,7 +185,7 @@ type TrailViewerRPC = {
 				response: { ok: boolean; content?: string; error?: string };
 			};
 			getFileTree: {
-				params: { tabId: string };
+				params: { tabId: string; path?: string };
 				response: { files: Array<{ path: string; size: number }> };
 			};
 			listTrails: {
@@ -193,6 +195,18 @@ type TrailViewerRPC = {
 			listSessions: {
 				params: Record<string, never>;
 				response: { groups: SessionGroup[]; standalone: SessionSummary[] };
+			};
+			getSessionEvents: {
+				params: { sessionId: string };
+				response: { ok: boolean; error?: string; events?: SessionEventRow[]; repoRoot?: string; repos?: RepoInfo[]; session?: { slug: string; title: string } };
+			};
+			discoverSessionsRepos: {
+				params: { sessionIds: string[] };
+				response: { repos: Record<string, { repoRoot: string; repos: RepoInfo[] }> };
+			};
+			openSessionTab: {
+				params: { sessionId: string; title: string };
+				response: { ok: boolean; error?: string; tabId?: string };
 			};
 			openTrailFromCache: {
 				params: { trailFile: string; mode?: ViewerMode; repoRoot?: string };
@@ -2039,11 +2053,6 @@ function formatDuration(ms: number): string {
 	return remainMin > 0 ? `${hrs}h ${remainMin}m` : `${hrs}h`;
 }
 
-function formatTime(iso: string): string {
-	if (!iso) return "";
-	const d = new Date(iso);
-	return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
 function SessionRow({ session, depth, theme, parentStartDay }: {
 	session: SessionSummary;
 	depth: number;
@@ -2150,7 +2159,7 @@ function SessionRow({ session, depth, theme, parentStartDay }: {
 										const isActive = slot >= row.startSlot && slot < row.endSlot;
 										const isFuture = isToday && slot > currentHour;
 										if (isFuture) return <span key={slot} style={{ display: "inline-block", width: 7, height: 7, flexShrink: 0 }} />;
-										const isCurrent = isToday && slot === currentHour && isActive;
+										const isCurrent = isToday && slot === currentHour && isActive && !session.isFinished;
 										const bg = isActive
 											? (row.isOtherDay ? theme.colors.accent ?? "#00ff00" : theme.colors.primary ?? "#6366f1")
 											: (theme.colors.textTertiary ?? "#888");
@@ -2229,8 +2238,24 @@ function SessionsLibraryView() {
 		try {
 			const result = await electrobun.rpc!.request.listSessions({});
 			const d = { groups: result.groups, standalone: result.standalone };
-			sessionsCache = d;
-			setData(d);
+			// Preserve repos from previous data so they don't disappear on remount
+			setData((prev) => {
+				if (!prev) { sessionsCache = d; return d; }
+				for (const g of d.groups) {
+					const old = prev.groups.find((pg) => pg.parent.id === g.parent.id);
+					if (old) { g.parent.repos = old.parent.repos; g.parent.repoRoot = old.parent.repoRoot; }
+					for (const c of g.children) {
+						const oldChild = old?.children.find((oc) => oc.id === c.id);
+						if (oldChild) { c.repos = oldChild.repos; c.repoRoot = oldChild.repoRoot; }
+					}
+				}
+				for (const s of d.standalone) {
+					const old = prev.standalone.find((ps) => ps.id === s.id);
+					if (old) { s.repos = old.repos; s.repoRoot = old.repoRoot; }
+				}
+				sessionsCache = d;
+				return d;
+			});
 			setError(null);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
@@ -2272,6 +2297,7 @@ function SessionsLibraryView() {
 						const si = repoRes.repos[s.id];
 						if (si) { s.repoRoot = si.repoRoot; s.repos = si.repos.map((r) => ({ root: r.root, fileCount: r.fileCount, name: r.name, owner: null, editing: r.editing })); }
 					}
+					sessionsCache = prev;
 					return { ...prev };
 				});
 			} catch (err) {
@@ -2469,6 +2495,57 @@ function EventJSON({ data }: { data: unknown }) {
 	);
 }
 
+function DebugTreePreview({ fileTree }: { fileTree: FileTree | null }) {
+	if (!fileTree) return <>no file tree</>;
+	const sample = fileTree.allFiles.slice(0, 15);
+	return (
+		<>
+			<div>Total files: {fileTree.allFiles.length}</div>
+			{sample.map((f, i) => (
+				<div key={i} style={{ color: "#aaa", fontFamily: "monospace", fontSize: 10, whiteSpace: "nowrap" }}>{f.path}</div>
+			))}
+			{fileTree.allFiles.length > 15 && <div style={{ color: "#666", fontSize: 10 }}>... and {fileTree.allFiles.length - 15} more</div>}
+		</>
+	);
+}
+
+function DebugLayerMatch({ selected, fileTree }: { selected: SessionEventRow; fileTree: FileTree | null }) {
+	const acc = selected.accumulated as unknown as Record<string, unknown> | undefined;
+	if (!acc) return <div style={{ fontSize: 10, color: "#555", fontStyle: "italic" }}>no accumulated data</div>;
+	const layers = acc["layers"] as Array<Record<string, unknown>> | undefined;
+	if (!layers || layers.length === 0) return <div style={{ fontSize: 10, color: "#888" }}>no layers</div>;
+	const treePathSet = new Set(fileTree?.allFiles.map(f => f.path) ?? []);
+	const seen = new Set<string>();
+	let matchedCount = 0;
+	let totalCount = 0;
+	const rows: Array<{ path: string; inTree: boolean; layer: string }> = [];
+	for (const l of layers) {
+		const items = l["items"] as Array<Record<string, unknown>> | undefined;
+		if (!items) continue;
+		for (const item of items) {
+			const path = item["path"] as string;
+			if (seen.has(path)) continue;
+			seen.add(path);
+			totalCount++;
+			const inTree = treePathSet.has(path);
+			if (inTree) matchedCount++;
+			rows.push({ path, inTree, layer: l["name"] as string });
+		}
+	}
+	if (totalCount === 0) return <div style={{ fontSize: 10, color: "#888" }}>no layer items</div>;
+	return (
+		<>
+			<div style={{ fontSize: 10, color: "#888", marginBottom: 2 }}>{totalCount} unique layer paths, {matchedCount} matched in tree</div>
+			{rows.map((r, i) => (
+				<div key={i} style={{ fontSize: 10, fontFamily: "monospace", whiteSpace: "nowrap", color: r.inTree ? "#4ade80" : "#f87171" }}>
+					{r.inTree ? "✓ " : "✗ "}{r.path}
+					<span style={{ color: "#555", marginLeft: 4, fontSize: 9 }}>({r.layer})</span>
+				</div>
+			))}
+		</>
+	);
+}
+
 const eventDataCache = new Map<string, {
 	events: SessionEventRow[];
 	repoRoot: string | null;
@@ -2481,7 +2558,7 @@ function SessionEventsView({ tabId, sessionId, title }: {
 	sessionId: string;
 	title: string;
 }) {
-	const { theme } = useTheme();
+	const { theme: _theme } = useTheme();
 	const cached = eventDataCache.get(sessionId);
 	const [events, setEvents] = useState<SessionEventRow[] | null>(cached?.events ?? null);
 	const [error, setError] = useState<string | null>(null);
@@ -2555,13 +2632,6 @@ function SessionEventsView({ tabId, sessionId, title }: {
 		name: repoRoot ? repoRoot.split("/").filter(Boolean).pop() ?? "repo" : "repo",
 	}), [repoRoot]);
 
-	function toRepoRelative(fp: string): string {
-		if (!repoRoot) return fp;
-		const prefix = repoRoot.endsWith("/") ? repoRoot : repoRoot + "/";
-		if (fp.startsWith(prefix)) return fp.slice(prefix.length);
-		return fp;
-	}
-
 	// Build AgentSessionsView from accumulated events for the FileCityGuidePanel's agent session mode
 	const agentSessionsView = useMemo<AgentSessionsView | null>(() => {
 		if (!events || events.length === 0) return null;
@@ -2578,14 +2648,16 @@ function SessionEventsView({ tabId, sessionId, title }: {
 		for (const ev of events) {
 			if (!ev.accumulated) continue;
 			const acc = ev.accumulated;
-			const timestamp = (ev.normalized as Record<string, unknown>).timestamp as number || 0;
+			const timestamp = ((ev.normalized as Record<string, unknown>)["timestamp"] as number) || 0;
 			if (firstTimestamp === 0 || timestamp < firstTimestamp) firstTimestamp = timestamp;
 
-			for (const fp of acc.files) {
-				const relPath = toRepoRelative(fp);
-				if (acc.operation === "reading") readingFileSet.add(relPath);
-				else if (acc.operation === "grepping") greppingFileSet.add(relPath);
-				else editedFileSet.add(relPath);
+			const normFiles = ev.accumulated?.files as unknown as Array<{ displayPath: string }> | undefined;
+			if (normFiles) {
+				for (const f of normFiles) {
+					if (acc.operation === "reading") readingFileSet.add(f.displayPath);
+					else if (acc.operation === "grepping") greppingFileSet.add(f.displayPath);
+					else editedFileSet.add(f.displayPath);
+				}
 			}
 
 			agentSessionEvents.push({
@@ -2595,10 +2667,10 @@ function SessionEventsView({ tabId, sessionId, title }: {
 				sessionName,
 				sessionColor,
 				operation: acc.operation as AgentSessionEventOperation,
-				files: acc.files.map(toRepoRelative),
-				dependencies: acc.dependencies,
+				files: normFiles ? normFiles.map((f) => f.displayPath) : [],
+				dependencies: (ev.accumulated?.dependencies as unknown as Array<{ displayPath: string }> | undefined)?.map((f) => f.displayPath) ?? [],
 				description: acc.description,
-				layers: [],
+				layers: acc.layers ?? [],
 			});
 		}
 
@@ -2732,7 +2804,7 @@ function SessionEventsView({ tabId, sessionId, title }: {
 								<div style={{ flex: 1, minWidth: 0 }}>
 									<div style={{ color: "#888", fontSize: 10 }}>#{ev.seq}</div>
 									<div style={{ color: "#4fc3f7", fontWeight: 600, fontSize: 11 }}>{ev.type}</div>
-									<div style={{ color: "#aaa", fontSize: 10, marginTop: 1 }}>{ev.normalized.eventType as string}</div>
+									<div style={{ color: "#aaa", fontSize: 10, marginTop: 1 }}>{(ev.normalized as Record<string, unknown>)["eventType"] as string}</div>
 								</div>
 							</div>
 						);
@@ -2751,7 +2823,7 @@ function SessionEventsView({ tabId, sessionId, title }: {
 					)}
 					{/* Detail panel (bottom) */}
 					{showDetail && (
-						<div style={{ height: 200, borderTop: "1px solid #333", display: "flex", overflow: "hidden" }}>
+						<div style={{ height: 220, borderTop: "1px solid #333", display: "flex", overflow: "hidden" }}>
 							<div style={{ flex: 1, overflow: "auto", borderRight: "1px solid #333", padding: 6 }}>
 								<div style={{ fontSize: 9, color: "#888", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>RAW</div>
 								<EventJSON data={selected!.raw} />
@@ -2760,16 +2832,70 @@ function SessionEventsView({ tabId, sessionId, title }: {
 								<div style={{ fontSize: 9, color: "#888", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>NORMALIZED</div>
 								<EventJSON data={selected!.normalized} />
 							</div>
-							<div style={{ flex: 1, overflow: "auto", padding: 6 }}>
+							<div style={{ flex: 1, overflow: "auto", borderRight: "1px solid #333", padding: 6 }}>
 								<div style={{ fontSize: 9, color: "#888", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>ACCUMULATED</div>
 								{selected!.accumulated ? (
 									<div>
-										<div style={{ fontSize: 10, color: "#4fc3f7", fontWeight: 600 }}>{selected!.accumulated.operation}</div>
-										<div style={{ fontSize: 10, color: "#ccc" }}>{selected!.accumulated.description}</div>
+										<div style={{ fontSize: 10, color: "#4fc3f7", fontWeight: 600, marginBottom: 2 }}>{selected!.accumulated.operation}</div>
+										<div style={{ fontSize: 10, color: "#ccc", marginBottom: 4 }}>{selected!.accumulated.description}</div>
+										{(() => {
+											const acc = selected!.accumulated as unknown as Record<string, unknown>;
+											const files = acc["files"] as Array<Record<string, unknown>> | undefined;
+											const deps = acc["dependencies"] as Array<Record<string, unknown>> | undefined;
+											const layers = acc["layers"] as Array<Record<string, unknown>> | undefined;
+											return (
+												<>
+													{files && files.length > 0 && (
+														<div style={{ marginBottom: 4 }}>
+															<div style={{ fontSize: 9, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 1 }}>Files</div>
+															{files.map((f, i) => (
+																<div key={i} style={{ fontSize: 10, color: "#ccc", fontFamily: "monospace", marginLeft: 4, whiteSpace: "nowrap" }}>{(f["displayPath"] ?? f["path"] ?? f["originalPath"] ?? "?") as string}</div>
+															))}
+														</div>
+													)}
+													{deps && deps.length > 0 && (
+														<div style={{ marginBottom: 4 }}>
+															<div style={{ fontSize: 9, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 1 }}>Dependencies</div>
+															{deps.map((d, i) => (
+																<div key={i} style={{ fontSize: 10, color: "#999", fontFamily: "monospace", marginLeft: 4, whiteSpace: "nowrap" }}>{(d["displayPath"] ?? d["path"] ?? "?") as string}</div>
+															))}
+														</div>
+													)}
+													{layers && layers.length > 0 && (
+														<div style={{ marginBottom: 4 }}>
+															<div style={{ fontSize: 9, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 1 }}>Layers</div>
+															{layers.map((l, i) => {
+																const items = l["items"] as Array<Record<string, unknown>> | undefined;
+																return (
+																	<div key={i} style={{ marginBottom: 4, marginLeft: 4 }}>
+																		<div style={{ fontSize: 10, color: "#f0c" }}>{l["name"] as string} <span style={{ color: "#666" }}>({items?.length ?? 0} items)</span></div>
+																		{items && items.map((item, j) => (
+																			<div key={j} style={{ fontSize: 10, color: "#aaa", fontFamily: "monospace", marginLeft: 8, whiteSpace: "nowrap" }}>
+																				{item["path"] as string}
+																				<span style={{ color: "#666" }}> ({item["type"] as string})</span>
+																			</div>
+																		))}
+																	</div>
+																);
+															})}
+														</div>
+													)}
+												</>
+											);
+										})()}
 									</div>
 								) : (
 									<div style={{ fontSize: 10, color: "#555", fontStyle: "italic" }}>no accumulated output</div>
 								)}
+							</div>
+							<div style={{ flex: 1, overflow: "auto", padding: 6 }}>
+								<div style={{ fontSize: 9, color: "#888", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>FILE TREE</div>
+								<div style={{ fontSize: 10, color: "#888", marginBottom: 2 }}>{fileTree?.allFiles.length ?? 0} files, root: /local</div>
+								<div style={{ fontSize: 10, color: "#888", marginBottom: 4, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+									<DebugTreePreview fileTree={fileTree} />
+								</div>
+								<div style={{ fontSize: 9, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>Layer paths: tree match?</div>
+								<DebugLayerMatch selected={selected!} fileTree={fileTree} />
 							</div>
 						</div>
 					)}

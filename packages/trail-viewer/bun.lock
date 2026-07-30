@@ -4,7 +4,7 @@
     "": {
       "name": "@principal-ai/trail-viewer",
       "dependencies": {
-        "@principal-ai/agent-monitoring": "^0.3.14",
+        "@principal-ai/agent-monitoring": "^0.3.17",
         "better-sqlite3": "^13.0.2",
       },
       "devDependencies": {
@@ -117,7 +117,7 @@
 
     "@principal-ade/utcp-panel-event": ["@principal-ade/utcp-panel-event@0.1.0", "", {}, ""],
 
-    "@principal-ai/agent-monitoring": ["@principal-ai/agent-monitoring@0.3.14", "", { "dependencies": { "dotenv": "^17.2.2", "drizzle-orm": "^0.44.5", "pg": "^8.16.3" } }, "sha512-Siaut3UhiJiw9GnxGsAPBqp5ObTxHchcjK87toKbxe4kx6wfXN+n2RrhFAYQy2vWQVo+v3CvgSRxmn6lFma2AA=="],
+    "@principal-ai/agent-monitoring": ["@principal-ai/agent-monitoring@0.3.17", "", { "dependencies": { "dotenv": "^17.2.2", "drizzle-orm": "^0.44.5", "pg": "^8.16.3" } }, "sha512-GtupLtLwsSUXnK+NbH32B8Iv1hAu63BHsUT1bLO2rY2nwZEqzukwUrMZqBuDTGs4MjutQg+PB7IQu9LLpoBBrA=="],
 
     "@principal-ai/alexandria-core-library": ["@principal-ai/alexandria-core-library@0.7.0", "", { "dependencies": { "@principal-ai/repository-abstraction": "^0.2.5" }, "peerDependencies": { "globby": "^16.0.0" }, "optionalPeers": ["globby"] }, "sha512-uUqS/TPG3Im7ZpbUOPN0LX2FbEXvK2hviyrddIlbMDupse1jYIcgdKVfPo6kVBwziLKUEBDV3/u2NzJmguT2FQ=="],
 
