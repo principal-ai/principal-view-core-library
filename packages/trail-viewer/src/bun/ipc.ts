@@ -32,7 +32,13 @@ export interface LoadTrailMessage {
 	repoPurl?: string;
 }
 
-export type IpcMessage = LoadTrailMessage;
+export interface ActivateTabMessage {
+	kind: "ACTIVATE_TAB";
+	/** Permanent tab id to switch to (e.g. `agent-sessions`). */
+	tabId: string;
+}
+
+export type IpcMessage = LoadTrailMessage | ActivateTabMessage;
 export type IpcResponse = { ok: true } | { ok: false; error: string };
 
 const CONNECT_TIMEOUT_MS = 500;

@@ -28,14 +28,22 @@ export interface LoadTrailMessage {
   repoPurl?: string;
 }
 
+export interface ActivateTabMessage {
+  kind: 'ACTIVATE_TAB';
+  /** Permanent tab id to switch to (e.g. `agent-sessions`). */
+  tabId: string;
+}
+
+export type ViewerIpcMessage = LoadTrailMessage | ActivateTabMessage;
+
 const CONNECT_TIMEOUT_MS = 500;
 
 /**
- * Try to hand off a trail to a running viewer. Returns true if the running
+ * Try to hand off a message to a running viewer. Returns true if the running
  * viewer accepted; caller can exit 0 without spawning. Returns false if no
  * viewer is reachable.
  */
-export async function handoffToRunning(message: LoadTrailMessage): Promise<boolean> {
+export async function handoffToRunning(message: ViewerIpcMessage): Promise<boolean> {
   if (!existsSync(SOCKET_PATH)) return false;
 
   return new Promise((resolve) => {

@@ -98,6 +98,17 @@ function resolveRepoRoot(trailFilePath: string | null): string {
 	return process.cwd();
 }
 
+// Which permanent tab the window opens on. `principal-ai agent-sessions` spawns
+// with TRAIL_VIEWER_START_TAB=agent-sessions so a bare launch lands straight on
+// the Agent Sessions overview instead of the default Sessions tab.
+function resolveStartTab(): string {
+	const raw = process.env["TRAIL_VIEWER_START_TAB"];
+	if (raw === AGENT_SESSIONS_TAB_ID || raw === SESSIONS_TAB_ID || raw === LIBRARY_TAB_ID) {
+		return raw;
+	}
+	return SESSIONS_TAB_ID;
+}
+
 // Per-tab state. Trail tabs are fully self-contained views of one trail; the
 // library tab is a permanent first tab that lists cached trails. Tabs from
 // different repos do not share env vars, repoRoot, or sandboxing.
@@ -179,7 +190,7 @@ tabs.set(AGENT_SESSIONS_TAB_ID, {
 	kind: "agent-sessions",
 	title: "Agent Sessions",
 });
-let activeTabId: string = SESSIONS_TAB_ID;
+let activeTabId: string = resolveStartTab();
 let nextTabId = 1;
 
 // Pre-load the payload so the renderer's first read is synchronous and any
@@ -1533,6 +1544,21 @@ console.log("[trail-viewer] window opened");
 
 startIpcServer(async (msg) => {
 	try {
+		if (msg.kind === "ACTIVATE_TAB") {
+			// Switch a running viewer to a permanent tab (e.g. the CLI's
+			// `principal-ai agent-sessions` bringing the app forward).
+			if (msg.tabId !== LIBRARY_TAB_ID && msg.tabId !== SESSIONS_TAB_ID && msg.tabId !== AGENT_SESSIONS_TAB_ID) {
+				return { ok: false, error: `unknown permanent tab: ${msg.tabId}` };
+			}
+			activeTabId = msg.tabId;
+			broadcastTabsChanged();
+			try {
+				browserWindow.focus();
+			} catch (err) {
+				console.warn(`[trail-viewer] could not focus window: ${(err as Error).message}`);
+			}
+			return { ok: true };
+		}
 		addTabFromMessage(msg);
 		broadcastTabsChanged();
 		try {
