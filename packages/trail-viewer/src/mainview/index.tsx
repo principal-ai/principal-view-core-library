@@ -41,6 +41,7 @@ import {
 import {
 	FileCityGuidePanel,
 	FileCityTrailExplorerPanel,
+	buildCityDataFromContext,
 	type AgentSessionEvent,
 	type AgentSessionEventOperation,
 	type AgentSessionsView,
@@ -58,6 +59,7 @@ import {
 	type TrailPayload,
 } from "@industry-theme/file-city-panel";
 import type { IntroductionTour } from "@principal-ai/file-city-builder";
+import type { CitySource } from "@principal-ai/file-city-react";
 
 // ---------------------------------------------------------------------------
 // RPC
@@ -101,7 +103,7 @@ interface SessionEventRow {
 
 interface TabSummary {
 	id: string;
-	kind: "library" | "trail" | "sessions" | "session-events";
+	kind: "library" | "trail" | "sessions" | "session-events" | "agent-sessions";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -111,7 +113,7 @@ interface TabFullState {
 	ok: boolean;
 	error?: string;
 	id: string;
-	kind: "library" | "trail" | "sessions" | "session-events";
+	kind: "library" | "trail" | "sessions" | "session-events" | "agent-sessions";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -266,7 +268,7 @@ function refreshLibrary(): void {
 }
 
 const rpc = Electroview.defineRPC<TrailViewerRPC>({
-	maxRequestTime: 5000,
+	maxRequestTime: 30000,
 	handlers: {
 		requests: {},
 		messages: {
@@ -339,6 +341,7 @@ type TabState =
 	| { kind: "loading" }
 	| { kind: "library" }
 	| { kind: "sessions" }
+	| { kind: "agent-sessions" }
 	| { kind: "error"; message: string }
 	| {
 			kind: "ready";
@@ -939,8 +942,8 @@ function TabStrip({
 		>
 			{tabs.map((tab) => {
 				const isActive = tab.id === activeTabId;
-				const isPermanent = tab.kind === "library" || tab.kind === "sessions";
-				const dotColor = tab.kind === "sessions"
+				const isPermanent = tab.kind === "library" || tab.kind === "sessions" || tab.kind === "agent-sessions";
+				const dotColor = tab.kind === "sessions" || tab.kind === "agent-sessions"
 					? theme.colors.accent ?? "#4ec9b0"
 					: isPermanent
 						? theme.colors.text
@@ -2549,9 +2552,116 @@ function DebugLayerMatch({ selected, fileTree }: { selected: SessionEventRow; fi
 const eventDataCache = new Map<string, {
 	events: SessionEventRow[];
 	repoRoot: string | null;
-	repos: Array<{ root: string; fileCount: number; name: string | null }>;
+	repos: Array<{ root: string; fileCount: number; name: string | null; owner: string | null }>;
 	sessionMeta: { slug: string; title: string } | null;
 }>();
+
+// Build an AgentSessionsView slice for one session from its accumulated event
+// rows. Shared by the single-session tab (SessionEventsView) and the
+// multi-session overview (AgentSessionsOverviewView), which merges the slices.
+function buildAgentSessionsView(opts: {
+	sessionId: string;
+	title: string;
+	events: SessionEventRow[] | null;
+	sessionMeta: { slug: string; title: string } | null;
+	dirSet: Set<string>;
+	repoOwner: string | null;
+	repoName: string | null;
+}): AgentSessionsView | null {
+	const { sessionId, title, sessionMeta, dirSet, repoOwner, repoName } = opts;
+	if (!opts.events || opts.events.length === 0) return null;
+
+	const sessionName = sessionMeta?.slug || "opencode";
+	const sessionColor = "#a855f7";
+	const editedFileSet = new Set<string>();
+	const readingFileSet = new Set<string>();
+	const greppingFileSet = new Set<string>();
+	const agentSessionEvents: AgentSessionEvent[] = [];
+
+	let firstTimestamp = 0;
+
+	for (const ev of opts.events) {
+		if (!ev.accumulated) continue;
+		const acc = ev.accumulated;
+		const timestamp = ((ev.normalized as Record<string, unknown>)["timestamp"] as number) || 0;
+		if (firstTimestamp === 0 || timestamp < firstTimestamp) firstTimestamp = timestamp;
+
+		const normFiles = ev.accumulated?.files as unknown as Array<{ displayPath: string }> | undefined;
+		if (normFiles) {
+			for (const f of normFiles) {
+				if (acc.operation === "reading") readingFileSet.add(f.displayPath);
+				else if (acc.operation === "grepping") greppingFileSet.add(f.displayPath);
+				else editedFileSet.add(f.displayPath);
+			}
+		}
+
+		// Promote paths that match a known directory to type: "directory"
+		const layers = acc.layers.map(layer => ({
+			...layer,
+			items: layer.items.map(item => ({
+				...item,
+				type: dirSet.has(item.path) ? "directory" : item.type,
+			})),
+		}));
+
+		agentSessionEvents.push({
+			id: `${sessionId}-${ev.seq}`,
+			timestamp,
+			sessionId,
+			sessionName,
+			sessionColor,
+			operation: acc.operation as AgentSessionEventOperation,
+			files: normFiles ? normFiles.map((f) => f.displayPath) : [],
+			dependencies: (ev.accumulated?.dependencies as unknown as Array<{ displayPath: string }> | undefined)?.map((f) => f.displayPath) ?? [],
+			description: acc.description,
+			layers,
+		});
+	}
+
+	let state: AgentSessionState = "working";
+	if (agentSessionEvents.length > 0) {
+		const lastOp = agentSessionEvents[agentSessionEvents.length - 1].operation;
+		if (lastOp === "finished") state = "done";
+		else if (lastOp === "errored") state = "errored";
+	}
+
+	const commitFiles: CommitFileChange[] = Array.from(editedFileSet).map(p => ({
+		path: p,
+		status: "modified" as const,
+	}));
+
+	const stats = {
+		filesChanged: editedFileSet.size,
+		additions: 0,
+		deletions: 0,
+	};
+
+	const task = sessionMeta?.title || title;
+
+	const agentSession: AgentSessionView = {
+		id: sessionId,
+		name: sessionName,
+		agent: "opencode",
+		owner: { name: "opencode", login: "opencode" },
+		state,
+		task,
+		message: task,
+		color: sessionColor,
+		files: commitFiles,
+		readingFiles: Array.from(readingFileSet),
+		greppingFiles: Array.from(greppingFileSet),
+		activeFiles: [],
+		startedAt: firstTimestamp ? new Date(firstTimestamp).toISOString() : undefined,
+		stats,
+	};
+
+	return {
+		sessions: [agentSession],
+		selectedSessionId: sessionId,
+		events: agentSessionEvents,
+		repository: repoOwner && repoName ? { owner: repoOwner, name: repoName } : null,
+	};
+}
 
 function SessionEventsView({ tabId, sessionId, title }: {
 	tabId: string;
@@ -2566,7 +2676,9 @@ function SessionEventsView({ tabId, sessionId, title }: {
 	const [repoRoot, setRepoRoot] = useState<string | null>(cached?.repoRoot ?? null);
 	const [fileTree, setFileTree] = useState<FileTree | null>(null);
 	const [sessionMeta, setSessionMeta] = useState<{ slug: string; title: string } | null>(cached?.sessionMeta ?? null);
-	const [repos, setRepos] = useState<Array<{ root: string; fileCount: number; name: string | null }>>(cached?.repos ?? []);
+	const [repos, setRepos] = useState<Array<{ root: string; fileCount: number; name: string | null; owner: string | null }>>(cached?.repos ?? []);
+	const [sourceTrees, setSourceTrees] = useState<Map<string, FileTree>>(new Map());
+	const [showDebug, setShowDebug] = useState(false);
 
 	// Load events
 	useEffect(() => {
@@ -2582,7 +2694,7 @@ function SessionEventsView({ tabId, sessionId, title }: {
 				const evs = res.events ?? [];
 				const rrs = res.repoRoot ?? null;
 				const rps = res.repos
-					? (res.repos as Array<{ root: string; fileCount: number; name: string | null }>).map((r) => ({ root: r.root, fileCount: r.fileCount, name: r.name }))
+					? (res.repos as Array<{ root: string; fileCount: number; name: string | null; owner: string | null }>).map((r) => ({ root: r.root, fileCount: r.fileCount, name: r.name, owner: r.owner }))
 					: [];
 				const sm = res.session ?? null;
 				eventDataCache.set(sessionId, { events: evs, repoRoot: rrs, repos: rps, sessionMeta: sm });
@@ -2598,28 +2710,43 @@ function SessionEventsView({ tabId, sessionId, title }: {
 		return () => { cancelled = true; };
 	}, [sessionId]);
 
-	// Load file tree once repoRoot is known
+	// Load file trees for each repo the session touched (capped so the
+	// multi-city scene stays light). The primary repo's tree also feeds the
+	// panel's fileTree slice / layer directory promotion.
 	useEffect(() => {
-		if (!repoRoot) return;
+		if (repos.length === 0) return;
 		let cancelled = false;
 		(async () => {
-			try {
-				const res = await electrobun.rpc!.request.getFileTree({ tabId, path: repoRoot });
-				if (cancelled) return;
-				const tree = new GitFileTreeBuilder().build({
-					files: res.files,
-					rootPath: "/local",
-					commitSha: "local",
-					branch: "local",
-				});
-				console.log("[SessionEventsView] fileTree loaded", tree.allFiles.length, "files, root", repoRoot);
-				setFileTree(tree);
-			} catch (err) {
-				console.error("[SessionEventsView] getFileTree failed:", err);
+			const trees = new Map<string, FileTree>();
+			const roots: string[] = [];
+			for (const r of repos) {
+				if (!r.root || roots.includes(r.root)) continue;
+				roots.push(r.root);
+				if (roots.length >= MAX_CITY_SOURCES) break;
 			}
+			for (const root of roots) {
+				if (cancelled) break;
+				try {
+					const res = await electrobun.rpc!.request.getFileTree({ tabId, path: root });
+					if (cancelled) break;
+					const tree = new GitFileTreeBuilder().build({
+						files: res.files,
+						rootPath: "/local",
+						commitSha: "local",
+						branch: "local",
+					});
+					trees.set(root, tree);
+					console.log("[SessionEventsView] fileTree loaded", tree.allFiles.length, "files, root", root);
+				} catch (err) {
+					console.error("[SessionEventsView] getFileTree failed:", root, err);
+				}
+			}
+			if (cancelled) return;
+			setSourceTrees(trees);
+			if (repoRoot) setFileTree(trees.get(repoRoot) ?? null);
 		})();
 		return () => { cancelled = true; };
-	}, [repoRoot, tabId]);
+	}, [repos, repoRoot, tabId]);
 
 	const selected = selectedIdx !== null && events ? events[selectedIdx] : null;
 	const showDetail = selected !== null;
@@ -2634,93 +2761,43 @@ function SessionEventsView({ tabId, sessionId, title }: {
 
 	// Build AgentSessionsView from accumulated events for the FileCityGuidePanel's agent session mode
 	const agentSessionsView = useMemo<AgentSessionsView | null>(() => {
-		if (!events || events.length === 0) return null;
-
-		const sessionName = sessionMeta?.slug || "opencode";
-		const sessionColor = "#a855f7";
-		const editedFileSet = new Set<string>();
-		const readingFileSet = new Set<string>();
-		const greppingFileSet = new Set<string>();
-		const agentSessionEvents: AgentSessionEvent[] = [];
-
-		let firstTimestamp = 0;
-
-		for (const ev of events) {
-			if (!ev.accumulated) continue;
-			const acc = ev.accumulated;
-			const timestamp = ((ev.normalized as Record<string, unknown>)["timestamp"] as number) || 0;
-			if (firstTimestamp === 0 || timestamp < firstTimestamp) firstTimestamp = timestamp;
-
-			const normFiles = ev.accumulated?.files as unknown as Array<{ displayPath: string }> | undefined;
-			if (normFiles) {
-				for (const f of normFiles) {
-					if (acc.operation === "reading") readingFileSet.add(f.displayPath);
-					else if (acc.operation === "grepping") greppingFileSet.add(f.displayPath);
-					else editedFileSet.add(f.displayPath);
-				}
-			}
-
-			agentSessionEvents.push({
-				id: `${sessionId}-${ev.seq}`,
-				timestamp,
-				sessionId,
-				sessionName,
-				sessionColor,
-				operation: acc.operation as AgentSessionEventOperation,
-				files: normFiles ? normFiles.map((f) => f.displayPath) : [],
-				dependencies: (ev.accumulated?.dependencies as unknown as Array<{ displayPath: string }> | undefined)?.map((f) => f.displayPath) ?? [],
-				description: acc.description,
-				layers: acc.layers ?? [],
-			});
-		}
-
-		let state: AgentSessionState = "working";
-		if (agentSessionEvents.length > 0) {
-			const lastOp = agentSessionEvents[agentSessionEvents.length - 1].operation;
-			if (lastOp === "finished") state = "done";
-			else if (lastOp === "errored") state = "errored";
-		}
-
-		const commitFiles: CommitFileChange[] = Array.from(editedFileSet).map(p => ({
-			path: p,
-			status: "modified" as const,
-		}));
-
-		const stats = {
-			filesChanged: editedFileSet.size,
-			additions: 0,
-			deletions: 0,
-		};
-
-		const task = sessionMeta?.title || title;
-
-		const agentSession: AgentSessionView = {
-			id: sessionId,
-			name: sessionName,
-			agent: "opencode",
-			owner: { name: "opencode", login: "opencode" },
-			state,
-			task,
-			message: task,
-			color: sessionColor,
-			files: commitFiles,
-			readingFiles: Array.from(readingFileSet),
-			greppingFiles: Array.from(greppingFileSet),
-			activeFiles: [],
-			startedAt: firstTimestamp ? new Date(firstTimestamp).toISOString() : undefined,
-			stats,
-		};
-
 		const repoOwner = repoRoot?.includes("principal") ? "principal-ai" : null;
 		const repoName = repoRoot ? repoRoot.split("/").filter(Boolean).pop() ?? null : null;
+		return buildAgentSessionsView({
+			sessionId,
+			title,
+			events,
+			sessionMeta,
+			dirSet: new Set(fileTree?.allDirectories.map(d => d.path) ?? []),
+			repoOwner,
+			repoName,
+		});
+	}, [events, sessionId, sessionMeta, title, repoRoot, fileTree]);
 
-		return {
-			sessions: [agentSession],
-			selectedSessionId: sessionId,
-			events: agentSessionEvents,
-			repository: repoOwner && repoName ? { owner: repoOwner, name: repoName } : null,
-		};
-	}, [events, sessionId, sessionMeta, title, repoRoot]);
+	// One city per repo the session touched, laid out side by side. Passing
+	// `citySources` flips FileCity3D into its multi-city mode, which renders
+	// each source's repo-name label + owner avatar badge over its footprint.
+	const citySources = useMemo<CitySource[] | undefined>(() => {
+		if (sourceTrees.size === 0) return undefined;
+		const GAP = 24;
+		const sources: CitySource[] = [];
+		let cursor = 0;
+		for (const r of repos) {
+			const tree = sourceTrees.get(r.root);
+			if (!tree) continue;
+			const city = buildCityDataFromContext({ fileTree: tree, lineCounts: null });
+			const halfW = (city.bounds.maxX - city.bounds.minX) / 2;
+			const centerX = cursor + halfW;
+			sources.push({
+				cityData: city,
+				positionOffset: { x: centerX, z: 0 },
+				label: r.name ?? undefined,
+				ownerAvatarUrl: r.owner ? `https://github.com/${r.owner}.png?size=40` : undefined,
+			});
+			cursor = centerX + halfW + GAP;
+		}
+		return sources.length > 0 ? sources : undefined;
+	}, [sourceTrees, repos]);
 
 	const guideContext = useMemo<PanelContextValue<FileCityGuidePanelContext>>(() => {
 		const fileTreeSlice: DataSlice<FileTree> = {
@@ -2769,137 +2846,433 @@ function SessionEventsView({ tabId, sessionId, title }: {
 				{title}
 				<span style={{ color: "#888", fontWeight: 400, fontSize: 11 }}>{events.length} events</span>
 				{repoRoot && <span style={{ color: "#555", fontSize: 10, marginLeft: "auto" }}>{repoRoot}</span>}
+				<button
+					type="button"
+					onClick={() => setShowDebug((d) => !d)}
+					style={{
+						background: showDebug ? "#1a3a5c" : "transparent",
+						border: "1px solid #444",
+						borderRadius: 4,
+						color: showDebug ? "#4fc3f7" : "#aaa",
+						cursor: "pointer",
+						fontSize: 11,
+						fontWeight: 500,
+						padding: "3px 10px",
+					}}
+				>
+					{showDebug ? "City" : "Debug"}
+				</button>
 			</div>
-			{repos.length > 0 && (
-				<div style={{ padding: "3px 16px", borderBottom: "1px solid #222", fontSize: 10, display: "flex", gap: 16, alignItems: "center", color: "#888" }}>
-					{repos.map((r, i) => (
-						<span key={i} style={{ display: "flex", gap: 4, alignItems: "center" }}>
-							<span style={{ color: "#4fc3f7", fontWeight: 600 }}>{r.name || "?"}</span>
-							<span>{r.fileCount} files</span>
-							<span style={{ color: "#555" }}>{r.root}</span>
-						</span>
-					))}
-				</div>
-			)}
 
 			<div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-				{/* Event list (left) */}
-				<div style={{ width: 240, minWidth: 180, overflow: "auto", borderRight: "1px solid #333" }}>
-					{events.map((ev, i) => {
-						const accDotColor = ev.accumulated
-							? ({ reading: "#a855f7", grepping: "#e879f9", editing: "#22c55e", errored: "#ef4444", starting: "#3b82f6", finished: "#888" } as Record<string, string>)[ev.accumulated.operation] ?? "#888"
-							: "#333";
-						return (
-							<div
-								key={ev.seq}
-								onClick={() => setSelectedIdx(i)}
-								style={{
-									display: "flex", alignItems: "flex-start", gap: 8,
-									padding: "5px 10px", borderBottom: "1px solid #222",
-									cursor: "pointer", fontSize: 12,
-									background: selectedIdx === i ? "#1a3a5c" : "transparent",
-								}}
-							>
-								<div style={{ width: 8, height: 8, borderRadius: "50%", background: accDotColor, flexShrink: 0, marginTop: 3 }} />
-								<div style={{ flex: 1, minWidth: 0 }}>
-									<div style={{ color: "#888", fontSize: 10 }}>#{ev.seq}</div>
-									<div style={{ color: "#4fc3f7", fontWeight: 600, fontSize: 11 }}>{ev.type}</div>
-									<div style={{ color: "#aaa", fontSize: 10, marginTop: 1 }}>{(ev.normalized as Record<string, unknown>)["eventType"] as string}</div>
-								</div>
-							</div>
-						);
-					})}
-				</div>
-				{/* FileCity guide panel with agent session mode (main) */}
-				<div style={{ flex: 1, minWidth: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-					{fileTree ? (
-						<div style={{ flex: 1, minHeight: 0 }}>
-							<FileCityGuidePanel context={guideContext} actions={guideActions} events={panelEvents} />
-						</div>
-					) : repoRoot ? (
-						<CenteredMessage title="Loading city…" />
-					) : (
-						<CenteredMessage title="No repo root" detail="No working directory found in session data" />
-					)}
-					{/* Detail panel (bottom) */}
-					{showDetail && (
-						<div style={{ height: 220, borderTop: "1px solid #333", display: "flex", overflow: "hidden" }}>
-							<div style={{ flex: 1, overflow: "auto", borderRight: "1px solid #333", padding: 6 }}>
-								<div style={{ fontSize: 9, color: "#888", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>RAW</div>
-								<EventJSON data={selected!.raw} />
-							</div>
-							<div style={{ flex: 1, overflow: "auto", borderRight: "1px solid #333", padding: 6 }}>
-								<div style={{ fontSize: 9, color: "#888", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>NORMALIZED</div>
-								<EventJSON data={selected!.normalized} />
-							</div>
-							<div style={{ flex: 1, overflow: "auto", borderRight: "1px solid #333", padding: 6 }}>
-								<div style={{ fontSize: 9, color: "#888", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>ACCUMULATED</div>
-								{selected!.accumulated ? (
-									<div>
-										<div style={{ fontSize: 10, color: "#4fc3f7", fontWeight: 600, marginBottom: 2 }}>{selected!.accumulated.operation}</div>
-										<div style={{ fontSize: 10, color: "#ccc", marginBottom: 4 }}>{selected!.accumulated.description}</div>
-										{(() => {
-											const acc = selected!.accumulated as unknown as Record<string, unknown>;
-											const files = acc["files"] as Array<Record<string, unknown>> | undefined;
-											const deps = acc["dependencies"] as Array<Record<string, unknown>> | undefined;
-											const layers = acc["layers"] as Array<Record<string, unknown>> | undefined;
-											return (
-												<>
-													{files && files.length > 0 && (
-														<div style={{ marginBottom: 4 }}>
-															<div style={{ fontSize: 9, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 1 }}>Files</div>
-															{files.map((f, i) => (
-																<div key={i} style={{ fontSize: 10, color: "#ccc", fontFamily: "monospace", marginLeft: 4, whiteSpace: "nowrap" }}>{(f["displayPath"] ?? f["path"] ?? f["originalPath"] ?? "?") as string}</div>
-															))}
-														</div>
-													)}
-													{deps && deps.length > 0 && (
-														<div style={{ marginBottom: 4 }}>
-															<div style={{ fontSize: 9, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 1 }}>Dependencies</div>
-															{deps.map((d, i) => (
-																<div key={i} style={{ fontSize: 10, color: "#999", fontFamily: "monospace", marginLeft: 4, whiteSpace: "nowrap" }}>{(d["displayPath"] ?? d["path"] ?? "?") as string}</div>
-															))}
-														</div>
-													)}
-													{layers && layers.length > 0 && (
-														<div style={{ marginBottom: 4 }}>
-															<div style={{ fontSize: 9, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 1 }}>Layers</div>
-															{layers.map((l, i) => {
-																const items = l["items"] as Array<Record<string, unknown>> | undefined;
-																return (
-																	<div key={i} style={{ marginBottom: 4, marginLeft: 4 }}>
-																		<div style={{ fontSize: 10, color: "#f0c" }}>{l["name"] as string} <span style={{ color: "#666" }}>({items?.length ?? 0} items)</span></div>
-																		{items && items.map((item, j) => (
-																			<div key={j} style={{ fontSize: 10, color: "#aaa", fontFamily: "monospace", marginLeft: 8, whiteSpace: "nowrap" }}>
-																				{item["path"] as string}
-																				<span style={{ color: "#666" }}> ({item["type"] as string})</span>
-																			</div>
-																		))}
-																	</div>
-																);
-															})}
-														</div>
-													)}
-												</>
-											);
-										})()}
+				{showDebug ? (
+					<>
+						{/* Event list (left) */}
+						<div style={{ width: 240, minWidth: 180, overflow: "auto", borderRight: "1px solid #333" }}>
+							{events.map((ev, i) => {
+								const accDotColor = ev.accumulated
+									? ({ reading: "#a855f7", grepping: "#e879f9", editing: "#22c55e", errored: "#ef4444", starting: "#3b82f6", finished: "#888" } as Record<string, string>)[ev.accumulated.operation] ?? "#888"
+									: "#333";
+								return (
+									<div
+										key={ev.seq}
+										onClick={() => setSelectedIdx(i)}
+										style={{
+											display: "flex", alignItems: "flex-start", gap: 8,
+											padding: "5px 10px", borderBottom: "1px solid #222",
+											cursor: "pointer", fontSize: 12,
+											background: selectedIdx === i ? "#1a3a5c" : "transparent",
+										}}
+									>
+										<div style={{ width: 8, height: 8, borderRadius: "50%", background: accDotColor, flexShrink: 0, marginTop: 3 }} />
+										<div style={{ flex: 1, minWidth: 0 }}>
+											<div style={{ color: "#888", fontSize: 10 }}>#{ev.seq}</div>
+											<div style={{ color: "#4fc3f7", fontWeight: 600, fontSize: 11 }}>{ev.type}</div>
+											<div style={{ color: "#aaa", fontSize: 10, marginTop: 1 }}>{(ev.normalized as Record<string, unknown>)["eventType"] as string}</div>
+										</div>
 									</div>
-								) : (
-									<div style={{ fontSize: 10, color: "#555", fontStyle: "italic" }}>no accumulated output</div>
-								)}
-							</div>
-							<div style={{ flex: 1, overflow: "auto", padding: 6 }}>
-								<div style={{ fontSize: 9, color: "#888", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>FILE TREE</div>
-								<div style={{ fontSize: 10, color: "#888", marginBottom: 2 }}>{fileTree?.allFiles.length ?? 0} files, root: /local</div>
-								<div style={{ fontSize: 10, color: "#888", marginBottom: 4, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-									<DebugTreePreview fileTree={fileTree} />
-								</div>
-								<div style={{ fontSize: 9, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>Layer paths: tree match?</div>
-								<DebugLayerMatch selected={selected!} fileTree={fileTree} />
-							</div>
+								);
+							})}
 						</div>
-					)}
-				</div>
+						{/* Debug detail */}
+						{showDetail ? (
+							<div style={{ flex: 1, minWidth: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+								<div style={{ flex: 1, borderTop: "1px solid #333", display: "flex", overflow: "hidden" }}>
+									<div style={{ flex: 1, overflow: "auto", borderRight: "1px solid #333", padding: 6 }}>
+										<div style={{ fontSize: 9, color: "#888", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>RAW</div>
+										<EventJSON data={selected!.raw} />
+									</div>
+									<div style={{ flex: 1, overflow: "auto", borderRight: "1px solid #333", padding: 6 }}>
+										<div style={{ fontSize: 9, color: "#888", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>NORMALIZED</div>
+										<EventJSON data={selected!.normalized} />
+									</div>
+									<div style={{ flex: 1, overflow: "auto", borderRight: "1px solid #333", padding: 6 }}>
+										<div style={{ fontSize: 9, color: "#888", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>ACCUMULATED</div>
+										{selected!.accumulated ? (
+											<div>
+												<div style={{ fontSize: 10, color: "#4fc3f7", fontWeight: 600, marginBottom: 2 }}>{selected!.accumulated.operation}</div>
+												<div style={{ fontSize: 10, color: "#ccc", marginBottom: 4 }}>{selected!.accumulated.description}</div>
+												{(() => {
+													const acc = selected!.accumulated as unknown as Record<string, unknown>;
+													const files = acc["files"] as Array<Record<string, unknown>> | undefined;
+													const deps = acc["dependencies"] as Array<Record<string, unknown>> | undefined;
+													const layers = acc["layers"] as Array<Record<string, unknown>> | undefined;
+													return (
+														<>
+															{files && files.length > 0 && (
+																<div style={{ marginBottom: 4 }}>
+																	<div style={{ fontSize: 9, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 1 }}>Files</div>
+																	{files.map((f, i) => (
+																		<div key={i} style={{ fontSize: 10, color: "#ccc", fontFamily: "monospace", marginLeft: 4, whiteSpace: "nowrap" }}>{(f["displayPath"] ?? f["path"] ?? f["originalPath"] ?? "?") as string}</div>
+																	))}
+																</div>
+															)}
+															{deps && deps.length > 0 && (
+																<div style={{ marginBottom: 4 }}>
+																	<div style={{ fontSize: 9, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 1 }}>Dependencies</div>
+																	{deps.map((d, i) => (
+																		<div key={i} style={{ fontSize: 10, color: "#999", fontFamily: "monospace", marginLeft: 4, whiteSpace: "nowrap" }}>{(d["displayPath"] ?? d["path"] ?? "?") as string}</div>
+																	))}
+																</div>
+															)}
+															{layers && layers.length > 0 && (
+																<div style={{ marginBottom: 4 }}>
+																	<div style={{ fontSize: 9, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 1 }}>Layers</div>
+																	{layers.map((l, i) => {
+																		const items = l["items"] as Array<Record<string, unknown>> | undefined;
+																		return (
+																			<div key={i} style={{ marginBottom: 4, marginLeft: 4 }}>
+																				<div style={{ fontSize: 10, color: "#f0c" }}>{l["name"] as string} <span style={{ color: "#666" }}>({items?.length ?? 0} items)</span></div>
+																				{items && items.map((item, j) => (
+																					<div key={j} style={{ fontSize: 10, color: "#aaa", fontFamily: "monospace", marginLeft: 8, whiteSpace: "nowrap" }}>
+																						{item["path"] as string}
+																						<span style={{ color: "#666" }}> ({item["type"] as string})</span>
+																					</div>
+																				))}
+																			</div>
+																		);
+																	})}
+																</div>
+															)}
+														</>
+													);
+												})()}
+											</div>
+										) : (
+											<div style={{ fontSize: 10, color: "#555", fontStyle: "italic" }}>no accumulated output</div>
+										)}
+									</div>
+									<div style={{ flex: 1, overflow: "auto", padding: 6 }}>
+										<div style={{ fontSize: 9, color: "#888", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>FILE TREE</div>
+										<div style={{ fontSize: 10, color: "#888", marginBottom: 2 }}>{fileTree?.allFiles.length ?? 0} files, root: /local</div>
+										<div style={{ fontSize: 10, color: "#888", marginBottom: 4, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+											<DebugTreePreview fileTree={fileTree} />
+										</div>
+										<div style={{ fontSize: 9, color: "#888", fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>Layer paths: tree match?</div>
+										<DebugLayerMatch selected={selected!} fileTree={fileTree} />
+									</div>
+								</div>
+							</div>
+						) : (
+							<div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 12 }}>
+								Select an event to inspect
+							</div>
+						)}
+					</>
+				) : (
+					<div style={{ flex: 1, minWidth: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+						{fileTree || citySources ? (
+							<div style={{ flex: 1, minHeight: 0 }}>
+								<FileCityGuidePanel context={guideContext} actions={guideActions} events={panelEvents} citySources={citySources} />
+							</div>
+						) : repoRoot ? (
+							<CenteredMessage title="Loading city…" />
+						) : (
+							<CenteredMessage title="No repo root" detail="No working directory found in session data" />
+						)}
+					</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Agent Sessions overview — one tab that loads the recent agent sessions into
+// the FileCityGuidePanel's multi-session agent mode (no per-session tabs).
+// ---------------------------------------------------------------------------
+
+const MAX_CITY_SOURCES = 4;
+
+// Minimal view for a session whose events haven't loaded yet — the drawer row
+// renders it (title + state) and upgrades in place once the session loads.
+function placeholderAgentSession(s: SessionSummary): AgentSessionView {
+	return {
+		id: s.id,
+		name: "opencode",
+		agent: "opencode",
+		owner: { name: "opencode", login: "opencode" },
+		state: s.isFinished ? "done" : "working",
+		task: s.title,
+		message: s.title,
+		color: "#a855f7",
+		files: [],
+		readingFiles: [],
+		greppingFiles: [],
+		activeFiles: [],
+		startedAt: s.createdAt || undefined,
+		stats: { filesChanged: 0, additions: 0, deletions: 0 },
+	};
+}
+
+function AgentSessionsOverviewView() {
+	const [summaries, setSummaries] = useState<SessionSummary[]>([]);
+	const [sessionsById, setSessionsById] = useState<Map<string, AgentSessionView>>(new Map());
+	const [eventsById, setEventsById] = useState<Map<string, AgentSessionEvent[]>>(new Map());
+	const [sessionRepos, setSessionRepos] = useState<Map<string, Array<{ root: string; fileCount: number; name: string | null; owner: string | null }>>>(new Map());
+	const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+	const [trees, setTrees] = useState<Map<string, FileTree>>(new Map());
+	const [error, setError] = useState<string | null>(null);
+	const [loaded, setLoaded] = useState(false);
+
+	// One cheap call lists every top-level session — the drawer renders the full
+	// list immediately; per-session events load lazily below.
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			try {
+				const list = await electrobun.rpc!.request.listSessions({});
+				// Top-level sessions only — each group's parent is the main agent
+				// session; the children are subagent sessions we skip here.
+				const tops: SessionSummary[] = [];
+				for (const g of list.groups) {
+					tops.push(g.parent);
+				}
+				tops.push(...list.standalone);
+				tops.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+				if (cancelled) return;
+				if (tops.length === 0) {
+					setError("No recent sessions found");
+					setLoaded(true);
+					return;
+				}
+				setSummaries(tops);
+				setSelectedSessionId(tops[0].id);
+				setLoaded(true);
+			} catch (err) {
+				if (cancelled) return;
+				setError(err instanceof Error ? err.message : String(err));
+				setLoaded(true);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	// Lazily fetch the selected session's events + repos (one DB read per
+	// session, cached per session id) so opening the tab never fans out a
+	// getSessionEvents call across every session at once.
+	useEffect(() => {
+		if (!selectedSessionId || sessionsById.has(selectedSessionId)) return;
+		let cancelled = false;
+		(async () => {
+			try {
+				const res = await electrobun.rpc!.request.getSessionEvents({ sessionId: selectedSessionId });
+				if (cancelled) return;
+				if (!res.ok || !res.events || res.events.length === 0) return;
+				const summary = summaries.find((s) => s.id === selectedSessionId);
+				const slice = buildAgentSessionsView({
+					sessionId: selectedSessionId,
+					title: summary?.title ?? res.session?.title ?? selectedSessionId,
+					events: res.events,
+					sessionMeta: res.session ?? null,
+					dirSet: new Set(),
+					repoOwner: null,
+					repoName: null,
+				});
+				if (cancelled || !slice) return;
+				const repos = (res.repos ?? [])
+					.map((r) => ({ root: r.root, fileCount: r.fileCount, name: r.name, owner: r.owner }))
+					.sort((a, b) => b.fileCount - a.fileCount);
+				setSessionsById((prev) => {
+					const next = new Map(prev);
+					next.set(selectedSessionId, slice.sessions[0]);
+					return next;
+				});
+				setEventsById((prev) => {
+					const next = new Map(prev);
+					next.set(selectedSessionId, slice.events ?? []);
+					return next;
+				});
+				if (repos.length > 0) {
+					setSessionRepos((prev) => {
+						const next = new Map(prev);
+						next.set(selectedSessionId, repos);
+						return next;
+					});
+				}
+			} catch (err) {
+				console.error("[AgentSessionsOverview] getSessionEvents failed:", selectedSessionId, err);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [selectedSessionId, sessionsById, summaries]);
+
+	// Full drawer list — loaded sessions use their real view, the rest get a
+	// summary placeholder that upgrades in place once selected/loaded.
+	const sessions = useMemo<AgentSessionView[]>(() => {
+		return summaries.map((s) => sessionsById.get(s.id) ?? placeholderAgentSession(s));
+	}, [summaries, sessionsById]);
+
+	// The mode payload: all sessions for the drawer + only the selected
+	// session's events (replay/activity are per-selection).
+	const view = useMemo<AgentSessionsView | null>(() => {
+		if (sessions.length === 0) return null;
+		return {
+			sessions,
+			selectedSessionId,
+			events: selectedSessionId ? (eventsById.get(selectedSessionId) ?? []) : [],
+			repository: null,
+		};
+	}, [sessions, selectedSessionId, eventsById]);
+
+	// The repos shown follow the selected session (the panel reports drawer
+	// clicks through `onAgentSessionSelect`). Trees for the selected session's
+	// repos load lazily into a persistent cache keyed by repo root.
+	const selectedRepos = useMemo(() => {
+		if (!selectedSessionId) return [];
+		return (sessionRepos.get(selectedSessionId) ?? []).slice(0, MAX_CITY_SOURCES);
+	}, [selectedSessionId, sessionRepos]);
+
+	useEffect(() => {
+		if (selectedRepos.length === 0) return;
+		let cancelled = false;
+		(async () => {
+			for (const r of selectedRepos) {
+				if (cancelled) return;
+				if (trees.has(r.root)) continue;
+				try {
+					const treeRes = await electrobun.rpc!.request.getFileTree({ tabId: "", path: r.root });
+					if (cancelled) return;
+					const tree = new GitFileTreeBuilder().build({
+						files: treeRes.files,
+						rootPath: "/local",
+						commitSha: "local",
+						branch: "local",
+					});
+					setTrees((prev) => {
+						const next = new Map(prev);
+						next.set(r.root, tree);
+						return next;
+					});
+				} catch (err) {
+					console.error("[AgentSessionsOverview] getFileTree failed:", r.root, err);
+				}
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [selectedRepos, trees]);
+
+	// One city per repo the selected session touched, laid out side by side.
+	// Passing `citySources` flips FileCity3D into its multi-city mode; each
+	// source shows the repo-name label + owner avatar badge over its footprint.
+	const citySources = useMemo<CitySource[] | undefined>(() => {
+		if (selectedRepos.length === 0) return undefined;
+		const GAP = 24;
+		const sources: CitySource[] = [];
+		let cursor = 0;
+		for (const r of selectedRepos) {
+			const tree = trees.get(r.root);
+			if (!tree) continue;
+			const city = buildCityDataFromContext({ fileTree: tree, lineCounts: null });
+			const halfW = (city.bounds.maxX - city.bounds.minX) / 2;
+			const centerX = cursor + halfW;
+			sources.push({
+				cityData: city,
+				positionOffset: { x: centerX, z: 0 },
+				label: r.name ?? undefined,
+				ownerAvatarUrl: r.owner ? `https://github.com/${r.owner}.png?size=40` : undefined,
+			});
+			cursor = centerX + halfW + GAP;
+		}
+		return sources.length > 0 ? sources : undefined;
+	}, [selectedRepos, trees]);
+
+	const guideContext = useMemo<PanelContextValue<FileCityGuidePanelContext>>(() => {
+		const primaryTree = selectedRepos.length > 0 ? (trees.get(selectedRepos[0].root) ?? null) : null;
+		const fileTreeSlice: DataSlice<FileTree> = {
+			scope: "repository",
+			name: "fileTree",
+			data: primaryTree,
+			loading: !primaryTree,
+			error: null,
+			refresh: async () => {},
+		};
+		const nullSliceInst: DataSlice<null> = { scope: "repository", name: "null", data: null, loading: false, error: null, refresh: async () => {} };
+		return {
+			currentScope: { type: "repository" },
+			refresh: async () => {},
+			fileTree: fileTreeSlice,
+			lineCounts: nullSliceInst,
+			tour: nullSliceInst,
+			highlightLayers: nullSliceInst,
+			agentSessions: {
+				scope: "repository",
+				name: "agentSessions",
+				data: view,
+				loading: !view,
+				error: null,
+				refresh: async () => {},
+			},
+			repository: null,
+		};
+	}, [view, trees, selectedRepos]);
+
+	const guideActions = useMemo<FileCityGuidePanelActions>(
+		() => ({
+			openFile: () => {},
+			onAgentSessionSelect: (sessionId) => setSelectedSessionId(sessionId),
+		}),
+		[],
+	);
+
+	const panelEvents = useMemo<PanelEventEmitter>(() => new PanelEventBus(), []);
+
+	const sessionLoading = !!selectedSessionId && !eventsById.has(selectedSessionId);
+
+	if (!loaded) {
+		return <CenteredMessage title="Loading agent sessions…" />;
+	}
+	if (error) {
+		return <CenteredMessage title="Could not load agent sessions" detail={error} />;
+	}
+
+	return (
+		<div style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
+			<div style={{ padding: "8px 16px", borderBottom: "1px solid #333", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+				Agent Sessions
+				{view && (
+					<span style={{ color: "#888", fontWeight: 400, fontSize: 11 }}>
+						{view.sessions.length} sessions · {view.events?.length ?? 0} events
+					</span>
+				)}
+				<span style={{ color: "#555", fontSize: 10, marginLeft: "auto" }}>
+					{sessionLoading ? "loading…" : selectedRepos.length > 0 ? `${selectedRepos.length} ${selectedRepos.length === 1 ? "city" : "cities"}` : ""}
+				</span>
+			</div>
+			<div style={{ flex: 1, minWidth: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+				{view ? (
+					<div style={{ flex: 1, minHeight: 0 }}>
+						<FileCityGuidePanel context={guideContext} actions={guideActions} events={panelEvents} citySources={citySources} />
+					</div>
+				) : (
+					<CenteredMessage title="Loading city…" />
+				)}
 			</div>
 		</div>
 	);
@@ -2925,6 +3298,10 @@ function ActiveTab({ tabId }: { tabId: string }) {
 				}
 				if (tab.kind === "sessions") {
 					setState({ kind: "sessions" });
+					return;
+				}
+				if (tab.kind === "agent-sessions") {
+					setState({ kind: "agent-sessions" });
 					return;
 				}
 				if (tab.kind === "session-events") {
@@ -2983,6 +3360,7 @@ function ActiveTab({ tabId }: { tabId: string }) {
 	if (state.kind === "loading") return <CenteredMessage title="Loading trail…" />;
 	if (state.kind === "library") return <LibraryView />;
 	if (state.kind === "sessions") return <SessionsLibraryView />;
+	if (state.kind === "agent-sessions") return <AgentSessionsOverviewView />;
 	if (state.kind === "session-events")
 		return <SessionEventsView tabId={state.id} sessionId={state.sessionId} title={state.title} />;
 	if (state.kind === "error")
