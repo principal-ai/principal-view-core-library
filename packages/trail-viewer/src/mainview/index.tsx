@@ -2614,7 +2614,9 @@ function buildAgentSessionsView(opts: {
 			files: normFiles ? normFiles.map((f) => f.displayPath) : [],
 			dependencies: (ev.accumulated?.dependencies as unknown as Array<{ displayPath: string }> | undefined)?.map((f) => f.displayPath) ?? [],
 			description: acc.description,
-			contextTokens: (acc as unknown as { contextTokens?: number }).contextTokens,
+			contextTokens: acc.contextTokens,
+			subagentType: acc.subagentType,
+			childSessionId: acc.childSessionId,
 			layers,
 		});
 	}
@@ -3238,8 +3240,45 @@ function AgentSessionsOverviewView() {
 		() => ({
 			openFile: () => {},
 			onAgentSessionSelect: (sessionId) => setSelectedSessionId(sessionId),
+			fetchSessionEvents: async (sessionId) => {
+				const cached = eventsById.get(sessionId);
+				if (cached && cached.length > 0) {
+					return {
+						events: cached,
+						title: summaries.find((s) => s.id === sessionId)?.title ?? sessionId,
+					};
+				}
+				const res = await electrobun.rpc!.request.getSessionEvents({ sessionId });
+				if (!res.ok || !res.events || res.events.length === 0) {
+					return { events: [], title: sessionId };
+				}
+				const slice = buildAgentSessionsView({
+					sessionId,
+					title: res.session?.title ?? summaries.find((s) => s.id === sessionId)?.title ?? sessionId,
+					events: res.events,
+					sessionMeta: res.session ?? null,
+					dirSet: new Set(),
+					repoOwner: null,
+					repoName: null,
+				});
+				if (!slice) return { events: [], title: sessionId };
+				setSessionsById((prev) => {
+					const next = new Map(prev);
+					next.set(sessionId, slice.sessions[0]);
+					return next;
+				});
+				setEventsById((prev) => {
+					const next = new Map(prev);
+					next.set(sessionId, slice.events ?? []);
+					return next;
+				});
+				return {
+					events: slice.events ?? [],
+					title: slice.sessions[0]?.task ?? sessionId,
+				};
+			},
 		}),
-		[],
+		[summaries, eventsById],
 	);
 
 	const panelEvents = useMemo<PanelEventEmitter>(() => new PanelEventBus(), []);
