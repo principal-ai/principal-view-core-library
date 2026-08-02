@@ -2591,7 +2591,7 @@ function buildAgentSessionsView(opts: {
 			for (const f of normFiles) {
 				if (acc.operation === "reading") readingFileSet.add(f.displayPath);
 				else if (acc.operation === "grepping") greppingFileSet.add(f.displayPath);
-				else editedFileSet.add(f.displayPath);
+				else if (acc.operation === "editing") editedFileSet.add(f.displayPath);
 			}
 		}
 
@@ -2614,6 +2614,7 @@ function buildAgentSessionsView(opts: {
 			files: normFiles ? normFiles.map((f) => f.displayPath) : [],
 			dependencies: (ev.accumulated?.dependencies as unknown as Array<{ displayPath: string }> | undefined)?.map((f) => f.displayPath) ?? [],
 			description: acc.description,
+			contextTokens: (acc as unknown as { contextTokens?: number }).contextTokens,
 			layers,
 		});
 	}
@@ -2871,7 +2872,7 @@ function SessionEventsView({ tabId, sessionId, title }: {
 						<div style={{ width: 240, minWidth: 180, overflow: "auto", borderRight: "1px solid #333" }}>
 							{events.map((ev, i) => {
 								const accDotColor = ev.accumulated
-									? ({ reading: "#a855f7", grepping: "#e879f9", editing: "#22c55e", errored: "#ef4444", starting: "#3b82f6", finished: "#888" } as Record<string, string>)[ev.accumulated.operation] ?? "#888"
+									? ({ reading: "#a855f7", grepping: "#e879f9", editing: "#22c55e", errored: "#ef4444", starting: "#3b82f6", finished: "#888", prompting: "#06b6d4", compacting: "#6366f1" } as Record<string, string>)[ev.accumulated.operation] ?? "#888"
 									: "#333";
 								return (
 									<div

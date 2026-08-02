@@ -47,8 +47,8 @@ import {
 	loadAlexandriaRepos,
 	registerProjectInAlexandria,
 } from "./alexandria";
-import { V1EventBridgeProcessor, eventOp, PathNormalizationService } from "@principal-ai/agent-monitoring";
-import type { AccumulatedState, AgentSessionEvent, UniversalAgentSessionEvent, RepositoryInfo } from "@principal-ai/agent-monitoring";
+import { V1EventBridgeProcessor, createAccumulatedState, eventOp, PathNormalizationService } from "@principal-ai/agent-monitoring";
+import type { AgentSessionEvent, UniversalAgentSessionEvent, RepositoryInfo } from "@principal-ai/agent-monitoring";
 import { BunNormalizationAdapter } from "./normalizationAdapter";
 
 function openCodeDBPath(): string {
@@ -57,6 +57,37 @@ function openCodeDBPath(): string {
 	const home = env["HOME"] || env["USERPROFILE"] || "/root";
 	const xdgData = env["XDG_DATA_HOME"] || `${home}/.local/share`;
 	return `${xdgData}/opencode/opencode.db`;
+}
+
+// opencode stores a placeholder title ("New session - <iso timestamp>") on
+// sessions it never generated a title for. Surface the first real user prompt
+// text instead so the sessions/agent-sessions lists read as actual tasks.
+function firstUserPromptText(
+	db: import("bun:sqlite").Database,
+	aggregateId: string,
+): string {
+	const userMsg = db
+		.prepare(
+			`SELECT json_extract(data, '$.info.id') AS id
+			 FROM event
+			 WHERE aggregate_id = ? AND type = 'message.updated.1'
+			   AND json_extract(data, '$.info.role') = 'user'
+			 ORDER BY seq ASC LIMIT 1`,
+		)
+		.get(aggregateId) as { id: string | null } | null;
+	if (!userMsg?.id) return "";
+	const part = db
+		.prepare(
+			`SELECT json_extract(data, '$.part.text') AS text
+			 FROM event
+			 WHERE aggregate_id = ? AND type = 'message.part.updated.1'
+			   AND json_extract(data, '$.part.messageID') = ?
+			   AND json_extract(data, '$.part.type') = 'text'
+			 ORDER BY seq ASC LIMIT 1`,
+		)
+		.get(aggregateId, userMsg.id) as { text: string | null } | null;
+	if (typeof part?.text !== "string" || part.text === "") return "";
+	return part.text.replace(/\s+/g, " ").trim();
 }
 
 const LIBRARY_TAB_ID = "library";
@@ -916,6 +947,10 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 						} catch {
 							// best-effort parse
 						}
+						if (title.startsWith("New session")) {
+							const promptText = firstUserPromptText(db, row.aggregate_id);
+							if (promptText) title = promptText;
+						}
 						idToSummary.set(row.aggregate_id, {
 							id: row.aggregate_id,
 							title,
@@ -947,14 +982,12 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 					const groups: SessionGroup[] = [];
 					for (const rel of relations) {
 						if (!rel.parent_id || !rel.child_id) continue;
-						const parent = idToSummary.get(rel.parent_id);
 						const child = idToSummary.get(rel.child_id);
-						if (parent && child) {
-							if (rel.status === "completed" || rel.status === "error") {
-								child.isFinished = true;
-							}
-							childIds.add(rel.child_id);
+						if (!child) continue;
+						if (rel.status === "completed" || rel.status === "error") {
+							child.isFinished = true;
 						}
+						childIds.add(rel.child_id);
 					}
 					for (const summary of idToSummary.values()) {
 						if (childIds.has(summary.id)) continue;
@@ -1215,6 +1248,10 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							// best-effort
 						}
 					}
+					if (sessionTitle.startsWith("New session")) {
+						const promptText = firstUserPromptText(db, sessionId);
+						if (promptText) sessionTitle = promptText;
+					}
 					const processor = new V1EventBridgeProcessor();
 					const alexandriaRepos = loadAlexandriaRepos();
 					const knownRoots = new Map<string, RepositoryInfo>();
@@ -1247,16 +1284,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 					for (const discovered of adapter.newlyDiscovered) {
 						registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
 					}
-					const accState: AccumulatedState = {
-						sessionName: "",
-						sessionColor: "",
-						readingFiles: new Map(),
-						greppingFiles: new Map(),
-						activeFiles: new Map(),
-						files: new Map(),
-						tools: new Map(),
-						lastState: "starting",
-					};
+					const accState = createAccumulatedState("");
 					const events: SessionEventRow[] = [];
 					const repoSet = new Map<string, { root: string; fileCount: number }>();
 					for (const normalizedEvent of normalizedEvents) {
@@ -1299,6 +1327,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 								dependencies: [],
 								description: `${accState.sessionName} finished`,
 								layers: [],
+								contextTokens: accState.contextTokens,
 							},
 						});
 					}
@@ -1352,16 +1381,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 						}
 						const normalizedEvents = await normalizationService.normalizePathsBatch(rawEvents, "");
 						// Collect distinct repos and track editing repos via accumulated state
-						const accState: AccumulatedState = {
-							sessionName: "",
-							sessionColor: "",
-							readingFiles: new Map(),
-							greppingFiles: new Map(),
-							activeFiles: new Map(),
-							files: new Map(),
-							tools: new Map(),
-							lastState: "starting",
-						};
+						const accState = createAccumulatedState("");
 						const repoFileCount = new Map<string, number>();
 						const editRepoRoots = new Set<string>();
 						for (const normalizedEvent of normalizedEvents) {
