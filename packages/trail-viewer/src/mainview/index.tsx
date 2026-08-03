@@ -86,6 +86,7 @@ interface SessionSummary {
 	isFinished: boolean;
 	repoRoot?: string;
 	repos?: RepoInfo[];
+	agent?: string;
 }
 
 interface SessionGroup {
@@ -2372,8 +2373,8 @@ function SessionsLibraryView() {
 	if (totalSessions === 0) {
 		return (
 			<CenteredMessage
-				title="No opencode sessions found"
-				detail="Start an opencode session, or check that opencode.db exists and is readable."
+				title="No agent sessions found"
+				detail="Start an opencode or Cline session, or check that the session database/files exist and are readable."
 			/>
 		);
 	}
@@ -2571,7 +2572,9 @@ function buildAgentSessionsView(opts: {
 	const { sessionId, title, sessionMeta, dirSet, repoOwner, repoName } = opts;
 	if (!opts.events || opts.events.length === 0) return null;
 
-	const sessionName = sessionMeta?.slug || "opencode";
+	const isCline = !sessionMeta?.slug;
+	const sessionName = sessionMeta?.slug || sessionMeta?.title?.slice(0, 30) || sessionId.slice(0, 12);
+	const agentLabel = isCline ? "cline" : "opencode";
 	const sessionColor = "#a855f7";
 	const editedFileSet = new Set<string>();
 	const readingFileSet = new Set<string>();
@@ -2644,8 +2647,8 @@ function buildAgentSessionsView(opts: {
 	const agentSession: AgentSessionView = {
 		id: sessionId,
 		name: sessionName,
-		agent: "opencode",
-		owner: { name: "opencode", login: "opencode" },
+		agent: agentLabel,
+		owner: { name: agentLabel, login: agentLabel },
 		state,
 		task,
 		message: task,
@@ -3010,11 +3013,12 @@ const MAX_CITY_SOURCES = 4;
 // Minimal view for a session whose events haven't loaded yet — the drawer row
 // renders it (title + state) and upgrades in place once the session loads.
 function placeholderAgentSession(s: SessionSummary): AgentSessionView {
+	const agentLabel = s.agent ?? "opencode";
 	return {
 		id: s.id,
-		name: "opencode",
-		agent: "opencode",
-		owner: { name: "opencode", login: "opencode" },
+		name: agentLabel,
+		agent: agentLabel,
+		owner: { name: agentLabel, login: agentLabel },
 		state: s.isFinished ? "done" : "working",
 		task: s.title,
 		message: s.title,

@@ -47,7 +47,7 @@ import {
 	loadAlexandriaRepos,
 	registerProjectInAlexandria,
 } from "./alexandria";
-import { V1EventBridgeProcessor, createAccumulatedState, eventOp, PathNormalizationService } from "@principal-ai/agent-monitoring";
+import { V1EventBridgeProcessor, createAccumulatedState, eventOp, PathNormalizationService, ClineSessionReader, cleanClinePrompt } from "@principal-ai/agent-monitoring";
 import type { AgentSessionEvent, UniversalAgentSessionEvent, RepositoryInfo } from "@principal-ai/agent-monitoring";
 import { BunNormalizationAdapter } from "./normalizationAdapter";
 
@@ -57,6 +57,131 @@ function openCodeDBPath(): string {
 	const home = env["HOME"] || env["USERPROFILE"] || "/root";
 	const xdgData = env["XDG_DATA_HOME"] || `${home}/.local/share`;
 	return `${xdgData}/opencode/opencode.db`;
+}
+
+// Cline CLI stores its durable data under its own convention (~/.cline/data),
+// not XDG. The reader handles the path resolution; we just need a singleton
+// and a way to tell Cline sessions apart from opencode sessions.
+const clineReader = new ClineSessionReader();
+
+function isClineSession(sessionId: string): boolean {
+	return clineReader.readSession(sessionId) !== null;
+}
+
+// Shared Cline pipeline: reader → normalizePathsBatch → eventOp loop.
+// Returns the same shapes getSessionEvents / discoverSessionsRepos build so
+// the Cline branch can drop into the existing response assembly with no
+// extra plumbing.
+interface ClinePipelineResult {
+	rawEvents: UniversalAgentSessionEvent[];
+	normalizedEvents: import("@principal-ai/agent-monitoring").RepoNormalizedUniversalAgentSessionEvent[];
+	accState: ReturnType<typeof createAccumulatedState>;
+	events: SessionEventRow[];
+	repos: RepoInfo[];
+	repoRoot: string | undefined;
+	sessionTitle: string;
+	sessionSlug: string;
+}
+
+async function runClinePipeline(sessionId: string): Promise<ClinePipelineResult | null> {
+	const record = clineReader.readSession(sessionId);
+	if (!record) return null;
+
+	// Title/name: prefer the (tag-stripped) session prompt, truncated; fall back
+	// to a readable label rather than the raw session id string.
+	const promptText = cleanClinePrompt(record.metadata.prompt ?? "");
+	const sessionTitle = promptText
+		? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
+		: "Cline session";
+	const sessionSlug = "";
+
+	const rawEvents = clineReader.toUniversalEvents(sessionId);
+	if (rawEvents.length === 0) return null;
+
+	const alexandriaRepos = loadAlexandriaRepos();
+	const knownRoots = new Map<string, RepositoryInfo>();
+	for (const [path, repo] of alexandriaRepos) {
+		knownRoots.set(path, {
+			root: repo.root,
+			remoteUrl: repo.remoteUrl,
+			owner: repo.owner,
+			repo: repo.repo,
+		});
+	}
+	const adapter = new BunNormalizationAdapter(knownRoots);
+	const normalizationService = new PathNormalizationService(adapter);
+
+	const normalizedEvents = await normalizationService.normalizePathsBatch(
+		rawEvents,
+		record.metadata.workspace_root || record.metadata.cwd || "",
+	);
+
+	// Auto-register any newly discovered git roots
+	for (const discovered of adapter.newlyDiscovered) {
+		registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
+	}
+
+	const accState = createAccumulatedState(sessionTitle);
+	const events: SessionEventRow[] = [];
+	const repoSet = new Map<string, { root: string; fileCount: number }>();
+
+	for (let i = 0; i < normalizedEvents.length; i++) {
+		const normalizedEvent = normalizedEvents[i];
+		const accResult = eventOp(accState, normalizedEvent);
+		events.push({
+			seq: i,
+			type: normalizedEvent.eventType,
+			raw: normalizedEvent.raw,
+			normalized: normalizedEvent as unknown as Record<string, unknown>,
+			accumulated: accResult,
+		});
+		if (normalizedEvent.files) {
+			for (const f of normalizedEvent.files) {
+				const root = f.repository?.gitRoot;
+				if (root) {
+					const entry = repoSet.get(root) ?? { root, fileCount: 0 };
+					entry.fileCount++;
+					repoSet.set(root, entry);
+				}
+			}
+		}
+	}
+
+	// Append a "finished" row like the opencode path does
+	const lastEvent = events[events.length - 1];
+	if (lastEvent) {
+		const lastTimestamp = (lastEvent.normalized as Record<string, unknown>)["timestamp"] as number | undefined ?? 0;
+		events.push({
+			seq: lastEvent.seq + 1,
+			type: "finished",
+			raw: null,
+			normalized: { timestamp: lastTimestamp },
+			accumulated: {
+				id: "",
+				timestamp: lastTimestamp,
+				sessionId: sessionId,
+				sessionName: accState.sessionName,
+				sessionColor: accState.sessionColor,
+				operation: "finished",
+				files: [],
+				dependencies: [],
+				description: `${accState.sessionName} finished`,
+				layers: [],
+				contextTokens: accState.contextTokens,
+			},
+		});
+	}
+
+	const repos = Array.from(repoSet.values())
+		.sort((a, b) => b.fileCount - a.fileCount)
+		.map((r) => {
+			const parts = r.root.replace(/\/+$/, "").split("/");
+			const known = knownRoots.get(r.root);
+			return { root: r.root, fileCount: r.fileCount, owner: known?.owner ?? null, name: parts[parts.length - 1] ?? null, editing: false };
+		});
+	const repoRoot = repos.length > 0 ? repos[0].root : undefined;
+
+	return { rawEvents, normalizedEvents, accState, events, repos, repoRoot, sessionTitle, sessionSlug };
 }
 
 // opencode stores a placeholder title ("New session - <iso timestamp>") on
@@ -196,6 +321,7 @@ interface SessionSummary {
 	isFinished: boolean;
 	repoRoot?: string;
 	repos?: RepoInfo[];
+	agent?: string;
 }
 
 interface SessionGroup {
@@ -1009,6 +1135,29 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							standalone.push(summary);
 						}
 					}
+					// Append Cline CLI sessions (durable transcript, not in opencode DB)
+					for (const clineSession of clineReader.listSessions()) {
+						const meta = clineSession.metadata;
+						const promptText = cleanClinePrompt(meta.prompt ?? "");
+						const title = promptText
+							? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
+							: "Cline session";
+						const createdAtStr = meta.started_at ?? "";
+						const durationMs = meta.ended_at
+							? new Date(meta.ended_at).getTime() - new Date(meta.started_at ?? meta.ended_at).getTime()
+							: 0;
+						const eventCount = clineReader.readMessages(clineSession.sessionId)?.messages.length ?? 0;
+						standalone.push({
+							id: clineSession.sessionId,
+							title,
+							slug: "",
+							createdAt: createdAtStr,
+							durationMs,
+							eventCount,
+							isFinished: meta.status === "completed" || meta.status === "failed",
+								agent: "cline",
+						});
+					}
 					return { groups, standalone };
 				} catch (err) {
 					console.warn(`[trail-viewer] listSessions failed: ${(err as Error).message}`);
@@ -1219,6 +1368,16 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				}
 			},
 			getSessionEvents: async ({ sessionId }) => {
+				// Cline CLI sessions: read the durable transcript, not the opencode DB
+				if (isClineSession(sessionId)) {
+					try {
+						const result = await runClinePipeline(sessionId);
+						if (!result) return { ok: false, error: "Cline session not found or empty" };
+						return { ok: true, events: result.events, repoRoot: result.repoRoot, repos: result.repos, session: { slug: result.sessionSlug, title: result.sessionTitle } };
+					} catch (err) {
+						return { ok: false, error: (err as Error).message };
+					}
+				}
 				const dbPath = openCodeDBPath();
 				let db: import("bun:sqlite").Database | null = null;
 				try {
@@ -1367,6 +1526,18 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 					const adapter = new BunNormalizationAdapter(knownRoots);
 					const normalizationService = new PathNormalizationService(adapter);
 					for (const sessionId of sessionIds) {
+						// Cline CLI sessions: use the durable reader, not the opencode DB
+						if (isClineSession(sessionId)) {
+							try {
+								const clineResult = await runClinePipeline(sessionId);
+								if (clineResult) {
+									result[sessionId] = { repoRoot: clineResult.repoRoot ?? "", repos: clineResult.repos };
+								}
+							} catch {
+								// best-effort
+							}
+							continue;
+						}
 						const rows = db
 							.prepare(
 								`SELECT seq, type, data FROM event WHERE aggregate_id = ? ORDER BY seq ASC`,

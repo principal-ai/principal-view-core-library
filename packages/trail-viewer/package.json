@@ -28,7 +28,7 @@
 		"registry": "https://registry.npmjs.org/"
 	},
 	"devDependencies": {
-		"@industry-theme/file-city-panel": "^0.9.48",
+		"@industry-theme/file-city-panel": "^0.9.51",
 		"@principal-ade/dynamic-file-tree": "^0.2.45",
 		"@principal-ade/industry-theme": "^0.1.24",
 		"@principal-ade/panel-framework-core": "^0.5.1",
@@ -51,7 +51,7 @@
 		"typescript": "^6.0.3"
 	},
 	"dependencies": {
-		"@principal-ai/agent-monitoring": "^0.3.24",
+		"@principal-ai/agent-monitoring": "^0.3.29",
 		"better-sqlite3": "^13.0.2"
 	}
 }
