@@ -60,6 +60,7 @@ import {
 } from "@industry-theme/file-city-panel";
 import type { IntroductionTour } from "@principal-ai/file-city-builder";
 import type { CitySource } from "@principal-ai/file-city-react";
+import type { NormalizedPathInfo } from "@principal-ai/agent-monitoring";
 
 // ---------------------------------------------------------------------------
 // RPC
@@ -2589,7 +2590,7 @@ function buildAgentSessionsView(opts: {
 		const timestamp = ((ev.normalized as Record<string, unknown>)["timestamp"] as number) || 0;
 		if (firstTimestamp === 0 || timestamp < firstTimestamp) firstTimestamp = timestamp;
 
-		const normFiles = ev.accumulated?.files as unknown as Array<{ displayPath: string }> | undefined;
+		const normFiles = ev.accumulated?.files as unknown as NormalizedPathInfo[] | undefined;
 		if (normFiles) {
 			for (const f of normFiles) {
 				if (acc.operation === "reading") readingFileSet.add(f.displayPath);
@@ -2614,8 +2615,8 @@ function buildAgentSessionsView(opts: {
 			sessionName,
 			sessionColor,
 			operation: acc.operation as AgentSessionEventOperation,
-			files: normFiles ? normFiles.map((f) => f.displayPath) : [],
-			dependencies: (ev.accumulated?.dependencies as unknown as Array<{ displayPath: string }> | undefined)?.map((f) => f.displayPath) ?? [],
+			files: normFiles ?? [],
+			dependencies: (ev.accumulated?.dependencies as unknown as NormalizedPathInfo[] | undefined) ?? [],
 			description: acc.description,
 			contextTokens: acc.contextTokens,
 			subagentType: acc.subagentType,
