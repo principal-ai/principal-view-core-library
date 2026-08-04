@@ -202,7 +202,7 @@ type TrailViewerRPC = {
 			};
 			getSessionEvents: {
 				params: { sessionId: string };
-				response: { ok: boolean; error?: string; events?: SessionEventRow[]; repoRoot?: string; repos?: RepoInfo[]; session?: { slug: string; title: string } };
+				response: { ok: boolean; error?: string; events?: SessionEventRow[]; repoRoot?: string; repos?: RepoInfo[]; session?: { slug: string; title: string; agent?: string } };
 			};
 			discoverSessionsRepos: {
 				params: { sessionIds: string[] };
@@ -2555,7 +2555,7 @@ const eventDataCache = new Map<string, {
 	events: SessionEventRow[];
 	repoRoot: string | null;
 	repos: Array<{ root: string; fileCount: number; name: string | null; owner: string | null }>;
-	sessionMeta: { slug: string; title: string } | null;
+	sessionMeta: { slug: string; title: string; agent?: string } | null;
 }>();
 
 // Build an AgentSessionsView slice for one session from its accumulated event
@@ -2565,7 +2565,7 @@ function buildAgentSessionsView(opts: {
 	sessionId: string;
 	title: string;
 	events: SessionEventRow[] | null;
-	sessionMeta: { slug: string; title: string } | null;
+	sessionMeta: { slug: string; title: string; agent?: string } | null;
 	dirSet: Set<string>;
 	repoOwner: string | null;
 	repoName: string | null;
@@ -2573,9 +2573,10 @@ function buildAgentSessionsView(opts: {
 	const { sessionId, title, sessionMeta, dirSet, repoOwner, repoName } = opts;
 	if (!opts.events || opts.events.length === 0) return null;
 
-	const isCline = !sessionMeta?.slug;
 	const sessionName = sessionMeta?.slug || sessionMeta?.title?.slice(0, 30) || sessionId.slice(0, 12);
-	const agentLabel = isCline ? "cline" : "opencode";
+	// Explicit agent (cline/opencode/pi) wins; fall back to the slug heuristic
+	// (Cline & pi durable transcripts carry no slug, opencode sessions do).
+	const agentLabel = sessionMeta?.agent ?? (!sessionMeta?.slug ? "cline" : "opencode");
 	const sessionColor = "#a855f7";
 	const editedFileSet = new Set<string>();
 	const readingFileSet = new Set<string>();
@@ -2682,7 +2683,7 @@ function SessionEventsView({ tabId, sessionId, title }: {
 	const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 	const [repoRoot, setRepoRoot] = useState<string | null>(cached?.repoRoot ?? null);
 	const [fileTree, setFileTree] = useState<FileTree | null>(null);
-	const [sessionMeta, setSessionMeta] = useState<{ slug: string; title: string } | null>(cached?.sessionMeta ?? null);
+	const [sessionMeta, setSessionMeta] = useState<{ slug: string; title: string; agent?: string } | null>(cached?.sessionMeta ?? null);
 	const [repos, setRepos] = useState<Array<{ root: string; fileCount: number; name: string | null; owner: string | null }>>(cached?.repos ?? []);
 	const [sourceTrees, setSourceTrees] = useState<Map<string, FileTree>>(new Map());
 	const [showDebug, setShowDebug] = useState(false);

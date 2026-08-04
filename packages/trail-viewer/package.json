@@ -51,7 +51,7 @@
 		"typescript": "^6.0.3"
 	},
 	"dependencies": {
-		"@principal-ai/agent-monitoring": "^0.3.29",
+		"@principal-ai/agent-monitoring": "^0.3.30",
 		"better-sqlite3": "^13.0.2"
 	}
 }

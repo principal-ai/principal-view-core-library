@@ -53,7 +53,7 @@ import {
 	loadAlexandriaRepos,
 	registerProjectInAlexandria,
 } from "./alexandria";
-import { createAccumulatedState, eventOp, PathNormalizationService, ClineSessionReader, cleanClinePrompt } from "@principal-ai/agent-monitoring";
+import { createAccumulatedState, eventOp, PathNormalizationService, ClineSessionReader, cleanClinePrompt, PiSessionReader } from "@principal-ai/agent-monitoring";
 import type { AgentSessionEvent, UniversalAgentSessionEvent, RepositoryInfo } from "@principal-ai/agent-monitoring";
 import { BunNormalizationAdapter } from "./normalizationAdapter";
 
@@ -72,6 +72,14 @@ const clineReader = new ClineSessionReader();
 
 function isClineSession(sessionId: string): boolean {
 	return clineReader.readSession(sessionId) !== null;
+}
+
+// pi CLI stores its durable sessions under ~/.pi/agent/sessions (JSONL files).
+// Same durable-transcript pattern as Cline: one file per session, tree-shaped.
+const piReader = new PiSessionReader();
+
+function isPiSession(sessionId: string): boolean {
+	return piReader.readSession(sessionId) !== null;
 }
 
 // Shared Cline pipeline: reader → normalizePathsBatch → eventOp loop.
@@ -120,6 +128,112 @@ async function runClinePipeline(sessionId: string): Promise<ClinePipelineResult 
 	const normalizedEvents = await normalizationService.normalizePathsBatch(
 		rawEvents,
 		record.metadata.workspace_root || record.metadata.cwd || "",
+	);
+
+	// Auto-register any newly discovered git roots
+	for (const discovered of adapter.newlyDiscovered) {
+		registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
+	}
+
+	const accState = createAccumulatedState(sessionTitle);
+	const events: SessionEventRow[] = [];
+	const repoSet = new Map<string, { root: string; fileCount: number }>();
+
+	for (let i = 0; i < normalizedEvents.length; i++) {
+		const normalizedEvent = normalizedEvents[i];
+		const accResult = eventOp(accState, normalizedEvent);
+		events.push({
+			seq: i,
+			type: normalizedEvent.eventType,
+			raw: normalizedEvent.raw,
+			normalized: normalizedEvent as unknown as Record<string, unknown>,
+			accumulated: accResult,
+		});
+		if (normalizedEvent.files) {
+			for (const f of normalizedEvent.files) {
+				const root = f.repository?.gitRoot;
+				if (root) {
+					const entry = repoSet.get(root) ?? { root, fileCount: 0 };
+					entry.fileCount++;
+					repoSet.set(root, entry);
+				}
+			}
+		}
+	}
+
+	// Append a "finished" row like the opencode path does
+	const lastEvent = events[events.length - 1];
+	if (lastEvent) {
+		const lastTimestamp = (lastEvent.normalized as Record<string, unknown>)["timestamp"] as number | undefined ?? 0;
+		events.push({
+			seq: lastEvent.seq + 1,
+			type: "finished",
+			raw: null,
+			normalized: { timestamp: lastTimestamp },
+			accumulated: {
+				id: "",
+				timestamp: lastTimestamp,
+				sessionId: sessionId,
+				sessionName: accState.sessionName,
+				sessionColor: accState.sessionColor,
+				operation: "finished",
+				files: [],
+				dependencies: [],
+				description: `${accState.sessionName} finished`,
+				layers: [],
+				contextTokens: accState.contextTokens,
+			},
+		});
+	}
+
+	const repos = Array.from(repoSet.values())
+		.sort((a, b) => b.fileCount - a.fileCount)
+		.map((r) => {
+			const parts = r.root.replace(/\/+$/, "").split("/");
+			const known = knownRoots.get(r.root);
+			return { root: r.root, fileCount: r.fileCount, owner: known?.owner ?? null, name: parts[parts.length - 1] ?? null, editing: false };
+		});
+	const repoRoot = repos.length > 0 ? repos[0].root : undefined;
+
+	return { rawEvents, normalizedEvents, accState, events, repos, repoRoot, sessionTitle, sessionSlug };
+}
+
+// Shared pi pipeline: reader → normalizePathsBatch → eventOp loop.
+// Same shapes as runClinePipeline so both drop into the existing response
+// assembly with no extra plumbing.
+async function runPiPipeline(sessionId: string): Promise<ClinePipelineResult | null> {
+	const record = piReader.readSession(sessionId);
+	if (!record) return null;
+
+	// Title/name: prefer the first user prompt, truncated; fall back to a
+	// readable label rather than the raw session id string.
+	const promptText = record.firstPrompt;
+	const sessionTitle = promptText
+		? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
+		: "pi session";
+	const sessionSlug = "";
+
+	const rawEvents = piReader.toUniversalEvents(sessionId);
+	if (rawEvents.length === 0) return null;
+
+	const alexandriaRepos = loadAlexandriaRepos();
+	const knownRoots = new Map<string, RepositoryInfo>();
+	for (const [path, repo] of alexandriaRepos) {
+		knownRoots.set(path, {
+			root: repo.root,
+			remoteUrl: repo.remoteUrl,
+			owner: repo.owner,
+			repo: repo.repo,
+		});
+	}
+	const adapter = new BunNormalizationAdapter(knownRoots);
+	const normalizationService = new PathNormalizationService(adapter);
+
+	// The pi session header carries the working directory; that is the repo to
+	// normalize against (the ~/.pi sessions dir itself is never a repo).
+	const normalizedEvents = await normalizationService.normalizePathsBatch(
+		rawEvents,
+		record.header.cwd || "",
 	);
 
 	// Auto-register any newly discovered git roots
@@ -733,7 +847,7 @@ type TrailViewerRPC = {
 			};
 			getSessionEvents: {
 				params: { sessionId: string };
-				response: { ok: boolean; error?: string; events?: SessionEventRow[]; repoRoot?: string; repos?: RepoInfo[]; session?: { slug: string; title: string } };
+				response: { ok: boolean; error?: string; events?: SessionEventRow[]; repoRoot?: string; repos?: RepoInfo[]; session?: { slug: string; title: string; agent?: string } };
 			};
 			discoverSessionsRepos: {
 				params: { sessionIds: string[] };
@@ -1164,6 +1278,25 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 								agent: "cline",
 						});
 					}
+					// Append pi CLI sessions (durable JSONL transcript, not in opencode DB)
+					for (const piSession of piReader.listSessions()) {
+						const promptText = piSession.firstPrompt;
+						const title = promptText
+							? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
+							: "pi session";
+						const createdAtStr = piSession.header.timestamp ?? "";
+						const durationMs = Math.max(0, piSession.lastActivity - new Date(createdAtStr || 0).getTime());
+						standalone.push({
+							id: piSession.sessionId,
+							title,
+							slug: "",
+							createdAt: createdAtStr,
+							durationMs,
+							eventCount: piSession.messageCount,
+							isFinished: false,
+							agent: "pi",
+						});
+					}
 					return { groups, standalone };
 				} catch (err) {
 					console.warn(`[trail-viewer] listSessions failed: ${(err as Error).message}`);
@@ -1379,7 +1512,17 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 					try {
 						const result = await runClinePipeline(sessionId);
 						if (!result) return { ok: false, error: "Cline session not found or empty" };
-						return { ok: true, events: result.events, repoRoot: result.repoRoot, repos: result.repos, session: { slug: result.sessionSlug, title: result.sessionTitle } };
+						return { ok: true, events: result.events, repoRoot: result.repoRoot, repos: result.repos, session: { slug: result.sessionSlug, title: result.sessionTitle, agent: "cline" } };
+					} catch (err) {
+						return { ok: false, error: (err as Error).message };
+					}
+				}
+				// pi CLI sessions: read the durable JSONL transcript, not the opencode DB
+				if (isPiSession(sessionId)) {
+					try {
+						const result = await runPiPipeline(sessionId);
+						if (!result) return { ok: false, error: "pi session not found or empty" };
+						return { ok: true, events: result.events, repoRoot: result.repoRoot, repos: result.repos, session: { slug: result.sessionSlug, title: result.sessionTitle, agent: "pi" } };
 					} catch (err) {
 						return { ok: false, error: (err as Error).message };
 					}
@@ -1496,7 +1639,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 						})
 						.sort((a, b) => b.fileCount - a.fileCount);
 					const repoRoot = repos.length > 0 ? repos[0].root : undefined;
-					return { ok: true, events, repoRoot, repos, session: { slug: sessionSlug, title: sessionTitle } };
+					return { ok: true, events, repoRoot, repos, session: { slug: sessionSlug, title: sessionTitle, agent: "opencode" } };
 				} catch (err) {
 					return { ok: false, error: (err as Error).message };
 				} finally {
@@ -1527,6 +1670,18 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 								const clineResult = await runClinePipeline(sessionId);
 								if (clineResult) {
 									result[sessionId] = { repoRoot: clineResult.repoRoot ?? "", repos: clineResult.repos };
+								}
+							} catch {
+								// best-effort
+							}
+							continue;
+						}
+						// pi CLI sessions: use the durable reader, not the opencode DB
+						if (isPiSession(sessionId)) {
+							try {
+								const piResult = await runPiPipeline(sessionId);
+								if (piResult) {
+									result[sessionId] = { repoRoot: piResult.repoRoot ?? "", repos: piResult.repos };
 								}
 							} catch {
 								// best-effort

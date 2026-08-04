@@ -1,5 +1,6 @@
 import {
   ClineSessionReader,
+  PiSessionReader,
   type UniversalAgentSessionEvent,
 } from "@principal-ai/agent-monitoring";
 import { OpenCodeEventStore } from "./OpenCodeEventStore";
@@ -31,7 +32,7 @@ export {
  */
 
 export interface AgentSessionSummary {
-  agent: "cline" | "opencode" | "unknown";
+  agent: "cline" | "opencode" | "pi" | "unknown";
   sessionId: string;
   title: string;
   createdAt: string;
@@ -41,9 +42,14 @@ export interface AgentSessionSummary {
 }
 
 const clineReader = new ClineSessionReader();
+const piReader = new PiSessionReader();
 
 function isClineSession(sessionId: string): boolean {
   return clineReader.readSession(sessionId) !== null;
+}
+
+function isPiSession(sessionId: string): boolean {
+  return piReader.readSession(sessionId) !== null;
 }
 
 /** List Cline CLI sessions from the durable on-disk transcript. */
@@ -64,6 +70,29 @@ function listClineSessions(): AgentSessionSummary[] {
       createdAt: meta.started_at ?? "",
       eventCount: clineReader.readMessages(record.sessionId)?.messages.length ?? 0,
       isFinished: meta.status === "completed" || meta.status === "failed",
+    };
+  });
+}
+
+/** List pi CLI sessions from the durable on-disk JSONL transcripts. */
+function listPiSessions(): AgentSessionSummary[] {
+  return piReader.listSessions().map((record) => {
+    const promptText = (record.firstPrompt ?? "").trim();
+    const title =
+      promptText.length > 0
+        ? promptText.length > 80
+          ? `${promptText.slice(0, 80)}…`
+          : promptText
+        : "pi session";
+    return {
+      agent: "pi",
+      sessionId: record.sessionId,
+      title,
+      createdAt: record.header.timestamp ?? "",
+      eventCount: record.messageCount,
+      // pi transcripts carry no finished marker; the trail-viewer appends a
+      // synthesized session-end event at read time.
+      isFinished: false,
     };
   });
 }
@@ -119,6 +148,11 @@ export function listAgentSessions(
   } catch (err) {
     if (!opencodeError) opencodeError = err as Error;
   }
+  try {
+    all.push(...listPiSessions());
+  } catch (err) {
+    if (!opencodeError) opencodeError = err as Error;
+  }
   if (all.length === 0 && opencodeError) {
     throw opencodeError;
   }
@@ -126,8 +160,10 @@ export function listAgentSessions(
 }
 
 /** Detect which agent a session id belongs to. */
-export function detectAgent(sessionId: string): "cline" | "opencode" {
-  return isClineSession(sessionId) ? "cline" : "opencode";
+export function detectAgent(sessionId: string): "cline" | "opencode" | "pi" {
+  if (isClineSession(sessionId)) return "cline";
+  if (isPiSession(sessionId)) return "pi";
+  return "opencode";
 }
 
 /**
@@ -135,11 +171,14 @@ export function detectAgent(sessionId: string): "cline" | "opencode" {
  */
 export function fetchRawEvents(
   sessionId: string,
-  options: { agent?: "cline" | "opencode"; dbPath?: string } = {},
-): { agent: "cline" | "opencode"; events: UniversalAgentSessionEvent[] } {
+  options: { agent?: "cline" | "opencode" | "pi"; dbPath?: string } = {},
+): { agent: "cline" | "opencode" | "pi"; events: UniversalAgentSessionEvent[] } {
   const agent = options.agent ?? detectAgent(sessionId);
   if (agent === "cline") {
     return { agent, events: clineReader.toUniversalEvents(sessionId) };
+  }
+  if (agent === "pi") {
+    return { agent, events: piReader.toUniversalEvents(sessionId) };
   }
   const store = new OpenCodeEventStore({ dbPath: options.dbPath });
   try {
