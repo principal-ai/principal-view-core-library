@@ -31,6 +31,12 @@ import {
 	extractPurlFromRemoteUrl,
 	parsePurl,
 } from "@principal-ai/alexandria-core-library";
+import {
+	normalizeEventsWithAdapter,
+	accumulateEvents,
+	collectRepositories,
+	opencodeRowsToUniversalEvents,
+} from "@principal-ai/principal-view-core/pipeline";
 import { parseTourOrThrow } from "@principal-ai/file-city-builder";
 import { readFileRemote as fetchRemoteSlice } from "./remote-files";
 import { handoffToRunning, startIpcServer, type LoadTrailMessage } from "./ipc";
@@ -47,7 +53,7 @@ import {
 	loadAlexandriaRepos,
 	registerProjectInAlexandria,
 } from "./alexandria";
-import { V1EventBridgeProcessor, createAccumulatedState, eventOp, PathNormalizationService, ClineSessionReader, cleanClinePrompt } from "@principal-ai/agent-monitoring";
+import { createAccumulatedState, eventOp, PathNormalizationService, ClineSessionReader, cleanClinePrompt } from "@principal-ai/agent-monitoring";
 import type { AgentSessionEvent, UniversalAgentSessionEvent, RepositoryInfo } from "@principal-ai/agent-monitoring";
 import { BunNormalizationAdapter } from "./normalizationAdapter";
 
@@ -1385,9 +1391,11 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 					db = new Database(dbPath, { readonly: true });
 					const rows = db
 						.prepare(
-							`SELECT seq, type, data FROM event WHERE aggregate_id = ? ORDER BY seq ASC`,
+							`SELECT id, aggregate_id, seq, type, data FROM event WHERE aggregate_id = ? ORDER BY seq ASC`,
 						)
 						.all(sessionId) as Array<{
+						id: string;
+						aggregate_id: string;
 						seq: number;
 						type: string;
 						data: string;
@@ -1411,7 +1419,9 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 						const promptText = firstUserPromptText(db, sessionId);
 						if (promptText) sessionTitle = promptText;
 					}
-					const processor = new V1EventBridgeProcessor();
+					const universalEvents = opencodeRowsToUniversalEvents(
+						rows.map((r) => ({ id: r.id, aggregateId: r.aggregate_id, seq: r.seq, type: r.type, data: r.data })),
+					);
 					const alexandriaRepos = loadAlexandriaRepos();
 					const knownRoots = new Map<string, RepositoryInfo>();
 					for (const [path, repo] of alexandriaRepos) {
@@ -1422,54 +1432,30 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							repo: repo.repo,
 						});
 					}
-					const adapter = new BunNormalizationAdapter(knownRoots);
-					const normalizationService = new PathNormalizationService(adapter);
-					const rawEvents: UniversalAgentSessionEvent[] = [];
-					const rawDataMap = new Map<number, unknown>();
-					for (const row of rows) {
-						let raw: unknown = {};
-						try {
-							raw = JSON.parse(row.data);
-						} catch {
-							// best-effort parse
-						}
-						const rawObj = raw as Record<string, unknown>;
-						const normalizedEvent = processor.normalize({ type: row.type as "session.created.1" | "session.updated.1" | "message.updated.1" | "message.part.updated.1" | "message.removed.1", data: rawObj, id: "", aggregateId: "", seq: row.seq });
-						rawEvents.push(normalizedEvent);
-						rawDataMap.set(row.seq, raw);
-					}
-					const normalizedEvents = await normalizationService.normalizePathsBatch(rawEvents, "");
+					const { normalized, adapter } = await normalizeEventsWithAdapter(universalEvents, "", knownRoots);
 					// Auto-register any newly discovered git roots
 					for (const discovered of adapter.newlyDiscovered) {
 						registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
 					}
-					const accState = createAccumulatedState("");
-					const events: SessionEventRow[] = [];
-					const repoSet = new Map<string, { root: string; fileCount: number }>();
-					for (const normalizedEvent of normalizedEvents) {
-						const accResult = eventOp(accState, normalizedEvent);
-						const seq = (normalizedEvent.raw as Record<string, unknown>)["seq"] as number ?? 0;
-						events.push({
+					const accumulated = accumulateEvents(normalized, sessionTitle);
+					const events: SessionEventRow[] = accumulated.map((entry, i) => {
+						const rawEnvelope = entry.normalized.raw as { data?: unknown; type?: string; seq?: number } | undefined;
+						const seq = rawEnvelope?.seq ?? i;
+						return {
 							seq,
-							type: (normalizedEvent.raw as Record<string, unknown>)["type"] as string ?? "",
-							raw: rawDataMap.get(seq),
-							normalized: normalizedEvent as unknown as Record<string, unknown>,
-							accumulated: accResult,
-						});
-						if (normalizedEvent.files) {
-							for (const f of normalizedEvent.files) {
-								const root = f.repository?.gitRoot;
-								if (root) {
-									const entry = repoSet.get(root) ?? { root, fileCount: 0 };
-									entry.fileCount++;
-									repoSet.set(root, entry);
-								}
-							}
-						}
-					}
+							type: rawEnvelope?.type ?? entry.normalized.eventType,
+							raw: rawEnvelope?.data,
+							normalized: entry.normalized as unknown as Record<string, unknown>,
+							accumulated: entry.accumulated as AgentSessionEvent | null,
+						};
+					});
 					const lastEvent = events[events.length - 1];
 					if (lastEvent) {
 						const lastTimestamp = (lastEvent.normalized as Record<string, unknown>)["timestamp"] as number | undefined ?? 0;
+						const lastAcc = lastEvent.accumulated ?? ({} as AgentSessionEvent);
+						const lastSessionName = lastAcc.sessionName ?? sessionTitle;
+						const lastSessionColor = lastAcc.sessionColor ?? "";
+						const lastContextTokens = lastAcc.contextTokens;
 						events.push({
 							seq: lastEvent.seq + 1,
 							type: "finished",
@@ -1479,24 +1465,36 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 								id: "",
 								timestamp: lastTimestamp,
 								sessionId: sessionSlug,
-								sessionName: accState.sessionName,
-								sessionColor: accState.sessionColor,
+								sessionName: lastSessionName,
+								sessionColor: lastSessionColor,
 								operation: "finished",
 								files: [],
 								dependencies: [],
-								description: `${accState.sessionName} finished`,
+								description: `${lastSessionName} finished`,
 								layers: [],
-								contextTokens: accState.contextTokens,
+								contextTokens: lastContextTokens,
 							},
 						});
 					}
-					const repos = Array.from(repoSet.values())
-						.sort((a, b) => b.fileCount - a.fileCount)
+					const repoSet = new Map<string, { root: string; fileCount: number }>();
+					for (const ev of normalized) {
+						if (!ev.files) continue;
+						for (const f of ev.files) {
+							const root = f.repository?.gitRoot;
+							if (root) {
+								const entry = repoSet.get(root) ?? { root, fileCount: 0 };
+								entry.fileCount++;
+								repoSet.set(root, entry);
+							}
+						}
+					}
+					const repos: RepoInfo[] = collectRepositories(normalized)
 						.map((r) => {
+							const entry = repoSet.get(r.root);
 							const parts = r.root.replace(/\/+$/, "").split("/");
-							const known = knownRoots.get(r.root);
-							return { root: r.root, fileCount: r.fileCount, owner: known?.owner ?? null, name: parts[parts.length - 1] ?? null, editing: false };
-						});
+							return { root: r.root, fileCount: entry?.fileCount ?? 0, owner: r.owner ?? null, name: r.repo ?? parts[parts.length - 1] ?? null, editing: false };
+						})
+						.sort((a, b) => b.fileCount - a.fileCount);
 					const repoRoot = repos.length > 0 ? repos[0].root : undefined;
 					return { ok: true, events, repoRoot, repos, session: { slug: sessionSlug, title: sessionTitle } };
 				} catch (err) {
@@ -1512,7 +1510,6 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				try {
 					const { Database } = await import("bun:sqlite");
 					db = new Database(dbPath, { readonly: true });
-					const processor = new V1EventBridgeProcessor();
 					const alexandriaRepos = loadAlexandriaRepos();
 					const knownRoots = new Map<string, RepositoryInfo>();
 					for (const [path, repo] of alexandriaRepos) {
@@ -1523,8 +1520,6 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							repo: repo.repo,
 						});
 					}
-					const adapter = new BunNormalizationAdapter(knownRoots);
-					const normalizationService = new PathNormalizationService(adapter);
 					for (const sessionId of sessionIds) {
 						// Cline CLI sessions: use the durable reader, not the opencode DB
 						if (isClineSession(sessionId)) {
@@ -1540,29 +1535,30 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 						}
 						const rows = db
 							.prepare(
-								`SELECT seq, type, data FROM event WHERE aggregate_id = ? ORDER BY seq ASC`,
+								`SELECT id, aggregate_id, seq, type, data FROM event WHERE aggregate_id = ? ORDER BY seq ASC`,
 							)
-							.all(sessionId) as Array<{ seq: number; type: string; data: string }>;
-						const rawEvents: UniversalAgentSessionEvent[] = [];
-						for (const row of rows) {
-							let raw: Record<string, unknown> = {};
-							try { raw = JSON.parse(row.data) as Record<string, unknown>; } catch {}
-							const normalizedEvent = processor.normalize({ type: row.type as "session.created.1" | "session.updated.1" | "message.updated.1" | "message.part.updated.1" | "message.removed.1", data: raw, id: "", aggregateId: "", seq: row.seq });
-							rawEvents.push(normalizedEvent);
+							.all(sessionId) as Array<{ id: string; aggregate_id: string; seq: number; type: string; data: string }>;
+						const universalEvents = opencodeRowsToUniversalEvents(
+							rows.map((r) => ({ id: r.id, aggregateId: r.aggregate_id, seq: r.seq, type: r.type, data: r.data })),
+						);
+						if (universalEvents.length === 0) continue;
+						const { normalized, adapter } = await normalizeEventsWithAdapter(universalEvents, "", knownRoots);
+						// Auto-register any newly discovered git roots
+						for (const discovered of adapter.newlyDiscovered) {
+							registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
 						}
-						const normalizedEvents = await normalizationService.normalizePathsBatch(rawEvents, "");
 						// Collect distinct repos and track editing repos via accumulated state
-						const accState = createAccumulatedState("");
+						const accumulated = accumulateEvents(normalized, "");
 						const repoFileCount = new Map<string, number>();
 						const editRepoRoots = new Set<string>();
-						for (const normalizedEvent of normalizedEvents) {
-							const accResult = eventOp(accState, normalizedEvent);
+						for (const entry of accumulated) {
+							const normalizedEvent = entry.normalized;
 							if (normalizedEvent.files) {
 								for (const f of normalizedEvent.files) {
 									const root = f.repository?.gitRoot;
 									if (root) {
 										repoFileCount.set(root, (repoFileCount.get(root) ?? 0) + 1);
-										if (accResult?.operation === "editing") {
+										if ((entry.accumulated as AgentSessionEvent | null)?.operation === "editing") {
 											editRepoRoots.add(root);
 										}
 									}
@@ -1577,10 +1573,6 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							});
 						const repoRoot = repos.length > 0 ? repos[0].root : "";
 						result[sessionId] = { repoRoot, repos };
-					}
-					// Auto-register any newly discovered git roots
-					for (const discovered of adapter.newlyDiscovered) {
-						registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
 					}
 				} catch (err) {
 					console.warn("[trail-viewer] discoverSessionsRepos failed:", err);

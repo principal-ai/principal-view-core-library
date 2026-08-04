@@ -16,6 +16,12 @@
       "import": "./dist/node.js",
       "require": "./dist/node.js",
       "default": "./dist/node.js"
+    },
+    "./pipeline": {
+      "types": "./dist/opencode/pipeline.d.ts",
+      "import": "./dist/opencode/pipeline.js",
+      "require": "./dist/opencode/pipeline.js",
+      "default": "./dist/opencode/pipeline.js"
     }
   },
   "files": [
@@ -42,6 +48,7 @@
     "@opentelemetry/resources": "2.2.0",
     "@opentelemetry/sdk-trace-base": "2.2.0",
     "@opentelemetry/semantic-conventions": "1.38.0",
+    "@principal-ai/agent-monitoring": "^0.3.29",
     "@principal-ai/repository-abstraction": "^0.5.7",
     "better-sqlite3": "^13.0.0",
     "date-fns": "3.0.0",

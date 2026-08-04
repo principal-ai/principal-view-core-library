@@ -1,0 +1,53 @@
+import { Command } from 'commander';
+import {
+  accumulateEvents,
+  collectRepositories,
+  fetchRawEvents,
+  listAgentSessions,
+  normalizeEvents,
+} from '@principal-ai/principal-view-core/node';
+
+export function createAgentSessionCommand(): Command {
+  const command = new Command('agent-session')
+    .description('Read agent sessions and normalize them into universal events (Cline + opencode)');
+
+  command
+    .command('list')
+    .description('List top-level sessions from all supported agents (Cline + opencode)')
+    .option('--db-path <path>', 'Path to opencode.db (defaults to XDG data dir)')
+    .action((options: { dbPath?: string }) => {
+      const sessions = listAgentSessions({ dbPath: options.dbPath });
+      process.stdout.write(JSON.stringify(sessions, null, 2) + '\n');
+    });
+
+  command
+    .command('fetch <session-id>')
+    .description('Fetch a session and print its normalized universal events as JSON')
+    .option('--agent <cline|opencode>', 'Force agent detection (defaults to auto-detect)')
+    .option('--db-path <path>', 'Path to opencode.db (defaults to XDG data dir)')
+    .option('--raw', 'Output raw universal events before repo normalization')
+    .action(
+      async (
+        sessionId: string,
+        options: { agent?: 'cline' | 'opencode'; dbPath?: string; raw?: boolean },
+      ) => {
+        const { agent, events } = fetchRawEvents(sessionId, {
+          agent: options.agent,
+          dbPath: options.dbPath,
+        });
+        if (options.raw) {
+          process.stdout.write(JSON.stringify({ agent, events }, null, 2) + '\n');
+          return;
+        }
+        const normalized = await normalizeEvents(events);
+        const accumulated = accumulateEvents(normalized);
+        const repos = collectRepositories(normalized);
+        process.stdout.write(
+          JSON.stringify({ agent, sessionId, repos, normalized, accumulated }, null, 2) + '\n',
+        );
+      },
+    );
+
+  return command;
+}
+

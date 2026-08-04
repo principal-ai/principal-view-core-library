@@ -71,18 +71,21 @@ export class OpenCodeEventStore implements OpenCodeEventRetriever {
     const firstEvents = this.db
       .prepare(
         `SELECT e.aggregate_id, e.data,
-          (SELECT COUNT(*) FROM event WHERE aggregate_id = e.aggregate_id) AS event_count
+          (SELECT COUNT(*) FROM event WHERE aggregate_id = e.aggregate_id) AS event_count,
+          (SELECT MAX(json_extract(e2.data, '$.info.time.created')) FROM event e2 WHERE e2.aggregate_id = e.aggregate_id) AS last_created
         FROM event e
         WHERE e.seq = (SELECT MIN(e2.seq) FROM event e2 WHERE e2.aggregate_id = e.aggregate_id)
-        ORDER BY e.seq DESC
+        ORDER BY COALESCE(json_extract(e.data, '$.info.time.created'), 0) DESC
         LIMIT ?`
       )
-      .all(effectiveLimit) as Array<{ aggregate_id: string; data: string; event_count: number }>
+      .all(effectiveLimit) as Array<{ aggregate_id: string; data: string; event_count: number; last_created: number | null }>
 
     const idToSummary = new Map<string, SessionSummary>()
     for (const row of firstEvents) {
       let title = row.aggregate_id.slice(0, 12)
+      let slug = ""
       let createdAt = ""
+      let durationMs = 0
       try {
         const parsed = JSON.parse(row.data) as Record<string, unknown>
         const info = parsed["info"] as Record<string, unknown> | undefined
@@ -90,36 +93,51 @@ export class OpenCodeEventStore implements OpenCodeEventRetriever {
         if (typeof rawTitle === "string") {
           title = rawTitle
         }
+        const rawSlug = info?.["slug"]
+        if (typeof rawSlug === "string") {
+          slug = rawSlug
+        }
         const rawTime = info?.["time"] as Record<string, unknown> | undefined
         const rawCreated = rawTime?.["created"]
         if (typeof rawCreated === "number") {
           createdAt = new Date(rawCreated).toISOString()
+          if (typeof row.last_created === "number") {
+            durationMs = row.last_created - rawCreated
+          }
         }
       } catch {
         // best-effort parse
       }
-      idToSummary.set(row.aggregate_id, { id: row.aggregate_id, title, createdAt, eventCount: row.event_count, children: [] })
+      if (title.startsWith("New session")) {
+        const promptText = this.firstUserPromptText(row.aggregate_id)
+        if (promptText) title = promptText
+      }
+      idToSummary.set(row.aggregate_id, { id: row.aggregate_id, title, slug, createdAt, durationMs, eventCount: row.event_count, isFinished: false, children: [] })
     }
 
     const relations = this.db
       .prepare(
         `SELECT DISTINCT
           json_extract(data, '$.part.state.metadata.parentSessionId') AS parent_id,
-          json_extract(data, '$.part.state.metadata.sessionId') AS child_id
+          json_extract(data, '$.part.state.metadata.sessionId') AS child_id,
+          json_extract(data, '$.part.state.status') AS status
         FROM event
         WHERE json_extract(data, '$.part.type') = 'tool'
           AND json_extract(data, '$.part.tool') = 'task'
           AND json_extract(data, '$.part.state.metadata.sessionId') IS NOT NULL`
       )
-      .all() as Array<{ parent_id: string; child_id: string }>
+      .all() as Array<{ parent_id: string; child_id: string; status: string | null }>
 
     const childIds = new Set<string>()
     for (const rel of relations) {
       if (!rel.parent_id || !rel.child_id) continue
-      const parent = idToSummary.get(rel.parent_id)
       const child = idToSummary.get(rel.child_id)
+      if (child && (rel.status === "completed" || rel.status === "error")) {
+        child.isFinished = true
+      }
+      childIds.add(rel.child_id)
+      const parent = idToSummary.get(rel.parent_id)
       if (parent && child) {
-        childIds.add(rel.child_id)
         parent.children.push(child)
       }
     }
@@ -136,6 +154,36 @@ export class OpenCodeEventStore implements OpenCodeEventRetriever {
     }
 
     return { groups, standalone }
+  }
+
+  /**
+   * opencode stores a placeholder title ("New session - <iso timestamp>") on
+   * sessions it never generated a title for. Surface the first real user prompt
+   * text instead so lists read as actual tasks.
+   */
+  firstUserPromptText(aggregateId: string): string {
+    const userMsg = this.db
+      .prepare(
+        `SELECT json_extract(data, '$.info.id') AS id
+         FROM event
+         WHERE aggregate_id = ? AND type = 'message.updated.1'
+           AND json_extract(data, '$.info.role') = 'user'
+         ORDER BY seq ASC LIMIT 1`
+      )
+      .get(aggregateId) as { id: string | null } | null
+    if (!userMsg?.id) return ""
+    const part = this.db
+      .prepare(
+        `SELECT json_extract(data, '$.part.text') AS text
+         FROM event
+         WHERE aggregate_id = ? AND type = 'message.part.updated.1'
+           AND json_extract(data, '$.part.messageID') = ?
+           AND json_extract(data, '$.part.type') = 'text'
+         ORDER BY seq ASC LIMIT 1`
+      )
+      .get(aggregateId, userMsg.id) as { text: string | null } | null
+    if (typeof part?.text !== "string" || part.text === "") return ""
+    return part.text.replace(/\s+/g, " ").trim()
   }
 
   close(): void {

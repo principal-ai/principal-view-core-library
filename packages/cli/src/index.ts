@@ -33,6 +33,7 @@ import { createStarredCollectionsCommand } from './commands/starred-collections.
 import { createRepoCommand } from './commands/repo.js';
 import { createOpencodeCommand } from './commands/opencode/index.js';
 import { createAgentSessionsCommand } from './commands/agent-sessions.js';
+import { createAgentSessionCommand } from './commands/agent-session.js';
 
 // Keep in sync with package.json "version"
 const VERSION = '0.33.0';
@@ -72,6 +73,7 @@ program.addCommand(createStarredCollectionsCommand());
 program.addCommand(createRepoCommand());
 program.addCommand(createOpencodeCommand());
 program.addCommand(createAgentSessionsCommand());
+program.addCommand(createAgentSessionCommand());
 
 // Parse command line arguments
 program.parse(process.argv);

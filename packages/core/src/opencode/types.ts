@@ -26,8 +26,11 @@ export interface OpenCodeStoreOptions {
 export interface SessionSummary {
   id: string
   title: string
+  slug: string
   createdAt: string
+  durationMs: number
   eventCount: number
+  isFinished: boolean
   children: SessionSummary[]
 }
 

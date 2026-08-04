@@ -142,6 +142,21 @@ export type { EventSource } from './registry/EventRegistry';
 export { OpenCodeEventStore, defaultOpenCodeDBPath } from './opencode/OpenCodeEventStore';
 export type { OpenCodeRawEvent, OpenCodeSessionEvents, OpenCodeEventRetriever, OpenCodeStoreOptions, SessionSummary, SessionListResult } from './opencode/types';
 
+// Export shared, agent-agnostic session listing/fetch/normalization (Node.js only)
+export { listAgentSessions, detectAgent, fetchRawEvents } from './opencode/agent-sessions';
+export type { AgentSessionSummary } from './opencode/agent-sessions';
+
+// Export the pure, runtime-agnostic session pipeline (no SQLite dependency)
+export {
+  NodePathNormalizationAdapter,
+  normalizeEvents,
+  normalizeEventsWithAdapter,
+  accumulateEvents,
+  collectRepositories,
+  opencodeRowsToUniversalEvents,
+} from './opencode/pipeline';
+export type { OpenCodeEventRow } from './opencode/pipeline';
+
 // Re-export FileSystemAdapter from repository-abstraction
 export type { FileSystemAdapter } from '@principal-ai/repository-abstraction';
 export { InMemoryFileSystemAdapter } from '@principal-ai/repository-abstraction';
