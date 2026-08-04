@@ -25,19 +25,29 @@ export class BunNormalizationAdapter implements PathNormalizationAdapter {
   }
 
   async getRawRepositoryInfo(absolutePath: string): Promise<RepositoryInfo | null> {
-    // Fast path: prefix-match against known Alexandria roots (zero I/O)
+    // Canonicalize the input: strip trailing slashes and collapse redundant
+    // separators (e.g. a tool that reads a directory as "/repo/" vs "/repo").
+    // findGitRoot returns its input verbatim when it IS the git root, so an
+    // uncanonical input would surface the same repo under two distinct root
+    // strings and duplicate it in the session's repo list. NOTE: use resolve,
+    // not normalize — path.normalize preserves trailing slashes.
+    const target = resolve(absolutePath);
+
+    // Fast path: prefix-match against known Alexandria roots (zero I/O).
+    // Match on a path boundary so sibling dirs (/repo vs /repo2) don't collide.
     let bestMatch: RepositoryInfo | null = null;
     let bestLen = 0;
     for (const [root, info] of this.knownRoots) {
-      if (absolutePath.startsWith(root) && root.length > bestLen) {
+      const rootCanon = resolve(root);
+      if ((target === rootCanon || target.startsWith(`${rootCanon}/`)) && rootCanon.length > bestLen) {
         bestMatch = info;
-        bestLen = root.length;
+        bestLen = rootCanon.length;
       }
     }
     if (bestMatch) return bestMatch;
 
     // Fall through to .git walk-up
-    const gitRoot = await this.findGitRoot(absolutePath);
+    const gitRoot = await this.findGitRoot(target);
     if (!gitRoot) return null;
 
     // Enrich with git metadata
