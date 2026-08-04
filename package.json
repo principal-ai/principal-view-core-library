@@ -48,7 +48,9 @@
   },
   "version": "0.0.7",
   "dependencies": {
+    "@industry-theme/file-city-panel": "^0.9.56",
     "@principal-ai/codebase-composition": "^0.2.40",
+    "@principal-ai/file-city-react": "^0.5.90",
     "minimatch": "^10.2.4"
   }
 }

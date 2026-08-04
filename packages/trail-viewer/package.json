@@ -28,7 +28,7 @@
 		"registry": "https://registry.npmjs.org/"
 	},
 	"devDependencies": {
-		"@industry-theme/file-city-panel": "^0.9.52",
+		"@industry-theme/file-city-panel": "^0.9.56",
 		"@principal-ade/dynamic-file-tree": "^0.2.45",
 		"@principal-ade/industry-theme": "^0.1.24",
 		"@principal-ade/panel-framework-core": "^0.5.1",
@@ -36,7 +36,7 @@
 		"@principal-ade/utcp-panel-event": "^0.1.0",
 		"@principal-ai/alexandria-core-library": "^0.7.0",
 		"@principal-ai/file-city-builder": "^0.5.4",
-		"@principal-ai/file-city-react": "^0.5.87",
+		"@principal-ai/file-city-react": "^0.5.90",
 		"@principal-ai/logo-component": "^0.1.23",
 		"@principal-ai/principal-view-core": "file:../core",
 		"@principal-ai/repository-abstraction": "^0.5.7",
@@ -45,8 +45,8 @@
 		"@types/react-dom": "^19.2.3",
 		"electrobun": "1.18.1",
 		"lucide-react": "^1.21.0",
-		"react": "19.2.7",
-		"react-dom": "19.2.7",
+		"react": "19.0.0",
+		"react-dom": "19.0.0",
 		"themed-markdown": "^0.1.103",
 		"typescript": "^6.0.3"
 	},
