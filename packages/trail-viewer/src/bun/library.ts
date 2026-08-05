@@ -18,34 +18,11 @@ import {
 	extractPurlFromRemoteUrl,
 	parsePurl,
 } from "@principal-ai/alexandria-core-library";
-
-export interface LibraryEntry {
-	/** Whether this row is a trail (`markers`/`views`) or a File City
-	 *  introduction tour (`steps` + `focusDirectory`). Drives the badge in the
-	 *  library list and how the row opens (tours are always local-mode). */
-	kind: "trail" | "tour";
-	trailFile: string;
-	id: string;
-	title: string;
-	anchor: string; // "<ns>/<name>" or "by-id"
-	owner?: string;
-	repo?: string;
-	/**
-	 * For local-purl trails (`pkg:generic/local/<slug>`) whose decoded slug
-	 * resolves to an existing directory on disk. When set, clicking the entry
-	 * in the library tab opens the trail in `local` mode anchored here, so
-	 * slice resolution reads from the working tree instead of trying to fetch
-	 * from GitHub (which would fail — local trails carry no `repos[].remote`).
-	 */
-	localRepoRoot?: string;
-	/**
-	 * True when the trail file carries a `share.id` — i.e. it has been published
-	 * to web-ade. Drives the Draft/Published badge in the library list. Read-only
-	 * derivation of the existing share field; no new on-disk state.
-	 */
-	published: boolean;
-	mtimeMs: number;
-}
+import type {
+	GitConfigIdentity,
+	LibraryEntry,
+	UserIdentity,
+} from "../shared/contract";
 
 const ROOT = join(homedir(), ".principal", "trails");
 
@@ -356,21 +333,6 @@ export function resolveLocalRepoIdentity(repoRoot: string): { owner: string; rep
  * GitHub, so the provenance modal can show both identities side by side.
  * Returns `{ source: "none" }` when nothing resolves (e.g. bare dir, no git).
  */
-export interface GitConfigIdentity {
-	name?: string;
-	email?: string;
-}
-
-export interface UserIdentity {
-	login?: string;
-	name?: string;
-	avatarUrl?: string;
-	htmlUrl?: string;
-	source: "gh" | "token" | "git" | "none";
-	/** Local `git config user.name` / `user.email`, resolved regardless of the
-	 *  GitHub sign-in state. Absent when the working tree has no git identity. */
-	git?: GitConfigIdentity;
-}
 
 let userIdentityCache: UserIdentity | null = null;
 

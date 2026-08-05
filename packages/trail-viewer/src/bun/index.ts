@@ -45,9 +45,19 @@ import {
 	walkTours,
 	resolveLocalRepoIdentity,
 	resolveUserIdentity,
-	type LibraryEntry,
-	type UserIdentity,
 } from "./library";
+import type {
+	PayloadKind,
+	RepoInfo,
+	SessionEventRow,
+	SessionGroup,
+	SessionSummary,
+	TabFullState,
+	TabSummary,
+	TrailViewerMessages,
+	TrailViewerRequests,
+	ViewerMode,
+} from "../shared/contract";
 import {
 	resolveRepoRootFromAlexandria,
 	loadAlexandriaRepos,
@@ -476,8 +486,6 @@ const AGENT_SESSIONS_TAB_ID = "agent-sessions";
 // CLI args / env
 // ---------------------------------------------------------------------------
 
-type ViewerMode = "local" | "remote";
-
 function resolveMode(): ViewerMode {
 	const raw = process.env["TRAIL_MODE"];
 	if (raw === "remote") return "remote";
@@ -551,27 +559,6 @@ interface AgentSessionsTabState {
 	title: "Agent Sessions";
 }
 
-interface SessionSummary {
-	id: string;
-	title: string;
-	slug: string;
-	createdAt: string;
-	lastEventAt?: string;
-	durationMs: number;
-	eventCount: number;
-	isFinished: boolean;
-	repoRoot?: string;
-	repos?: RepoInfo[];
-	agent?: string;
-	/** Distinct model ids the session used, in first-use order. */
-	models?: string[];
-}
-
-interface SessionGroup {
-	parent: SessionSummary;
-	children: SessionSummary[];
-}
-
 type TabState = LibraryTabState | AgentSessionsTabState | TrailTabState;
 
 const tabs = new Map<string, TabState>();
@@ -590,7 +577,6 @@ let nextTabId = 1;
 
 // Pre-load the payload so the renderer's first read is synchronous and any
 // parse error surfaces at boot rather than after the window is up.
-type PayloadKind = "trail" | "tour";
 
 type LoadedTrail =
 	| { ok: true; payload: unknown; path: string; payloadKind: PayloadKind }
@@ -881,127 +867,14 @@ async function walkFiles(
 // RPC schema + handlers
 // ---------------------------------------------------------------------------
 
-interface TabSummary {
-	id: string;
-	kind: "library" | "trail" | "agent-sessions";
-	title: string;
-	mode?: ViewerMode;
-	payloadKind?: PayloadKind;
-}
-
-interface TabFullState {
-	ok: boolean;
-	error?: string;
-	id: string;
-	kind: "library" | "trail" | "agent-sessions";
-	title: string;
-	mode?: ViewerMode;
-	payloadKind?: PayloadKind;
-	repoRoot?: string;
-	trailFilePath?: string;
-	sessionId?: string;
-	payload?: unknown;
-	// Repo identity resolved host-side so the tab header can match the library
-	// rows. `owner === "local"` means no GitHub origin was found (repo is then
-	// the working-tree folder name); any other owner is a real GitHub identity.
-	owner?: string;
-	repo?: string;
-}
-
-interface SessionEventRow {
-	seq: number;
-	type: string;
-	raw: unknown;
-	normalized: Record<string, unknown>;
-	accumulated: AgentSessionEvent | null;
-}
-
-interface RepoInfo {
-	root: string;
-	fileCount: number;
-	owner: string | null;
-	name: string | null;
-	editing: boolean;
-}
-
+// The request/message schemas + all payload types (TabSummary, TabFullState,
+// SessionSummary, SessionGroup, SessionEventRow, RepoInfo, LibraryEntry,
+// UserIdentity, ViewerMode, PayloadKind) live in src/shared/contract.ts — the
+// single cross-process contract both this host and the renderer import.
 type TrailViewerRPC = {
 	bun: RPCSchema<{
-		requests: {
-			listTabs: {
-				params: Record<string, never>;
-				response: { tabs: TabSummary[]; activeTabId: string };
-			};
-			getTab: {
-				params: { id: string };
-				response: TabFullState;
-			};
-			setActiveTab: {
-				params: { id: string };
-				response: { ok: boolean; error?: string };
-			};
-			closeTab: {
-				params: { id: string };
-				response: { ok: boolean; error?: string };
-			};
-			readFile: {
-				params: { tabId: string; path: string; repo?: string };
-				response: { ok: boolean; content?: string; error?: string };
-			};
-			getFileTree: {
-				params: { tabId: string; path?: string };
-				response: { files: Array<{ path: string; size: number }> };
-			};
-			listTrails: {
-				params: Record<string, never>;
-				response: { entries: LibraryEntry[] };
-			};
-			listSessions: {
-				params: Record<string, never>;
-				response: { groups: SessionGroup[]; standalone: SessionSummary[] };
-			};
-			openTrailFromCache: {
-				params: { trailFile: string; mode?: ViewerMode; repoRoot?: string };
-				response: { ok: boolean; error?: string; tabId?: string };
-			};
-			getSessionEvents: {
-				params: { sessionId: string };
-				response: { ok: boolean; error?: string; events?: SessionEventRow[]; repoRoot?: string; repos?: RepoInfo[]; session?: { slug: string; title: string; agent?: string } };
-			};
-			createTrailNote: {
-				params: { tabId: string; draft: unknown };
-				response: { ok: boolean; error?: string; note?: unknown };
-			};
-			updateTrailNote: {
-				params: { tabId: string; noteId: string; body: string };
-				response: { ok: boolean; error?: string; note?: unknown };
-			};
-			deleteTrailNote: {
-				params: { tabId: string; noteId: string };
-				response: { ok: boolean; error?: string };
-			};
-			openExternal: {
-				params: { url: string };
-				response: { ok: boolean };
-			};
-			shareTrail: {
-				params: { tabId: string };
-				response: {
-					ok: boolean;
-					error?: string;
-					shareId?: string;
-					shareUrl?: string;
-				};
-			};
-			getUserIdentity: {
-				params: Record<string, never>;
-				response: UserIdentity;
-			};
-		};
-		messages: {
-			// Fired when the tab list or active tab changes (LOAD_TRAIL, close,
-			// switch). Renderer re-runs listTabs to refresh the strip.
-			tabsChanged: null;
-		};
+		requests: TrailViewerRequests;
+		messages: TrailViewerMessages;
 	}>;
 	webview: RPCSchema<{
 		requests: Record<string, never>;
