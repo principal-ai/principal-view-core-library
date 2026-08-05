@@ -4,6 +4,14 @@
 
 import { useTheme } from "@principal-ade/industry-theme";
 
+export function relativeTime(ms: number): string {
+	const delta = Date.now() - ms;
+	if (delta < 60_000) return "just now";
+	if (delta < 3_600_000) return `${Math.floor(delta / 60_000)}m ago`;
+	if (delta < 86_400_000) return `${Math.floor(delta / 3_600_000)}h ago`;
+	return `${Math.floor(delta / 86_400_000)}d ago`;
+}
+
 export function CenteredMessage({
 	title,
 	detail,
