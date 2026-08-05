@@ -130,7 +130,12 @@ function ActiveTab({ tabId }: { tabId: string }) {
 		};
 	}, [tabId]);
 
-	if (state.kind === "loading") return <CenteredMessage title="Loading trail…" />;
+	if (state.kind === "loading") {
+		// The agent-sessions tab mounts its own "Pulling Agent Sessions" loader,
+		// so a "Loading trail…" flash here would double up and read wrong.
+		if (tabId === "agent-sessions") return null;
+		return <CenteredMessage title="Loading trail…" />;
+	}
 	if (state.kind === "library") return <LibraryView />;
 	if (state.kind === "agent-sessions") return <AgentSessionsOverviewView />;
 	if (state.kind === "error")
