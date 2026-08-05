@@ -224,6 +224,7 @@ export function AgentSessionsOverviewView() {
 	const [sessionsById, setSessionsById] = useState<Map<string, AgentSessionView>>(new Map());
 	const [eventsById, setEventsById] = useState<Map<string, AgentSessionEvent[]>>(new Map());
 	const [discoveredRepos, setDiscoveredRepos] = useState<Map<string, DiscoveredRepo>>(new Map());
+	const [seenAgents, setSeenAgents] = useState<Set<string>>(new Set());
 	const [trees, setTrees] = useState<Map<string, FileTree>>(new Map());
 	const [daysWindow, setDaysWindow] = useState(INITIAL_DAY_WINDOW);
 	const [dayIndex, setDayIndex] = useState(0);
@@ -317,6 +318,13 @@ export function AgentSessionsOverviewView() {
 		});
 		if (!slice) return;
 		const session = slice.sessions[0];
+		const agentLabel = session.agent ?? s.agent ?? "opencode";
+		setSeenAgents((prev) => {
+			if (prev.has(agentLabel)) return prev;
+			const next = new Set(prev);
+			next.add(agentLabel);
+			return next;
+		});
 		const nextSessions = new Map(sessionsByIdRef.current);
 		nextSessions.set(s.id, session);
 		sessionsByIdRef.current = nextSessions;
@@ -328,7 +336,6 @@ export function AgentSessionsOverviewView() {
 		});
 		const repos = res.repos ?? [];
 		if (repos.length > 0) {
-			const agentLabel = session.agent ?? s.agent ?? "opencode";
 			setDiscoveredRepos((prev) => {
 				const next = new Map(prev);
 				for (const r of repos) {
@@ -647,6 +654,7 @@ export function AgentSessionsOverviewView() {
 				processed={dayProcessed}
 				total={dayTotal}
 				repos={Array.from(discoveredRepos.values())}
+				agents={Array.from(seenAgents)}
 			/>
 		);
 	}

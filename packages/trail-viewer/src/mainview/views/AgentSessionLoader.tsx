@@ -81,6 +81,7 @@ export function AgentSessionLoader({
 	processed,
 	total,
 	repos,
+	agents,
 }: {
 	dayLabel: string | null;
 	dayNumber: number;
@@ -88,9 +89,13 @@ export function AgentSessionLoader({
 	processed: number;
 	total: number;
 	repos: DiscoveredRepo[];
+	agents: string[];
 }) {
 	const { theme } = useTheme();
 	const progress = total > 0 ? Math.round((processed / total) * 100) : 0;
+	const presentAgents = new Set(agents.map((a) => a.toLowerCase()));
+	const knownAgentKeys = Object.keys(AGENT_LOGOS);
+	const extraAgents = agents.filter((a) => !knownAgentKeys.includes(a.toLowerCase()));
 	return (
 		<div
 			style={{
@@ -150,6 +155,64 @@ export function AgentSessionLoader({
 							transition: "width 300ms ease-out",
 						}}
 					/>
+				</div>
+
+				{/* Agent logos across the top — dimmed until a session for that
+				    agent loads, so the screen reads as "who's been working this
+				    week" as the days page in. */}
+				<div
+					style={{
+						display: "flex",
+						alignItems: "center",
+						gap: 10,
+						marginTop: 22,
+						flexWrap: "wrap",
+					}}
+				>
+					{knownAgentKeys.map((key) => {
+						const present = presentAgents.has(key);
+						return (
+							<div
+								key={key}
+								title={present ? key : `${key} — no sessions yet`}
+								style={{
+									display: "flex",
+									alignItems: "center",
+									gap: 6,
+									opacity: present ? 1 : 0.22,
+									filter: present ? "none" : "grayscale(1)",
+									transition: "opacity 250ms ease-out",
+								}}
+							>
+								<AgentLogo agent={key} size={22} />
+								<span
+									style={{
+										fontSize: theme.fontSizes[0],
+										color: present ? theme.colors.textSecondary : theme.colors.textTertiary,
+									}}
+								>
+									{key}
+								</span>
+							</div>
+						);
+					})}
+					{extraAgents.map((a) => (
+						<div
+							key={a}
+							title={a}
+							style={{ display: "flex", alignItems: "center", gap: 6 }}
+						>
+							<AgentLogo agent={a} size={22} />
+							<span
+								style={{
+									fontSize: theme.fontSizes[0],
+									color: theme.colors.textSecondary,
+								}}
+							>
+								{a}
+							</span>
+						</div>
+					))}
 				</div>
 
 				{/* Repo cards — appear as each repo is discovered */}
