@@ -83,9 +83,8 @@ function isPiSession(sessionId: string): boolean {
 }
 
 // Shared Cline pipeline: reader → normalizePathsBatch → eventOp loop.
-// Returns the same shapes getSessionEvents / discoverSessionsRepos build so
-// the Cline branch can drop into the existing response assembly with no
-// extra plumbing.
+// Returns the same shapes getSessionEvents build so the Cline branch can
+// drop into the existing response assembly with no extra plumbing.
 interface ClinePipelineResult {
 	rawEvents: UniversalAgentSessionEvent[];
 	normalizedEvents: import("@principal-ai/agent-monitoring").RepoNormalizedUniversalAgentSessionEvent[];
@@ -306,7 +305,7 @@ async function runPiPipeline(sessionId: string): Promise<ClinePipelineResult | n
 
 // opencode stores a placeholder title ("New session - <iso timestamp>") on
 // sessions it never generated a title for. Surface the first real user prompt
-// text instead so the sessions/agent-sessions lists read as actual tasks.
+// text instead so the agent-sessions list reads as actual tasks.
 function firstUserPromptText(
 	db: import("bun:sqlite").Database,
 	aggregateId: string,
@@ -336,7 +335,6 @@ function firstUserPromptText(
 }
 
 const LIBRARY_TAB_ID = "library";
-const SESSIONS_TAB_ID = "sessions";
 const AGENT_SESSIONS_TAB_ID = "agent-sessions";
 
 // ---------------------------------------------------------------------------
@@ -376,13 +374,13 @@ function resolveRepoRoot(trailFilePath: string | null): string {
 
 // Which permanent tab the window opens on. `principal-ai agent-sessions` spawns
 // with TRAIL_VIEWER_START_TAB=agent-sessions so a bare launch lands straight on
-// the Agent Sessions overview instead of the default Sessions tab.
+// the Agent Sessions overview.
 function resolveStartTab(): string {
 	const raw = process.env["TRAIL_VIEWER_START_TAB"];
-	if (raw === AGENT_SESSIONS_TAB_ID || raw === SESSIONS_TAB_ID || raw === LIBRARY_TAB_ID) {
+	if (raw === AGENT_SESSIONS_TAB_ID || raw === LIBRARY_TAB_ID) {
 		return raw;
 	}
-	return SESSIONS_TAB_ID;
+	return AGENT_SESSIONS_TAB_ID;
 }
 
 // Per-tab state. Trail tabs are fully self-contained views of one trail; the
@@ -412,23 +410,10 @@ interface LibraryTabState {
 	title: "Library";
 }
 
-interface SessionsTabState {
-	id: typeof SESSIONS_TAB_ID;
-	kind: "sessions";
-	title: "Sessions";
-}
-
 interface AgentSessionsTabState {
 	id: typeof AGENT_SESSIONS_TAB_ID;
 	kind: "agent-sessions";
 	title: "Agent Sessions";
-}
-
-interface SessionEventsTabState {
-	id: string;
-	kind: "session-events";
-	title: string;
-	sessionId: string;
 }
 
 interface SessionSummary {
@@ -449,18 +434,13 @@ interface SessionGroup {
 	children: SessionSummary[];
 }
 
-type TabState = LibraryTabState | SessionsTabState | AgentSessionsTabState | SessionEventsTabState | TrailTabState;
+type TabState = LibraryTabState | AgentSessionsTabState | TrailTabState;
 
 const tabs = new Map<string, TabState>();
 tabs.set(LIBRARY_TAB_ID, {
 	id: LIBRARY_TAB_ID,
 	kind: "library",
 	title: "Library",
-});
-tabs.set(SESSIONS_TAB_ID, {
-	id: SESSIONS_TAB_ID,
-	kind: "sessions",
-	title: "Sessions",
 });
 tabs.set(AGENT_SESSIONS_TAB_ID, {
 	id: AGENT_SESSIONS_TAB_ID,
@@ -765,7 +745,7 @@ async function walkFiles(
 
 interface TabSummary {
 	id: string;
-	kind: "library" | "trail" | "sessions" | "session-events" | "agent-sessions";
+	kind: "library" | "trail" | "agent-sessions";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -775,7 +755,7 @@ interface TabFullState {
 	ok: boolean;
 	error?: string;
 	id: string;
-	kind: "library" | "trail" | "sessions" | "session-events" | "agent-sessions";
+	kind: "library" | "trail" | "agent-sessions";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -848,14 +828,6 @@ type TrailViewerRPC = {
 			getSessionEvents: {
 				params: { sessionId: string };
 				response: { ok: boolean; error?: string; events?: SessionEventRow[]; repoRoot?: string; repos?: RepoInfo[]; session?: { slug: string; title: string; agent?: string } };
-			};
-			discoverSessionsRepos: {
-				params: { sessionIds: string[] };
-				response: { repos: Record<string, { repoRoot: string; repos: RepoInfo[] }> };
-			};
-			openSessionTab: {
-				params: { sessionId: string; title: string };
-				response: { ok: boolean; error?: string; tabId?: string };
 			};
 			createTrailNote: {
 				params: { tabId: string; draft: unknown };
@@ -1023,7 +995,7 @@ function persistShareMutation(
 
 
 function summarize(tab: TabState): TabSummary {
-	if (tab.kind === "library" || tab.kind === "sessions" || tab.kind === "agent-sessions" || tab.kind === "session-events") {
+	if (tab.kind === "library" || tab.kind === "agent-sessions") {
 		return { id: tab.id, kind: tab.kind, title: tab.title };
 	}
 	return {
@@ -1036,11 +1008,8 @@ function summarize(tab: TabState): TabSummary {
 }
 
 function fullState(tab: TabState): TabFullState {
-	if (tab.kind === "library" || tab.kind === "sessions" || tab.kind === "agent-sessions") {
+	if (tab.kind === "library" || tab.kind === "agent-sessions") {
 		return { ok: true, id: tab.id, kind: tab.kind, title: tab.title };
-	}
-	if (tab.kind === "session-events") {
-		return { ok: true, id: tab.id, kind: tab.kind, title: tab.title, sessionId: tab.sessionId };
 	}
 	if (!tab.loaded.ok) {
 		return {
@@ -1110,7 +1079,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			readFile: async ({ tabId, path, repo }) => {
 				const tab = getTab(tabId);
 				if (!tab) return { ok: false, error: `unknown tab: ${tabId}` };
-				if (tab.kind === "library" || tab.kind === "sessions" || tab.kind === "agent-sessions" || tab.kind === "session-events") {
+				if (tab.kind === "library" || tab.kind === "agent-sessions") {
 					return { ok: false, error: `${tab.kind} tab does not serve files` };
 				}
 				return tab.mode === "remote"
@@ -1121,7 +1090,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				const walkPath = path ?? null;
 				if (!walkPath) {
 					const tab = getTab(tabId);
-					if (!tab || tab.kind === "library" || tab.kind === "sessions" || tab.kind === "agent-sessions" || tab.kind === "session-events") return { files: [] };
+					if (!tab || tab.kind === "library" || tab.kind === "agent-sessions") return { files: [] };
 					return tab.mode === "remote"
 						? getFileTreeRemote(tab)
 						: { files: await walkFiles(tab.repoRoot) };
@@ -1307,7 +1276,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			createTrailNote: ({ tabId, draft }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "sessions" || tab.kind === "agent-sessions" || tab.kind === "session-events") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1332,7 +1301,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			updateTrailNote: ({ tabId, noteId, body }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "sessions" || tab.kind === "agent-sessions" || tab.kind === "session-events") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1380,7 +1349,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			shareTrail: ({ tabId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "sessions" || tab.kind === "agent-sessions" || tab.kind === "session-events") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1465,7 +1434,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			deleteTrailNote: ({ tabId, noteId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "sessions" || tab.kind === "agent-sessions" || tab.kind === "session-events") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1646,116 +1615,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 					db?.close();
 				}
 			},
-			discoverSessionsRepos: async ({ sessionIds }) => {
-				const dbPath = openCodeDBPath();
-				let db: import("bun:sqlite").Database | null = null;
-				const result: Record<string, { repoRoot: string; repos: RepoInfo[] }> = {};
-				try {
-					const { Database } = await import("bun:sqlite");
-					db = new Database(dbPath, { readonly: true });
-					const alexandriaRepos = loadAlexandriaRepos();
-					const knownRoots = new Map<string, RepositoryInfo>();
-					for (const [path, repo] of alexandriaRepos) {
-						knownRoots.set(path, {
-							root: repo.root,
-							remoteUrl: repo.remoteUrl,
-							owner: repo.owner,
-							repo: repo.repo,
-						});
-					}
-					for (const sessionId of sessionIds) {
-						// Cline CLI sessions: use the durable reader, not the opencode DB
-						if (isClineSession(sessionId)) {
-							try {
-								const clineResult = await runClinePipeline(sessionId);
-								if (clineResult) {
-									result[sessionId] = { repoRoot: clineResult.repoRoot ?? "", repos: clineResult.repos };
-								}
-							} catch {
-								// best-effort
-							}
-							continue;
-						}
-						// pi CLI sessions: use the durable reader, not the opencode DB
-						if (isPiSession(sessionId)) {
-							try {
-								const piResult = await runPiPipeline(sessionId);
-								if (piResult) {
-									result[sessionId] = { repoRoot: piResult.repoRoot ?? "", repos: piResult.repos };
-								}
-							} catch {
-								// best-effort
-							}
-							continue;
-						}
-						const rows = db
-							.prepare(
-								`SELECT id, aggregate_id, seq, type, data FROM event WHERE aggregate_id = ? ORDER BY seq ASC`,
-							)
-							.all(sessionId) as Array<{ id: string; aggregate_id: string; seq: number; type: string; data: string }>;
-						const universalEvents = opencodeRowsToUniversalEvents(
-							rows.map((r) => ({ id: r.id, aggregateId: r.aggregate_id, seq: r.seq, type: r.type, data: r.data })),
-						);
-						if (universalEvents.length === 0) continue;
-						const { normalized, adapter } = await normalizeEventsWithAdapter(universalEvents, "", knownRoots);
-						// Auto-register any newly discovered git roots
-						for (const discovered of adapter.newlyDiscovered) {
-							registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
-						}
-						// Collect distinct repos and track editing repos via accumulated state
-						const accumulated = accumulateEvents(normalized, "");
-						const repoFileCount = new Map<string, number>();
-						const editRepoRoots = new Set<string>();
-						for (const entry of accumulated) {
-							const normalizedEvent = entry.normalized;
-							if (normalizedEvent.files) {
-								for (const f of normalizedEvent.files) {
-									const root = f.repository?.gitRoot;
-									if (root) {
-										repoFileCount.set(root, (repoFileCount.get(root) ?? 0) + 1);
-										if ((entry.accumulated as AgentSessionEvent | null)?.operation === "editing") {
-											editRepoRoots.add(root);
-										}
-									}
-								}
-							}
-						}
-						const repos: RepoInfo[] = Array.from(repoFileCount.entries())
-							.sort((a, b) => b[1] - a[1])
-							.map(([root, fileCount]) => {
-								const parts = root.replace(/\/+$/, "").split("/");
-								return { root, fileCount, owner: null as string | null, name: parts[parts.length - 1] ?? null, editing: editRepoRoots.has(root) };
-							});
-						const repoRoot = repos.length > 0 ? repos[0].root : "";
-						result[sessionId] = { repoRoot, repos };
-					}
-				} catch (err) {
-					console.warn("[trail-viewer] discoverSessionsRepos failed:", err);
-				} finally {
-					db?.close();
-				}
-				return { repos: result };
-			},
-			openSessionTab: ({ sessionId, title }) => {
-				for (const existing of tabs.values()) {
-					if (existing.kind === "session-events" && existing.sessionId === sessionId) {
-						activeTabId = existing.id;
-						broadcastTabsChanged();
-						return { ok: true, tabId: existing.id };
-					}
-				}
-				const id = String(nextTabId++);
-				const tab: SessionEventsTabState = {
-					id,
-					kind: "session-events",
-					title,
-					sessionId,
-				};
-				tabs.set(id, tab);
-				activeTabId = id;
-				broadcastTabsChanged();
-				return { ok: true, tabId: id };
-			},
+			
 		},
 		messages: {},
 	},
@@ -1829,7 +1689,7 @@ const browserWindow = new BrowserWindow({
 browserWindow.maximize();
 
 function closeTabById(id: string): { ok: boolean; error?: string } {
-	if (id === LIBRARY_TAB_ID || id === SESSIONS_TAB_ID || id === AGENT_SESSIONS_TAB_ID) {
+	if (id === LIBRARY_TAB_ID || id === AGENT_SESSIONS_TAB_ID) {
 		return { ok: false, error: "permanent tab cannot be closed" };
 	}
 	if (!tabs.has(id)) return { ok: false, error: `unknown tab: ${id}` };
@@ -1885,7 +1745,7 @@ startIpcServer(async (msg) => {
 		if (msg.kind === "ACTIVATE_TAB") {
 			// Switch a running viewer to a permanent tab (e.g. the CLI's
 			// `principal-ai agent-sessions` bringing the app forward).
-			if (msg.tabId !== LIBRARY_TAB_ID && msg.tabId !== SESSIONS_TAB_ID && msg.tabId !== AGENT_SESSIONS_TAB_ID) {
+			if (msg.tabId !== LIBRARY_TAB_ID && msg.tabId !== AGENT_SESSIONS_TAB_ID) {
 				return { ok: false, error: `unknown permanent tab: ${msg.tabId}` };
 			}
 			activeTabId = msg.tabId;

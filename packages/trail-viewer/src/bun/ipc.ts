@@ -34,7 +34,7 @@ export interface LoadTrailMessage {
 
 export interface ActivateTabMessage {
 	kind: "ACTIVATE_TAB";
-	/** Permanent tab id to switch to (e.g. `agent-sessions`). */
+	/** Permanent tab id to switch to (e.g. `agent-sessions`, `library`). */
 	tabId: string;
 }
 
