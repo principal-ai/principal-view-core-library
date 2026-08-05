@@ -284,15 +284,6 @@ export function AgentSessionLoader({
 									</div>
 									<div
 										style={{
-											fontFamily: theme.fonts.monospace,
-											fontSize: theme.fontSizes[1],
-											color: theme.colors.textMuted,
-										}}
-									>
-										{r.fileCount.toLocaleString()} file{r.fileCount === 1 ? "" : "s"}
-									</div>
-									<div
-										style={{
 											display: "flex",
 											alignItems: "center",
 											gap: 4,
