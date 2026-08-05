@@ -32,7 +32,7 @@ const AGENT_LOGOS: Record<string, string> = {
 
 // Agents we actually surface sessions for — everything else in AGENT_LOGOS is
 // unsupported for now and hidden from the loading screen.
-const SUPPORTED_AGENTS = ["opencode", "cline", "pi", "grok"];
+const SUPPORTED_AGENTS = ["cline", "grok", "opencode", "pi"];
 
 const REPO_CARD_IN = "agent-loader-repo-in";
 const LOADER_KEYFRAMES = `
