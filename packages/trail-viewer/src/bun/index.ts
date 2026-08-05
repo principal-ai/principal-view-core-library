@@ -1120,13 +1120,17 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				);
 				return { entries };
 			},
-			listSessions: async () => {
+			listSessions: async ({ days }) => {
+				const dayCount = Math.max(1, Math.floor(days ?? 7));
+				const cutoff = Date.now() - dayCount * 86400000;
 				const dbPath = openCodeDBPath();
 				let db: import("bun:sqlite").Database | null = null;
 				try {
 					const { Database } = await import("bun:sqlite");
 					db = new Database(dbPath, { readonly: true });
-					const sevenDaysAgo = Date.now() - 7 * 86400000;
+					const sevenDaysAgo = cutoff;
+					// One pass over every session's first event — the window split
+					// happens in JS so we never scan the (large) event table twice.
 					const firstEvents = db
 						.prepare(
 							`SELECT
@@ -1134,14 +1138,16 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 								e.data
 							FROM event e
 							WHERE e.seq = (SELECT MIN(e2.seq) FROM event e2 WHERE e2.aggregate_id = e.aggregate_id)
-								AND json_extract(e.data, '$.info.time.created') > ?
 							ORDER BY e.seq DESC`,
 						)
-						.all(sevenDaysAgo) as Array<{
+						.all() as Array<{
 						aggregate_id: string;
 						data: string;
 					}>;
 					const idToSummary = new Map<string, SessionSummary>();
+					// Older-than-window signal: any session whose first event predates
+					// the cutoff. Drives the renderer's "Load more" affordance.
+					let hasOlder = false;
 					for (const row of firstEvents) {
 						let title = row.aggregate_id.slice(0, 12);
 						let slug = "";
@@ -1165,6 +1171,15 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							}
 						} catch {
 							// best-effort parse
+						}
+						// Sessions the old SQL cutoff would have dropped (no date, or
+						// predating the window) never enter the list; predating ones
+						// still count as "more exists".
+						const createdMs = createdAtStr ? new Date(createdAtStr).getTime() : 0;
+						if (!createdMs) continue;
+						if (createdMs <= cutoff) {
+							hasOlder = true;
+							continue;
 						}
 						if (title.startsWith("New session")) {
 							const promptText = firstUserPromptText(db, row.aggregate_id);
@@ -1317,7 +1332,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							agent: "grok",
 						});
 					}
-					return { groups, standalone };
+					return { groups, standalone, hasMore: hasOlder };
 				} catch (err) {
 					console.warn(`[trail-viewer] listSessions failed: ${(err as Error).message}`);
 					// Still surface durable-transcript agents when the opencode DB is missing.
@@ -1371,7 +1386,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 					} catch {
 						// best-effort
 					}
-					return { groups: [], standalone };
+					return { groups: [], standalone, hasMore: false };
 				} finally {
 					db?.close();
 				}

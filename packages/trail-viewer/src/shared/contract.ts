@@ -158,8 +158,17 @@ export type TrailViewerRequests = {
 		response: { entries: LibraryEntry[] };
 	};
 	listSessions: {
-		params: Record<string, never>;
-		response: { groups: SessionGroup[]; standalone: SessionSummary[] };
+		/** How many days back to list (opencode applies it as the SQL cutoff;
+		 *  cline/pi/grok return their full lists and the renderer window-filters).
+		 *  Defaults to 7 when omitted. */
+		params: { days?: number };
+		response: {
+			groups: SessionGroup[];
+			standalone: SessionSummary[];
+			/** True when opencode has at least one session older than the requested
+			 *  window — the signal for the renderer's "Load more" affordance. */
+			hasMore?: boolean;
+		};
 	};
 	getSessionEvents: {
 		params: { sessionId: string };

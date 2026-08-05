@@ -1,9 +1,17 @@
 /**
- * Agent Sessions overview — one tab that loads the recent agent sessions into
- * the FileCityGuidePanel's multi-session agent mode (no per-session tabs).
+ * Agent Sessions overview — one tab that loads recent agent sessions into the
+ * FileCityGuidePanel's multi-session agent mode (no per-session tabs).
+ *
+ * Loading is paged by calendar day: each day's sessions are fetched and their
+ * event timelines processed in order (newest day first). A loading screen shows
+ * a card per repo as it is discovered; once the first day finishes the panel
+ * mounts (no session pre-selected → the multi-agent overlay), and remaining
+ * days page in the background and append. `citySources` is a static superset of
+ * every discovered repo — selection only refocuses the panel, never rebuilds it.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTheme } from "@principal-ade/industry-theme";
 import {
 	PanelEventBus,
 	type DataSlice,
@@ -31,6 +39,7 @@ import type { NormalizedPathInfo } from "@principal-ai/agent-monitoring";
 import type { SessionEventRow, SessionSummary } from "../../shared/contract";
 import { electrobun } from "../rpc";
 import { CenteredMessage } from "../ui";
+import { AgentSessionLoader, type DiscoveredRepo } from "./AgentSessionLoader";
 
 export function buildAgentSessionsView(opts: {
 	sessionId: string;
@@ -149,8 +158,6 @@ export function buildAgentSessionsView(opts: {
 	};
 }
 
-const MAX_CITY_SOURCES = 4;
-
 // Minimal view for a session whose events haven't loaded yet — the drawer row
 // renders it (title + state) and upgrades in place once the session loads.
 function placeholderAgentSession(s: SessionSummary): AgentSessionView {
@@ -176,39 +183,98 @@ function placeholderAgentSession(s: SessionSummary): AgentSessionView {
 	};
 }
 
-// Grid placement for N repo cities: a square when N is a perfect square,
-// otherwise a single row (row 0, left-to-right). The library centers the grid
-// and derives each city's world offset from its `gridCell` plus `gridGap`
-// (default ~25% of the largest footprint, floored at 40), so the repos read as
-// clearly separated instead of packed edge-to-edge.
+// Grid placement for N repo cities: a roughly-square grid (cols = ceil(sqrt N)),
+// filled row-major so cities read left-to-right then down. The library centers
+// the grid and derives each city's world offset from its `gridCell` plus
+// `gridGap` (default ~25% of the largest footprint, floored at 40), so the repos
+// read as clearly separated instead of packed edge-to-edge.
 function repoGridLayout(count: number): { col: number; row: number }[] {
-	const side = Math.ceil(Math.sqrt(count));
-	const cols = side * side === count ? side : count;
+	const cols = Math.ceil(Math.sqrt(count));
 	return Array.from({ length: count }, (_, i) => ({
 		col: i % cols,
 		row: Math.floor(i / cols),
 	}));
 }
 
+/** Local calendar-day key for an ISO timestamp — used for day paging. */
+function dayKeyOf(iso: string): string {
+	const d = new Date(iso);
+	return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+/** Label for a day divider — "Today", "Yesterday", else a short date. */
+function dayLabelOf(key: string): string {
+	const [y, m, d] = key.split("-").map(Number);
+	const date = new Date(y, m, d);
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	const yesterday = new Date(today.getTime() - 86400000);
+	if (date.getTime() === today.getTime()) return "Today";
+	if (date.getTime() === yesterday.getTime()) return "Yesterday";
+	return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
+/** Days to auto-page on load; "Load more" extends this window. */
+const INITIAL_DAY_WINDOW = 7;
+const LOAD_MORE_STEP = 7;
+
 export function AgentSessionsOverviewView() {
+	const { theme } = useTheme();
 	const [summaries, setSummaries] = useState<SessionSummary[]>([]);
 	const [sessionsById, setSessionsById] = useState<Map<string, AgentSessionView>>(new Map());
 	const [eventsById, setEventsById] = useState<Map<string, AgentSessionEvent[]>>(new Map());
-	const [sessionRepos, setSessionRepos] = useState<Map<string, Array<{ root: string; fileCount: number; name: string | null; owner: string | null }>>>(new Map());
-	const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+	const [discoveredRepos, setDiscoveredRepos] = useState<Map<string, DiscoveredRepo>>(new Map());
 	const [trees, setTrees] = useState<Map<string, FileTree>>(new Map());
+	const [daysWindow, setDaysWindow] = useState(INITIAL_DAY_WINDOW);
+	const [dayIndex, setDayIndex] = useState(0);
+	const [dayProcessed, setDayProcessed] = useState(0);
+	const [dayTotal, setDayTotal] = useState(0);
+	const [ready, setReady] = useState(false);
+	const [allDaysLoaded, setAllDaysLoaded] = useState(false);
+	const [hostHasMore, setHostHasMore] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [loaded, setLoaded] = useState(false);
 
-	// One cheap call lists every top-level session — the drawer renders the full
-	// list immediately; per-session events load lazily below.
+	// The day-paging loop reads loaded-session state without re-triggering on
+	// every session commit (which would restart the day mid-way).
+	const sessionsByIdRef = useRef<Map<string, AgentSessionView>>(sessionsById);
+	sessionsByIdRef.current = sessionsById;
+
+	const windowStart = useMemo(() => Date.now() - daysWindow * 86400000, [daysWindow]);
+
+	// --- Day grouping (newest day first), window-filtered --------------------
+	const dayGroups = useMemo(() => {
+		const buckets = new Map<string, SessionSummary[]>();
+		const noDate: SessionSummary[] = [];
+		for (const s of summaries) {
+			const t = s.createdAt ? new Date(s.createdAt).getTime() : 0;
+			if (!s.createdAt || !Number.isFinite(t) || t === 0) {
+				noDate.push(s);
+				continue;
+			}
+			if (t < windowStart) continue;
+			const key = dayKeyOf(s.createdAt);
+			const arr = buckets.get(key) ?? [];
+			arr.push(s);
+			buckets.set(key, arr);
+		}
+		const groups: { key: string; label: string; sessions: SessionSummary[] }[] = [];
+		for (const key of [...buckets.keys()].sort().reverse()) {
+			groups.push({ key, label: dayLabelOf(key), sessions: buckets.get(key)! });
+		}
+		if (noDate.length > 0) {
+			noDate.sort((a, b) => (a.id < b.id ? -1 : 1));
+			groups.push({ key: "__undated__", label: "No date", sessions: noDate });
+		}
+		return groups;
+	}, [summaries, windowStart]);
+
+	// --- listSessions (window-aware) -----------------------------------------
 	useEffect(() => {
 		let cancelled = false;
 		(async () => {
 			try {
-				const list = await electrobun.rpc!.request.listSessions({});
-				// Top-level sessions only — each group's parent is the main agent
-				// session; the children are subagent sessions we skip here.
+				const list = await electrobun.rpc!.request.listSessions({ days: daysWindow });
 				const tops: SessionSummary[] = [];
 				for (const g of list.groups) {
 					tops.push(g.parent);
@@ -216,13 +282,12 @@ export function AgentSessionsOverviewView() {
 				tops.push(...list.standalone);
 				tops.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 				if (cancelled) return;
-				if (tops.length === 0) {
-					setError("No recent sessions found");
-					setLoaded(true);
-					return;
-				}
-				setSummaries(tops);
-				setSelectedSessionId(tops[0].id);
+				setSummaries((prev) => {
+					const merged = new Map(prev.map((s) => [s.id, s]));
+					for (const s of tops) merged.set(s.id, s);
+					return [...merged.values()].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+				});
+				setHostHasMore(list.hasMore ?? false);
 				setLoaded(true);
 			} catch (err) {
 				if (cancelled) return;
@@ -233,154 +298,216 @@ export function AgentSessionsOverviewView() {
 		return () => {
 			cancelled = true;
 		};
-	}, []);
+	}, [daysWindow]);
 
-	// Lazily fetch the selected session's events + repos (one DB read per
-	// session, cached per session id) so opening the tab never fans out a
-	// getSessionEvents call across every session at once.
-	useEffect(() => {
-		if (!selectedSessionId || sessionsById.has(selectedSessionId)) return;
-		let cancelled = false;
-		(async () => {
-			try {
-				const res = await electrobun.rpc!.request.getSessionEvents({ sessionId: selectedSessionId });
-				if (cancelled) return;
-				if (!res.ok || !res.events || res.events.length === 0) return;
-				const summary = summaries.find((s) => s.id === selectedSessionId);
-				const slice = buildAgentSessionsView({
-					sessionId: selectedSessionId,
-					title: summary?.title ?? res.session?.title ?? selectedSessionId,
-					events: res.events,
-					sessionMeta: res.session ?? null,
-					dirSet: new Set(),
-					repoOwner: null,
-					repoName: null,
-					repoRoot: res.repoRoot ?? res.repos?.[0]?.root,
-					models: summary?.models,
-				});
-				if (cancelled || !slice) return;
-				const repos = (res.repos ?? [])
-					.map((r) => ({ root: r.root, fileCount: r.fileCount, name: r.name, owner: r.owner }))
-					.sort((a, b) => b.fileCount - a.fileCount);
-				setSessionsById((prev) => {
-					const next = new Map(prev);
-					next.set(selectedSessionId, slice.sessions[0]);
-					return next;
-				});
-				setEventsById((prev) => {
-					const next = new Map(prev);
-					next.set(selectedSessionId, slice.events ?? []);
-					return next;
-				});
-				if (repos.length > 0) {
-					setSessionRepos((prev) => {
-						const next = new Map(prev);
-						next.set(selectedSessionId, repos);
-						return next;
+	// --- Per-session load: fetch events, build the view, discover repos ------
+	const loadSession = useCallback(async (s: SessionSummary): Promise<void> => {
+		const res = await electrobun.rpc!.request.getSessionEvents({ sessionId: s.id });
+		if (!res.ok || !res.events || res.events.length === 0) return;
+		const slice = buildAgentSessionsView({
+			sessionId: s.id,
+			title: s.title,
+			events: res.events,
+			sessionMeta: res.session ?? null,
+			dirSet: new Set(),
+			repoOwner: null,
+			repoName: null,
+			repoRoot: res.repoRoot ?? res.repos?.[0]?.root,
+			models: s.models,
+		});
+		if (!slice) return;
+		const session = slice.sessions[0];
+		const nextSessions = new Map(sessionsByIdRef.current);
+		nextSessions.set(s.id, session);
+		sessionsByIdRef.current = nextSessions;
+		setSessionsById(nextSessions);
+		setEventsById((prev) => {
+			const next = new Map(prev);
+			next.set(s.id, slice.events ?? []);
+			return next;
+		});
+		const repos = res.repos ?? [];
+		if (repos.length > 0) {
+			const agentLabel = session.agent ?? s.agent ?? "opencode";
+			setDiscoveredRepos((prev) => {
+				const next = new Map(prev);
+				for (const r of repos) {
+					const parts = r.root.replace(/\/+$/, "").split("/");
+					const existing = next.get(r.root);
+					const agents = existing
+						? Array.from(new Set([...existing.agents, agentLabel]))
+						: [agentLabel];
+					next.set(r.root, {
+						root: r.root,
+						name: r.name ?? parts[parts.length - 1] ?? "",
+						owner: r.owner ?? null,
+						fileCount: Math.max(existing?.fileCount ?? 0, r.fileCount),
+						sessionCount: (existing?.sessionCount ?? 0) + 1,
+						agents,
 					});
 				}
+				return next;
+			});
+		}
+	}, []);
+
+	// --- Day paging: process one calendar day at a time -----------------------
+	// Completing a day advances `dayIndex`, which re-runs this effect for the
+	// next day. The loader stays up until the whole window (all 7 days) has been
+	// processed — only then does `ready` flip and the panel mount; days 2..7 are
+	// no longer "background" because the window is fully loaded before handoff.
+	useEffect(() => {
+		if (!loaded) return;
+		if (dayGroups.length === 0) return;
+		if (dayIndex >= dayGroups.length) {
+			setAllDaysLoaded(true);
+			setReady(true);
+			return;
+		}
+		const current = dayGroups[dayIndex];
+		let cancelled = false;
+		setAllDaysLoaded(false);
+		setDayTotal(current.sessions.length);
+		(async () => {
+			let processed = 0;
+			for (const s of current.sessions) {
+				if (cancelled) return;
+				if (sessionsByIdRef.current.has(s.id)) {
+					processed++;
+					setDayProcessed(processed);
+					continue;
+				}
+				try {
+					await loadSession(s);
+				} catch (err) {
+					console.error("[AgentSessionsOverview] getSessionEvents failed:", s.id, err);
+				}
+				if (cancelled) return;
+				processed++;
+				setDayProcessed(processed);
+			}
+			if (cancelled) return;
+			setDayIndex((i) => i + 1);
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [loaded, dayGroups, dayIndex, loadSession]);
+
+	// --- Trees for every discovered repo (sequential, one per cycle) ---------
+	useEffect(() => {
+		if (discoveredRepos.size === 0) return;
+		let cancelled = false;
+		(async () => {
+			const missing = Array.from(discoveredRepos.keys()).find((root) => !trees.has(root));
+			if (!missing) return;
+			try {
+				const treeRes = await electrobun.rpc!.request.getFileTree({ tabId: "", path: missing });
+				if (cancelled) return;
+				const tree = new GitFileTreeBuilder().build({
+					files: treeRes.files,
+					rootPath: "/local",
+					commitSha: "local",
+					branch: "local",
+				});
+				setTrees((prev) => {
+					const next = new Map(prev);
+					next.set(missing, tree);
+					return next;
+				});
 			} catch (err) {
-				console.error("[AgentSessionsOverview] getSessionEvents failed:", selectedSessionId, err);
+				console.error("[AgentSessionsOverview] getFileTree failed:", missing, err);
 			}
 		})();
 		return () => {
 			cancelled = true;
 		};
-	}, [selectedSessionId, sessionsById, summaries]);
+	}, [discoveredRepos, trees]);
 
+	// --- Load more ------------------------------------------------------------
+	// opencode reports `hasMore` (older-than-window sessions exist); cline/pi/grok
+	// return their full lists so the renderer sees any older summary directly.
+	const hasOlderKnown = useMemo(() => {
+		return summaries.some((s) => {
+			const t = s.createdAt ? new Date(s.createdAt).getTime() : 0;
+			return t > 0 && t < windowStart;
+		});
+	}, [summaries, windowStart]);
+	const moreAvailable = hostHasMore || hasOlderKnown;
+
+	const loadMore = useCallback(() => {
+		setDaysWindow((w) => w + LOAD_MORE_STEP);
+	}, []);
+
+	// --- Panel inputs ---------------------------------------------------------
 	// Full drawer list — loaded sessions use their real view, the rest get a
-	// summary placeholder that upgrades in place once selected/loaded.
+	// summary placeholder that upgrades in place as days finish processing.
 	const sessions = useMemo<AgentSessionView[]>(() => {
-		return summaries.map((s) => sessionsById.get(s.id) ?? placeholderAgentSession(s));
-	}, [summaries, sessionsById]);
+		return dayGroups.flatMap((d) =>
+			d.sessions.map((s) => sessionsById.get(s.id) ?? placeholderAgentSession(s)),
+		);
+	}, [dayGroups, sessionsById]);
 
-	// The mode payload: all sessions for the drawer + only the selected
-	// session's events (replay/activity are per-selection).
+	// Full event timeline across every processed session — the panel filters it
+	// per selected session and drives the multi-agent overlay from it.
+	const allEvents = useMemo<AgentSessionEvent[]>(() => {
+		const list: AgentSessionEvent[] = [];
+		for (const evts of eventsById.values()) list.push(...evts);
+		return list;
+	}, [eventsById]);
+
 	const view = useMemo<AgentSessionsView | null>(() => {
 		if (sessions.length === 0) return null;
 		return {
 			sessions,
-			selectedSessionId,
-			events: selectedSessionId ? (eventsById.get(selectedSessionId) ?? []) : [],
+			// Nothing pre-selected → the panel opens in multi-agent overlay mode
+			// and manages its own selection + repo focus internally.
+			selectedSessionId: null,
+			events: allEvents,
 			repository: null,
 		};
-	}, [sessions, selectedSessionId, eventsById]);
+	}, [sessions, allEvents]);
 
-	// The repos shown follow the selected session (the panel reports drawer
-	// clicks through `onAgentSessionSelect`). Trees for the selected session's
-	// repos load lazily into a persistent cache keyed by repo root.
-	const selectedRepos = useMemo(() => {
-		if (!selectedSessionId) return [];
-		return (sessionRepos.get(selectedSessionId) ?? []).slice(0, MAX_CITY_SOURCES);
-	}, [selectedSessionId, sessionRepos]);
-
-	useEffect(() => {
-		if (selectedRepos.length === 0) return;
-		let cancelled = false;
-		(async () => {
-			for (const r of selectedRepos) {
-				if (cancelled) return;
-				if (trees.has(r.root)) continue;
-				try {
-					const treeRes = await electrobun.rpc!.request.getFileTree({ tabId: "", path: r.root });
-					if (cancelled) return;
-					const tree = new GitFileTreeBuilder().build({
-						files: treeRes.files,
-						rootPath: "/local",
-						commitSha: "local",
-						branch: "local",
-					});
-					setTrees((prev) => {
-						const next = new Map(prev);
-						next.set(r.root, tree);
-						return next;
-					});
-				} catch (err) {
-					console.error("[AgentSessionsOverview] getFileTree failed:", r.root, err);
-				}
-			}
-		})();
-		return () => {
-			cancelled = true;
-		};
-	}, [selectedRepos, trees]);
-
-	// One city per repo the selected session touched, arranged on the
-	// library's grid layout (square when the count is a perfect square,
-	// otherwise a row). Passing `citySources` flips FileCity3D into its
-	// multi-city mode; FileCity3D resolves each city's world offset from its
-	// `gridCell` + `gridGap` (default ~25% of the largest footprint, floored
-	// at 40), so the repos stay visually separated. Each source shows the
-	// repo-name label + owner avatar badge over its footprint.
+	// Static superset of city sources — one per discovered repo, in discovery
+	// order (append-only, so sources never reshuffle as later sessions bump
+	// file counts). Never rebuilt on selection; the panel's agent-sessions mode
+	// focuses (dims) sources internally instead.
 	const citySources = useMemo<CitySource[] | undefined>(() => {
-		if (selectedRepos.length === 0) return undefined;
-		const layout = repoGridLayout(selectedRepos.length);
+		const repos = Array.from(discoveredRepos.values());
+		const withTrees = repos.filter((r) => trees.has(r.root));
+		if (withTrees.length === 0) return undefined;
+		const layout = repoGridLayout(withTrees.length);
 		const sources: CitySource[] = [];
-		for (let i = 0; i < selectedRepos.length; i++) {
-			const r = selectedRepos[i];
+		for (let i = 0; i < withTrees.length; i++) {
+			const r = withTrees[i];
 			const tree = trees.get(r.root);
 			if (!tree) continue;
 			const city = buildCityDataFromContext({ fileTree: tree, lineCounts: null });
 			sources.push({
 				cityData: city,
-				// Ignored when `gridCell` is set — the library derives the
-				// offset from the cell + gridGap.
 				positionOffset: { x: 0, z: 0 },
 				gridCell: layout[i],
-				label: r.name ?? undefined,
+				label: r.name || undefined,
 				ownerAvatarUrl: r.owner ? `https://github.com/${r.owner}.png?size=40` : undefined,
 			});
 		}
 		return sources.length > 0 ? sources : undefined;
-	}, [selectedRepos, trees]);
+	}, [discoveredRepos, trees]);
+
+	const primaryRepo = useMemo(() => {
+		for (const r of discoveredRepos.values()) {
+			const t = trees.get(r.root);
+			if (t) return t;
+		}
+		return null;
+	}, [discoveredRepos, trees]);
 
 	const guideContext = useMemo<PanelContextValue<FileCityGuidePanelContext>>(() => {
-		const primaryTree = selectedRepos.length > 0 ? (trees.get(selectedRepos[0].root) ?? null) : null;
 		const fileTreeSlice: DataSlice<FileTree> = {
 			scope: "repository",
 			name: "fileTree",
-			data: primaryTree,
-			loading: !primaryTree,
+			data: primaryRepo,
+			loading: !primaryRepo,
 			error: null,
 			refresh: async () => {},
 		};
@@ -402,12 +529,11 @@ export function AgentSessionsOverviewView() {
 			},
 			repository: null,
 		};
-	}, [view, trees, selectedRepos]);
+	}, [view, primaryRepo]);
 
 	const guideActions = useMemo<FileCityGuidePanelActions>(
 		() => ({
 			openFile: () => {},
-			onAgentSessionSelect: (sessionId) => setSelectedSessionId(sessionId),
 			fetchSessionEvents: async (sessionId) => {
 				const cached = eventsById.get(sessionId);
 				if (cached && cached.length > 0) {
@@ -452,11 +578,77 @@ export function AgentSessionsOverviewView() {
 
 	const panelEvents = useMemo<PanelEventEmitter>(() => new PanelEventBus(), []);
 
-	if (!loaded) {
-		return <CenteredMessage title="Loading agent sessions…" />;
-	}
+	// --- Render ---------------------------------------------------------------
 	if (error) {
 		return <CenteredMessage title="Could not load agent sessions" detail={error} />;
+	}
+	// Empty only once we've actually listed sessions (otherwise the loader below
+	// would read as "nothing found" during the initial fetch).
+	if (loaded && dayGroups.length === 0) {
+		return (
+			<div
+				style={{
+					width: "100%",
+					height: "100%",
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					background: theme.colors.background,
+					color: theme.colors.text,
+					fontFamily: theme.fonts.body,
+					flexDirection: "column",
+					gap: 10,
+				}}
+			>
+				<div style={{ textAlign: "center", maxWidth: 640, padding: 24 }}>
+					<div style={{ fontSize: theme.fontSizes[3], marginBottom: 8 }}>
+						No recent sessions found
+					</div>
+					{moreAvailable ? (
+						<div style={{ fontSize: theme.fontSizes[0], color: theme.colors.textMuted }}>
+							Older sessions exist — widen the search window to reach them.
+						</div>
+					) : null}
+				</div>
+				{moreAvailable ? (
+					<button
+						type="button"
+						onClick={loadMore}
+						style={{
+							padding: "6px 14px",
+							border: `1px solid ${theme.colors.border}`,
+							borderRadius: 4,
+							background: theme.colors.backgroundSecondary,
+							color: theme.colors.text,
+							fontFamily: theme.fonts.body,
+							fontSize: theme.fontSizes[1],
+							cursor: "pointer",
+						}}
+					>
+						Load older sessions
+					</button>
+				) : null}
+			</div>
+		);
+	}
+
+	const currentDay = dayIndex < dayGroups.length ? dayGroups[dayIndex] : null;
+
+	// Loader until the full window (all 7 days) has been processed — the first
+	// thing the user sees. Covers the initial `listSessions` fetch as well as the
+	// day-by-day processing, so the repo cards are the loading UI from the
+	// moment the view mounts through the whole week.
+	if (!ready) {
+		return (
+			<AgentSessionLoader
+				dayLabel={currentDay?.label ?? null}
+				dayNumber={currentDay ? dayIndex + 1 : 0}
+				dayCount={dayGroups.length}
+				processed={dayProcessed}
+				total={dayTotal}
+				repos={Array.from(discoveredRepos.values())}
+			/>
+		);
 	}
 
 	return (
@@ -470,6 +662,45 @@ export function AgentSessionsOverviewView() {
 					<CenteredMessage title="Loading city…" />
 				)}
 			</div>
+			{/* Paging footer — shows once the window is fully processed */}
+			{allDaysLoaded ? (
+				<div
+					style={{
+						display: "flex",
+						alignItems: "center",
+						gap: 10,
+						padding: "6px 14px",
+						borderTop: `1px solid ${theme.colors.border}`,
+						fontFamily: theme.fonts.body,
+						fontSize: theme.fontSizes[0],
+						color: theme.colors.textMuted,
+						flexShrink: 0,
+					}}
+				>
+					<span>
+						{dayGroups.length} day{dayGroups.length === 1 ? "" : "s"} · {sessions.length} session{sessions.length === 1 ? "" : "s"} · {discoveredRepos.size} repo{discoveredRepos.size === 1 ? "" : "s"}
+					</span>
+					<span style={{ flex: 1 }} />
+					{moreAvailable ? (
+						<button
+							type="button"
+							onClick={loadMore}
+							style={{
+								padding: "3px 10px",
+								border: `1px solid ${theme.colors.border}`,
+								borderRadius: 4,
+								background: theme.colors.backgroundSecondary,
+								color: theme.colors.text,
+								fontFamily: theme.fonts.body,
+								fontSize: theme.fontSizes[0],
+								cursor: "pointer",
+							}}
+						>
+							Load more days
+						</button>
+					) : null}
+				</div>
+			) : null}
 		</div>
 	);
 }
