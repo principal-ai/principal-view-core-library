@@ -362,7 +362,7 @@ export function AgentSessionLoader({
 							onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
 							onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
 						>
-							Enter File City
+							Enter
 						</button>
 					</div>
 				) : null}
