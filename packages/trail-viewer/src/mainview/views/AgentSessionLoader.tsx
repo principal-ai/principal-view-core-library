@@ -75,24 +75,13 @@ function AgentLogo({ agent, size = 14 }: { agent: string; size?: number }) {
 }
 
 export function AgentSessionLoader({
-	dayLabel,
-	dayNumber,
-	dayCount,
-	processed,
-	total,
 	repos,
 	agents,
 }: {
-	dayLabel: string | null;
-	dayNumber: number;
-	dayCount: number;
-	processed: number;
-	total: number;
 	repos: DiscoveredRepo[];
 	agents: string[];
 }) {
 	const { theme } = useTheme();
-	const progress = total > 0 ? Math.round((processed / total) * 100) : 0;
 	const presentAgents = new Set(agents.map((a) => a.toLowerCase()));
 	const knownAgentKeys = Object.keys(AGENT_LOGOS);
 	const extraAgents = agents.filter((a) => !knownAgentKeys.includes(a.toLowerCase()));
@@ -116,45 +105,13 @@ export function AgentSessionLoader({
 				<div
 					style={{
 						fontFamily: theme.fonts.heading,
-						fontSize: theme.fontSizes[3],
-						fontWeight: 600,
+						fontSize: theme.fontSizes[4],
+						fontWeight: 700,
+						textAlign: "center",
+						color: theme.colors.text,
 					}}
 				>
-					Processing agent sessions
-				</div>
-				<div
-					style={{
-						fontSize: theme.fontSizes[1],
-						color: theme.colors.textMuted,
-						marginTop: 4,
-					}}
-				>
-					{dayCount === 0
-						? "Scanning recent sessions…"
-						: dayLabel
-							? `Day ${dayNumber} of ${dayCount} — ${dayLabel}`
-							: `Scanning up to ${dayCount} day${dayCount === 1 ? "" : "s"} of sessions`}
-					{total > 0 ? ` · ${processed} of ${total} session${total === 1 ? "" : "s"}` : ""}
-				</div>
-
-				{/* Day progress bar */}
-				<div
-					style={{
-						height: 4,
-						borderRadius: 2,
-						background: theme.colors.backgroundSecondary,
-						overflow: "hidden",
-						marginTop: 12,
-					}}
-				>
-					<div
-						style={{
-							height: "100%",
-							width: `${progress}%`,
-							background: theme.colors.accent,
-							transition: "width 300ms ease-out",
-						}}
-					/>
+					Pulling Agent Sessions
 				</div>
 
 				{/* Agent logos across the top — dimmed until a session for that
@@ -164,8 +121,9 @@ export function AgentSessionLoader({
 					style={{
 						display: "flex",
 						alignItems: "center",
-						gap: 10,
-						marginTop: 22,
+						justifyContent: "center",
+						gap: 14,
+						marginTop: 24,
 						flexWrap: "wrap",
 					}}
 				>

@@ -228,8 +228,6 @@ export function AgentSessionsOverviewView() {
 	const [trees, setTrees] = useState<Map<string, FileTree>>(new Map());
 	const [daysWindow, setDaysWindow] = useState(INITIAL_DAY_WINDOW);
 	const [dayIndex, setDayIndex] = useState(0);
-	const [dayProcessed, setDayProcessed] = useState(0);
-	const [dayTotal, setDayTotal] = useState(0);
 	const [ready, setReady] = useState(false);
 	const [allDaysLoaded, setAllDaysLoaded] = useState(false);
 	const [hostHasMore, setHostHasMore] = useState(false);
@@ -374,24 +372,16 @@ export function AgentSessionsOverviewView() {
 		const current = dayGroups[dayIndex];
 		let cancelled = false;
 		setAllDaysLoaded(false);
-		setDayTotal(current.sessions.length);
 		(async () => {
-			let processed = 0;
 			for (const s of current.sessions) {
 				if (cancelled) return;
-				if (sessionsByIdRef.current.has(s.id)) {
-					processed++;
-					setDayProcessed(processed);
-					continue;
-				}
+				if (sessionsByIdRef.current.has(s.id)) continue;
 				try {
 					await loadSession(s);
 				} catch (err) {
 					console.error("[AgentSessionsOverview] getSessionEvents failed:", s.id, err);
 				}
 				if (cancelled) return;
-				processed++;
-				setDayProcessed(processed);
 			}
 			if (cancelled) return;
 			setDayIndex((i) => i + 1);
@@ -639,8 +629,6 @@ export function AgentSessionsOverviewView() {
 		);
 	}
 
-	const currentDay = dayIndex < dayGroups.length ? dayGroups[dayIndex] : null;
-
 	// Loader until the full window (all 7 days) has been processed — the first
 	// thing the user sees. Covers the initial `listSessions` fetch as well as the
 	// day-by-day processing, so the repo cards are the loading UI from the
@@ -648,11 +636,6 @@ export function AgentSessionsOverviewView() {
 	if (!ready) {
 		return (
 			<AgentSessionLoader
-				dayLabel={currentDay?.label ?? null}
-				dayNumber={currentDay ? dayIndex + 1 : 0}
-				dayCount={dayGroups.length}
-				processed={dayProcessed}
-				total={dayTotal}
 				repos={Array.from(discoveredRepos.values())}
 				agents={Array.from(seenAgents)}
 			/>
