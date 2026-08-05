@@ -366,7 +366,6 @@ export function AgentSessionsOverviewView() {
 		if (dayGroups.length === 0) return;
 		if (dayIndex >= dayGroups.length) {
 			setAllDaysLoaded(true);
-			setReady(true);
 			return;
 		}
 		const current = dayGroups[dayIndex];
@@ -638,6 +637,8 @@ export function AgentSessionsOverviewView() {
 			<AgentSessionLoader
 				repos={Array.from(discoveredRepos.values())}
 				agents={Array.from(seenAgents)}
+				allDaysLoaded={allDaysLoaded}
+				onEnter={() => setReady(true)}
 			/>
 		);
 	}
