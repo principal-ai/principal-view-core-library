@@ -15,6 +15,7 @@ function gitCommand(gitRoot: string, subcommand: string): string | undefined {
 export class BunNormalizationAdapter implements PathNormalizationAdapter {
   private homeDir: string;
   private gitRootCache = new Map<string, string | null>();
+  private canonicalCaseCache = new Map<string, string>();
   private knownRoots: Map<string, RepositoryInfo>;
   /** Roots discovered via .git walk-up that weren't in the Alexandria cache */
   readonly newlyDiscovered: RepositoryInfo[] = [];
@@ -22,6 +23,34 @@ export class BunNormalizationAdapter implements PathNormalizationAdapter {
   constructor(knownRoots?: Map<string, RepositoryInfo>) {
     this.homeDir = os.homedir();
     this.knownRoots = knownRoots ?? new Map();
+  }
+
+  /**
+   * Resolve the on-disk spelling of a directory path segment by segment. On
+   * case-insensitive filesystems (macOS APFS) the same directory is reachable
+   * under any casing, so git-root discovery can surface `/repo` and `/Repo` as
+   * two distinct roots unless we pin them to the actual on-disk spelling.
+   */
+  private async canonicalizeCase(input: string): Promise<string> {
+    const cached = this.canonicalCaseCache.get(input);
+    if (cached !== undefined) return cached;
+    const segments = input.split("/").filter(Boolean);
+    let current = "/";
+    for (const seg of segments) {
+      let real = seg;
+      try {
+        const entries = await fs.readdir(current);
+        const match = entries.find(
+          (name) => name.toLowerCase() === seg.toLowerCase(),
+        );
+        if (match) real = match;
+      } catch {
+        // segment vanished; keep the given spelling
+      }
+      current = current === "/" ? `/${real}` : `${current}/${real}`;
+    }
+    this.canonicalCaseCache.set(input, current);
+    return current;
   }
 
   async getRawRepositoryInfo(absolutePath: string): Promise<RepositoryInfo | null> {
@@ -50,10 +79,14 @@ export class BunNormalizationAdapter implements PathNormalizationAdapter {
     const gitRoot = await this.findGitRoot(target);
     if (!gitRoot) return null;
 
+    // Pin the root to its on-disk casing so a case-variant spelling of the same
+    // directory never surfaces as a second repo (see canonicalizeCase).
+    const canonicalRoot = await this.canonicalizeCase(gitRoot);
+
     // Enrich with git metadata
-    const remoteUrl = gitCommand(gitRoot, "remote get-url origin");
-    const branch = gitCommand(gitRoot, "rev-parse --abbrev-ref HEAD");
-    const headCommit = gitCommand(gitRoot, "rev-parse HEAD");
+    const remoteUrl = gitCommand(canonicalRoot, "remote get-url origin");
+    const branch = gitCommand(canonicalRoot, "rev-parse --abbrev-ref HEAD");
+    const headCommit = gitCommand(canonicalRoot, "rev-parse HEAD");
 
     let owner: string | undefined;
     let repo: string | undefined;
@@ -65,12 +98,12 @@ export class BunNormalizationAdapter implements PathNormalizationAdapter {
       }
     }
     if (!repo) {
-      const parts = gitRoot.replace(/\/+$/, "").split("/");
+      const parts = canonicalRoot.replace(/\/+$/, "").split("/");
       repo = parts[parts.length - 1] ?? undefined;
     }
 
     const info: RepositoryInfo = {
-      root: gitRoot,
+      root: canonicalRoot,
       remoteUrl,
       owner,
       repo,
@@ -79,9 +112,9 @@ export class BunNormalizationAdapter implements PathNormalizationAdapter {
     };
 
     // Auto-cache: if this root isn't in knownRoots, track for registration
-    if (!this.knownRoots.has(gitRoot)) {
+    if (!this.knownRoots.has(canonicalRoot)) {
       this.newlyDiscovered.push(info);
-      this.knownRoots.set(gitRoot, info);
+      this.knownRoots.set(canonicalRoot, info);
     }
 
     return info;
