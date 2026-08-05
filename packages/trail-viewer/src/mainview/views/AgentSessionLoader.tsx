@@ -149,11 +149,12 @@ export function AgentSessionLoader({
 									opacity: present ? 1 : 0.22,
 									filter: present ? "none" : "grayscale(1)",
 									transition: "opacity 250ms ease-out",
-									// One logo pops at a time: each sits at a different phase of
-									// a 2.4s loop (0.6s apart), so they tick left → right and
-									// only one is mid-pop at any moment.
+									// One logo pops at a time, left → right: each logo starts
+									// its own 2.4s loop i*0.6s later, so the pop (at the 25%
+									// mark) fires at 0.6s, 1.2s, 1.8s, 2.4s and keeps that
+									// stagger through every loop.
 									animation: `${LOGO_STEP} 2.4s ease-in-out infinite`,
-									animationDelay: `${-i * 0.6}s`,
+									animationDelay: `${i * 0.6}s`,
 								}}
 							>
 								<AgentLogo agent={key} size={34} />
