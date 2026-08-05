@@ -1181,6 +1181,29 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							models: undefined,
 						});
 					}
+					// opencode stamps the session model into the `info` blob; the
+					// created event only carries it ~1/3 of the time but every
+					// session.updated event does, so take the earliest event that
+					// has it. The model is static per session, so one id suffices.
+					const modelRows = db
+						.prepare(
+							`SELECT
+								aggregate_id,
+								json_extract(data, '$.info.model.id') AS model_id
+							FROM event
+							WHERE aggregate_id IN (
+								SELECT aggregate_id
+								FROM event
+								WHERE json_extract(data, '$.info.time.created') > ?
+							)
+								AND json_extract(data, '$.info.model.id') IS NOT NULL
+							GROUP BY aggregate_id`,
+						)
+						.all(sevenDaysAgo) as Array<{ aggregate_id: string; model_id: string | null }>;
+					for (const m of modelRows) {
+						const summary = idToSummary.get(m.aggregate_id);
+						if (summary && m.model_id) summary.models = [m.model_id];
+					}
 					const relations = db
 						.prepare(
 							`SELECT

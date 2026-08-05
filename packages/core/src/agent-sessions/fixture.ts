@@ -96,9 +96,9 @@ function repoRoot(nf: { repository?: { gitRoot?: string } }): string {
 }
 
 /**
- * Extract a model id from a universal event's `data.model` — agents set it
- * inconsistently (opencode stores `{ providerID, modelID }` objects, cline /
- * grok / pi store a plain string id).
+ * Extract a model id from a model value — agents set it inconsistently
+ * (opencode stores `{ providerID, modelID }`-shaped objects, cline / grok /
+ * pi store a plain string id).
  */
 function modelIdOf(value: unknown): string | undefined {
   if (typeof value === "string" && value.length > 0) return value;
@@ -113,12 +113,22 @@ function modelIdOf(value: unknown): string | undefined {
   return undefined;
 }
 
+/** Pull the model id from one event — normalized `data.model` first, then the
+ *  raw opencode `info` blob (the bridge only copies `info.model` onto
+ *  normalized events when the session's created event carried it). */
+function eventModelId(e: RepoNormalizedUniversalAgentSessionEvent): string | undefined {
+  const direct = modelIdOf(e.data?.["model"]);
+  if (direct) return direct;
+  const raw = e.raw as { data?: { info?: { model?: unknown } } } | undefined;
+  return modelIdOf(raw?.data?.info?.model);
+}
+
 /** Distinct model ids across a session's events, in first-seen order. */
 function collectModels(events: RepoNormalizedUniversalAgentSessionEvent[]): string[] {
   const seen = new Set<string>();
   const models: string[] = [];
   for (const e of events) {
-    const id = modelIdOf(e.data?.["model"]);
+    const id = eventModelId(e);
     if (id && !seen.has(id)) {
       seen.add(id);
       models.push(id);
