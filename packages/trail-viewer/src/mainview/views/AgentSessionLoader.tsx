@@ -246,22 +246,22 @@ export function AgentSessionLoader({
 										animationDelay: `${Math.min(i, 8) * 40}ms`,
 									}}
 								>
-									<div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+									<div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
 										{r.owner ? (
 											<img
 												src={`https://github.com/${r.owner}.png?size=32`}
 												alt={r.owner}
 												title={r.owner}
-												width={26}
-												height={26}
-												style={{ borderRadius: "50%", flexShrink: 0, display: "block" }}
+												width={32}
+												height={32}
+												style={{ borderRadius: 8, flexShrink: 0, display: "block" }}
 											/>
 										) : (
 											<span
 												style={{
-													width: 26,
-													height: 26,
-													borderRadius: "50%",
+													width: 32,
+													height: 32,
+													borderRadius: 8,
 													flexShrink: 0,
 													background: theme.colors.backgroundSecondary,
 												}}
@@ -270,7 +270,7 @@ export function AgentSessionLoader({
 										<span
 											style={{
 												fontFamily: theme.fonts.heading,
-												fontSize: theme.fontSizes[1],
+												fontSize: theme.fontSizes[2],
 												fontWeight: 600,
 												color: theme.colors.text,
 												whiteSpace: "nowrap",
@@ -285,7 +285,7 @@ export function AgentSessionLoader({
 									<div
 										style={{
 											fontFamily: theme.fonts.monospace,
-											fontSize: theme.fontSizes[0],
+											fontSize: theme.fontSizes[1],
 											color: theme.colors.textMuted,
 										}}
 									>
@@ -305,7 +305,7 @@ export function AgentSessionLoader({
 										<span
 											style={{
 												marginLeft: 2,
-												fontSize: theme.fontSizes[0],
+												fontSize: theme.fontSizes[1],
 												color: theme.colors.textTertiary,
 												whiteSpace: "nowrap",
 											}}
