@@ -114,7 +114,7 @@ export function AgentSessionLoader({
 			}}
 		>
 			<style>{LOADER_KEYFRAMES}</style>
-			<div style={{ maxWidth: 880, width: "100%" }}>
+			<div style={{ maxWidth: 720, width: "100%" }}>
 				<div
 					style={{
 						fontFamily: theme.fonts.heading,
