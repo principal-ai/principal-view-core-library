@@ -32,7 +32,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@principal-ai/agent-monitoring": "^0.3.29",
+    "@principal-ai/agent-monitoring": "^0.3.31",
     "@principal-ai/alexandria-core-library": "^0.4.0",
     "@principal-ai/codebase-composition": "^0.2.57",
     "@principal-ai/file-city-builder": "^0.5.0",

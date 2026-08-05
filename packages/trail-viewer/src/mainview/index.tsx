@@ -2043,8 +2043,8 @@ function buildAgentSessionsView(opts: {
 	if (!opts.events || opts.events.length === 0) return null;
 
 	const sessionName = sessionMeta?.slug || sessionMeta?.title?.slice(0, 30) || sessionId.slice(0, 12);
-	// Explicit agent (cline/opencode/pi) wins; fall back to the slug heuristic
-	// (Cline & pi durable transcripts carry no slug, opencode sessions do).
+	// Explicit agent (cline/opencode/pi/grok) wins; fall back to the slug heuristic
+	// (Cline/pi/grok durable transcripts carry no slug, opencode sessions do).
 	const agentLabel = sessionMeta?.agent ?? (!sessionMeta?.slug ? "cline" : "opencode");
 	const sessionColor = "#a855f7";
 	const editedFileSet = new Set<string>();

@@ -1,5 +1,6 @@
 import {
   ClineSessionReader,
+  GrokSessionReader,
   PiSessionReader,
   type UniversalAgentSessionEvent,
 } from "@principal-ai/agent-monitoring";
@@ -22,8 +23,8 @@ export {
 };
 
 /**
- * Shared, agent-agnostic session access: list + fetch across Cline and opencode,
- * normalizing raw events into repo-aware universal events.
+ * Shared, agent-agnostic session access: list + fetch across Cline, opencode,
+ * pi, and Grok, normalizing raw events into repo-aware universal events.
  *
  * This is the single source of truth for CLI and trail-viewer session pulling.
  * opencode listing delegates to `OpenCodeEventStore.listSessionsWithSummaries()`,
@@ -31,8 +32,10 @@ export {
  * from the standalone list.
  */
 
+export type SupportedSessionAgent = "cline" | "opencode" | "pi" | "grok" | "unknown";
+
 export interface AgentSessionSummary {
-  agent: "cline" | "opencode" | "pi" | "unknown";
+  agent: SupportedSessionAgent;
   sessionId: string;
   title: string;
   createdAt: string;
@@ -43,6 +46,7 @@ export interface AgentSessionSummary {
 
 const clineReader = new ClineSessionReader();
 const piReader = new PiSessionReader();
+const grokReader = new GrokSessionReader();
 
 function isClineSession(sessionId: string): boolean {
   return clineReader.readSession(sessionId) !== null;
@@ -50,6 +54,10 @@ function isClineSession(sessionId: string): boolean {
 
 function isPiSession(sessionId: string): boolean {
   return piReader.readSession(sessionId) !== null;
+}
+
+function isGrokSession(sessionId: string): boolean {
+  return grokReader.readSession(sessionId) !== null;
 }
 
 /** List Cline CLI sessions from the durable on-disk transcript. */
@@ -64,7 +72,7 @@ function listClineSessions(): AgentSessionSummary[] {
           : promptText
         : "Cline session";
     return {
-      agent: "cline",
+      agent: "cline" as const,
       sessionId: record.sessionId,
       title,
       createdAt: meta.started_at ?? "",
@@ -85,7 +93,7 @@ function listPiSessions(): AgentSessionSummary[] {
           : promptText
         : "pi session";
     return {
-      agent: "pi",
+      agent: "pi" as const,
       sessionId: record.sessionId,
       title,
       createdAt: record.header.timestamp ?? "",
@@ -93,6 +101,21 @@ function listPiSessions(): AgentSessionSummary[] {
       // pi transcripts carry no finished marker; the trail-viewer appends a
       // synthesized session-end event at read time.
       isFinished: false,
+    };
+  });
+}
+
+/** List Grok Build sessions from ~/.grok/sessions durable JSONL. */
+function listGrokSessions(): AgentSessionSummary[] {
+  return grokReader.listSessions().map((record) => {
+    return {
+      agent: "grok" as const,
+      sessionId: record.sessionId,
+      title: record.title || "Grok session",
+      createdAt: record.createdAt,
+      eventCount: record.messageCount,
+      isFinished: false,
+      parentID: record.parentSessionId,
     };
   });
 }
@@ -137,32 +160,40 @@ export function listAgentSessions(
   options: { dbPath?: string } = {},
 ): AgentSessionSummary[] {
   const all: AgentSessionSummary[] = [];
-  let opencodeError: Error | null = null;
+  let firstError: Error | null = null;
   try {
     all.push(...listOpencodeSessions(options.dbPath));
   } catch (err) {
-    opencodeError = err as Error;
+    firstError = err as Error;
   }
   try {
-    all.push(...enrichClineSummaries());
+    all.push(...listClineSessions());
   } catch (err) {
-    if (!opencodeError) opencodeError = err as Error;
+    if (!firstError) firstError = err as Error;
   }
   try {
     all.push(...listPiSessions());
   } catch (err) {
-    if (!opencodeError) opencodeError = err as Error;
+    if (!firstError) firstError = err as Error;
   }
-  if (all.length === 0 && opencodeError) {
-    throw opencodeError;
+  try {
+    all.push(...listGrokSessions());
+  } catch (err) {
+    if (!firstError) firstError = err as Error;
+  }
+  if (all.length === 0 && firstError) {
+    throw firstError;
   }
   return all;
 }
 
 /** Detect which agent a session id belongs to. */
-export function detectAgent(sessionId: string): "cline" | "opencode" | "pi" {
+export function detectAgent(
+  sessionId: string,
+): "cline" | "opencode" | "pi" | "grok" {
   if (isClineSession(sessionId)) return "cline";
   if (isPiSession(sessionId)) return "pi";
+  if (isGrokSession(sessionId)) return "grok";
   return "opencode";
 }
 
@@ -171,14 +202,23 @@ export function detectAgent(sessionId: string): "cline" | "opencode" | "pi" {
  */
 export function fetchRawEvents(
   sessionId: string,
-  options: { agent?: "cline" | "opencode" | "pi"; dbPath?: string } = {},
-): { agent: "cline" | "opencode" | "pi"; events: UniversalAgentSessionEvent[] } {
+  options: {
+    agent?: "cline" | "opencode" | "pi" | "grok";
+    dbPath?: string;
+  } = {},
+): {
+  agent: "cline" | "opencode" | "pi" | "grok";
+  events: UniversalAgentSessionEvent[];
+} {
   const agent = options.agent ?? detectAgent(sessionId);
   if (agent === "cline") {
     return { agent, events: clineReader.toUniversalEvents(sessionId) };
   }
   if (agent === "pi") {
     return { agent, events: piReader.toUniversalEvents(sessionId) };
+  }
+  if (agent === "grok") {
+    return { agent, events: grokReader.toUniversalEvents(sessionId) };
   }
   const store = new OpenCodeEventStore({ dbPath: options.dbPath });
   try {
@@ -187,9 +227,4 @@ export function fetchRawEvents(
   } finally {
     store.close();
   }
-}
-
-function enrichClineSummaries(): AgentSessionSummary[] {
-  // Cline reads come from the durable transcript with no subagent marker today.
-  return listClineSessions();
 }

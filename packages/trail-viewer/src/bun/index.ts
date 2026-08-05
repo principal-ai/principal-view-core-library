@@ -53,7 +53,15 @@ import {
 	loadAlexandriaRepos,
 	registerProjectInAlexandria,
 } from "./alexandria";
-import { createAccumulatedState, eventOp, PathNormalizationService, ClineSessionReader, cleanClinePrompt, PiSessionReader } from "@principal-ai/agent-monitoring";
+import {
+	createAccumulatedState,
+	eventOp,
+	PathNormalizationService,
+	ClineSessionReader,
+	cleanClinePrompt,
+	PiSessionReader,
+	GrokSessionReader,
+} from "@principal-ai/agent-monitoring";
 import type { AgentSessionEvent, UniversalAgentSessionEvent, RepositoryInfo } from "@principal-ai/agent-monitoring";
 import { BunNormalizationAdapter } from "./normalizationAdapter";
 
@@ -80,6 +88,14 @@ const piReader = new PiSessionReader();
 
 function isPiSession(sessionId: string): boolean {
 	return piReader.readSession(sessionId) !== null;
+}
+
+// Grok Build stores durable sessions under ~/.grok/sessions/<cwd>/<id>/
+// (summary.json + updates.jsonl). Same stage-1 reader shape as Cline/pi.
+const grokReader = new GrokSessionReader();
+
+function isGrokSession(sessionId: string): boolean {
+	return grokReader.readSession(sessionId) !== null;
 }
 
 // Shared Cline pipeline: reader → normalizePathsBatch → eventOp loop.
@@ -299,6 +315,110 @@ async function runPiPipeline(sessionId: string): Promise<ClinePipelineResult | n
 			return { root: r.root, fileCount: r.fileCount, owner: known?.owner ?? null, name: parts[parts.length - 1] ?? null, editing: false };
 		});
 	const repoRoot = repos.length > 0 ? repos[0].root : undefined;
+
+	return { rawEvents, normalizedEvents, accState, events, repos, repoRoot, sessionTitle, sessionSlug };
+}
+
+// Shared Grok pipeline: reader → normalizePathsBatch → eventOp loop.
+// Same shapes as runClinePipeline / runPiPipeline.
+async function runGrokPipeline(sessionId: string): Promise<ClinePipelineResult | null> {
+	const record = grokReader.readSession(sessionId);
+	if (!record) return null;
+
+	const promptText = (record.firstPrompt ?? "").trim();
+	const sessionTitle =
+		record.title ||
+		(promptText
+			? promptText.length > 80
+				? `${promptText.slice(0, 80)}…`
+				: promptText
+			: "Grok session");
+	const sessionSlug = "";
+
+	const rawEvents = grokReader.toUniversalEvents(sessionId);
+	if (rawEvents.length === 0) return null;
+
+	const alexandriaRepos = loadAlexandriaRepos();
+	const knownRoots = new Map<string, RepositoryInfo>();
+	for (const [path, repo] of alexandriaRepos) {
+		knownRoots.set(path, {
+			root: repo.root,
+			remoteUrl: repo.remoteUrl,
+			owner: repo.owner,
+			repo: repo.repo,
+		});
+	}
+	const adapter = new BunNormalizationAdapter(knownRoots);
+	const normalizationService = new PathNormalizationService(adapter);
+
+	// summary.info.cwd is the project working directory — not ~/.grok/sessions.
+	const normalizedEvents = await normalizationService.normalizePathsBatch(
+		rawEvents,
+		record.cwd || "",
+	);
+
+	for (const discovered of adapter.newlyDiscovered) {
+		registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
+	}
+
+	const accState = createAccumulatedState(sessionTitle);
+	const events: SessionEventRow[] = [];
+	const repoSet = new Map<string, { root: string; fileCount: number }>();
+
+	for (let i = 0; i < normalizedEvents.length; i++) {
+		const normalizedEvent = normalizedEvents[i];
+		const accResult = eventOp(accState, normalizedEvent);
+		events.push({
+			seq: i,
+			type: normalizedEvent.eventType,
+			raw: normalizedEvent.raw,
+			normalized: normalizedEvent as unknown as Record<string, unknown>,
+			accumulated: accResult,
+		});
+		if (normalizedEvent.files) {
+			for (const f of normalizedEvent.files) {
+				const root = f.repository?.gitRoot;
+				if (root) {
+					const entry = repoSet.get(root) ?? { root, fileCount: 0 };
+					entry.fileCount++;
+					repoSet.set(root, entry);
+				}
+			}
+		}
+	}
+
+	const lastEvent = events[events.length - 1];
+	if (lastEvent) {
+		const lastTimestamp = (lastEvent.normalized as Record<string, unknown>)["timestamp"] as number | undefined ?? 0;
+		events.push({
+			seq: lastEvent.seq + 1,
+			type: "finished",
+			raw: null,
+			normalized: { timestamp: lastTimestamp },
+			accumulated: {
+				id: "",
+				timestamp: lastTimestamp,
+				sessionId: sessionId,
+				sessionName: accState.sessionName,
+				sessionColor: accState.sessionColor,
+				operation: "finished",
+				files: [],
+				dependencies: [],
+				description: `${accState.sessionName} finished`,
+				layers: [],
+				contextTokens: accState.contextTokens,
+			},
+		});
+	}
+
+	const repos = Array.from(repoSet.values())
+		.sort((a, b) => b.fileCount - a.fileCount)
+		.map((r) => {
+			const parts = r.root.replace(/\/+$/, "").split("/");
+			const known = knownRoots.get(r.root);
+			return { root: r.root, fileCount: r.fileCount, owner: known?.owner ?? null, name: parts[parts.length - 1] ?? null, editing: false };
+		});
+	const repoRoot = repos.length > 0 ? repos[0].root : (record.cwd || undefined);
 
 	return { rawEvents, normalizedEvents, accState, events, repos, repoRoot, sessionTitle, sessionSlug };
 }
@@ -1266,10 +1386,79 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							agent: "pi",
 						});
 					}
+					// Append Grok Build sessions (durable updates.jsonl under ~/.grok/sessions)
+					for (const grokSession of grokReader.listSessions()) {
+						const createdAtStr = grokSession.createdAt ?? "";
+						const durationMs = Math.max(
+							0,
+							grokSession.lastActivity - new Date(createdAtStr || 0).getTime(),
+						);
+						standalone.push({
+							id: grokSession.sessionId,
+							title: grokSession.title || "Grok session",
+							slug: "",
+							createdAt: createdAtStr,
+							durationMs,
+							eventCount: grokSession.messageCount,
+							isFinished: false,
+							agent: "grok",
+						});
+					}
 					return { groups, standalone };
 				} catch (err) {
 					console.warn(`[trail-viewer] listSessions failed: ${(err as Error).message}`);
-					return { groups: [], standalone: [] };
+					// Still surface durable-transcript agents when the opencode DB is missing.
+					const standalone: SessionSummary[] = [];
+					try {
+						for (const clineSession of clineReader.listSessions()) {
+							const meta = clineSession.metadata;
+							const promptText = cleanClinePrompt(meta.prompt ?? "");
+							const title = promptText
+								? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
+								: "Cline session";
+							standalone.push({
+								id: clineSession.sessionId,
+								title,
+								slug: "",
+								createdAt: meta.started_at ?? "",
+								durationMs: 0,
+								eventCount: clineReader.readMessages(clineSession.sessionId)?.messages.length ?? 0,
+								isFinished: meta.status === "completed" || meta.status === "failed",
+								agent: "cline",
+							});
+						}
+						for (const piSession of piReader.listSessions()) {
+							const promptText = piSession.firstPrompt;
+							const title = promptText
+								? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
+								: "pi session";
+							standalone.push({
+								id: piSession.sessionId,
+								title,
+								slug: "",
+								createdAt: piSession.header.timestamp ?? "",
+								durationMs: 0,
+								eventCount: piSession.messageCount,
+								isFinished: false,
+								agent: "pi",
+							});
+						}
+						for (const grokSession of grokReader.listSessions()) {
+							standalone.push({
+								id: grokSession.sessionId,
+								title: grokSession.title || "Grok session",
+								slug: "",
+								createdAt: grokSession.createdAt ?? "",
+								durationMs: 0,
+								eventCount: grokSession.messageCount,
+								isFinished: false,
+								agent: "grok",
+							});
+						}
+					} catch {
+						// best-effort
+					}
+					return { groups: [], standalone };
 				} finally {
 					db?.close();
 				}
@@ -1492,6 +1681,26 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 						const result = await runPiPipeline(sessionId);
 						if (!result) return { ok: false, error: "pi session not found or empty" };
 						return { ok: true, events: result.events, repoRoot: result.repoRoot, repos: result.repos, session: { slug: result.sessionSlug, title: result.sessionTitle, agent: "pi" } };
+					} catch (err) {
+						return { ok: false, error: (err as Error).message };
+					}
+				}
+				// Grok Build sessions: read durable updates.jsonl, not the opencode DB
+				if (isGrokSession(sessionId)) {
+					try {
+						const result = await runGrokPipeline(sessionId);
+						if (!result) return { ok: false, error: "Grok session not found or empty" };
+						return {
+							ok: true,
+							events: result.events,
+							repoRoot: result.repoRoot,
+							repos: result.repos,
+							session: {
+								slug: result.sessionSlug,
+								title: result.sessionTitle,
+								agent: "grok",
+							},
+						};
 					} catch (err) {
 						return { ok: false, error: (err as Error).message };
 					}

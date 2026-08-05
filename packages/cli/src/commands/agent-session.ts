@@ -9,11 +9,15 @@ import {
 
 export function createAgentSessionCommand(): Command {
   const command = new Command('agent-session')
-    .description('Read agent sessions and normalize them into universal events (Cline + opencode)');
+    .description(
+      'Read agent sessions and normalize them into universal events (Cline + opencode + pi + grok)',
+    );
 
   command
     .command('list')
-    .description('List top-level sessions from all supported agents (Cline + opencode)')
+    .description(
+      'List top-level sessions from all supported agents (Cline + opencode + pi + grok)',
+    )
     .option('--db-path <path>', 'Path to opencode.db (defaults to XDG data dir)')
     .action((options: { dbPath?: string }) => {
       const sessions = listAgentSessions({ dbPath: options.dbPath });
@@ -23,13 +27,20 @@ export function createAgentSessionCommand(): Command {
   command
     .command('fetch <session-id>')
     .description('Fetch a session and print its normalized universal events as JSON')
-    .option('--agent <cline|opencode>', 'Force agent detection (defaults to auto-detect)')
+    .option(
+      '--agent <cline|opencode|pi|grok>',
+      'Force agent detection (defaults to auto-detect)',
+    )
     .option('--db-path <path>', 'Path to opencode.db (defaults to XDG data dir)')
     .option('--raw', 'Output raw universal events before repo normalization')
     .action(
       async (
         sessionId: string,
-        options: { agent?: 'cline' | 'opencode'; dbPath?: string; raw?: boolean },
+        options: {
+          agent?: 'cline' | 'opencode' | 'pi' | 'grok';
+          dbPath?: string;
+          raw?: boolean;
+        },
       ) => {
         const { agent, events } = fetchRawEvents(sessionId, {
           agent: options.agent,
