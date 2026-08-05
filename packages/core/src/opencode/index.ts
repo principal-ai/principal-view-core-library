@@ -6,7 +6,11 @@ export type {
 } from "./types";
 
 export { listAgentSessions, detectAgent, fetchRawEvents } from "./agent-sessions";
-export type { AgentSessionSummary, SupportedSessionAgent } from "./agent-sessions";
+export type {
+  AgentSessionSummary,
+  AgentSessionMeta,
+  SupportedSessionAgent,
+} from "./agent-sessions";
 
 export {
   NodePathNormalizationAdapter,

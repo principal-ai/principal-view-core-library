@@ -73,6 +73,15 @@ function openCodeDBPath(): string {
 	return `${xdgData}/opencode/opencode.db`;
 }
 
+// When set to "1", getSessionEvents responses include the full raw event payload
+// and the full normalized event. Default (unset) ships only the trimmed fields
+// the File City renderer consumes (timestamp + accumulated) — opencode raw
+// payloads reach hundreds of MB per session and freeze the agent drawer. A
+// future diagnosing UI that compares the raw → normalized → accumulated
+// pipeline enables this to get the full shapes.
+const INCLUDE_RAW_EVENT_PAYLOADS =
+	((process.env as Record<string, string | undefined>)["TRAIL_INCLUDE_RAW"] ?? "") === "1";
+
 // Cline CLI stores its durable data under its own convention (~/.cline/data),
 // not XDG. The reader handles the path resolution; we just need a singleton
 // and a way to tell Cline sessions apart from opencode sessions.
@@ -160,8 +169,10 @@ async function runClinePipeline(sessionId: string): Promise<ClinePipelineResult 
 		events.push({
 			seq: i,
 			type: normalizedEvent.eventType,
-			raw: normalizedEvent.raw,
-			normalized: normalizedEvent as unknown as Record<string, unknown>,
+			raw: INCLUDE_RAW_EVENT_PAYLOADS ? normalizedEvent.raw : undefined,
+			normalized: INCLUDE_RAW_EVENT_PAYLOADS
+				? (normalizedEvent as unknown as Record<string, unknown>)
+				: { timestamp: normalizedEvent.timestamp },
 			accumulated: accResult,
 		});
 		if (normalizedEvent.files) {
@@ -266,8 +277,10 @@ async function runPiPipeline(sessionId: string): Promise<ClinePipelineResult | n
 		events.push({
 			seq: i,
 			type: normalizedEvent.eventType,
-			raw: normalizedEvent.raw,
-			normalized: normalizedEvent as unknown as Record<string, unknown>,
+			raw: INCLUDE_RAW_EVENT_PAYLOADS ? normalizedEvent.raw : undefined,
+			normalized: INCLUDE_RAW_EVENT_PAYLOADS
+				? (normalizedEvent as unknown as Record<string, unknown>)
+				: { timestamp: normalizedEvent.timestamp },
 			accumulated: accResult,
 		});
 		if (normalizedEvent.files) {
@@ -371,8 +384,10 @@ async function runGrokPipeline(sessionId: string): Promise<ClinePipelineResult |
 		events.push({
 			seq: i,
 			type: normalizedEvent.eventType,
-			raw: normalizedEvent.raw,
-			normalized: normalizedEvent as unknown as Record<string, unknown>,
+			raw: INCLUDE_RAW_EVENT_PAYLOADS ? normalizedEvent.raw : undefined,
+			normalized: INCLUDE_RAW_EVENT_PAYLOADS
+				? (normalizedEvent as unknown as Record<string, unknown>)
+				: { timestamp: normalizedEvent.timestamp },
 			accumulated: accResult,
 		});
 		if (normalizedEvent.files) {
@@ -541,12 +556,15 @@ interface SessionSummary {
 	title: string;
 	slug: string;
 	createdAt: string;
+	lastEventAt?: string;
 	durationMs: number;
 	eventCount: number;
 	isFinished: boolean;
 	repoRoot?: string;
 	repos?: RepoInfo[];
 	agent?: string;
+	/** Distinct model ids the session used, in first-use order. */
+	models?: string[];
 }
 
 interface SessionGroup {
@@ -1240,9 +1258,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 						.prepare(
 							`SELECT
 								e.aggregate_id,
-								e.data,
-								(SELECT COUNT(*) FROM event WHERE aggregate_id = e.aggregate_id) AS event_count,
-								(SELECT MAX(json_extract(e2.data, '$.info.time.created')) FROM event e2 WHERE e2.aggregate_id = e.aggregate_id) AS last_created
+								e.data
 							FROM event e
 							WHERE e.seq = (SELECT MIN(e2.seq) FROM event e2 WHERE e2.aggregate_id = e.aggregate_id)
 								AND json_extract(e.data, '$.info.time.created') > ?
@@ -1251,15 +1267,13 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 						.all(sevenDaysAgo) as Array<{
 						aggregate_id: string;
 						data: string;
-						event_count: number;
-						last_created: number | null;
 					}>;
 					const idToSummary = new Map<string, SessionSummary>();
 					for (const row of firstEvents) {
 						let title = row.aggregate_id.slice(0, 12);
 						let slug = "";
 						let createdAtStr = "";
-						let durationMs = 0;
+						const durationMs = 0;
 						try {
 							const parsed = JSON.parse(row.data) as Record<string, unknown>;
 							const info = parsed["info"] as Record<string, unknown> | undefined;
@@ -1275,9 +1289,6 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							const rawCreated = rawTime?.["created"];
 							if (typeof rawCreated === "number") {
 								createdAtStr = new Date(rawCreated).toISOString();
-								if (typeof row.last_created === "number") {
-									durationMs = row.last_created - rawCreated;
-								}
 							}
 						} catch {
 							// best-effort parse
@@ -1292,8 +1303,9 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							slug,
 							createdAt: createdAtStr,
 							durationMs,
-							eventCount: row.event_count,
+							eventCount: 0,
 							isFinished: false,
+							models: undefined,
 						});
 					}
 					const relations = db
@@ -1361,10 +1373,12 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							title,
 							slug: "",
 							createdAt: createdAtStr,
+							lastEventAt: meta.ended_at ?? meta.started_at ?? undefined,
 							durationMs,
 							eventCount,
 							isFinished: meta.status === "completed" || meta.status === "failed",
-								agent: "cline",
+							models: meta.model ? [meta.model] : undefined,
+							agent: "cline",
 						});
 					}
 					// Append pi CLI sessions (durable JSONL transcript, not in opencode DB)
@@ -1380,6 +1394,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							title,
 							slug: "",
 							createdAt: createdAtStr,
+							lastEventAt: new Date(piSession.lastActivity).toISOString(),
 							durationMs,
 							eventCount: piSession.messageCount,
 							isFinished: false,
@@ -1398,9 +1413,11 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							title: grokSession.title || "Grok session",
 							slug: "",
 							createdAt: createdAtStr,
+							lastEventAt: new Date(grokSession.lastActivity).toISOString(),
 							durationMs,
 							eventCount: grokSession.messageCount,
 							isFinished: false,
+							models: grokSession.modelId ? [grokSession.modelId] : undefined,
 							agent: "grok",
 						});
 					}
@@ -1765,8 +1782,10 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 						return {
 							seq,
 							type: rawEnvelope?.type ?? entry.normalized.eventType,
-							raw: rawEnvelope?.data,
-							normalized: entry.normalized as unknown as Record<string, unknown>,
+							raw: INCLUDE_RAW_EVENT_PAYLOADS ? rawEnvelope?.data : undefined,
+							normalized: INCLUDE_RAW_EVENT_PAYLOADS
+								? (entry.normalized as unknown as Record<string, unknown>)
+								: { timestamp: entry.normalized.timestamp },
 							accumulated: entry.accumulated as AgentSessionEvent | null,
 						};
 					});

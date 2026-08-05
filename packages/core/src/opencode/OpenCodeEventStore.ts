@@ -23,6 +23,28 @@ export class OpenCodeEventStore implements OpenCodeEventRetriever {
     this.db = new Database(path, { readonly: true })
   }
 
+  getSessionMeta(sessionId: string): {
+    slug: string
+    title: string
+    directory: string
+  } {
+    try {
+      const row = this.db
+        .prepare("SELECT slug, title, directory FROM session WHERE id = ?")
+        .get(sessionId) as { slug?: string; title?: string; directory?: string } | null
+      if (row) {
+        return {
+          slug: row.slug ?? "",
+          title: row.title ?? "",
+          directory: row.directory ?? "",
+        }
+      }
+    } catch {
+      // session table may not exist in older DBs; fall through
+    }
+    return { slug: "", title: "", directory: "" }
+  }
+
   readAggregate(
     sessionId: string,
     options?: { after?: number; limit?: number }

@@ -82,12 +82,15 @@ interface SessionSummary {
 	title: string;
 	slug: string;
 	createdAt: string;
+	lastEventAt?: string;
 	durationMs: number;
 	eventCount: number;
 	isFinished: boolean;
 	repoRoot?: string;
 	repos?: RepoInfo[];
 	agent?: string;
+	/** Distinct model ids the session used, in first-use order. */
+	models?: string[];
 }
 
 interface SessionGroup {
@@ -2038,6 +2041,7 @@ function buildAgentSessionsView(opts: {
 	dirSet: Set<string>;
 	repoOwner: string | null;
 	repoName: string | null;
+	models?: string[];
 }): AgentSessionsView | null {
 	const { sessionId, title, sessionMeta, dirSet, repoOwner, repoName } = opts;
 	if (!opts.events || opts.events.length === 0) return null;
@@ -2053,12 +2057,14 @@ function buildAgentSessionsView(opts: {
 	const agentSessionEvents: AgentSessionEvent[] = [];
 
 	let firstTimestamp = 0;
+	let lastTimestamp = 0;
 
 	for (const ev of opts.events) {
 		if (!ev.accumulated) continue;
 		const acc = ev.accumulated;
 		const timestamp = ((ev.normalized as Record<string, unknown>)["timestamp"] as number) || 0;
 		if (firstTimestamp === 0 || timestamp < firstTimestamp) firstTimestamp = timestamp;
+		if (timestamp > lastTimestamp) lastTimestamp = timestamp;
 
 		const normFiles = ev.accumulated?.files as unknown as NormalizedPathInfo[] | undefined;
 		if (normFiles) {
@@ -2129,6 +2135,8 @@ function buildAgentSessionsView(opts: {
 		greppingFiles: Array.from(greppingFileSet),
 		activeFiles: [],
 		startedAt: firstTimestamp ? new Date(firstTimestamp).toISOString() : undefined,
+		lastEventAt: lastTimestamp ? new Date(lastTimestamp).toISOString() : undefined,
+		models: opts.models,
 		stats,
 	};
 
@@ -2166,6 +2174,8 @@ function placeholderAgentSession(s: SessionSummary): AgentSessionView {
 		greppingFiles: [],
 		activeFiles: [],
 		startedAt: s.createdAt || undefined,
+		lastEventAt: s.lastEventAt || undefined,
+		models: s.models,
 		stats: { filesChanged: 0, additions: 0, deletions: 0 },
 	};
 }
@@ -2235,6 +2245,7 @@ function AgentSessionsOverviewView() {
 					dirSet: new Set(),
 					repoOwner: null,
 					repoName: null,
+					models: summary?.models,
 				});
 				if (cancelled || !slice) return;
 				const repos = (res.repos ?? [])

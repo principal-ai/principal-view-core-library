@@ -144,7 +144,19 @@ export type { OpenCodeRawEvent, OpenCodeSessionEvents, OpenCodeEventRetriever, O
 
 // Export shared, agent-agnostic session listing/fetch/normalization (Node.js only)
 export { listAgentSessions, detectAgent, fetchRawEvents } from './opencode/agent-sessions';
-export type { AgentSessionSummary, SupportedSessionAgent } from './opencode/agent-sessions';
+export type { AgentSessionSummary, AgentSessionMeta, SupportedSessionAgent } from './opencode/agent-sessions';
+
+// Export the frozen-fixture generator (Node.js only — runs git walk-up)
+export { buildAgentSessionFixture } from './agent-sessions/fixture';
+export type {
+  AgentSessionFixture,
+  AgentSessionFixtureMeta,
+  AgentSessionFixtureRepo,
+  AgentSessionFixtureSummary,
+  FixtureAgentSessionEvent,
+  FixtureHighlightLayer,
+  FixtureLayerItem,
+} from './agent-sessions/fixture';
 
 // Export the pure, runtime-agnostic session pipeline (no SQLite dependency)
 export {

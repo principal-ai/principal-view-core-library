@@ -44,6 +44,13 @@ export interface AgentSessionSummary {
   parentID?: string;
 }
 
+export interface AgentSessionMeta {
+  sessionName: string;
+  sessionTask: string;
+  workingDirectory: string;
+  createdAt?: string;
+}
+
 const clineReader = new ClineSessionReader();
 const piReader = new PiSessionReader();
 const grokReader = new GrokSessionReader();
@@ -209,21 +216,66 @@ export function fetchRawEvents(
 ): {
   agent: "cline" | "opencode" | "pi" | "grok";
   events: UniversalAgentSessionEvent[];
+  sessionMeta: AgentSessionMeta;
 } {
   const agent = options.agent ?? detectAgent(sessionId);
   if (agent === "cline") {
-    return { agent, events: clineReader.toUniversalEvents(sessionId) };
+    const record = clineReader.readSession(sessionId);
+    const promptText = (record?.metadata.prompt ?? "").trim();
+    return {
+      agent,
+      events: clineReader.toUniversalEvents(sessionId),
+      sessionMeta: {
+        sessionName: "cline",
+        sessionTask:
+          (promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText) ||
+          "Cline session",
+        workingDirectory: record?.metadata.workspace_root ?? record?.metadata.cwd ?? "",
+      },
+    };
   }
   if (agent === "pi") {
-    return { agent, events: piReader.toUniversalEvents(sessionId) };
+    const record = piReader.readSession(sessionId);
+    const promptText = (record?.firstPrompt ?? "").trim();
+    return {
+      agent,
+      events: piReader.toUniversalEvents(sessionId),
+      sessionMeta: {
+        sessionName: "pi",
+        sessionTask:
+          (promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText) || "pi session",
+        workingDirectory: "",
+      },
+    };
   }
   if (agent === "grok") {
-    return { agent, events: grokReader.toUniversalEvents(sessionId) };
+    const record = grokReader.readSession(sessionId);
+    return {
+      agent,
+      events: grokReader.toUniversalEvents(sessionId),
+      sessionMeta: {
+        sessionName: "grok",
+        sessionTask: record?.title || "Grok session",
+        workingDirectory: record?.cwd ?? "",
+        createdAt: record?.createdAt,
+      },
+    };
   }
   const store = new OpenCodeEventStore({ dbPath: options.dbPath });
   try {
     const { events } = store.readAggregate(sessionId, { limit: 10000 });
-    return { agent, events: opencodeRowsToUniversalEvents(events) };
+    const meta = store.getSessionMeta(sessionId);
+    const title =
+      meta.title && !meta.title.startsWith("New session") ? meta.title : meta.slug;
+    return {
+      agent,
+      events: opencodeRowsToUniversalEvents(events),
+      sessionMeta: {
+        sessionName: meta.slug || "opencode",
+        sessionTask: title || meta.slug || "opencode",
+        workingDirectory: meta.directory,
+      },
+    };
   } finally {
     store.close();
   }
