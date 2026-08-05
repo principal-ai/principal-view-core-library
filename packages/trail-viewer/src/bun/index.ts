@@ -542,7 +542,7 @@ interface TrailTabState {
 interface LibraryTabState {
 	id: typeof LIBRARY_TAB_ID;
 	kind: "library";
-	title: "Library";
+	title: "Trails";
 }
 
 interface AgentSessionsTabState {
@@ -575,15 +575,15 @@ interface SessionGroup {
 type TabState = LibraryTabState | AgentSessionsTabState | TrailTabState;
 
 const tabs = new Map<string, TabState>();
-tabs.set(LIBRARY_TAB_ID, {
-	id: LIBRARY_TAB_ID,
-	kind: "library",
-	title: "Library",
-});
 tabs.set(AGENT_SESSIONS_TAB_ID, {
 	id: AGENT_SESSIONS_TAB_ID,
 	kind: "agent-sessions",
 	title: "Agent Sessions",
+});
+tabs.set(LIBRARY_TAB_ID, {
+	id: LIBRARY_TAB_ID,
+	kind: "library",
+	title: "Trails",
 });
 let activeTabId: string = resolveStartTab();
 let nextTabId = 1;
