@@ -122,7 +122,7 @@ export function AgentSessionLoader({
 						display: "flex",
 						alignItems: "center",
 						justifyContent: "center",
-						gap: 14,
+						gap: 18,
 						marginTop: 24,
 						flexWrap: "wrap",
 					}}
@@ -136,16 +136,16 @@ export function AgentSessionLoader({
 								style={{
 									display: "flex",
 									alignItems: "center",
-									gap: 6,
+									gap: 8,
 									opacity: present ? 1 : 0.22,
 									filter: present ? "none" : "grayscale(1)",
 									transition: "opacity 250ms ease-out",
 								}}
 							>
-								<AgentLogo agent={key} size={22} />
+								<AgentLogo agent={key} size={34} />
 								<span
 									style={{
-										fontSize: theme.fontSizes[0],
+										fontSize: theme.fontSizes[2],
 										color: present ? theme.colors.textSecondary : theme.colors.textTertiary,
 									}}
 								>
@@ -158,12 +158,12 @@ export function AgentSessionLoader({
 						<div
 							key={a}
 							title={a}
-							style={{ display: "flex", alignItems: "center", gap: 6 }}
+							style={{ display: "flex", alignItems: "center", gap: 8 }}
 						>
-							<AgentLogo agent={a} size={22} />
+							<AgentLogo agent={a} size={34} />
 							<span
 								style={{
-									fontSize: theme.fontSizes[0],
+									fontSize: theme.fontSizes[2],
 									color: theme.colors.textSecondary,
 								}}
 							>
