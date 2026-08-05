@@ -302,16 +302,12 @@ export function AgentSessionLoader({
 										style={{
 											display: "flex",
 											alignItems: "center",
-											gap: 4,
+											gap: 6,
 											overflow: "hidden",
 										}}
 									>
-										{r.agents.slice(0, 5).map((a) => (
-											<AgentLogo key={a} agent={a} />
-										))}
 										<span
 											style={{
-												marginLeft: 2,
 												fontSize: theme.fontSizes[1],
 												color: theme.colors.textTertiary,
 												whiteSpace: "nowrap",
@@ -319,6 +315,9 @@ export function AgentSessionLoader({
 										>
 											{r.sessionCount} session{r.sessionCount === 1 ? "" : "s"}
 										</span>
+										{r.agents.slice(0, 5).map((a) => (
+											<AgentLogo key={a} agent={a} />
+										))}
 									</div>
 								</div>
 							);
