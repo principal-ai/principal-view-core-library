@@ -267,20 +267,36 @@ export function AgentSessionLoader({
 												}}
 											/>
 										)}
-										<span
-											style={{
-												fontFamily: theme.fonts.heading,
-												fontSize: theme.fontSizes[2],
-												fontWeight: 600,
-												color: theme.colors.text,
-												whiteSpace: "nowrap",
-												overflow: "hidden",
-												textOverflow: "ellipsis",
-												minWidth: 0,
-											}}
-										>
-											{displayName}
-										</span>
+										<div style={{ flex: 1, minWidth: 0 }}>
+											<div
+												style={{
+													fontFamily: theme.fonts.heading,
+													fontSize: theme.fontSizes[2],
+													fontWeight: 600,
+													color: theme.colors.text,
+													whiteSpace: "nowrap",
+													overflow: "hidden",
+													textOverflow: "ellipsis",
+												}}
+											>
+												{displayName}
+											</div>
+											{r.owner ? (
+												<div
+													style={{
+														fontFamily: theme.fonts.body,
+														fontSize: theme.fontSizes[0],
+														color: theme.colors.textMuted,
+														whiteSpace: "nowrap",
+														overflow: "hidden",
+														textOverflow: "ellipsis",
+														marginTop: 2,
+													}}
+												>
+													{r.owner}
+												</div>
+											) : null}
+										</div>
 									</div>
 									<div
 										style={{
