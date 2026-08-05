@@ -20,7 +20,7 @@ import type { ErrorInfo, ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
 import Electrobun, { Electroview } from "electrobun/view";
-import { Check, Download, ExternalLink, GitBranch, Info, Link, Loader2, RefreshCw, Share2, Terminal, User } from "lucide-react";
+import { Check, ExternalLink, GitBranch, Info, Link, Loader2, RefreshCw, Share2, Terminal, User } from "lucide-react";
 import {
 	ThemeProvider,
 	slateNeonTheme,
@@ -415,7 +415,7 @@ function CenteredMessage({
 // including the library) and the Download app CTA.
 // ---------------------------------------------------------------------------
 
-const DOWNLOAD_APP_URL = "https://principal-ade.com/download";
+// const DOWNLOAD_APP_URL = "https://principal-ade.com/download";
 
 function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 	const { theme } = useTheme();
@@ -442,9 +442,9 @@ function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 	// than jumping straight to GitHub — the profile link lives inside the modal.
 	const [showIdentityModal, setShowIdentityModal] = useState(false);
 
-	const onDownload = useCallback(() => {
-		void electrobun.rpc!.request.openExternal({ url: DOWNLOAD_APP_URL });
-	}, []);
+	// const onDownload = useCallback(() => {
+	// 	void electrobun.rpc!.request.openExternal({ url: DOWNLOAD_APP_URL });
+	// }, []);
 
 	const onOpenProfile = useCallback(() => {
 		if (user?.htmlUrl) {
@@ -459,7 +459,7 @@ function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 				display: "flex",
 				alignItems: "center",
 				gap: 8,
-				padding: "8px 16px",
+				padding: "16px 16px",
 				background: theme.colors.surface,
 				borderBottom: `1px solid ${theme.colors.border}`,
 				flexShrink: 0,
@@ -470,23 +470,32 @@ function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 				style={{
 					display: "flex",
 					alignItems: "center",
-					gap: 8,
+					gap: 12,
 					flex: 1,
 					minWidth: 0,
 				}}
 			>
-				<FileCityLogo
-					width={26}
-					height={26}
-					mark="P"
-					primary="#ff6b35"
-					accent="#0893d2"
-					color="#d0e5ea"
-					background="transparent"
-				/>
-				<span style={{ fontSize: theme.fontSizes[4], fontWeight: 700 }}>
-					<span style={{ color: theme.colors.text }}>Trail</span>{" "}
-					<span style={{ color: theme.colors.primary }}>Viewer</span>
+				<div
+					style={{
+						display: "flex",
+						flexShrink: 0,
+						borderRadius: 10,
+						border: `1px solid ${theme.colors.primary}`,
+					}}
+				>
+					<FileCityLogo
+						width={40}
+						height={40}
+						mark="P"
+						primary="#ff6b35"
+						accent="#0893d2"
+						color="#d0e5ea"
+						background="transparent"
+					/>
+				</div>
+				<span style={{ fontSize: theme.fontSizes[6], fontWeight: 700 }}>
+					<span style={{ color: theme.colors.text }}>Session</span>{" "}
+					<span style={{ color: theme.colors.primary }}>Manager</span>
 				</span>
 			</div>
 			{libraryActive && (
@@ -562,6 +571,7 @@ function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 					</span>
 				</button>
 			)}
+			{/* Download app CTA — hidden for now, will come back later.
 			<button
 				type="button"
 				onClick={onDownload}
@@ -587,6 +597,7 @@ function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 				<Download size={16} />
 				<span>Download app</span>
 			</button>
+			*/}
 		</header>
 		{showIdentityModal && user && createPortal(
 			<IdentityModal user={user} onClose={() => setShowIdentityModal(false)} onOpenProfile={onOpenProfile} />,
@@ -1454,7 +1465,7 @@ function TrailHeader({
 								fontFamily: theme.fonts.body,
 								background: theme.colors.primary,
 								color: theme.colors.background,
-								border: `1px solid ${theme.colors.primary}`,
+						border: `0.5px solid ${theme.colors.primary}`,
 								cursor: "pointer",
 							}}
 						>
@@ -2041,6 +2052,7 @@ function buildAgentSessionsView(opts: {
 	dirSet: Set<string>;
 	repoOwner: string | null;
 	repoName: string | null;
+	repoRoot?: string;
 	models?: string[];
 }): AgentSessionsView | null {
 	const { sessionId, title, sessionMeta, dirSet, repoOwner, repoName } = opts;
@@ -2137,6 +2149,7 @@ function buildAgentSessionsView(opts: {
 		startedAt: firstTimestamp ? new Date(firstTimestamp).toISOString() : undefined,
 		lastEventAt: lastTimestamp ? new Date(lastTimestamp).toISOString() : undefined,
 		models: opts.models,
+		workingDirectory: opts.repoRoot,
 		stats,
 	};
 
@@ -2176,8 +2189,23 @@ function placeholderAgentSession(s: SessionSummary): AgentSessionView {
 		startedAt: s.createdAt || undefined,
 		lastEventAt: s.lastEventAt || undefined,
 		models: s.models,
+		workingDirectory: s.repoRoot,
 		stats: { filesChanged: 0, additions: 0, deletions: 0 },
 	};
+}
+
+// Grid placement for N repo cities: a square when N is a perfect square,
+// otherwise a single row (row 0, left-to-right). The library centers the grid
+// and derives each city's world offset from its `gridCell` plus `gridGap`
+// (default ~25% of the largest footprint, floored at 40), so the repos read as
+// clearly separated instead of packed edge-to-edge.
+function repoGridLayout(count: number): { col: number; row: number }[] {
+	const side = Math.ceil(Math.sqrt(count));
+	const cols = side * side === count ? side : count;
+	return Array.from({ length: count }, (_, i) => ({
+		col: i % cols,
+		row: Math.floor(i / cols),
+	}));
 }
 
 function AgentSessionsOverviewView() {
@@ -2245,6 +2273,7 @@ function AgentSessionsOverviewView() {
 					dirSet: new Set(),
 					repoOwner: null,
 					repoName: null,
+					repoRoot: res.repoRoot ?? res.repos?.[0]?.root,
 					models: summary?.models,
 				});
 				if (cancelled || !slice) return;
@@ -2334,27 +2363,31 @@ function AgentSessionsOverviewView() {
 		};
 	}, [selectedRepos, trees]);
 
-	// One city per repo the selected session touched, laid out side by side.
-	// Passing `citySources` flips FileCity3D into its multi-city mode; each
-	// source shows the repo-name label + owner avatar badge over its footprint.
+	// One city per repo the selected session touched, arranged on the
+	// library's grid layout (square when the count is a perfect square,
+	// otherwise a row). Passing `citySources` flips FileCity3D into its
+	// multi-city mode; FileCity3D resolves each city's world offset from its
+	// `gridCell` + `gridGap` (default ~25% of the largest footprint, floored
+	// at 40), so the repos stay visually separated. Each source shows the
+	// repo-name label + owner avatar badge over its footprint.
 	const citySources = useMemo<CitySource[] | undefined>(() => {
 		if (selectedRepos.length === 0) return undefined;
-		const GAP = 24;
+		const layout = repoGridLayout(selectedRepos.length);
 		const sources: CitySource[] = [];
-		let cursor = 0;
-		for (const r of selectedRepos) {
+		for (let i = 0; i < selectedRepos.length; i++) {
+			const r = selectedRepos[i];
 			const tree = trees.get(r.root);
 			if (!tree) continue;
 			const city = buildCityDataFromContext({ fileTree: tree, lineCounts: null });
-			const halfW = (city.bounds.maxX - city.bounds.minX) / 2;
-			const centerX = cursor + halfW;
 			sources.push({
 				cityData: city,
-				positionOffset: { x: centerX, z: 0 },
+				// Ignored when `gridCell` is set — the library derives the
+				// offset from the cell + gridGap.
+				positionOffset: { x: 0, z: 0 },
+				gridCell: layout[i],
 				label: r.name ?? undefined,
 				ownerAvatarUrl: r.owner ? `https://github.com/${r.owner}.png?size=40` : undefined,
 			});
-			cursor = centerX + halfW + GAP;
 		}
 		return sources.length > 0 ? sources : undefined;
 	}, [selectedRepos, trees]);
@@ -2413,6 +2446,7 @@ function AgentSessionsOverviewView() {
 					dirSet: new Set(),
 					repoOwner: null,
 					repoName: null,
+					repoRoot: res.repoRoot ?? res.repos?.[0]?.root,
 				});
 				if (!slice) return { events: [], title: sessionId };
 				setSessionsById((prev) => {
@@ -2436,8 +2470,6 @@ function AgentSessionsOverviewView() {
 
 	const panelEvents = useMemo<PanelEventEmitter>(() => new PanelEventBus(), []);
 
-	const sessionLoading = !!selectedSessionId && !eventsById.has(selectedSessionId);
-
 	if (!loaded) {
 		return <CenteredMessage title="Loading agent sessions…" />;
 	}
@@ -2447,17 +2479,6 @@ function AgentSessionsOverviewView() {
 
 	return (
 		<div style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
-			<div style={{ padding: "8px 16px", borderBottom: "1px solid #333", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
-				Agent Sessions
-				{view && (
-					<span style={{ color: "#888", fontWeight: 400, fontSize: 11 }}>
-						{view.sessions.length} sessions · {view.events?.length ?? 0} events
-					</span>
-				)}
-				<span style={{ color: "#555", fontSize: 10, marginLeft: "auto" }}>
-					{sessionLoading ? "loading…" : selectedRepos.length > 0 ? `${selectedRepos.length} ${selectedRepos.length === 1 ? "city" : "cities"}` : ""}
-				</span>
-			</div>
 			<div style={{ flex: 1, minWidth: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
 				{view ? (
 					<div style={{ flex: 1, minHeight: 0 }}>
