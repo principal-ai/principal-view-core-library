@@ -35,10 +35,15 @@ const AGENT_LOGOS: Record<string, string> = {
 const SUPPORTED_AGENTS = ["cline", "grok", "opencode", "pi"];
 
 const REPO_CARD_IN = "agent-loader-repo-in";
+const LOGO_BREATHE = "agent-loader-logo-breathe";
 const LOADER_KEYFRAMES = `
 @keyframes ${REPO_CARD_IN} {
 	0% { opacity: 0; transform: translateY(8px) scale(0.97); }
 	100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes ${LOGO_BREATHE} {
+	0%, 100% { transform: scale(1); }
+	50% { transform: scale(1.18); }
 }`;
 
 function AgentLogo({ agent, size = 14 }: { agent: string; size?: number }) {
@@ -130,7 +135,7 @@ export function AgentSessionLoader({
 						flexWrap: "wrap",
 					}}
 				>
-					{knownAgentKeys.map((key) => {
+					{knownAgentKeys.map((key, i) => {
 						const present = presentAgents.has(key);
 						return (
 							<div
@@ -143,6 +148,10 @@ export function AgentSessionLoader({
 									opacity: present ? 1 : 0.22,
 									filter: present ? "none" : "grayscale(1)",
 									transition: "opacity 250ms ease-out",
+									// Negative delay keeps each logo at a different phase of
+									// the loop, so the pop sweeps left → right repeatedly.
+									animation: `${LOGO_BREATHE} 1.6s ease-in-out infinite`,
+									animationDelay: `${-i * 0.4}s`,
 								}}
 							>
 								<AgentLogo agent={key} size={34} />
