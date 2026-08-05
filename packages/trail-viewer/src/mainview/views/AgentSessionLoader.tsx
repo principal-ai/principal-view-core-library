@@ -30,6 +30,10 @@ const AGENT_LOGOS: Record<string, string> = {
 	grok: "/agent-logos/grok.svg",
 };
 
+// Agents we actually surface sessions for — everything else in AGENT_LOGOS is
+// unsupported for now and hidden from the loading screen.
+const SUPPORTED_AGENTS = ["opencode", "cline", "pi", "grok"];
+
 const REPO_CARD_IN = "agent-loader-repo-in";
 const LOADER_KEYFRAMES = `
 @keyframes ${REPO_CARD_IN} {
@@ -83,8 +87,7 @@ export function AgentSessionLoader({
 }) {
 	const { theme } = useTheme();
 	const presentAgents = new Set(agents.map((a) => a.toLowerCase()));
-	const knownAgentKeys = Object.keys(AGENT_LOGOS);
-	const extraAgents = agents.filter((a) => !knownAgentKeys.includes(a.toLowerCase()));
+	const knownAgentKeys = SUPPORTED_AGENTS;
 	return (
 		<div
 			style={{
@@ -154,23 +157,6 @@ export function AgentSessionLoader({
 							</div>
 						);
 					})}
-					{extraAgents.map((a) => (
-						<div
-							key={a}
-							title={a}
-							style={{ display: "flex", alignItems: "center", gap: 8 }}
-						>
-							<AgentLogo agent={a} size={34} />
-							<span
-								style={{
-									fontSize: theme.fontSizes[2],
-									color: theme.colors.textSecondary,
-								}}
-							>
-								{a}
-							</span>
-						</div>
-					))}
 				</div>
 
 				{/* Repo cards — appear as each repo is discovered */}
