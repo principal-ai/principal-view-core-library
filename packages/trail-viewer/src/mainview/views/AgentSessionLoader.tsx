@@ -224,7 +224,7 @@ export function AgentSessionLoader({
 					<div
 						style={{
 							display: "grid",
-							gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+							gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
 							gap: 12,
 						}}
 					>
@@ -252,16 +252,16 @@ export function AgentSessionLoader({
 												src={`https://github.com/${r.owner}.png?size=32`}
 												alt={r.owner}
 												title={r.owner}
-												width={32}
-												height={32}
-												style={{ borderRadius: 8, flexShrink: 0, display: "block" }}
+												width={40}
+												height={40}
+												style={{ borderRadius: 9, flexShrink: 0, display: "block" }}
 											/>
 										) : (
 											<span
 												style={{
-													width: 32,
-													height: 32,
-													borderRadius: 8,
+													width: 40,
+													height: 40,
+													borderRadius: 9,
 													flexShrink: 0,
 													background: theme.colors.backgroundSecondary,
 												}}
