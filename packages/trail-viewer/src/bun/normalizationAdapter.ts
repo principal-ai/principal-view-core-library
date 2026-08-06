@@ -73,7 +73,13 @@ export class BunNormalizationAdapter implements PathNormalizationAdapter {
         bestLen = rootCanon.length;
       }
     }
-    if (bestMatch) return bestMatch;
+    if (bestMatch) {
+      // A registry entry can carry a case-variant spelling of the same dir
+      // (e.g. `developer/...` on a case-insensitive fs). Pin it to the on-disk
+      // casing too, so a polluted registry can't surface the same repo twice.
+      const canonicalRoot = await this.canonicalizeCase(bestMatch.root);
+      return { ...bestMatch, root: canonicalRoot };
+    }
 
     // Fall through to .git walk-up
     const gitRoot = await this.findGitRoot(target);
