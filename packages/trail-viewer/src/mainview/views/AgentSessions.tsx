@@ -587,6 +587,9 @@ export function AgentSessionsOverviewView() {
 			selectedSessionId: null,
 			events: allEvents,
 			repository: null,
+			// Lock in the day view + last-event sort: hide the drawer's filter
+			// bar so the defaults aren't toggleable.
+			hideFilterBar: true,
 		};
 	}, [sessions, allEvents]);
 
