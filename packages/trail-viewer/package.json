@@ -28,7 +28,7 @@
 		"registry": "https://registry.npmjs.org/"
 	},
 	"devDependencies": {
-		"@industry-theme/file-city-panel": "^0.9.84",
+		"@industry-theme/file-city-panel": "^0.9.85",
 		"@principal-ade/dynamic-file-tree": "^0.2.45",
 		"@principal-ade/industry-theme": "^0.1.24",
 		"@principal-ade/panel-framework-core": "^0.5.1",
