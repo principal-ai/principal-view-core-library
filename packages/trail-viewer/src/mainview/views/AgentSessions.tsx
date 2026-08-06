@@ -238,6 +238,8 @@ export function AgentSessionsOverviewView() {
 	// every session commit (which would restart the day mid-way).
 	const sessionsByIdRef = useRef<Map<string, AgentSessionView>>(sessionsById);
 	sessionsByIdRef.current = sessionsById;
+	const eventsByIdRef = useRef<Map<string, AgentSessionEvent[]>>(eventsById);
+	eventsByIdRef.current = eventsById;
 
 	const windowStart = useMemo(() => Date.now() - daysWindow * 86400000, [daysWindow]);
 
@@ -355,6 +357,130 @@ export function AgentSessionsOverviewView() {
 			});
 		}
 	}, []);
+
+	// --- Live refresh: re-fetch an active session and append only the events
+	// that are new since the last load. Returns true if anything changed, so the
+	// poll can leave state untouched (no re-render) when nothing moved. ---
+	const loadSessionLive = useCallback(async (s: SessionSummary): Promise<boolean> => {
+		const res = await electrobun.rpc!.request.getSessionEvents({ sessionId: s.id });
+		if (!res.ok || !res.events || res.events.length === 0) return false;
+		const slice = buildAgentSessionsView({
+			sessionId: s.id,
+			title: s.title,
+			events: res.events,
+			sessionMeta: res.session ?? null,
+			dirSet: new Set(),
+			repoOwner: null,
+			repoName: null,
+			repoRoot: res.repoRoot ?? res.repos?.[0]?.root,
+			models: s.models,
+		});
+		if (!slice) return false;
+		const existing = eventsByIdRef.current.get(s.id) ?? [];
+		const existingIds = new Set(existing.map((e) => e.id));
+		const newEvents = (slice.events ?? []).filter((e) => !existingIds.has(e.id));
+		if (newEvents.length === 0) return false;
+
+		const nextEvents = [...existing, ...newEvents];
+		eventsByIdRef.current = new Map(eventsByIdRef.current).set(s.id, nextEvents);
+		setEventsById(eventsByIdRef.current);
+		const nextSessions = new Map(sessionsByIdRef.current);
+		nextSessions.set(s.id, slice.sessions[0]);
+		sessionsByIdRef.current = nextSessions;
+		setSessionsById(nextSessions);
+		const repos = res.repos ?? [];
+		if (repos.length > 0) {
+			const agentLabel = slice.sessions[0].agent ?? s.agent ?? "opencode";
+			setDiscoveredRepos((prev) => {
+				const next = new Map(prev);
+				for (const r of repos) {
+					const parts = r.root.replace(/\/+$/, "").split("/");
+					const existingRepo = next.get(r.root);
+					const agents = existingRepo
+						? Array.from(new Set([...existingRepo.agents, agentLabel]))
+						: [agentLabel];
+					next.set(r.root, {
+						root: r.root,
+						name: r.name ?? parts[parts.length - 1] ?? "",
+						owner: r.owner ?? null,
+						fileCount: Math.max(existingRepo?.fileCount ?? 0, r.fileCount),
+						sessionCount: (existingRepo?.sessionCount ?? 0) + 1,
+						agents,
+					});
+				}
+				return next;
+			});
+		}
+		return true;
+	}, []);
+
+	// --- Live poll: every 30s, list today's sessions, merge new summaries,
+	// kick the newest day if a brand-new session appeared, and diff-append new
+	// events for any session that's still actively working. State is only
+	// committed when something actually changed. ---
+	const refreshLive = useCallback(async () => {
+		try {
+			const list = await electrobun.rpc!.request.listSessions({ days: 1 });
+			const tops: SessionSummary[] = [];
+			for (const g of list.groups) tops.push(g.parent);
+			tops.push(...list.standalone);
+
+			// Merge summaries — only commit when the id-set or a title/finished
+			// flag actually changed, so a quiet poll never re-renders the view.
+			setSummaries((prev) => {
+				const merged = new Map(prev.map((s) => [s.id, s]));
+				let changed = false;
+				for (const s of tops) {
+					const existing = merged.get(s.id);
+					if (!existing) {
+						merged.set(s.id, s);
+						changed = true;
+					} else if (existing.title !== s.title || existing.isFinished !== s.isFinished) {
+						merged.set(s.id, s);
+						changed = true;
+					}
+				}
+				if (!changed) return prev;
+				return [...merged.values()].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+			});
+
+			// Only sessions within the current window matter for day processing
+			// (listSessions returns all cline/pi/grok regardless of `days`).
+			const known = sessionsByIdRef.current;
+			const relevant = tops.filter((s) => {
+				const t = s.createdAt ? new Date(s.createdAt).getTime() : 0;
+				return !t || t >= windowStart;
+			});
+			const hasNewSession = relevant.some((s) => !known.has(s.id));
+			if (hasNewSession) {
+				// Re-open the newest day so the day-paging loop picks up the
+				// newcomer (already-loaded sessions are skipped).
+				setAllDaysLoaded(false);
+				setDayIndex(0);
+			}
+
+			const working = relevant.filter((s) => known.get(s.id)?.state === "working");
+			for (const s of working) {
+				try {
+					await loadSessionLive(s);
+				} catch (err) {
+					console.error("[AgentSessionsOverview] live event refresh failed:", s.id, err);
+				}
+			}
+		} catch (err) {
+			console.error("[AgentSessionsOverview] live refresh failed:", err);
+		}
+	}, [windowStart, loadSessionLive]);
+
+	// Poll loop — starts once the initial load has listed sessions; cleared on
+	// unmount. No overlap guard needed: each tick awaits its own work.
+	useEffect(() => {
+		if (!loaded) return;
+		const t = setInterval(() => {
+			void refreshLive();
+		}, 30_000);
+		return () => clearInterval(t);
+	}, [loaded, refreshLive]);
 
 	// --- Day paging: process one calendar day at a time -----------------------
 	// Completing a day advances `dayIndex`, which re-runs this effect for the
