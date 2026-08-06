@@ -420,7 +420,7 @@ export function AgentSessionsOverviewView() {
 	// committed when something actually changed. ---
 	const refreshLive = useCallback(async () => {
 		try {
-			const list = await electrobun.rpc!.request.listSessions({ days: 1 });
+			const list = await electrobun.rpc!.request.listSessions({ days: 2 });
 			const tops: SessionSummary[] = [];
 			for (const g of list.groups) tops.push(g.parent);
 			tops.push(...list.standalone);
