@@ -100,8 +100,8 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 					/>
 				</div>
 				<span style={{ fontSize: theme.fontSizes[6], fontWeight: 700 }}>
-					<span style={{ color: theme.colors.text }}>Session</span>{" "}
-					<span style={{ color: theme.colors.primary }}>Manager</span>
+					<span style={{ color: theme.colors.text }}>Engineering</span>{" "}
+					<span style={{ color: theme.colors.primary }}>Log</span>
 				</span>
 			</div>
 			{libraryActive && (

@@ -13,6 +13,8 @@ export type TabState =
 	| { kind: "loading" }
 	| { kind: "library" }
 	| { kind: "agent-sessions" }
+	| { kind: "mermaid-demo" }
+	| { kind: "concepts" }
 	| { kind: "error"; message: string }
 	| {
 			kind: "ready";

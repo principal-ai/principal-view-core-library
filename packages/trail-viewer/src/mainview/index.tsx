@@ -17,12 +17,21 @@
 import xyflowStyles from "@xyflow/react/dist/style.css" with { type: "text" };
 import resetStyles from "./index.css" with { type: "text" };
 
+import mermaid from "mermaid";
 import { createRoot } from "react-dom/client";
 import {
 	ThemeProvider,
 	slateNeonTheme,
 } from "@principal-ade/industry-theme";
 import { App, ErrorBoundary } from "./App";
+
+// Themed-markdown's IndustryMermaidDiagram renders through `window.mermaid` —
+// the host app is expected to register the singleton. Without this, mermaid
+// diagrams never render (they sit at "Optimizing view…" forever). Mirrors the
+// registration themed-markdown's own Storybook preview does.
+if (typeof window !== "undefined") {
+	(window as Window & { mermaid?: typeof mermaid }).mermaid = mermaid;
+}
 
 // electrobun drops bundled/linked .css (wrong MIME on the views:// scheme), so
 // neither our reset (index.css) nor React Flow's stylesheet reaches WebKit

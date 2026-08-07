@@ -38,7 +38,11 @@ export function TabStrip({
 		>
 			{tabs.map((tab) => {
 				const isActive = tab.id === activeTabId;
-				const isPermanent = tab.kind === "library" || tab.kind === "agent-sessions";
+				const isPermanent =
+					tab.kind === "library" ||
+					tab.kind === "agent-sessions" ||
+					tab.kind === "mermaid-demo" ||
+					tab.kind === "concepts";
 				const dotColor = tab.kind === "agent-sessions"
 					? theme.colors.accent ?? "#4ec9b0"
 					: isPermanent

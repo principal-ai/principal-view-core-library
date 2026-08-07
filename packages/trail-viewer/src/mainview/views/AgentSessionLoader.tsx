@@ -47,7 +47,7 @@ const LOADER_KEYFRAMES = `
 	50% { transform: scale(1); }
 }`;
 
-function AgentLogo({ agent, size = 14 }: { agent: string; size?: number }) {
+export function AgentLogo({ agent, size = 14 }: { agent: string; size?: number }) {
 	const { theme } = useTheme();
 	const key = agent.toLowerCase();
 	const url = AGENT_LOGOS[key];

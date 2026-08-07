@@ -28,7 +28,7 @@
 		"registry": "https://registry.npmjs.org/"
 	},
 	"devDependencies": {
-		"@industry-theme/file-city-panel": "^0.9.87",
+		"@industry-theme/file-city-panel": "^0.9.89",
 		"@principal-ade/dynamic-file-tree": "^0.2.45",
 		"@principal-ade/industry-theme": "^0.1.24",
 		"@principal-ade/panel-framework-core": "^0.5.1",
@@ -45,9 +45,10 @@
 		"@types/react-dom": "^19.2.3",
 		"electrobun": "1.18.1",
 		"lucide-react": "^1.21.0",
+		"mermaid": "^11.9.0",
 		"react": "19.0.0",
 		"react-dom": "19.0.0",
-		"themed-markdown": "^0.1.103",
+		"themed-markdown": "^0.1.123",
 		"typescript": "^6.0.3"
 	},
 	"dependencies": {

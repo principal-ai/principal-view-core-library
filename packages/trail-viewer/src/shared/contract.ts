@@ -56,7 +56,7 @@ export interface SessionEventRow {
 
 export interface TabSummary {
 	id: string;
-	kind: "library" | "trail" | "agent-sessions";
+	kind: "library" | "trail" | "agent-sessions" | "mermaid-demo" | "concepts";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -66,7 +66,7 @@ export interface TabFullState {
 	ok: boolean;
 	error?: string;
 	id: string;
-	kind: "library" | "trail" | "agent-sessions";
+	kind: "library" | "trail" | "agent-sessions" | "mermaid-demo" | "concepts";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;

@@ -481,6 +481,8 @@ function firstUserPromptText(
 
 const LIBRARY_TAB_ID = "library";
 const AGENT_SESSIONS_TAB_ID = "agent-sessions";
+const MERMAID_DEMO_TAB_ID = "mermaid-demo";
+const CONCEPTS_TAB_ID = "concepts";
 
 // ---------------------------------------------------------------------------
 // CLI args / env
@@ -517,13 +519,18 @@ function resolveRepoRoot(trailFilePath: string | null): string {
 
 // Which permanent tab the window opens on. `principal-ai agent-sessions` spawns
 // with TRAIL_VIEWER_START_TAB=agent-sessions so a bare launch lands straight on
-// the Agent Sessions overview.
+// the Agent Sessions overview. Bare launches default to the Concepts tab.
 function resolveStartTab(): string {
 	const raw = process.env["TRAIL_VIEWER_START_TAB"];
-	if (raw === AGENT_SESSIONS_TAB_ID || raw === LIBRARY_TAB_ID) {
+	if (
+		raw === AGENT_SESSIONS_TAB_ID ||
+		raw === LIBRARY_TAB_ID ||
+		raw === MERMAID_DEMO_TAB_ID ||
+		raw === CONCEPTS_TAB_ID
+	) {
 		return raw;
 	}
-	return AGENT_SESSIONS_TAB_ID;
+	return CONCEPTS_TAB_ID;
 }
 
 // Per-tab state. Trail tabs are fully self-contained views of one trail; the
@@ -559,7 +566,24 @@ interface AgentSessionsTabState {
 	title: "Agent Sessions";
 }
 
-type TabState = LibraryTabState | AgentSessionsTabState | TrailTabState;
+interface MermaidDemoTabState {
+	id: typeof MERMAID_DEMO_TAB_ID;
+	kind: "mermaid-demo";
+	title: "Session Concepts";
+}
+
+interface ConceptsTabState {
+	id: typeof CONCEPTS_TAB_ID;
+	kind: "concepts";
+	title: "Concepts";
+}
+
+type TabState =
+	| LibraryTabState
+	| AgentSessionsTabState
+	| MermaidDemoTabState
+	| ConceptsTabState
+	| TrailTabState;
 
 const tabs = new Map<string, TabState>();
 tabs.set(AGENT_SESSIONS_TAB_ID, {
@@ -571,6 +595,16 @@ tabs.set(LIBRARY_TAB_ID, {
 	id: LIBRARY_TAB_ID,
 	kind: "library",
 	title: "Trails",
+});
+tabs.set(MERMAID_DEMO_TAB_ID, {
+	id: MERMAID_DEMO_TAB_ID,
+	kind: "mermaid-demo",
+	title: "Session Concepts",
+});
+tabs.set(CONCEPTS_TAB_ID, {
+	id: CONCEPTS_TAB_ID,
+	kind: "concepts",
+	title: "Concepts",
 });
 let activeTabId: string = resolveStartTab();
 let nextTabId = 1;
@@ -1005,8 +1039,24 @@ function persistShareMutation(
 
 
 
+/**
+ * Permanent, non-trail tabs (library, agent sessions, mermaid demo, concepts).
+ * They carry no trail payload and don't serve files or notes; several RPC
+ * handlers use this to reject calls aimed at trail-only state.
+ */
+function isStaticTab(
+	tab: TabState,
+): tab is LibraryTabState | AgentSessionsTabState | MermaidDemoTabState | ConceptsTabState {
+	return (
+		tab.kind === "library" ||
+		tab.kind === "agent-sessions" ||
+		tab.kind === "mermaid-demo" ||
+		tab.kind === "concepts"
+	);
+}
+
 function summarize(tab: TabState): TabSummary {
-	if (tab.kind === "library" || tab.kind === "agent-sessions") {
+	if (isStaticTab(tab)) {
 		return { id: tab.id, kind: tab.kind, title: tab.title };
 	}
 	return {
@@ -1019,7 +1069,7 @@ function summarize(tab: TabState): TabSummary {
 }
 
 function fullState(tab: TabState): TabFullState {
-	if (tab.kind === "library" || tab.kind === "agent-sessions") {
+	if (isStaticTab(tab)) {
 		return { ok: true, id: tab.id, kind: tab.kind, title: tab.title };
 	}
 	if (!tab.loaded.ok) {
@@ -1090,7 +1140,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			readFile: async ({ tabId, path, repo }) => {
 				const tab = getTab(tabId);
 				if (!tab) return { ok: false, error: `unknown tab: ${tabId}` };
-				if (tab.kind === "library" || tab.kind === "agent-sessions") {
+				if (tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts") {
 					return { ok: false, error: `${tab.kind} tab does not serve files` };
 				}
 				return tab.mode === "remote"
@@ -1101,7 +1151,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				const walkPath = path ?? null;
 				if (!walkPath) {
 					const tab = getTab(tabId);
-					if (!tab || tab.kind === "library" || tab.kind === "agent-sessions") return { files: [] };
+					if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts") return { files: [] };
 					return tab.mode === "remote"
 						? getFileTreeRemote(tab)
 						: { files: await walkFiles(tab.repoRoot) };
@@ -1393,7 +1443,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			createTrailNote: ({ tabId, draft }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1418,7 +1468,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			updateTrailNote: ({ tabId, noteId, body }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1466,7 +1516,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			shareTrail: ({ tabId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1551,7 +1601,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			deleteTrailNote: ({ tabId, noteId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1828,7 +1878,12 @@ const browserWindow = new BrowserWindow({
 browserWindow.maximize();
 
 function closeTabById(id: string): { ok: boolean; error?: string } {
-	if (id === LIBRARY_TAB_ID || id === AGENT_SESSIONS_TAB_ID) {
+	if (
+		id === LIBRARY_TAB_ID ||
+		id === AGENT_SESSIONS_TAB_ID ||
+		id === MERMAID_DEMO_TAB_ID ||
+		id === CONCEPTS_TAB_ID
+	) {
 		return { ok: false, error: "permanent tab cannot be closed" };
 	}
 	if (!tabs.has(id)) return { ok: false, error: `unknown tab: ${id}` };
