@@ -17,7 +17,7 @@ import { IndustryLazyMermaidDiagram } from "themed-markdown";
 import { electrobun } from "../rpc";
 import { AgentLogo } from "./AgentSessionLoader";
 import { ChangeTypeVisual } from "../components/ChangeTypeVisual";
-import { CONCEPT_CARDS } from "../concepts";
+import { CONCEPT_CARDS, CHANGE_TYPE_LABELS } from "../concepts";
 import type { ConceptCard } from "../concepts";
 import type { SessionSummary } from "../../shared/contract";
 
@@ -110,6 +110,7 @@ function FeedCard({
 	onOpen: () => void;
 }) {
 	const [showAllRepos, setShowAllRepos] = useState(false);
+	const [badgeOpen, setBadgeOpen] = useState(false);
 	const visibleRepos = showAllRepos
 		? concept.repos
 		: concept.repos.slice(0, 1);
@@ -143,7 +144,7 @@ function FeedCard({
 				e.currentTarget.style.borderColor = theme.colors.border ?? "#333";
 			}}
 		>
-			{/* Header: repos (left) + sessions (right), then the title */}
+			{/* Header: change type above repos (left) + sessions (right), then the title */}
 			<div
 				style={{
 					display: "flex",
@@ -155,6 +156,18 @@ function FeedCard({
 					background: theme.colors.background,
 				}}
 			>
+				<span
+					style={{
+						fontSize: theme.fontSizes[0],
+						color: theme.colors.primary,
+						fontFamily: theme.fonts.monospace,
+						textTransform: "uppercase",
+						letterSpacing: 1,
+						marginBottom: 8,
+					}}
+				>
+					{CHANGE_TYPE_LABELS[concept.changeType]}
+				</span>
 				<div
 					style={{
 						display: "flex",
@@ -280,16 +293,60 @@ function FeedCard({
 				</span>
 			</div>
 
-			{/* Change-type visual — scaled to fill the card width */}
+			{/* Main visual: the mermaid diagram stays mounted, with the change-type
+			    blueprint overlaid bottom-left. Clicking the badge scales it up to
+			    fill the area over the diagram. A min-height keeps the area from
+			    collapsing for short diagrams. */}
 			<div
 				style={{
+					position: "relative",
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "center",
+					minHeight: 380,
 					padding: "12px 20px",
 				}}
 			>
-				<ChangeTypeVisual changeType={concept.changeType} theme={theme} height={380} />
+				<IndustryLazyMermaidDiagram
+					code={concept.mermaid}
+					id={`concept-${concept.id}-diagram`}
+					theme={theme}
+					maxHeight="calc(100vh - 420px)"
+					showChrome={false}
+				/>
+				<div
+					role="button"
+					tabIndex={0}
+					onClick={(e) => {
+						e.stopPropagation();
+						setBadgeOpen((v) => !v);
+					}}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault();
+							e.stopPropagation();
+							setBadgeOpen((v) => !v);
+						}
+					}}
+					style={{
+						position: "absolute",
+						bottom: 16,
+						left: 20,
+						transformOrigin: "bottom left",
+						transform: badgeOpen ? "scale(1)" : "scale(0.19)",
+						opacity: badgeOpen ? 1 : 0.9,
+						border: `1px solid ${theme.colors.border ?? "#333"}`,
+						overflow: "hidden",
+						background: theme.colors.background,
+						boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
+						lineHeight: 0,
+						cursor: badgeOpen ? "zoom-out" : "zoom-in",
+						transition: "transform 220ms ease-out, opacity 160ms ease-out",
+					}}
+					title={badgeOpen ? "Click to collapse" : "Click to expand the change-type diagram"}
+				>
+					<ChangeTypeVisual changeType={concept.changeType} theme={theme} height={380} />
+				</div>
 			</div>
 		</button>
 	);

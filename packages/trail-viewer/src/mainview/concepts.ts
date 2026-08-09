@@ -47,10 +47,10 @@ export interface ConceptCard {
  *  concept-specific diagram is revealed. Grounds the viewer in the category.
  *  Replaced by the hand-drawn `ChangeTypeVisual` component. */
 export const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
-	execution: "Execution / timing",
-	derive: "Data flow",
-	integration: "Host integration",
-	ui: "UI surface",
+	execution: "Execution",
+	derive: "Data Flow",
+	integration: "Integration",
+	ui: "UI",
 };
 
 const THEMED_MARKDOWN_SESSION = "ses_0283bdb3affenlOnasoXM3ShuG";
