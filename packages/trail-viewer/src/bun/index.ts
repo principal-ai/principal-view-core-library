@@ -46,6 +46,7 @@ import {
 	resolveLocalRepoIdentity,
 	resolveUserIdentity,
 } from "./library";
+import { analyses, newAnalysisId, stubConceptCard } from "./analyses";
 import type {
 	PayloadKind,
 	RepoInfo,
@@ -578,11 +579,19 @@ interface ConceptsTabState {
 	title: "Concepts";
 }
 
+interface AnalysisTabState {
+	id: string;
+	kind: "analysis";
+	title: string;
+	analysisId: string;
+}
+
 type TabState =
 	| LibraryTabState
 	| AgentSessionsTabState
 	| MermaidDemoTabState
 	| ConceptsTabState
+	| AnalysisTabState
 	| TrailTabState;
 
 const tabs = new Map<string, TabState>();
@@ -865,6 +874,33 @@ function addTabFromMessage(msg: LoadTrailMessage): string {
 	return id;
 }
 
+/**
+ * Focus or create the tab that renders a session's concept analysis. Dedupes
+ * by analysisId the way trail tabs dedupe by path — re-analyzing (or reopening
+ * via the panel button) focuses the existing analysis tab instead of stacking
+ * duplicates. Broadcasts so the renderer can switch the active tab.
+ */
+function openAnalysisTab(analysisId: string): string {
+	for (const existing of tabs.values()) {
+		if (existing.kind === "analysis" && existing.analysisId === analysisId) {
+			activeTabId = existing.id;
+			console.log(`[trail-viewer] analysis tab ${existing.id} focused (already open): ${analysisId}`);
+			broadcastTabsChanged();
+			return existing.id;
+		}
+	}
+	const analysis = analyses.get(analysisId);
+	const id = String(nextTabId++);
+	const title = analysis?.sessionTitle
+		? `Analysis — ${analysis.sessionTitle}`
+		: `Analysis — ${analysisId.slice(0, 12)}`;
+	tabs.set(id, { id, kind: "analysis", title, analysisId });
+	activeTabId = id;
+	console.log(`[trail-viewer] analysis tab ${id} added: ${analysisId}`);
+	broadcastTabsChanged();
+	return id;
+}
+
 async function walkFiles(
 	root: string,
 ): Promise<Array<{ path: string; size: number }>> {
@@ -1056,6 +1092,9 @@ function isStaticTab(
 }
 
 function summarize(tab: TabState): TabSummary {
+	if (tab.kind === "analysis") {
+		return { id: tab.id, kind: "analysis", title: tab.title };
+	}
 	if (isStaticTab(tab)) {
 		return { id: tab.id, kind: tab.kind, title: tab.title };
 	}
@@ -1069,6 +1108,16 @@ function summarize(tab: TabState): TabSummary {
 }
 
 function fullState(tab: TabState): TabFullState {
+	if (tab.kind === "analysis") {
+		return {
+			ok: true,
+			id: tab.id,
+			kind: "analysis",
+			title: tab.title,
+			analysisId: tab.analysisId,
+			payload: analyses.get(tab.analysisId) ?? null,
+		};
+	}
 	if (isStaticTab(tab)) {
 		return { ok: true, id: tab.id, kind: tab.kind, title: tab.title };
 	}
@@ -1140,7 +1189,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			readFile: async ({ tabId, path, repo }) => {
 				const tab = getTab(tabId);
 				if (!tab) return { ok: false, error: `unknown tab: ${tabId}` };
-				if (tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts") {
+				if (tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis") {
 					return { ok: false, error: `${tab.kind} tab does not serve files` };
 				}
 				return tab.mode === "remote"
@@ -1151,7 +1200,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				const walkPath = path ?? null;
 				if (!walkPath) {
 					const tab = getTab(tabId);
-					if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts") return { files: [] };
+					if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis") return { files: [] };
 					return tab.mode === "remote"
 						? getFileTreeRemote(tab)
 						: { files: await walkFiles(tab.repoRoot) };
@@ -1443,7 +1492,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			createTrailNote: ({ tabId, draft }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1468,7 +1517,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			updateTrailNote: ({ tabId, noteId, body }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1516,7 +1565,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			shareTrail: ({ tabId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1601,7 +1650,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			deleteTrailNote: ({ tabId, noteId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1803,6 +1852,37 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				} finally {
 					db?.close();
 				}
+			},
+			listAnalyses: async () => {
+				return { analyses: analyses.summaries() };
+			},
+			analyzeSession: async ({ sessionId, title, agent }) => {
+				const existing = analyses.findBySession(sessionId);
+				if (existing) {
+					// Idempotent: an analysis already exists for this session, so we
+					// just open (or focus) its tab and report the same analysis id.
+					const tabId = openAnalysisTab(existing.id);
+					return { ok: true, analysisId: existing.id, tabId };
+				}
+				const id = newAnalysisId();
+				analyses.save({
+					id,
+					sessionId,
+					sessionTitle: title,
+					agent,
+					createdAt: new Date().toISOString(),
+					status: "done",
+					concepts: [
+						stubConceptCard({
+							sessionId,
+							sessionTitle: title,
+							agent,
+						}),
+					],
+				});
+				const tabId = openAnalysisTab(id);
+				console.log(`[trail-viewer] analysis ${id} created for session ${sessionId} (stub)`);
+				return { ok: true, analysisId: id, tabId };
 			},
 			
 		},

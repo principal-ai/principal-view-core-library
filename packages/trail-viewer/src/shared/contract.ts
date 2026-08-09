@@ -54,9 +54,68 @@ export interface SessionEventRow {
 	accumulated: AgentSessionEvent | null;
 }
 
+// ---------------------------------------------------------------------------
+// Concept analyses — the shared shape for "a session analyzed into concept
+// cards". The renderer's curated registry (`src/mainview/concepts.ts`) aliases
+// these types so hand-curated cards and agent-extracted cards are the same
+// shape on the wire and on the feed.
+// ---------------------------------------------------------------------------
+
+export type ConceptChangeType =
+	| "execution" // timing: when X happens relative to Y (reveal, defer, refresh)
+	| "derive" // single source of truth / canonical identity
+	| "integration" // how an embedded component integrates with its host
+	| "ui"; // building a UI surface / view
+
+/** One concept card, either hand-curated or extracted by an agent. */
+export interface ConceptCardData {
+	id: string;
+	title: string;
+	changeType: ConceptChangeType;
+	/** Optional phase — lets us sort/filter as the set grows. */
+	status?: "draft" | "refining" | "stable";
+	/** Sessions that surfaced or refined this concept (grouped here). */
+	sessionIds: string[];
+	/** Repositories the concept's sessions worked in (owner/name pairs). */
+	repos: Array<{ owner: string; name: string }>;
+	/** One-to-two sentence description for the card's left pane. */
+	description: string;
+	/** Short bullet points that state the key idea. */
+	points: string[];
+	/** Mermaid source for the right (diagram) side of the card. */
+	mermaid: string;
+}
+
+export type AnalysisStatus = "pending" | "done" | "error";
+
+/** Full record for one analyzed session, stored host-side on disk. */
+export interface ConceptAnalysis {
+	id: string;
+	sessionId: string;
+	sessionTitle?: string;
+	sessionSlug?: string;
+	agent?: string;
+	createdAt: string;
+	status: AnalysisStatus;
+	/** Present when `status === "error"`. */
+	error?: string;
+	/** Concept cards teased out of the session. Empty until `status === "done"`. */
+	concepts: ConceptCardData[];
+}
+
+/** Row in the analyses index — enough to surface state + count without the cards. */
+export interface AnalysisSummary {
+	id: string;
+	sessionId: string;
+	sessionTitle?: string;
+	status: AnalysisStatus;
+	createdAt: string;
+	conceptCount: number;
+}
+
 export interface TabSummary {
 	id: string;
-	kind: "library" | "trail" | "agent-sessions" | "mermaid-demo" | "concepts";
+	kind: "library" | "trail" | "agent-sessions" | "mermaid-demo" | "concepts" | "analysis";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -66,13 +125,15 @@ export interface TabFullState {
 	ok: boolean;
 	error?: string;
 	id: string;
-	kind: "library" | "trail" | "agent-sessions" | "mermaid-demo" | "concepts";
+	kind: "library" | "trail" | "agent-sessions" | "mermaid-demo" | "concepts" | "analysis";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
 	repoRoot?: string;
 	trailFilePath?: string;
 	sessionId?: string;
+	/** For `analysis` tabs — the analysis id the tab renders. */
+	analysisId?: string;
 	payload?: unknown;
 	/** Repo identity resolved host-side (git origin / explicit remote).
 	 *  `owner === "local"` means no GitHub origin was found; any other owner is a
@@ -179,6 +240,22 @@ export type TrailViewerRequests = {
 			repoRoot?: string;
 			repos?: RepoInfo[];
 			session?: { slug: string; title: string; agent?: string };
+		};
+	};
+	listAnalyses: {
+		params: Record<string, never>;
+		response: { analyses: AnalysisSummary[] };
+	};
+	analyzeSession: {
+		params: { sessionId: string; title?: string; agent?: string };
+		response: {
+			ok: boolean;
+			error?: string;
+			/** The analysis id — an existing analysis for this session when one
+			 *  already exists (the action is idempotent). */
+			analysisId?: string;
+			/** Tab id the analysis opened in, when a tab was created/activated. */
+			tabId?: string;
 		};
 	};
 	openTrailFromCache: {

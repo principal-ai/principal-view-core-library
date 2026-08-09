@@ -18,30 +18,15 @@
  * merge, or split concepts from here.
  */
 
-export type ChangeType =
-	| "execution" // timing: when X happens relative to Y (reveal, defer, refresh)
-	| "derive" // single source of truth / canonical identity
-	| "integration" // how an embedded component integrates with its host
-	| "ui"; // building a UI surface / view
+import type {
+	ConceptCardData,
+	ConceptChangeType,
+} from "../shared/contract";
 
-export interface ConceptCard {
-	id: string;
-	title: string;
-	/** The kind of software change this concept is about. */
-	changeType: ChangeType;
-	/** Optional phase the concept is in. Lets us sort/filter as the set grows. */
-	status?: "draft" | "refining" | "stable";
-	/** Sessions that surfaced or refined this concept (grouped here). */
-	sessionIds: string[];
-	/** Repositories the concept's sessions worked in (owner/name pairs). */
-	repos: Array<{ owner: string; name: string }>;
-	/** One-to-two sentence description for the card's left pane. */
-	description: string;
-	/** Short bullet points that state the key idea. */
-	points: string[];
-	/** Mermaid source for the right (diagram) side of the card. */
-	mermaid: string;
-}
+export type ChangeType = ConceptChangeType;
+
+/** A concept card — hand-curated or agent-extracted, same shape on the wire. */
+export type ConceptCard = ConceptCardData;
 
 /** Generic visual shown for every concept of a change type, before the
  *  concept-specific diagram is revealed. Grounds the viewer in the category.

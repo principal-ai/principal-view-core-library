@@ -28,6 +28,7 @@ import { AgentSessionsOverviewView } from "./views/AgentSessions";
 import { LibraryView } from "./views/LibraryView";
 import { MermaidDemoView } from "./views/MermaidDemoView";
 import { ConceptCardsView } from "./views/ConceptCardsView";
+import { AnalysisView } from "./views/AnalysisView";
 import { TrailViewer } from "./views/TrailViewer";
 import { TourViewer } from "./views/TourViewer";
 
@@ -125,6 +126,14 @@ function ActiveTab({
 					setState({ kind: "concepts" });
 					return;
 				}
+				if (tab.kind === "analysis") {
+					setState({
+						kind: "analysis",
+						id: tab.id,
+						analysisId: tab.analysisId ?? "",
+					});
+					return;
+				}
 				if (!tab.ok || !tab.payload) {
 					setState({
 						kind: "error",
@@ -217,6 +226,9 @@ function ActiveTab({
 				hostRepo={state.repo}
 			/>
 		);
+	}
+	if (state.kind === "analysis") {
+		return <AnalysisView tabId={state.id} analysisId={state.analysisId} />;
 	}
 	// Static tab resolved — the rendered view is registered with App's
 	// keep-mounted stack and rendered there, not here.

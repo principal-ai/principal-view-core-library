@@ -15,6 +15,7 @@ export type TabState =
 	| { kind: "agent-sessions" }
 	| { kind: "mermaid-demo" }
 	| { kind: "concepts" }
+	| { kind: "analysis"; id: string; analysisId: string }
 	| { kind: "error"; message: string }
 	| {
 			kind: "ready";

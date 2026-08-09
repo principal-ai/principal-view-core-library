@@ -98,7 +98,7 @@ export function ConceptCardsView() {
 	);
 }
 
-function FeedCard({
+export function FeedCard({
 	concept,
 	sessions,
 	theme,
@@ -352,7 +352,7 @@ function FeedCard({
 	);
 }
 
-function DiagramModal({
+export function DiagramModal({
 	concept,
 	theme,
 	onClose,

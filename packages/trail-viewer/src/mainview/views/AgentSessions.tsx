@@ -233,6 +233,29 @@ export function AgentSessionsOverviewView() {
 	const [hostHasMore, setHostHasMore] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [loaded, setLoaded] = useState(false);
+	// Session ids that already have a concept analysis — drives the panel row's
+	// Analyze button state (accent + "Open concept analysis" vs "Analyze…").
+	const [analyzedSessionIds, setAnalyzedSessionIds] = useState<Set<string>>(
+		new Set(),
+	);
+
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			try {
+				const res = await electrobun.rpc!.request.listAnalyses({});
+				if (cancelled) return;
+				setAnalyzedSessionIds(
+					new Set(res.analyses.map((a) => a.sessionId)),
+				);
+			} catch {
+				// Enrichment only — rows still show the analyze affordance.
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
 	// The day-paging loop reads loaded-session state without re-triggering on
 	// every session commit (which would restart the day mid-way).
@@ -566,9 +589,14 @@ export function AgentSessionsOverviewView() {
 	// summary placeholder that upgrades in place as days finish processing.
 	const sessions = useMemo<AgentSessionView[]>(() => {
 		return dayGroups.flatMap((d) =>
-			d.sessions.map((s) => sessionsById.get(s.id) ?? placeholderAgentSession(s)),
+			d.sessions.map((s) => {
+				const session = sessionsById.get(s.id) ?? placeholderAgentSession(s);
+				return analyzedSessionIds.has(s.id)
+					? { ...session, hasAnalysis: true }
+					: session;
+			}),
 		);
-	}, [dayGroups, sessionsById]);
+	}, [dayGroups, sessionsById, analyzedSessionIds]);
 
 	// Full event timeline across every processed session — the panel filters it
 	// per selected session and drives the multi-agent overlay from it.
@@ -696,6 +724,17 @@ export function AgentSessionsOverviewView() {
 					events: slice.events ?? [],
 					title: slice.sessions[0]?.task ?? sessionId,
 				};
+			},
+			analyzeSession: async (session) => {
+				await electrobun.rpc!.request.analyzeSession({
+					sessionId: session.id,
+					title: session.task,
+					agent: session.agent,
+				});
+				// The host opens (or focuses) the analysis tab and broadcasts
+				// tabsChanged; mark the row analyzed here so switching back
+				// shows the already-analyzed state without a re-fetch.
+				setAnalyzedSessionIds((prev) => new Set(prev).add(session.id));
 			},
 		}),
 		[summaries, eventsById],
