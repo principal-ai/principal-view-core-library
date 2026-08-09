@@ -10,7 +10,7 @@
         "@opentelemetry/resources": "2.2.0",
         "@opentelemetry/sdk-trace-base": "2.2.0",
         "@opentelemetry/semantic-conventions": "1.38.0",
-        "@principal-ai/agent-monitoring": "^0.3.31",
+        "@principal-ai/agent-monitoring": "^0.3.33",
         "@principal-ai/repository-abstraction": "^0.5.7",
         "better-sqlite3": "^13.0.0",
         "date-fns": "3.0.0",
@@ -190,7 +190,7 @@
 
     "@pkgr/core": ["@pkgr/core@0.2.9", "", {}, "sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA=="],
 
-    "@principal-ai/agent-monitoring": ["@principal-ai/agent-monitoring@0.3.31", "", { "dependencies": { "dotenv": "^17.2.2", "drizzle-orm": "^0.44.5", "pg": "^8.16.3" } }, "sha512-pxvFxBBXOngs10pRMZgaDMlsoK4sh5za/2Yrp7tsgX8l8BaAXMTlRUfgNxmOKiLorsCOMBNUgAtmTtPSiD+nXA=="],
+    "@principal-ai/agent-monitoring": ["@principal-ai/agent-monitoring@0.3.33", "", { "dependencies": { "dotenv": "^17.2.2", "drizzle-orm": "^0.44.5", "pg": "^8.16.3" } }, "sha512-DJXav4jJc/VRP+MiIU8WRDOvRCbMmyxGMbCkpfRN21an8aG2k5TYqENHDWEFxDPD+B1fZLafnuPUEY4PVs0KSA=="],
 
     "@principal-ai/codebase-composition": ["@principal-ai/codebase-composition@0.2.43", "", { "dependencies": { "@principal-ai/codebase-quality-lenses": "^0.1.62", "@principal-ai/quality-lens-registry": "^0.3.0", "@principal-ai/repository-abstraction": "^0.2.2", "ignore": "^5.3.0", "typescript": "^5.0.4" }, "optionalDependencies": { "pip-requirements-js": "^0.2.1", "smol-toml": "^1.6.0" } }, "sha512-JpKMuNxRxL/xNSeGpbdvgoalMwkukNhwHTY0VkY72SOKcCu4TEPUB93dyCy7Z1UN2IFAxjxc+Qya+rXw1WkKNQ=="],
 

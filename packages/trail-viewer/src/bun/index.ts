@@ -72,6 +72,7 @@ import {
 	cleanClinePrompt,
 	PiSessionReader,
 	GrokSessionReader,
+	CodexSessionReader,
 } from "@principal-ai/agent-monitoring";
 import type { AgentSessionEvent, UniversalAgentSessionEvent, RepositoryInfo } from "@principal-ai/agent-monitoring";
 import { BunNormalizationAdapter } from "./normalizationAdapter";
@@ -116,6 +117,13 @@ const grokReader = new GrokSessionReader();
 
 function isGrokSession(sessionId: string): boolean {
 	return grokReader.readSession(sessionId) !== null;
+}
+
+// Codex stores durable rollout JSONL under ~/.codex/sessions.
+const codexReader = new CodexSessionReader();
+
+function isCodexSession(sessionId: string): boolean {
+	return codexReader.readSession(sessionId) !== null;
 }
 
 // Shared Cline pipeline: reader → normalizePathsBatch → eventOp loop.
@@ -445,6 +453,109 @@ async function runGrokPipeline(sessionId: string): Promise<ClinePipelineResult |
 			return { root: r.root, fileCount: r.fileCount, owner: known?.owner ?? null, name: parts[parts.length - 1] ?? null, editing: false };
 		});
 	const repoRoot = repos.length > 0 ? repos[0].root : (record.cwd || undefined);
+
+	return { rawEvents, normalizedEvents, accState, events, repos, repoRoot, sessionTitle, sessionSlug };
+}
+
+// Codex uses the same durable-reader → normalize → accumulate path as Grok.
+async function runCodexPipeline(sessionId: string): Promise<ClinePipelineResult | null> {
+	const record = codexReader.readSession(sessionId);
+	if (!record) return null;
+
+	const promptText = record.firstPrompt.trim();
+	const sessionTitle = promptText
+		? promptText.length > 80
+			? `${promptText.slice(0, 80)}…`
+			: promptText
+		: "Codex session";
+	const sessionSlug = "";
+	const rawEvents = codexReader.toUniversalEvents(sessionId);
+	if (rawEvents.length === 0) return null;
+
+	const alexandriaRepos = loadAlexandriaRepos();
+	const knownRoots = new Map<string, RepositoryInfo>();
+	for (const [path, repo] of alexandriaRepos) {
+		knownRoots.set(path, {
+			root: repo.root,
+			remoteUrl: repo.remoteUrl,
+			owner: repo.owner,
+			repo: repo.repo,
+		});
+	}
+	const adapter = new BunNormalizationAdapter(knownRoots);
+	const normalizationService = new PathNormalizationService(adapter);
+	const normalizedEvents = await normalizationService.normalizePathsBatch(
+		rawEvents,
+		record.cwd || "",
+	);
+
+	for (const discovered of adapter.newlyDiscovered) {
+		registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
+	}
+
+	const accState = createAccumulatedState(sessionTitle);
+	const events: SessionEventRow[] = [];
+	const repoSet = new Map<string, { root: string; fileCount: number }>();
+	for (let i = 0; i < normalizedEvents.length; i++) {
+		const normalizedEvent = normalizedEvents[i];
+		const accResult = eventOp(accState, normalizedEvent);
+		events.push({
+			seq: i,
+			type: normalizedEvent.eventType,
+			raw: INCLUDE_RAW_EVENT_PAYLOADS ? normalizedEvent.raw : undefined,
+			normalized: INCLUDE_RAW_EVENT_PAYLOADS
+				? (normalizedEvent as unknown as Record<string, unknown>)
+				: { timestamp: normalizedEvent.timestamp },
+			accumulated: accResult,
+		});
+		for (const file of normalizedEvent.files ?? []) {
+			const root = file.repository?.gitRoot;
+			if (!root) continue;
+			const entry = repoSet.get(root) ?? { root, fileCount: 0 };
+			entry.fileCount++;
+			repoSet.set(root, entry);
+		}
+	}
+
+	const lastEvent = events[events.length - 1];
+	if (lastEvent) {
+		const lastTimestamp =
+			((lastEvent.normalized as Record<string, unknown>)["timestamp"] as number | undefined) ?? 0;
+		events.push({
+			seq: lastEvent.seq + 1,
+			type: "finished",
+			raw: null,
+			normalized: { timestamp: lastTimestamp },
+			accumulated: {
+				id: "",
+				timestamp: lastTimestamp,
+				sessionId,
+				sessionName: accState.sessionName,
+				sessionColor: accState.sessionColor,
+				operation: "finished",
+				files: [],
+				dependencies: [],
+				description: `${accState.sessionName} finished`,
+				layers: [],
+				contextTokens: accState.contextTokens,
+			},
+		});
+	}
+
+	const repos = Array.from(repoSet.values())
+		.sort((a, b) => b.fileCount - a.fileCount)
+		.map((repo) => {
+			const parts = repo.root.replace(/\/+$/, "").split("/");
+			const known = knownRoots.get(repo.root);
+			return {
+				root: repo.root,
+				fileCount: repo.fileCount,
+				owner: known?.owner ?? null,
+				name: parts[parts.length - 1] ?? null,
+				editing: false,
+			};
+		});
+	const repoRoot = repos.length > 0 ? repos[0].root : record.cwd || undefined;
 
 	return { rawEvents, normalizedEvents, accState, events, repos, repoRoot, sessionTitle, sessionSlug };
 }
@@ -1431,6 +1542,28 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 							agent: "grok",
 						});
 					}
+					// Append Codex durable rollout sessions (under ~/.codex/sessions).
+					for (const codexSession of codexReader.listSessions()) {
+						const createdAtStr =
+							typeof codexSession.meta.timestamp === "string"
+								? codexSession.meta.timestamp
+								: new Date(codexSession.lastActivity).toISOString();
+						standalone.push({
+							id: codexSession.sessionId,
+							title: codexSession.firstPrompt || "Codex session",
+							slug: "",
+							createdAt: createdAtStr,
+							lastEventAt: new Date(codexSession.lastActivity).toISOString(),
+							durationMs: 0,
+							eventCount: codexSession.messageCount,
+							isFinished: false,
+							models:
+								typeof codexSession.meta.model_provider === "string"
+									? [codexSession.meta.model_provider]
+									: undefined,
+							agent: "codex",
+						});
+					}
 					return { groups, standalone, hasMore: hasOlder };
 				} catch (err) {
 					console.warn(`[trail-viewer] listSessions failed: ${(err as Error).message}`);
@@ -1480,6 +1613,21 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 								eventCount: grokSession.messageCount,
 								isFinished: false,
 								agent: "grok",
+							});
+						}
+						for (const codexSession of codexReader.listSessions()) {
+							standalone.push({
+								id: codexSession.sessionId,
+								title: codexSession.firstPrompt || "Codex session",
+								slug: "",
+								createdAt:
+									typeof codexSession.meta.timestamp === "string"
+										? codexSession.meta.timestamp
+										: "",
+								durationMs: 0,
+								eventCount: codexSession.messageCount,
+								isFinished: false,
+								agent: "codex",
 							});
 						}
 					} catch {
@@ -1726,6 +1874,26 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 								slug: result.sessionSlug,
 								title: result.sessionTitle,
 								agent: "grok",
+							},
+						};
+					} catch (err) {
+						return { ok: false, error: (err as Error).message };
+					}
+				}
+				// Codex sessions are durable rollouts, never opencode SQLite rows.
+				if (isCodexSession(sessionId)) {
+					try {
+						const result = await runCodexPipeline(sessionId);
+						if (!result) return { ok: false, error: "Codex session not found or empty" };
+						return {
+							ok: true,
+							events: result.events,
+							repoRoot: result.repoRoot,
+							repos: result.repos,
+							session: {
+								slug: result.sessionSlug,
+								title: result.sessionTitle,
+								agent: "codex",
 							},
 						};
 					} catch (err) {

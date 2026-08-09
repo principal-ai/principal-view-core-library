@@ -1,5 +1,6 @@
 import {
   ClineSessionReader,
+  CodexSessionReader,
   GrokSessionReader,
   PiSessionReader,
   type UniversalAgentSessionEvent,
@@ -24,7 +25,7 @@ export {
 
 /**
  * Shared, agent-agnostic session access: list + fetch across Cline, opencode,
- * pi, and Grok, normalizing raw events into repo-aware universal events.
+ * pi, Grok, and Codex, normalizing raw events into repo-aware universal events.
  *
  * This is the single source of truth for CLI and trail-viewer session pulling.
  * opencode listing delegates to `OpenCodeEventStore.listSessionsWithSummaries()`,
@@ -32,7 +33,13 @@ export {
  * from the standalone list.
  */
 
-export type SupportedSessionAgent = "cline" | "opencode" | "pi" | "grok" | "unknown";
+export type SupportedSessionAgent =
+  | "cline"
+  | "codex"
+  | "opencode"
+  | "pi"
+  | "grok"
+  | "unknown";
 
 export interface AgentSessionSummary {
   agent: SupportedSessionAgent;
@@ -54,6 +61,7 @@ export interface AgentSessionMeta {
 const clineReader = new ClineSessionReader();
 const piReader = new PiSessionReader();
 const grokReader = new GrokSessionReader();
+const codexReader = new CodexSessionReader();
 
 function isClineSession(sessionId: string): boolean {
   return clineReader.readSession(sessionId) !== null;
@@ -65,6 +73,10 @@ function isPiSession(sessionId: string): boolean {
 
 function isGrokSession(sessionId: string): boolean {
   return grokReader.readSession(sessionId) !== null;
+}
+
+function isCodexSession(sessionId: string): boolean {
+  return codexReader.readSession(sessionId) !== null;
 }
 
 /** List Cline CLI sessions from the durable on-disk transcript. */
@@ -125,6 +137,21 @@ function listGrokSessions(): AgentSessionSummary[] {
       parentID: record.parentSessionId,
     };
   });
+}
+
+/** List Codex sessions from durable rollout JSONL. */
+function listCodexSessions(): AgentSessionSummary[] {
+  return codexReader.listSessions().map((record) => ({
+    agent: "codex" as const,
+    sessionId: record.sessionId,
+    title: record.firstPrompt || "Codex session",
+    createdAt:
+      typeof record.meta.timestamp === "string"
+        ? record.meta.timestamp
+        : new Date(record.lastActivity).toISOString(),
+    eventCount: record.messageCount,
+    isFinished: false,
+  }));
 }
 
 /**
@@ -188,6 +215,11 @@ export function listAgentSessions(
   } catch (err) {
     if (!firstError) firstError = err as Error;
   }
+  try {
+    all.push(...listCodexSessions());
+  } catch (err) {
+    if (!firstError) firstError = err as Error;
+  }
   if (all.length === 0 && firstError) {
     throw firstError;
   }
@@ -197,10 +229,11 @@ export function listAgentSessions(
 /** Detect which agent a session id belongs to. */
 export function detectAgent(
   sessionId: string,
-): "cline" | "opencode" | "pi" | "grok" {
+): "cline" | "opencode" | "pi" | "grok" | "codex" {
   if (isClineSession(sessionId)) return "cline";
   if (isPiSession(sessionId)) return "pi";
   if (isGrokSession(sessionId)) return "grok";
+  if (isCodexSession(sessionId)) return "codex";
   return "opencode";
 }
 
@@ -210,11 +243,11 @@ export function detectAgent(
 export function fetchRawEvents(
   sessionId: string,
   options: {
-    agent?: "cline" | "opencode" | "pi" | "grok";
+    agent?: "cline" | "codex" | "opencode" | "pi" | "grok";
     dbPath?: string;
   } = {},
 ): {
-  agent: "cline" | "opencode" | "pi" | "grok";
+  agent: "cline" | "codex" | "opencode" | "pi" | "grok";
   events: UniversalAgentSessionEvent[];
   sessionMeta: AgentSessionMeta;
 } {
@@ -258,6 +291,25 @@ export function fetchRawEvents(
         sessionTask: record?.title || "Grok session",
         workingDirectory: record?.cwd ?? "",
         createdAt: record?.createdAt,
+      },
+    };
+  }
+  if (agent === "codex") {
+    const record = codexReader.readSession(sessionId);
+    const promptText = (record?.firstPrompt ?? "").trim();
+    return {
+      agent,
+      events: codexReader.toUniversalEvents(sessionId),
+      sessionMeta: {
+        sessionName: "codex",
+        sessionTask:
+          (promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText) ||
+          "Codex session",
+        workingDirectory: record?.cwd ?? "",
+        createdAt:
+          typeof record?.meta.timestamp === "string"
+            ? record.meta.timestamp
+            : undefined,
       },
     };
   }

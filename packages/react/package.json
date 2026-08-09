@@ -37,8 +37,9 @@
     "react-dom": "^18.0.0 || ^19.0.0"
   },
   "devDependencies": {
-    "@principal-ai/principal-view-core": "0.27.1",
     "@principal-ade/industry-theme": "0.1.7",
+    "@principal-ai/agent-monitoring": "^0.3.33",
+    "@principal-ai/principal-view-core": "0.27.1",
     "@storybook/addon-docs": "10.1.2",
     "@storybook/addon-links": "10.1.2",
     "@storybook/addon-onboarding": "10.1.2",

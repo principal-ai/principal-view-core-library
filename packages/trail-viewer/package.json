@@ -48,11 +48,11 @@
 		"mermaid": "^11.9.0",
 		"react": "19.0.0",
 		"react-dom": "19.0.0",
-		"themed-markdown": "^0.1.123",
+		"themed-markdown": "^0.1.124",
 		"typescript": "^6.0.3"
 	},
 	"dependencies": {
-		"@principal-ai/agent-monitoring": "^0.3.31",
+		"@principal-ai/agent-monitoring": "^0.3.33",
 		"better-sqlite3": "^13.0.2"
 	}
 }

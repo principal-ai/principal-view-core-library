@@ -48,7 +48,7 @@
     "@opentelemetry/resources": "2.2.0",
     "@opentelemetry/sdk-trace-base": "2.2.0",
     "@opentelemetry/semantic-conventions": "1.38.0",
-    "@principal-ai/agent-monitoring": "^0.3.31",
+    "@principal-ai/agent-monitoring": "^0.3.33",
     "@principal-ai/repository-abstraction": "^0.5.7",
     "better-sqlite3": "^13.0.0",
     "date-fns": "3.0.0",

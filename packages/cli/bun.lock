@@ -4,7 +4,7 @@
     "": {
       "name": "@principal-ai/principal-view-cli",
       "dependencies": {
-        "@principal-ai/agent-monitoring": "^0.3.31",
+        "@principal-ai/agent-monitoring": "^0.3.33",
         "@principal-ai/alexandria-core-library": "^0.4.0",
         "@principal-ai/codebase-composition": "^0.2.57",
         "@principal-ai/file-city-builder": "^0.5.0",
@@ -245,7 +245,7 @@
 
     "@pkgr/core": ["@pkgr/core@0.3.6", "", {}, "sha512-SEeaJLb3qBNF/OaXnaR1NmmBbFYk1zC0ZH/52fATcRPLFg/p791YrcyFFy44Bo9sLaGuSuLp5Q6axbb/O+v/RA=="],
 
-    "@principal-ai/agent-monitoring": ["@principal-ai/agent-monitoring@0.3.31", "", { "dependencies": { "dotenv": "^17.2.2", "drizzle-orm": "^0.44.5", "pg": "^8.16.3" } }, "sha512-pxvFxBBXOngs10pRMZgaDMlsoK4sh5za/2Yrp7tsgX8l8BaAXMTlRUfgNxmOKiLorsCOMBNUgAtmTtPSiD+nXA=="],
+    "@principal-ai/agent-monitoring": ["@principal-ai/agent-monitoring@0.3.33", "", { "dependencies": { "dotenv": "^17.2.2", "drizzle-orm": "^0.44.5", "pg": "^8.16.3" } }, "sha512-DJXav4jJc/VRP+MiIU8WRDOvRCbMmyxGMbCkpfRN21an8aG2k5TYqENHDWEFxDPD+B1fZLafnuPUEY4PVs0KSA=="],
 
     "@principal-ai/alexandria-core-library": ["@principal-ai/alexandria-core-library@0.4.0", "", { "dependencies": { "@principal-ai/repository-abstraction": "^0.2.5" }, "peerDependencies": { "globby": "^16.0.0" }, "optionalPeers": ["globby"] }, "sha512-NHq951sp81mMj0NkbxsF7mEOPFpYjIrrIkPXer1OjfjuaZ+Otzuf356OAPPfAZ03k2Rll9Ucj2d/8lbsQMXNjw=="],
 

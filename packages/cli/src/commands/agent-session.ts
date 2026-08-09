@@ -13,13 +13,13 @@ import {
 export function createAgentSessionCommand(): Command {
   const command = new Command('agent-session')
     .description(
-      'Read agent sessions and normalize them into universal events (Cline + opencode + pi + grok)',
+      'Read agent sessions and normalize them into universal events (Cline + Codex + opencode + pi + grok)',
     );
 
   command
     .command('list')
     .description(
-      'List top-level sessions from all supported agents (Cline + opencode + pi + grok)',
+      'List top-level sessions from all supported agents (Cline + Codex + opencode + pi + grok)',
     )
     .option('--db-path <path>', 'Path to opencode.db (defaults to XDG data dir)')
     .action((options: { dbPath?: string }) => {
@@ -31,7 +31,7 @@ export function createAgentSessionCommand(): Command {
     .command('fetch <session-id>')
     .description('Fetch a session and print its normalized universal events as JSON')
     .option(
-      '--agent <cline|opencode|pi|grok>',
+      '--agent <cline|codex|opencode|pi|grok>',
       'Force agent detection (defaults to auto-detect)',
     )
     .option('--db-path <path>', 'Path to opencode.db (defaults to XDG data dir)')
@@ -40,7 +40,7 @@ export function createAgentSessionCommand(): Command {
       async (
         sessionId: string,
         options: {
-          agent?: 'cline' | 'opencode' | 'pi' | 'grok';
+          agent?: 'cline' | 'codex' | 'opencode' | 'pi' | 'grok';
           dbPath?: string;
           raw?: boolean;
         },
@@ -65,10 +65,10 @@ export function createAgentSessionCommand(): Command {
   command
     .command('fixture <session-id>')
     .description(
-      'Generate a frozen File City agent-session fixture JSON (Cline + opencode + pi + grok)',
+      'Generate a frozen File City agent-session fixture JSON (Cline + Codex + opencode + pi + grok)',
     )
     .option(
-      '--agent <cline|opencode|pi|grok>',
+      '--agent <cline|codex|opencode|pi|grok>',
       'Force agent detection (defaults to auto-detect)',
     )
     .option('--db-path <path>', 'Path to opencode.db (defaults to XDG data dir)')
@@ -77,7 +77,7 @@ export function createAgentSessionCommand(): Command {
       async (
         sessionId: string,
         options: {
-          agent?: 'cline' | 'opencode' | 'pi' | 'grok';
+          agent?: 'cline' | 'codex' | 'opencode' | 'pi' | 'grok';
           dbPath?: string;
           out?: string;
         },
@@ -106,4 +106,3 @@ export function createAgentSessionCommand(): Command {
 
   return command;
 }
-
