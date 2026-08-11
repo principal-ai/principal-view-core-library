@@ -8,9 +8,9 @@
  * the `ConceptAnalysis` record).
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTheme } from "@principal-ade/industry-theme";
-import { electrobun } from "../rpc";
+import { electrobun, reloadSubscribers } from "../rpc";
 import { CenteredMessage } from "../ui";
 import { FeedCard, DiagramModal } from "./ConceptCardsView";
 import type { ConceptAnalysis, SessionSummary } from "../../shared/contract";
@@ -30,27 +30,51 @@ export function AnalysisView({
 		new Map(),
 	);
 	const [openId, setOpenId] = useState<string | null>(null);
+	const [retrying, setRetrying] = useState(false);
+
+	const loadAnalysis = useCallback(() => {
+		void electrobun.rpc!.request
+			.getTab({ id: tabId })
+			.then((tab) => {
+				setAnalysis(
+					tab.ok && tab.payload ? (tab.payload as ConceptAnalysis) : null,
+				);
+			})
+			.catch(() => setAnalysis(null));
+	}, [tabId]);
 
 	useEffect(() => {
-		let cancelled = false;
-		(async () => {
-			try {
-				const tab = await electrobun.rpc!.request.getTab({ id: tabId });
-				if (cancelled) return;
-				setAnalysis(
-					tab.ok && tab.payload
-						? (tab.payload as ConceptAnalysis)
-						: null,
-				);
-			} catch {
-				if (cancelled) return;
-				setAnalysis(null);
-			}
-		})();
+		loadAnalysis();
+		// Re-fetch when the host broadcasts tabsChanged — the analysis transitions
+		// pending → done/error in the background while this tab stays open.
+		reloadSubscribers.add(loadAnalysis);
 		return () => {
-			cancelled = true;
+			reloadSubscribers.delete(loadAnalysis);
 		};
-	}, [tabId]);
+	}, [loadAnalysis]);
+
+	// Redo a failed extraction in place: the host resets the record to `pending`
+	// and restarts the opencode run under the same analysis id, then broadcasts
+	// tabsChanged — the reloadSubscribers hook below re-fetches and shows the
+	// pending state while it runs.
+	const retry = useCallback(async () => {
+		if (!analysis || analysis.status !== "error" || retrying) return;
+		setRetrying(true);
+		try {
+			const res = await electrobun.rpc!.request.analyzeSession({
+				sessionId: analysis.sessionId,
+				title: analysis.sessionTitle,
+				agent: analysis.agent,
+				force: true,
+			});
+			if (res.ok) loadAnalysis();
+		} catch {
+			// The tabsChanged broadcast may already have reset the view; a failed
+			// RPC leaves the error state up so the button stays clickable.
+		} finally {
+			setRetrying(false);
+		}
+	}, [analysis, retrying, loadAnalysis]);
 
 	// Enrich session ids on cards with names — enrichment only; cards render
 	// bare ids when it's unavailable.
@@ -94,7 +118,27 @@ export function AnalysisView({
 			<CenteredMessage
 				title="Analysis failed"
 				detail={analysis.error ?? "Unknown error"}
-			/>
+			>
+				<button
+					type="button"
+					disabled={retrying}
+					onClick={retry}
+					style={{
+						marginTop: 16,
+						padding: "8px 18px",
+						border: `1px solid ${theme.colors.border}`,
+						borderRadius: 4,
+						background: theme.colors.backgroundSecondary,
+						color: theme.colors.text,
+						fontFamily: theme.fonts.body,
+						fontSize: theme.fontSizes[1],
+						cursor: retrying ? "default" : "pointer",
+						opacity: retrying ? 0.6 : 1,
+					}}
+				>
+					{retrying ? "Restarting extraction…" : "Retry analysis"}
+				</button>
+			</CenteredMessage>
 		);
 	}
 
@@ -147,7 +191,8 @@ export function AnalysisView({
 							fontFamily: theme.fonts.monospace,
 						}}
 					>
-						{analysis.agent ?? "opencode"} · {formatDate(analysis.createdAt)} ·{" "}
+						{analysis.agent ?? "opencode"} · {formatDate(analysis.createdAt)}
+						{analysis.model ? ` · ${analysis.model}` : ""} ·{" "}
 						{analysis.concepts.length} concept
 						{analysis.concepts.length === 1 ? "" : "s"}
 					</span>
@@ -180,7 +225,38 @@ export function AnalysisView({
 					padding: "20px 24px 40px",
 				}}
 			>
-				{analysis.concepts.length === 0 ? (
+				{analysis.status === "pending" ? (
+					<div
+						style={{
+							display: "flex",
+							flexDirection: "column",
+							alignItems: "center",
+							gap: 10,
+							color: theme.colors.textMuted,
+							fontSize: theme.fontSizes[2],
+							paddingTop: 40,
+						}}
+					>
+						<span>Extracting concept cards…</span>
+						<span
+							style={{
+								fontSize: theme.fontSizes[0],
+								fontFamily: theme.fonts.monospace,
+								color: theme.colors.textSecondary,
+							}}
+						>
+							opencode run → concept-extractor · opencode-go/deepseek-v4-flash
+						</span>
+						<span
+							style={{
+								fontSize: theme.fontSizes[0],
+								color: theme.colors.textSecondary,
+							}}
+						>
+							This can take a minute — the tab refreshes when it finishes.
+						</span>
+					</div>
+				) : analysis.concepts.length === 0 ? (
 					<div
 						style={{
 							color: theme.colors.textMuted,

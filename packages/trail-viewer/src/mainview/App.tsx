@@ -29,6 +29,8 @@ import { LibraryView } from "./views/LibraryView";
 import { MermaidDemoView } from "./views/MermaidDemoView";
 import { ConceptCardsView } from "./views/ConceptCardsView";
 import { AnalysisView } from "./views/AnalysisView";
+import { SessionEventsView } from "./views/SessionEventsView";
+import { PromptView } from "./views/PromptView";
 import { TrailViewer } from "./views/TrailViewer";
 import { TourViewer } from "./views/TourViewer";
 
@@ -80,6 +82,18 @@ class ErrorBoundary extends Component<
 // city, so only the active trail is mounted at a time.
 const STATIC_TAB_IDS = new Set(["library", "agent-sessions", "mermaid-demo", "concepts"]);
 
+// Permanent tabs carry no host payload — their resolved state is known from the
+// tab id alone, so they mount without a getTab round-trip. The static views
+// fetch their own data; gating their mount on the host left a blank pane for as
+// long as getTab sat behind a busy host.
+function staticTabState(tabId: string): TabState | null {
+	if (tabId === "library") return { kind: "library" };
+	if (tabId === "agent-sessions") return { kind: "agent-sessions" };
+	if (tabId === "mermaid-demo") return { kind: "mermaid-demo" };
+	if (tabId === "concepts") return { kind: "concepts" };
+	return null;
+}
+
 // Rendered view for a resolved static tab, or null for transient states. The
 // returned node is registered with App's keep-mounted stack on first resolve.
 function renderStaticView(state: TabState): ReactNode | null {
@@ -99,39 +113,39 @@ function ActiveTab({
 	isStaticMounted: boolean;
 	onRegister: (id: string, node: ReactNode) => void;
 }) {
-	const [state, setState] = useState<TabState>({ kind: "loading" });
+	const [state, setState] = useState<TabState>(
+		() => staticTabState(tabId) ?? { kind: "loading" },
+	);
 
 	useEffect(() => {
 		// View already keep-mounted — it's live in the stack; nothing to load.
 		if (isStaticMounted) return;
+		// Static tabs are already resolved (state seeded above) — no getTab.
+		if (staticTabState(tabId)) return;
 		let cancelled = false;
 		setState({ kind: "loading" });
 		(async () => {
 			try {
 				const tab = await electrobun.rpc!.request.getTab({ id: tabId });
 				if (cancelled) return;
-				if (tab.kind === "library") {
-					setState({ kind: "library" });
-					return;
-				}
-				if (tab.kind === "agent-sessions") {
-					setState({ kind: "agent-sessions" });
-					return;
-				}
-				if (tab.kind === "mermaid-demo") {
-					setState({ kind: "mermaid-demo" });
-					return;
-				}
-				if (tab.kind === "concepts") {
-					setState({ kind: "concepts" });
-					return;
-				}
 				if (tab.kind === "analysis") {
 					setState({
 						kind: "analysis",
 						id: tab.id,
 						analysisId: tab.analysisId ?? "",
 					});
+					return;
+				}
+				if (tab.kind === "session-events") {
+					setState({
+						kind: "session-events",
+						id: tab.id,
+						sessionId: tab.sessionId ?? "",
+					});
+					return;
+				}
+				if (tab.kind === "prompt") {
+					setState({ kind: "prompt", id: tab.id });
 					return;
 				}
 				if (!tab.ok || !tab.payload) {
@@ -230,6 +244,12 @@ function ActiveTab({
 	if (state.kind === "analysis") {
 		return <AnalysisView tabId={state.id} analysisId={state.analysisId} />;
 	}
+	if (state.kind === "session-events") {
+		return <SessionEventsView sessionId={state.sessionId} />;
+	}
+	if (state.kind === "prompt") {
+		return <PromptView tabId={state.id} />;
+	}
 	// Static tab resolved — the rendered view is registered with App's
 	// keep-mounted stack and rendered there, not here.
 	return null;
@@ -238,7 +258,16 @@ function ActiveTab({
 export function App() {
 	const { theme } = useTheme();
 	const [tabs, setTabs] = useState<TabSummary[]>([]);
+	// The renderer owns the on-screen tab: clicks apply locally and instantly.
+	// The host only ever *suggests* a tab (boot/resume via listTabs, or a
+	// focusTabId on tabsChanged when it opens a tab / is externally activated).
 	const [activeTabId, setActiveTabId] = useState<string>("concepts");
+	// Read the current active tab without re-registering the refresh callback.
+	const activeTabIdRef = useRef(activeTabId);
+	activeTabIdRef.current = activeTabId;
+	// Once the user clicks a tab, the host's boot/resume suggestion must not
+	// override their own selection on a later listTabs.
+	const userChoseRef = useRef(false);
 
 	// Keep-mounted views for permanent tabs (library, agent sessions, mermaid
 	// demo, concepts). Each view registers once on first visit and stays in the
@@ -254,11 +283,29 @@ export function App() {
 	}, []);
 
 	useEffect(() => {
-		const refresh = async () => {
+		const refresh = async (focusTabId?: string) => {
 			try {
 				const result = await electrobun.rpc!.request.listTabs({});
 				setTabs(result.tabs);
-				setActiveTabId(result.activeTabId);
+				const current = activeTabIdRef.current;
+				const focusValid =
+					focusTabId !== undefined &&
+					result.tabs.some((t) => t.id === focusTabId);
+				const currentValid = result.tabs.some((t) => t.id === current);
+				const suggestionValid =
+					!userChoseRef.current &&
+					result.tabs.some((t) => t.id === result.suggestedActiveTabId);
+				let next: string;
+				if (focusValid) next = focusTabId!;
+				else if (currentValid) next = current;
+				else if (suggestionValid) next = result.suggestedActiveTabId;
+				else next = result.tabs[result.tabs.length - 1]?.id ?? "library";
+				if (next !== current) {
+					setActiveTabId(next);
+					// Fire-and-forget: the renderer already switched; this just
+					// keeps the host's resume suggestion in sync.
+					void electrobun.rpc!.request.setActiveTab({ id: next });
+				}
 			} catch (err) {
 				console.error("[trail-viewer] listTabs failed:", err);
 			}
@@ -271,6 +318,10 @@ export function App() {
 	}, []);
 
 	const onSelect = useCallback((id: string) => {
+		userChoseRef.current = true;
+		// Switch immediately — the renderer owns the on-screen tab and never
+		// waits on the host. The RPC just records the switch for resume.
+		setActiveTabId(id);
 		void electrobun.rpc!.request.setActiveTab({ id });
 	}, []);
 

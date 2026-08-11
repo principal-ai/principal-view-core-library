@@ -200,3 +200,14 @@ export type {
   // Component props
   PipelineViewProps,
 } from './components/state-view';
+
+// Session event diagnostic feed (raw → repo-normalized → accumulated)
+export {
+  SessionEventFeed,
+  SessionEventFeedGrouped,
+} from './components/session-events';
+export type {
+  SessionEventFeedProps,
+  SessionEventFeedGroupedProps,
+  SessionEventFeedRow,
+} from './components/session-events';

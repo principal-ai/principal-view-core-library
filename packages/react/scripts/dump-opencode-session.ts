@@ -26,6 +26,9 @@ import os from "node:os";
 import {
   PathNormalizationService,
   V1EventBridgeProcessor,
+  createAccumulatedState,
+  eventOp,
+  type AgentSessionEvent,
   type PathNormalizationAdapter,
   type RepositoryInfo,
   type RepoNormalizedUniversalAgentSessionEvent,
@@ -251,6 +254,15 @@ async function main() {
       const normalized: RepoNormalizedUniversalAgentSessionEvent[] =
         await service.normalizePathsBatch(universal, "");
 
+      // repo-normalized → accumulated (the type the File City UI actually
+      // renders). eventOp returns null for events the accumulator drops
+      // (message-display, notifications, reasoning, step-finish, deduped tool
+      // snapshots), so this stays aligned 1:1 with `normalized` but is nullable.
+      const accState = createAccumulatedState(session.title);
+      const accumulated: Array<AgentSessionEvent | null> = normalized.map((n) =>
+        eventOp(accState, n),
+      );
+
       const payload = {
         session: {
           id: session.id,
@@ -267,6 +279,7 @@ async function main() {
             return rest;
           }),
         ),
+        accumulated,
       };
 
       await Bun.write(outputPath, JSON.stringify(payload, null, 2));

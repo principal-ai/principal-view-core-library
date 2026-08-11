@@ -4,10 +4,11 @@
  *
  * Loading is paged by calendar day: each day's sessions are fetched and their
  * event timelines processed in order (newest day first). A loading screen shows
- * a card per repo as it is discovered; once the first day finishes the panel
- * mounts (no session pre-selected → the multi-agent overlay), and remaining
- * days page in the background and append. `citySources` is a static superset of
- * every discovered repo — selection only refocuses the panel, never rebuilds it.
+ * a card per repo as it is discovered; once the newest day finishes the panel
+ * mounts automatically (no session pre-selected → the multi-agent overlay),
+ * and the remaining days page in the background and append. `citySources` is a
+ * static superset of every discovered repo — selection only refocuses the
+ * panel, never rebuilds it.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -382,10 +383,12 @@ export function AgentSessionsOverviewView() {
 	}, []);
 
 	// --- Live refresh: re-fetch an active session and append only the events
-	// that are new since the last load. Returns true if anything changed, so the
+	// that are new since the last load. Bypasses the disk cache (`useCache:
+	// false`) so a growing session is always re-processed from raw rather than
+	// served the last cached snapshot. Returns true if anything changed, so the
 	// poll can leave state untouched (no re-render) when nothing moved. ---
 	const loadSessionLive = useCallback(async (s: SessionSummary): Promise<boolean> => {
-		const res = await electrobun.rpc!.request.getSessionEvents({ sessionId: s.id });
+		const res = await electrobun.rpc!.request.getSessionEvents({ sessionId: s.id, useCache: false });
 		if (!res.ok || !res.events || res.events.length === 0) return false;
 		const slice = buildAgentSessionsView({
 			sessionId: s.id,
@@ -507,9 +510,9 @@ export function AgentSessionsOverviewView() {
 
 	// --- Day paging: process one calendar day at a time -----------------------
 	// Completing a day advances `dayIndex`, which re-runs this effect for the
-	// next day. The loader stays up until the whole window (all 7 days) has been
-	// processed — only then does `ready` flip and the panel mount; days 2..7 are
-	// no longer "background" because the window is fully loaded before handoff.
+	// next day. The loader stays up until the newest day finishes — then `ready`
+	// flips and the panel mounts while the remaining days page in the background
+	// (one day per effect cycle) and append to the view.
 	useEffect(() => {
 		if (!loaded) return;
 		if (dayGroups.length === 0) return;
@@ -532,6 +535,11 @@ export function AgentSessionsOverviewView() {
 				if (cancelled) return;
 			}
 			if (cancelled) return;
+			// Enter the city the moment the newest day is fully processed; older
+			// days keep paging in the background and append below. (If the live
+			// poll re-opens day 0 for a brand-new session, this just re-fires —
+			// already-loaded sessions are skipped.)
+			if (dayIndex === 0) setReady(true);
 			setDayIndex((i) => i + 1);
 		})();
 		return () => {
@@ -736,6 +744,13 @@ export function AgentSessionsOverviewView() {
 				// shows the already-analyzed state without a re-fetch.
 				setAnalyzedSessionIds((prev) => new Set(prev).add(session.id));
 			},
+			openSessionEvents: async (session) => {
+				await electrobun.rpc!.request.openSessionEventsTab({
+					sessionId: session.id,
+					title: session.task,
+					agent: session.agent,
+				});
+			},
 		}),
 		[summaries, eventsById],
 	);
@@ -796,17 +811,15 @@ export function AgentSessionsOverviewView() {
 		);
 	}
 
-	// Loader until the full window (all 7 days) has been processed — the first
-	// thing the user sees. Covers the initial `listSessions` fetch as well as the
-	// day-by-day processing, so the repo cards are the loading UI from the
-	// moment the view mounts through the whole week.
+	// Loader until the newest day is processed — the first thing the user sees.
+	// Covers the initial `listSessions` fetch and day-0 processing (the repo
+	// cards are the loading UI), then auto-enters the city; older days page in
+	// behind the panel.
 	if (!ready) {
 		return (
 			<AgentSessionLoader
 				repos={Array.from(discoveredRepos.values())}
 				agents={Array.from(seenAgents)}
-				allDaysLoaded={allDaysLoaded}
-				onEnter={() => setReady(true)}
 			/>
 		);
 	}

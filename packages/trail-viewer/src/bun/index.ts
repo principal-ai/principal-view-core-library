@@ -46,7 +46,8 @@ import {
 	resolveLocalRepoIdentity,
 	resolveUserIdentity,
 } from "./library";
-import { analyses, newAnalysisId, stubConceptCard } from "./analyses";
+import { analyses, newAnalysisId } from "./analyses";
+import { runOpenCodeExtraction, writeTranscript, extractTaskTemplate, getExtractionPromptInfo } from "./extraction";
 import type {
 	PayloadKind,
 	RepoInfo,
@@ -76,6 +77,11 @@ import {
 } from "@principal-ai/agent-monitoring";
 import type { AgentSessionEvent, UniversalAgentSessionEvent, RepositoryInfo } from "@principal-ai/agent-monitoring";
 import { BunNormalizationAdapter } from "./normalizationAdapter";
+import {
+	readCachedSessionEvents,
+	writeCachedSessionEvents,
+	trimSessionEventRows,
+} from "./session-cache";
 
 function openCodeDBPath(): string {
 	const env = process.env as Record<string, string | undefined>;
@@ -93,6 +99,35 @@ function openCodeDBPath(): string {
 // pipeline enables this to get the full shapes.
 const INCLUDE_RAW_EVENT_PAYLOADS =
 	((process.env as Record<string, string | undefined>)["TRAIL_INCLUDE_RAW"] ?? "") === "1";
+
+/**
+ * Host-side cache of fully-built session event rows, keyed by
+ * `${sessionId}:${includeRaw}`. The opencode pipeline (normalize + accumulate)
+ * needs the whole session before any row is correct, so the full set is built
+ * once and paginated requests serve slices from this cache instead of re-running
+ * the pipeline per page. Bounded so a busy trail-viewer doesn't hoard whole
+ * sessions; raw payloads can reach hundreds of MB per session.
+ */
+const sessionEventsCache = new Map<string, SessionEventRow[]>();
+
+/**
+ * Resident store — the in-memory home for the recent window's processed
+ * (trimmed) session event timelines, keyed by sessionId. The Agent Sessions
+ * window is small and trimmed rows are compact (timestamp + accumulated, no
+ * raw/normalized payloads), so a window-sized cap is fine. Serves
+ * getSessionEvents / getAgentSessionsOverview with zero I/O; hydrated from the
+ * disk cache at boot and promoted on every fresh build.
+ */
+const residentEvents = new Map<string, ResidentSession>();
+const RESIDENT_CAP = 512;
+
+function boundResidentStore(): void {
+	while (residentEvents.size > RESIDENT_CAP) {
+		const oldest = residentEvents.keys().next().value;
+		if (oldest === undefined) break;
+		residentEvents.delete(oldest);
+	}
+}
 
 // Cline CLI stores its durable data under its own convention (~/.cline/data),
 // not XDG. The reader handles the path resolution; we just need a singleton
@@ -124,6 +159,100 @@ const codexReader = new CodexSessionReader();
 
 function isCodexSession(sessionId: string): boolean {
 	return codexReader.readSession(sessionId) !== null;
+}
+
+// ---------------------------------------------------------------------------
+// Background warm-up
+//
+// At boot the host processes the recent session window in the background so a
+// cold app start finds a warm cache the moment the renderer visits the Agent
+// Sessions tab — no lazy re-processing on first click. It runs on the host's
+// own event loop but yields between sessions (`await Bun.sleep(0)`), so RPC
+// responses interleave and the tab click never queues behind the whole window.
+//
+// A true parallel worker is the eventual target (run the same pipeline in a
+// `Bun.Worker`). That needs the session-processing code extracted into a
+// standalone module with its own build artifact, because (a) `bun build`
+// doesn't emit sibling chunks for `new Worker(new URL("./x.ts", …))` — the
+// electrobun single-entry bundle would reference a missing file — and (b) the
+// bundle imports `electrobun/bun`, which hangs outside the electrobun runtime
+// (verified empirically). Until then the yielding in-process loop delivers the
+// same warm-data UX without blocking clicks.
+// ---------------------------------------------------------------------------
+
+function warmupDays(): number {
+	const raw = (process.env as Record<string, string | undefined>)["TRAIL_WARMUP_DAYS"];
+	const n = raw ? parseInt(raw, 10) : NaN;
+	return Number.isFinite(n) && n > 0 ? n : 7;
+}
+
+let warmupRunning = false;
+
+/** Process every session in the recent window (write-through disk cache +
+ *  resident store). Yields between sessions so the host's RPC loop stays
+ *  responsive. No-op if already running (callers guard against overlap). */
+async function runSessionWarmup(): Promise<void> {
+	if (warmupRunning) return;
+	warmupRunning = true;
+	const started = Date.now();
+	let total = 0;
+	let ready = 0;
+	try {
+		const index = await buildSessionIndex({ days: warmupDays() });
+		const sessions: SessionSummary[] = [];
+		for (const g of index.groups) sessions.push(g.parent);
+		sessions.push(...index.standalone);
+		total = sessions.length;
+		for (const s of sessions) {
+			try {
+				const res = await buildSessionEvents(s.id, {
+					includeRaw: false,
+					useCache: true,
+				});
+				if (res.ok) ready++;
+			} catch (err) {
+				console.warn(`[trail-viewer] warmup skipped ${s.id}: ${(err as Error).message}`);
+			}
+			// Yield so pending RPCs (listTabs, getSessionEvents, …) interleave —
+			// warm-up is background work and must not starve the bridge.
+			await Bun.sleep(0);
+		}
+	} catch (err) {
+		console.warn(`[trail-viewer] warmup index failed: ${(err as Error).message}`);
+	}
+	warmupRunning = false;
+	console.log(
+		`[trail-viewer] warmup done: ${ready}/${total} sessions ready in ${Date.now() - started}ms`,
+	);
+}
+
+/** Read the recent window's processed sessions from the disk cache into the
+ *  resident store so the renderer's first getSessionEvents / overview calls
+ *  never touch the processing pipeline. Runs in the background after boot. */
+async function hydrateResidentStore(): Promise<void> {
+	try {
+		const index = await buildSessionIndex({ days: warmupDays() });
+		const sessions: SessionSummary[] = [];
+		for (const g of index.groups) sessions.push(g.parent);
+		sessions.push(...index.standalone);
+		let loaded = 0;
+		for (const s of sessions) {
+			const cached = readCachedSessionEvents(s.id);
+			if (cached) {
+				residentEvents.set(s.id, {
+					events: cached.events,
+					repoRoot: cached.repoRoot,
+					repos: cached.repos,
+					session: cached.session,
+				});
+				loaded++;
+			}
+		}
+		boundResidentStore();
+		console.log(`[trail-viewer] resident store hydrated: ${loaded}/${sessions.length} sessions`);
+	} catch (err) {
+		console.warn(`[trail-viewer] resident store hydration failed: ${(err as Error).message}`);
+	}
 }
 
 // Shared Cline pipeline: reader → normalizePathsBatch → eventOp loop.
@@ -560,6 +689,36 @@ async function runCodexPipeline(sessionId: string): Promise<ClinePipelineResult 
 	return { rawEvents, normalizedEvents, accState, events, repos, repoRoot, sessionTitle, sessionSlug };
 }
 
+// Durable-transcript branches (cline/pi/grok/codex) all share one response
+// assembly: persist the processed result to the disk cache, then return the
+// same `ok: true` shape each branch currently builds inline.
+function respondWithCachedPipeline(
+	sessionId: string,
+	agent: string,
+	result: ClinePipelineResult,
+): {
+	ok: true;
+	events: SessionEventRow[];
+	repoRoot: string | undefined;
+	repos: RepoInfo[];
+	session: { slug: string; title: string; agent: string };
+} {
+	writeCachedSessionEvents(sessionId, {
+		agent,
+		session: { slug: result.sessionSlug, title: result.sessionTitle, agent },
+		repoRoot: result.repoRoot,
+		repos: result.repos,
+		events: trimSessionEventRows(result.events),
+	});
+	return {
+		ok: true,
+		events: result.events,
+		repoRoot: result.repoRoot,
+		repos: result.repos,
+		session: { slug: result.sessionSlug, title: result.sessionTitle, agent },
+	};
+}
+
 // opencode stores a placeholder title ("New session - <iso timestamp>") on
 // sessions it never generated a title for. Surface the first real user prompt
 // text instead so the agent-sessions list reads as actual tasks.
@@ -697,12 +856,28 @@ interface AnalysisTabState {
 	analysisId: string;
 }
 
+interface SessionEventsTabState {
+	id: string;
+	kind: "session-events";
+	title: string;
+	sessionId: string;
+	agent?: string;
+}
+
+interface PromptTabState {
+	id: string;
+	kind: "prompt";
+	title: string;
+}
+
 type TabState =
 	| LibraryTabState
 	| AgentSessionsTabState
 	| MermaidDemoTabState
 	| ConceptsTabState
 	| AnalysisTabState
+	| SessionEventsTabState
+	| PromptTabState
 	| TrailTabState;
 
 const tabs = new Map<string, TabState>();
@@ -726,7 +901,12 @@ tabs.set(CONCEPTS_TAB_ID, {
 	kind: "concepts",
 	title: "Concepts",
 });
-let activeTabId: string = resolveStartTab();
+// Which tab the host suggests showing. Not authoritative — the renderer owns
+// the on-screen tab. Updated when the host creates a tab it wants visible, on
+// external activation, and (as a resume point) whenever the renderer reports a
+// switch via setActiveTab. Served to the renderer through listTabs so a freshly
+// loaded webview resumes on the right tab.
+let suggestedTabId: string = resolveStartTab();
 let nextTabId = 1;
 
 // Pre-load the payload so the renderer's first read is synchronous and any
@@ -926,7 +1106,7 @@ function addTabFromMessage(msg: LoadTrailMessage): string {
 	// way to force a re-load with different mode/auth.
 	for (const existing of tabs.values()) {
 		if (existing.kind === "trail" && existing.trailFilePath === trailFilePath) {
-			activeTabId = existing.id;
+			suggestedTabId = existing.id;
 			console.log(`[trail-viewer] tab ${existing.id} focused (already open): ${trailFilePath}`);
 			return existing.id;
 		}
@@ -980,7 +1160,7 @@ function addTabFromMessage(msg: LoadTrailMessage): string {
 		ghToken: msg.ghToken,
 	};
 	tabs.set(id, tab);
-	activeTabId = id;
+	suggestedTabId = id;
 	console.log(`[trail-viewer] tab ${id} added: ${trailFilePath} (${payloadKind}, ${mode})`);
 	return id;
 }
@@ -994,9 +1174,9 @@ function addTabFromMessage(msg: LoadTrailMessage): string {
 function openAnalysisTab(analysisId: string): string {
 	for (const existing of tabs.values()) {
 		if (existing.kind === "analysis" && existing.analysisId === analysisId) {
-			activeTabId = existing.id;
+			suggestedTabId = existing.id;
 			console.log(`[trail-viewer] analysis tab ${existing.id} focused (already open): ${analysisId}`);
-			broadcastTabsChanged();
+			broadcastTabsChanged(existing.id);
 			return existing.id;
 		}
 	}
@@ -1006,9 +1186,63 @@ function openAnalysisTab(analysisId: string): string {
 		? `Analysis — ${analysis.sessionTitle}`
 		: `Analysis — ${analysisId.slice(0, 12)}`;
 	tabs.set(id, { id, kind: "analysis", title, analysisId });
-	activeTabId = id;
+	suggestedTabId = id;
 	console.log(`[trail-viewer] analysis tab ${id} added: ${analysisId}`);
-	broadcastTabsChanged();
+	broadcastTabsChanged(id);
+	return id;
+}
+
+/**
+ * Focus or create the tab that renders a session's raw → normalized →
+ * accumulated event feed. Dedupes by sessionId the way analysis tabs dedupe by
+ * analysisId. Only opencode sessions are supported for now — callers check the
+ * agent before invoking (the renderer disables the button otherwise).
+ */
+function openSessionEventsTab(
+	sessionId: string,
+	title?: string,
+	agent?: string,
+): string {
+	for (const existing of tabs.values()) {
+		if (existing.kind === "session-events" && existing.sessionId === sessionId) {
+			suggestedTabId = existing.id;
+			console.log(`[trail-viewer] session-events tab ${existing.id} focused (already open): ${sessionId}`);
+			broadcastTabsChanged(existing.id);
+			return existing.id;
+		}
+	}
+	const id = String(nextTabId++);
+	tabs.set(id, {
+		id,
+		kind: "session-events",
+		title: `Events — ${title ?? sessionId.slice(0, 12)}`,
+		sessionId,
+		agent,
+	});
+	suggestedTabId = id;
+	console.log(`[trail-viewer] session-events tab ${id} added: ${sessionId}`);
+	broadcastTabsChanged(id);
+	return id;
+}
+
+/**
+ * Focus or create the prompt tab — the surface that shows what the extractor
+ * agent is asked (system prompt + task template). Deduped like analysis tabs.
+ */
+function openPromptTab(): string {
+	for (const existing of tabs.values()) {
+		if (existing.kind === "prompt") {
+			suggestedTabId = existing.id;
+			console.log(`[trail-viewer] prompt tab ${existing.id} focused (already open)`);
+			broadcastTabsChanged(existing.id);
+			return existing.id;
+		}
+	}
+	const id = String(nextTabId++);
+	tabs.set(id, { id, kind: "prompt", title: "Extractor prompt" });
+	suggestedTabId = id;
+	console.log(`[trail-viewer] prompt tab ${id} added`);
+	broadcastTabsChanged(id);
 	return id;
 }
 
@@ -1206,6 +1440,12 @@ function summarize(tab: TabState): TabSummary {
 	if (tab.kind === "analysis") {
 		return { id: tab.id, kind: "analysis", title: tab.title };
 	}
+	if (tab.kind === "session-events") {
+		return { id: tab.id, kind: "session-events", title: tab.title };
+	}
+	if (tab.kind === "prompt") {
+		return { id: tab.id, kind: "prompt", title: tab.title };
+	}
 	if (isStaticTab(tab)) {
 		return { id: tab.id, kind: tab.kind, title: tab.title };
 	}
@@ -1227,6 +1467,24 @@ function fullState(tab: TabState): TabFullState {
 			title: tab.title,
 			analysisId: tab.analysisId,
 			payload: analyses.get(tab.analysisId) ?? null,
+		};
+	}
+	if (tab.kind === "session-events") {
+		return {
+			ok: true,
+			id: tab.id,
+			kind: "session-events",
+			title: tab.title,
+			sessionId: tab.sessionId,
+		};
+	}
+	if (tab.kind === "prompt") {
+		return {
+			ok: true,
+			id: tab.id,
+			kind: "prompt",
+			title: tab.title,
+			payload: getExtractionPromptInfo(),
 		};
 	}
 	if (isStaticTab(tab)) {
@@ -1269,13 +1527,623 @@ function fullState(tab: TabState): TabFullState {
 	};
 }
 
-const rpc = BrowserView.defineRPC<TrailViewerRPC>({
-	maxRequestTime: 5000,
-	handlers: {
-		requests: {
+/** Handler-map type derived from the RPC contract — restores the contextual
+ *  typing the handlers lost when the object was hoisted out of defineRPC. */
+type RequestHandlers = {
+	[K in keyof TrailViewerRequests]: (
+		params: TrailViewerRequests[K]["params"],
+	) => TrailViewerRequests[K]["response"] | Promise<TrailViewerRequests[K]["response"]>;
+};
+
+/** One session's fully-processed result, as served by getSessionEvents. */
+type BuiltSessionEvents =
+	| {
+			ok: true;
+			events: SessionEventRow[];
+			repoRoot?: string;
+			repos: RepoInfo[];
+			session: { slug: string; title: string; agent?: string };
+	  }
+	| { ok: false; error: string };
+
+/** The resident store's value — the trimmed events plus the metadata the RPC
+ *  responses carry, so a memory hit needs no extra reads. */
+interface ResidentSession {
+	events: SessionEventRow[];
+	repoRoot?: string;
+	repos: RepoInfo[];
+	session: { slug: string; title: string; agent?: string };
+}
+
+/**
+ * Build the recent-session index: opencode sqlite (window-filtered, with
+ * parent/child grouping) plus durable-transcript agents (cline/pi/grok/codex).
+ * Shared by the listSessions RPC and the warm-up worker.
+ */
+async function buildSessionIndex({ days }: { days?: number }): Promise<{
+	groups: SessionGroup[];
+	standalone: SessionSummary[];
+	hasMore?: boolean;
+}> {
+	const dayCount = Math.max(1, Math.floor(days ?? 7));
+	const cutoff = Date.now() - dayCount * 86400000;
+	const dbPath = openCodeDBPath();
+	let db: import("bun:sqlite").Database | null = null;
+	try {
+		const { Database } = await import("bun:sqlite");
+		db = new Database(dbPath, { readonly: true });
+		const sevenDaysAgo = cutoff;
+		// One pass over every session's first event — the window split
+		// happens in JS so we never scan the (large) event table twice.
+		const firstEvents = db
+			.prepare(
+				`SELECT
+					e.aggregate_id,
+					e.data
+				FROM event e
+				WHERE e.seq = (SELECT MIN(e2.seq) FROM event e2 WHERE e2.aggregate_id = e.aggregate_id)
+				ORDER BY e.seq DESC`,
+			)
+			.all() as Array<{
+			aggregate_id: string;
+			data: string;
+		}>;
+		const idToSummary = new Map<string, SessionSummary>();
+		// Older-than-window signal: any session whose first event predates
+		// the cutoff. Drives the renderer's "Load more" affordance.
+		let hasOlder = false;
+		for (const row of firstEvents) {
+			let title = row.aggregate_id.slice(0, 12);
+			let slug = "";
+			let createdAtStr = "";
+			const durationMs = 0;
+			try {
+				const parsed = JSON.parse(row.data) as Record<string, unknown>;
+				const info = parsed["info"] as Record<string, unknown> | undefined;
+				const rawTitle = info?.["title"];
+				if (typeof rawTitle === "string") {
+					title = rawTitle;
+				}
+				const rawSlug = info?.["slug"];
+				if (typeof rawSlug === "string") {
+					slug = rawSlug;
+				}
+				const rawTime = info?.["time"] as Record<string, unknown> | undefined;
+				const rawCreated = rawTime?.["created"];
+				if (typeof rawCreated === "number") {
+					createdAtStr = new Date(rawCreated).toISOString();
+				}
+			} catch {
+				// best-effort parse
+			}
+			// Sessions the old SQL cutoff would have dropped (no date, or
+			// predating the window) never enter the list; predating ones
+			// still count as "more exists".
+			const createdMs = createdAtStr ? new Date(createdAtStr).getTime() : 0;
+			if (!createdMs) continue;
+			if (createdMs <= cutoff) {
+				hasOlder = true;
+				continue;
+			}
+			if (title.startsWith("New session")) {
+				const promptText = firstUserPromptText(db, row.aggregate_id);
+				if (promptText) title = promptText;
+			}
+			idToSummary.set(row.aggregate_id, {
+				id: row.aggregate_id,
+				title,
+				slug,
+				createdAt: createdAtStr,
+				durationMs,
+				eventCount: 0,
+				isFinished: false,
+				models: undefined,
+			});
+		}
+		// opencode stamps the session model into the `info` blob; the
+		// created event only carries it ~1/3 of the time but every
+		// session.updated event does, so take the earliest event that
+		// has it. The model is static per session, so one id suffices.
+		const modelRows = db
+			.prepare(
+				`SELECT
+					aggregate_id,
+					json_extract(data, '$.info.model.id') AS model_id
+				FROM event
+				WHERE aggregate_id IN (
+					SELECT aggregate_id
+					FROM event
+					WHERE json_extract(data, '$.info.time.created') > ?
+				)
+					AND json_extract(data, '$.info.model.id') IS NOT NULL
+				GROUP BY aggregate_id`,
+			)
+			.all(sevenDaysAgo) as Array<{ aggregate_id: string; model_id: string | null }>;
+		for (const m of modelRows) {
+			const summary = idToSummary.get(m.aggregate_id);
+			if (summary && m.model_id) summary.models = [m.model_id];
+		}
+		const relations = db
+			.prepare(
+				`SELECT
+					json_extract(data, '$.part.state.metadata.parentSessionId') AS parent_id,
+					json_extract(data, '$.part.state.metadata.sessionId') AS child_id,
+					json_extract(data, '$.part.state.status') AS status
+				FROM event
+				WHERE seq IN (
+					SELECT MAX(seq)
+					FROM event
+					WHERE json_extract(data, '$.part.type') = 'tool'
+						AND json_extract(data, '$.part.tool') = 'task'
+						AND json_extract(data, '$.part.state.metadata.sessionId') IS NOT NULL
+					GROUP BY json_extract(data, '$.part.state.metadata.sessionId')
+				)`,
+			)
+			.all() as Array<{ parent_id: string; child_id: string; status: string | null }>;
+		const childIds = new Set<string>();
+		const groups: SessionGroup[] = [];
+		for (const rel of relations) {
+			if (!rel.parent_id || !rel.child_id) continue;
+			const child = idToSummary.get(rel.child_id);
+			if (!child) continue;
+			if (rel.status === "completed" || rel.status === "error") {
+				child.isFinished = true;
+			}
+			childIds.add(rel.child_id);
+		}
+		for (const summary of idToSummary.values()) {
+			if (childIds.has(summary.id)) continue;
+			const childList: SessionSummary[] = [];
+			for (const rel of relations) {
+				if (rel.parent_id === summary.id) {
+					const child = idToSummary.get(rel.child_id);
+					if (child) childList.push(child);
+				}
+			}
+			if (childList.length > 0) {
+				groups.push({ parent: { ...summary }, children: childList });
+			}
+		}
+		const standalone: SessionSummary[] = [];
+		for (const summary of idToSummary.values()) {
+			if (childIds.has(summary.id)) continue;
+			if (!groups.some((g) => g.parent.id === summary.id)) {
+				standalone.push(summary);
+			}
+		}
+		// Append Cline CLI sessions (durable transcript, not in opencode DB)
+		for (const clineSession of clineReader.listSessions()) {
+			const meta = clineSession.metadata;
+			const promptText = cleanClinePrompt(meta.prompt ?? "");
+			const title = promptText
+				? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
+				: "Cline session";
+			const createdAtStr = meta.started_at ?? "";
+			const durationMs = meta.ended_at
+				? new Date(meta.ended_at).getTime() - new Date(meta.started_at ?? meta.ended_at).getTime()
+				: 0;
+			const eventCount = clineReader.readMessages(clineSession.sessionId)?.messages.length ?? 0;
+			standalone.push({
+				id: clineSession.sessionId,
+				title,
+				slug: "",
+				createdAt: createdAtStr,
+				lastEventAt: meta.ended_at ?? meta.started_at ?? undefined,
+				durationMs,
+				eventCount,
+				isFinished: meta.status === "completed" || meta.status === "failed",
+				models: meta.model ? [meta.model] : undefined,
+				agent: "cline",
+			});
+		}
+		// Append pi CLI sessions (durable JSONL transcript, not in opencode DB)
+		for (const piSession of piReader.listSessions()) {
+			const promptText = piSession.firstPrompt;
+			const title = promptText
+				? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
+				: "pi session";
+			const createdAtStr = piSession.header.timestamp ?? "";
+			const durationMs = Math.max(0, piSession.lastActivity - new Date(createdAtStr || 0).getTime());
+			standalone.push({
+				id: piSession.sessionId,
+				title,
+				slug: "",
+				createdAt: createdAtStr,
+				lastEventAt: new Date(piSession.lastActivity).toISOString(),
+				durationMs,
+				eventCount: piSession.messageCount,
+				isFinished: false,
+				agent: "pi",
+			});
+		}
+		// Append Grok Build sessions (durable updates.jsonl under ~/.grok/sessions)
+		for (const grokSession of grokReader.listSessions()) {
+			const createdAtStr = grokSession.createdAt ?? "";
+			const durationMs = Math.max(
+				0,
+				grokSession.lastActivity - new Date(createdAtStr || 0).getTime(),
+			);
+			standalone.push({
+				id: grokSession.sessionId,
+				title: grokSession.title || "Grok session",
+				slug: "",
+				createdAt: createdAtStr,
+				lastEventAt: new Date(grokSession.lastActivity).toISOString(),
+				durationMs,
+				eventCount: grokSession.messageCount,
+				isFinished: false,
+				models: grokSession.modelId ? [grokSession.modelId] : undefined,
+				agent: "grok",
+			});
+		}
+		// Append Codex durable rollout sessions (under ~/.codex/sessions).
+		for (const codexSession of codexReader.listSessions()) {
+			const createdAtStr =
+				typeof codexSession.meta.timestamp === "string"
+					? codexSession.meta.timestamp
+					: new Date(codexSession.lastActivity).toISOString();
+			standalone.push({
+				id: codexSession.sessionId,
+				title: codexSession.firstPrompt || "Codex session",
+				slug: "",
+				createdAt: createdAtStr,
+				lastEventAt: new Date(codexSession.lastActivity).toISOString(),
+				durationMs: 0,
+				eventCount: codexSession.messageCount,
+				isFinished: false,
+				models:
+					typeof codexSession.meta.model_provider === "string"
+						? [codexSession.meta.model_provider]
+						: undefined,
+				agent: "codex",
+			});
+		}
+		return { groups, standalone, hasMore: hasOlder };
+	} catch (err) {
+		console.warn(`[trail-viewer] listSessions failed: ${(err as Error).message}`);
+		// Still surface durable-transcript agents when the opencode DB is missing.
+		const standalone: SessionSummary[] = [];
+		try {
+			for (const clineSession of clineReader.listSessions()) {
+				const meta = clineSession.metadata;
+				const promptText = cleanClinePrompt(meta.prompt ?? "");
+				const title = promptText
+					? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
+					: "Cline session";
+				standalone.push({
+					id: clineSession.sessionId,
+					title,
+					slug: "",
+					createdAt: meta.started_at ?? "",
+					durationMs: 0,
+					eventCount: clineReader.readMessages(clineSession.sessionId)?.messages.length ?? 0,
+					isFinished: meta.status === "completed" || meta.status === "failed",
+					agent: "cline",
+				});
+			}
+			for (const piSession of piReader.listSessions()) {
+				const promptText = piSession.firstPrompt;
+				const title = promptText
+					? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
+					: "pi session";
+				standalone.push({
+					id: piSession.sessionId,
+					title,
+					slug: "",
+					createdAt: piSession.header.timestamp ?? "",
+					durationMs: 0,
+					eventCount: piSession.messageCount,
+					isFinished: false,
+					agent: "pi",
+				});
+			}
+			for (const grokSession of grokReader.listSessions()) {
+				standalone.push({
+					id: grokSession.sessionId,
+					title: grokSession.title || "Grok session",
+					slug: "",
+					createdAt: grokSession.createdAt ?? "",
+					durationMs: 0,
+					eventCount: grokSession.messageCount,
+					isFinished: false,
+					agent: "grok",
+				});
+			}
+			for (const codexSession of codexReader.listSessions()) {
+				standalone.push({
+					id: codexSession.sessionId,
+					title: codexSession.firstPrompt || "Codex session",
+					slug: "",
+					createdAt:
+						typeof codexSession.meta.timestamp === "string"
+							? codexSession.meta.timestamp
+							: "",
+					durationMs: 0,
+					eventCount: codexSession.messageCount,
+					isFinished: false,
+					agent: "codex",
+				});
+			}
+		} catch {
+			// best-effort
+		}
+		return { groups: [], standalone, hasMore: false };
+	} finally {
+		db?.close();
+	}
+}
+
+/**
+ * Build (or serve from cache) a session's full processed event timeline.
+ * Fast-path order: resident store → disk cache → pipeline. The disk cache is
+ * the durable layer (warm restarts); the resident store is the in-memory home
+ * for the visible window (zero-I/O serving). Fresh builds write through to the
+ * disk cache so later processes (the warm-up worker, other RPC calls) find the
+ * session already processed. Shared by the getSessionEvents RPC and the
+ * warm-up worker.
+ */
+async function buildSessionEvents(
+	sessionId: string,
+	opts: { includeRaw?: boolean; useCache?: boolean },
+): Promise<BuiltSessionEvents> {
+	const includeRaw = opts.includeRaw === true;
+	const useCache = opts.useCache !== false;
+
+	// Resident store — in-memory fast path for the visible window. Gated on
+	// `useCache` like the disk path below so live refreshes (`useCache: false`)
+	// always re-process a growing session instead of serving a stale snapshot.
+	if (useCache && !includeRaw) {
+		const resident = residentEvents.get(sessionId);
+		if (resident) return { ok: true, ...resident };
+	}
+	// Disk-cache fast path — serves a previously processed (trimmed) timeline
+	// without re-running normalize + accumulate. Used for initial loads only:
+	// live refreshes pass `useCache: false`, and the raw-feed view requests
+	// `includeRaw`, which the cache never stores. Version-stamped so a pipeline
+	// change invalidates all.
+	if (useCache && !includeRaw) {
+		const cached = readCachedSessionEvents(sessionId);
+		if (cached) {
+			const resident: ResidentSession = {
+				events: cached.events,
+				repoRoot: cached.repoRoot,
+				repos: cached.repos,
+				session: cached.session,
+			};
+			residentEvents.set(sessionId, resident);
+			boundResidentStore();
+			return { ok: true, ...resident };
+		}
+	}
+	// Cline CLI sessions: read the durable transcript, not the opencode DB
+	if (isClineSession(sessionId)) {
+		try {
+			const result = await runClinePipeline(sessionId);
+			if (!result) return { ok: false, error: "Cline session not found or empty" };
+			return cacheAndRespond(sessionId, "cline", result, includeRaw);
+		} catch (err) {
+			return { ok: false, error: (err as Error).message };
+		}
+	}
+	// pi CLI sessions: read the durable JSONL transcript, not the opencode DB
+	if (isPiSession(sessionId)) {
+		try {
+			const result = await runPiPipeline(sessionId);
+			if (!result) return { ok: false, error: "pi session not found or empty" };
+			return cacheAndRespond(sessionId, "pi", result, includeRaw);
+		} catch (err) {
+			return { ok: false, error: (err as Error).message };
+		}
+	}
+	// Grok Build sessions: read durable updates.jsonl, not the opencode DB
+	if (isGrokSession(sessionId)) {
+		try {
+			const result = await runGrokPipeline(sessionId);
+			if (!result) return { ok: false, error: "Grok session not found or empty" };
+			return cacheAndRespond(sessionId, "grok", result, includeRaw);
+		} catch (err) {
+			return { ok: false, error: (err as Error).message };
+		}
+	}
+	// Codex sessions are durable rollouts, never opencode SQLite rows.
+	if (isCodexSession(sessionId)) {
+		try {
+			const result = await runCodexPipeline(sessionId);
+			if (!result) return { ok: false, error: "Codex session not found or empty" };
+			return cacheAndRespond(sessionId, "codex", result, includeRaw);
+		} catch (err) {
+			return { ok: false, error: (err as Error).message };
+		}
+	}
+	// opencode sessions: raw V1 rows in sqlite. The full event set is built
+	// once (normalize + accumulate need the whole session for correct
+	// accumulated rows), cached, and served in pages so the webview never
+	// receives the session's whole raw payload in one RPC message.
+	const cacheKey = `opencode:${sessionId}:${includeRaw ? "raw" : "min"}`;
+	let events = sessionEventsCache.get(cacheKey);
+	let sessionSlug = "";
+	let sessionTitle = sessionId.slice(0, 12);
+	let repoRoot: string | undefined;
+	let repos: RepoInfo[] = [];
+	if (!events) {
+		const dbPath = openCodeDBPath();
+		let db: import("bun:sqlite").Database | null = null;
+		try {
+			const { Database } = await import("bun:sqlite");
+			db = new Database(dbPath, { readonly: true });
+			const rows = db
+				.prepare(
+					`SELECT id, aggregate_id, seq, type, data FROM event WHERE aggregate_id = ? ORDER BY seq ASC`,
+				)
+				.all(sessionId) as Array<{
+				id: string;
+				aggregate_id: string;
+				seq: number;
+				type: string;
+				data: string;
+			}>;
+			// Extract session metadata from first event
+			if (rows.length > 0) {
+				try {
+					const firstParsed = JSON.parse(rows[0].data) as Record<string, unknown>;
+					const info = firstParsed["info"] as Record<string, unknown> | undefined;
+					const rawTitle = info?.["title"];
+					if (typeof rawTitle === "string") sessionTitle = rawTitle;
+					const rawSlug = info?.["slug"];
+					if (typeof rawSlug === "string") sessionSlug = rawSlug;
+				} catch {
+					// best-effort
+				}
+			}
+			if (sessionTitle.startsWith("New session")) {
+				const promptText = firstUserPromptText(db, sessionId);
+				if (promptText) sessionTitle = promptText;
+			}
+			const universalEvents = opencodeRowsToUniversalEvents(
+				rows.map((r) => ({ id: r.id, aggregateId: r.aggregate_id, seq: r.seq, type: r.type, data: r.data })),
+			);
+			const alexandriaRepos = loadAlexandriaRepos();
+			const knownRoots = new Map<string, RepositoryInfo>();
+			for (const [path, repo] of alexandriaRepos) {
+				knownRoots.set(path, {
+					root: repo.root,
+					remoteUrl: repo.remoteUrl,
+					owner: repo.owner,
+					repo: repo.repo,
+				});
+			}
+			const { normalized, adapter } = await normalizeEventsWithAdapter(universalEvents, "", knownRoots);
+			// Auto-register any newly discovered git roots
+			for (const discovered of adapter.newlyDiscovered) {
+				registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
+			}
+			const accumulated = accumulateEvents(normalized, sessionTitle);
+			const includeRawPayload = INCLUDE_RAW_EVENT_PAYLOADS || includeRaw;
+			const built: SessionEventRow[] = accumulated.map((entry, i) => {
+				const rawEnvelope = entry.normalized.raw as { data?: unknown; type?: string; seq?: number } | undefined;
+				const seq = rawEnvelope?.seq ?? i;
+				return {
+					seq,
+					type: rawEnvelope?.type ?? entry.normalized.eventType,
+					// Full raw V1 event (id/aggregateId/seq/type/data) when the
+					// session-events feed requests it — the raw column renders
+					// the complete payload, not just its `data` half.
+					raw: includeRawPayload ? (rawEnvelope as unknown) : undefined,
+					normalized: includeRawPayload
+						? (entry.normalized as unknown as Record<string, unknown>)
+						: { timestamp: entry.normalized.timestamp },
+					accumulated: entry.accumulated as AgentSessionEvent | null,
+				};
+			});
+			const lastEvent = built[built.length - 1];
+			if (lastEvent) {
+				const lastTimestamp = (lastEvent.normalized as Record<string, unknown>)["timestamp"] as number | undefined ?? 0;
+				const lastAcc = lastEvent.accumulated ?? ({} as AgentSessionEvent);
+				const lastSessionName = lastAcc.sessionName ?? sessionTitle;
+				const lastSessionColor = lastAcc.sessionColor ?? "";
+				const lastContextTokens = lastAcc.contextTokens;
+				built.push({
+					seq: lastEvent.seq + 1,
+					type: "finished",
+					raw: null,
+					normalized: { timestamp: lastTimestamp },
+					accumulated: {
+						id: "",
+						timestamp: lastTimestamp,
+						sessionId: sessionSlug,
+						sessionName: lastSessionName,
+						sessionColor: lastSessionColor,
+						operation: "finished",
+						files: [],
+						dependencies: [],
+						description: `${lastSessionName} finished`,
+						layers: [],
+						contextTokens: lastContextTokens,
+					},
+				});
+			}
+			const repoSet = new Map<string, { root: string; fileCount: number }>();
+			for (const ev of normalized) {
+				if (!ev.files) continue;
+				for (const f of ev.files) {
+					const root = f.repository?.gitRoot;
+					if (root) {
+						const entry = repoSet.get(root) ?? { root, fileCount: 0 };
+						entry.fileCount++;
+						repoSet.set(root, entry);
+					}
+				}
+			}
+			repos = collectRepositories(normalized)
+				.map((r) => {
+					const entry = repoSet.get(r.root);
+					const parts = r.root.replace(/\/+$/, "").split("/");
+					return { root: r.root, fileCount: entry?.fileCount ?? 0, owner: r.owner ?? null, name: r.repo ?? parts[parts.length - 1] ?? null, editing: false };
+				})
+				.sort((a, b) => b.fileCount - a.fileCount);
+			repoRoot = repos.length > 0 ? repos[0].root : undefined;
+			events = built;
+			// Write-through the freshly processed timeline so cold starts serve
+			// it from disk instead of re-running the pipeline. Trimmed form only;
+			// `includeRaw` never hits this.
+			writeCachedSessionEvents(sessionId, {
+				agent: "opencode",
+				session: { slug: sessionSlug, title: sessionTitle, agent: "opencode" },
+				repoRoot,
+				repos,
+				events: trimSessionEventRows(built),
+			});
+			sessionEventsCache.set(cacheKey, events);
+			// Bounded cache — raw payloads are heavy; evict oldest
+			// entries once we hold more than a few sessions.
+			while (sessionEventsCache.size > 4) {
+				const oldestKey = sessionEventsCache.keys().next().value;
+				if (oldestKey === undefined) break;
+				sessionEventsCache.delete(oldestKey);
+			}
+		} catch (err) {
+			return { ok: false, error: (err as Error).message };
+		} finally {
+			db?.close();
+		}
+	}
+	const session: { slug: string; title: string; agent?: string } = {
+		slug: sessionSlug,
+		title: sessionTitle,
+		agent: "opencode",
+	};
+	if (!includeRaw) {
+		residentEvents.set(sessionId, { events, repoRoot, repos, session });
+		boundResidentStore();
+	}
+	return { ok: true, events, repoRoot, repos, session };
+}
+
+/** Durable-transcript branches: persist the result to disk + resident store,
+ *  then return the same `ok: true` shape each branch builds. */
+function cacheAndRespond(
+	sessionId: string,
+	agent: string,
+	result: ClinePipelineResult,
+	includeRaw: boolean,
+): BuiltSessionEvents {
+	const res = respondWithCachedPipeline(sessionId, agent, result);
+	if (!includeRaw) {
+		residentEvents.set(sessionId, {
+			events: res.events,
+			repoRoot: res.repoRoot,
+			repos: res.repos,
+			session: res.session,
+		});
+		boundResidentStore();
+	}
+	return res;
+}
+
+const requests: RequestHandlers = {
 			listTabs: () => ({
 				tabs: Array.from(tabs.values()).map(summarize),
-				activeTabId,
+				suggestedActiveTabId: suggestedTabId,
 			}),
 			getTab: ({ id }) => {
 				const tab = getTab(id);
@@ -1291,16 +2159,19 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				return fullState(tab);
 			},
 			setActiveTab: ({ id }) => {
+				// The renderer owns the on-screen tab and switches instantly; this
+				// just records the switch as the host's resume suggestion (served
+				// back through listTabs if the webview reloads). No broadcast — the
+				// renderer already applied the change locally.
 				if (!tabs.has(id)) return { ok: false, error: `unknown tab: ${id}` };
-				activeTabId = id;
-				broadcastTabsChanged();
+				suggestedTabId = id;
 				return { ok: true };
 			},
 			closeTab: ({ id }) => closeTabById(id),
 			readFile: async ({ tabId, path, repo }) => {
 				const tab = getTab(tabId);
 				if (!tab) return { ok: false, error: `unknown tab: ${tabId}` };
-				if (tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis") {
+				if (tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
 					return { ok: false, error: `${tab.kind} tab does not serve files` };
 				}
 				return tab.mode === "remote"
@@ -1311,7 +2182,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				const walkPath = path ?? null;
 				if (!walkPath) {
 					const tab = getTab(tabId);
-					if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis") return { files: [] };
+					if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") return { files: [] };
 					return tab.mode === "remote"
 						? getFileTreeRemote(tab)
 						: { files: await walkFiles(tab.repoRoot) };
@@ -1330,317 +2201,11 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				);
 				return { entries };
 			},
-			listSessions: async ({ days }) => {
-				const dayCount = Math.max(1, Math.floor(days ?? 7));
-				const cutoff = Date.now() - dayCount * 86400000;
-				const dbPath = openCodeDBPath();
-				let db: import("bun:sqlite").Database | null = null;
-				try {
-					const { Database } = await import("bun:sqlite");
-					db = new Database(dbPath, { readonly: true });
-					const sevenDaysAgo = cutoff;
-					// One pass over every session's first event — the window split
-					// happens in JS so we never scan the (large) event table twice.
-					const firstEvents = db
-						.prepare(
-							`SELECT
-								e.aggregate_id,
-								e.data
-							FROM event e
-							WHERE e.seq = (SELECT MIN(e2.seq) FROM event e2 WHERE e2.aggregate_id = e.aggregate_id)
-							ORDER BY e.seq DESC`,
-						)
-						.all() as Array<{
-						aggregate_id: string;
-						data: string;
-					}>;
-					const idToSummary = new Map<string, SessionSummary>();
-					// Older-than-window signal: any session whose first event predates
-					// the cutoff. Drives the renderer's "Load more" affordance.
-					let hasOlder = false;
-					for (const row of firstEvents) {
-						let title = row.aggregate_id.slice(0, 12);
-						let slug = "";
-						let createdAtStr = "";
-						const durationMs = 0;
-						try {
-							const parsed = JSON.parse(row.data) as Record<string, unknown>;
-							const info = parsed["info"] as Record<string, unknown> | undefined;
-							const rawTitle = info?.["title"];
-							if (typeof rawTitle === "string") {
-								title = rawTitle;
-							}
-							const rawSlug = info?.["slug"];
-							if (typeof rawSlug === "string") {
-								slug = rawSlug;
-							}
-							const rawTime = info?.["time"] as Record<string, unknown> | undefined;
-							const rawCreated = rawTime?.["created"];
-							if (typeof rawCreated === "number") {
-								createdAtStr = new Date(rawCreated).toISOString();
-							}
-						} catch {
-							// best-effort parse
-						}
-						// Sessions the old SQL cutoff would have dropped (no date, or
-						// predating the window) never enter the list; predating ones
-						// still count as "more exists".
-						const createdMs = createdAtStr ? new Date(createdAtStr).getTime() : 0;
-						if (!createdMs) continue;
-						if (createdMs <= cutoff) {
-							hasOlder = true;
-							continue;
-						}
-						if (title.startsWith("New session")) {
-							const promptText = firstUserPromptText(db, row.aggregate_id);
-							if (promptText) title = promptText;
-						}
-						idToSummary.set(row.aggregate_id, {
-							id: row.aggregate_id,
-							title,
-							slug,
-							createdAt: createdAtStr,
-							durationMs,
-							eventCount: 0,
-							isFinished: false,
-							models: undefined,
-						});
-					}
-					// opencode stamps the session model into the `info` blob; the
-					// created event only carries it ~1/3 of the time but every
-					// session.updated event does, so take the earliest event that
-					// has it. The model is static per session, so one id suffices.
-					const modelRows = db
-						.prepare(
-							`SELECT
-								aggregate_id,
-								json_extract(data, '$.info.model.id') AS model_id
-							FROM event
-							WHERE aggregate_id IN (
-								SELECT aggregate_id
-								FROM event
-								WHERE json_extract(data, '$.info.time.created') > ?
-							)
-								AND json_extract(data, '$.info.model.id') IS NOT NULL
-							GROUP BY aggregate_id`,
-						)
-						.all(sevenDaysAgo) as Array<{ aggregate_id: string; model_id: string | null }>;
-					for (const m of modelRows) {
-						const summary = idToSummary.get(m.aggregate_id);
-						if (summary && m.model_id) summary.models = [m.model_id];
-					}
-					const relations = db
-						.prepare(
-							`SELECT
-								json_extract(data, '$.part.state.metadata.parentSessionId') AS parent_id,
-								json_extract(data, '$.part.state.metadata.sessionId') AS child_id,
-								json_extract(data, '$.part.state.status') AS status
-							FROM event
-							WHERE seq IN (
-								SELECT MAX(seq)
-								FROM event
-								WHERE json_extract(data, '$.part.type') = 'tool'
-									AND json_extract(data, '$.part.tool') = 'task'
-									AND json_extract(data, '$.part.state.metadata.sessionId') IS NOT NULL
-								GROUP BY json_extract(data, '$.part.state.metadata.sessionId')
-							)`,
-						)
-						.all() as Array<{ parent_id: string; child_id: string; status: string | null }>;
-					const childIds = new Set<string>();
-					const groups: SessionGroup[] = [];
-					for (const rel of relations) {
-						if (!rel.parent_id || !rel.child_id) continue;
-						const child = idToSummary.get(rel.child_id);
-						if (!child) continue;
-						if (rel.status === "completed" || rel.status === "error") {
-							child.isFinished = true;
-						}
-						childIds.add(rel.child_id);
-					}
-					for (const summary of idToSummary.values()) {
-						if (childIds.has(summary.id)) continue;
-						const childList: SessionSummary[] = [];
-						for (const rel of relations) {
-							if (rel.parent_id === summary.id) {
-								const child = idToSummary.get(rel.child_id);
-								if (child) childList.push(child);
-							}
-						}
-						if (childList.length > 0) {
-							groups.push({ parent: { ...summary }, children: childList });
-						}
-					}
-					const standalone: SessionSummary[] = [];
-					for (const summary of idToSummary.values()) {
-						if (childIds.has(summary.id)) continue;
-						if (!groups.some((g) => g.parent.id === summary.id)) {
-							standalone.push(summary);
-						}
-					}
-					// Append Cline CLI sessions (durable transcript, not in opencode DB)
-					for (const clineSession of clineReader.listSessions()) {
-						const meta = clineSession.metadata;
-						const promptText = cleanClinePrompt(meta.prompt ?? "");
-						const title = promptText
-							? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
-							: "Cline session";
-						const createdAtStr = meta.started_at ?? "";
-						const durationMs = meta.ended_at
-							? new Date(meta.ended_at).getTime() - new Date(meta.started_at ?? meta.ended_at).getTime()
-							: 0;
-						const eventCount = clineReader.readMessages(clineSession.sessionId)?.messages.length ?? 0;
-						standalone.push({
-							id: clineSession.sessionId,
-							title,
-							slug: "",
-							createdAt: createdAtStr,
-							lastEventAt: meta.ended_at ?? meta.started_at ?? undefined,
-							durationMs,
-							eventCount,
-							isFinished: meta.status === "completed" || meta.status === "failed",
-							models: meta.model ? [meta.model] : undefined,
-							agent: "cline",
-						});
-					}
-					// Append pi CLI sessions (durable JSONL transcript, not in opencode DB)
-					for (const piSession of piReader.listSessions()) {
-						const promptText = piSession.firstPrompt;
-						const title = promptText
-							? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
-							: "pi session";
-						const createdAtStr = piSession.header.timestamp ?? "";
-						const durationMs = Math.max(0, piSession.lastActivity - new Date(createdAtStr || 0).getTime());
-						standalone.push({
-							id: piSession.sessionId,
-							title,
-							slug: "",
-							createdAt: createdAtStr,
-							lastEventAt: new Date(piSession.lastActivity).toISOString(),
-							durationMs,
-							eventCount: piSession.messageCount,
-							isFinished: false,
-							agent: "pi",
-						});
-					}
-					// Append Grok Build sessions (durable updates.jsonl under ~/.grok/sessions)
-					for (const grokSession of grokReader.listSessions()) {
-						const createdAtStr = grokSession.createdAt ?? "";
-						const durationMs = Math.max(
-							0,
-							grokSession.lastActivity - new Date(createdAtStr || 0).getTime(),
-						);
-						standalone.push({
-							id: grokSession.sessionId,
-							title: grokSession.title || "Grok session",
-							slug: "",
-							createdAt: createdAtStr,
-							lastEventAt: new Date(grokSession.lastActivity).toISOString(),
-							durationMs,
-							eventCount: grokSession.messageCount,
-							isFinished: false,
-							models: grokSession.modelId ? [grokSession.modelId] : undefined,
-							agent: "grok",
-						});
-					}
-					// Append Codex durable rollout sessions (under ~/.codex/sessions).
-					for (const codexSession of codexReader.listSessions()) {
-						const createdAtStr =
-							typeof codexSession.meta.timestamp === "string"
-								? codexSession.meta.timestamp
-								: new Date(codexSession.lastActivity).toISOString();
-						standalone.push({
-							id: codexSession.sessionId,
-							title: codexSession.firstPrompt || "Codex session",
-							slug: "",
-							createdAt: createdAtStr,
-							lastEventAt: new Date(codexSession.lastActivity).toISOString(),
-							durationMs: 0,
-							eventCount: codexSession.messageCount,
-							isFinished: false,
-							models:
-								typeof codexSession.meta.model_provider === "string"
-									? [codexSession.meta.model_provider]
-									: undefined,
-							agent: "codex",
-						});
-					}
-					return { groups, standalone, hasMore: hasOlder };
-				} catch (err) {
-					console.warn(`[trail-viewer] listSessions failed: ${(err as Error).message}`);
-					// Still surface durable-transcript agents when the opencode DB is missing.
-					const standalone: SessionSummary[] = [];
-					try {
-						for (const clineSession of clineReader.listSessions()) {
-							const meta = clineSession.metadata;
-							const promptText = cleanClinePrompt(meta.prompt ?? "");
-							const title = promptText
-								? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
-								: "Cline session";
-							standalone.push({
-								id: clineSession.sessionId,
-								title,
-								slug: "",
-								createdAt: meta.started_at ?? "",
-								durationMs: 0,
-								eventCount: clineReader.readMessages(clineSession.sessionId)?.messages.length ?? 0,
-								isFinished: meta.status === "completed" || meta.status === "failed",
-								agent: "cline",
-							});
-						}
-						for (const piSession of piReader.listSessions()) {
-							const promptText = piSession.firstPrompt;
-							const title = promptText
-								? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
-								: "pi session";
-							standalone.push({
-								id: piSession.sessionId,
-								title,
-								slug: "",
-								createdAt: piSession.header.timestamp ?? "",
-								durationMs: 0,
-								eventCount: piSession.messageCount,
-								isFinished: false,
-								agent: "pi",
-							});
-						}
-						for (const grokSession of grokReader.listSessions()) {
-							standalone.push({
-								id: grokSession.sessionId,
-								title: grokSession.title || "Grok session",
-								slug: "",
-								createdAt: grokSession.createdAt ?? "",
-								durationMs: 0,
-								eventCount: grokSession.messageCount,
-								isFinished: false,
-								agent: "grok",
-							});
-						}
-						for (const codexSession of codexReader.listSessions()) {
-							standalone.push({
-								id: codexSession.sessionId,
-								title: codexSession.firstPrompt || "Codex session",
-								slug: "",
-								createdAt:
-									typeof codexSession.meta.timestamp === "string"
-										? codexSession.meta.timestamp
-										: "",
-								durationMs: 0,
-								eventCount: codexSession.messageCount,
-								isFinished: false,
-								agent: "codex",
-							});
-						}
-					} catch {
-						// best-effort
-					}
-					return { groups: [], standalone, hasMore: false };
-				} finally {
-					db?.close();
-				}
-			},
+			listSessions: async ({ days }) => buildSessionIndex({ days }),
+
 			createTrailNote: ({ tabId, draft }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1665,7 +2230,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			updateTrailNote: ({ tabId, noteId, body }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1700,9 +2265,10 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 				return { ok };
 			},
 			getUserIdentity: async () => {
-				// Source repoRoot/token from a trail tab (active first, else any) for
-				// the git/token fallbacks. The gh-CLI path needs neither.
-				const active = getTab(activeTabId);
+				// Source repoRoot/token from a trail tab (the suggested/active one
+				// first, else any) for the git/token fallbacks. The gh-CLI path
+				// needs neither.
+				const active = getTab(suggestedTabId);
 				const trailTab =
 					active && active.kind === "trail"
 						? active
@@ -1713,7 +2279,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			shareTrail: ({ tabId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1798,7 +2364,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 			},
 			deleteTrailNote: ({ tabId, noteId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1828,7 +2394,7 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 					};
 					if (repoRoot) msg.repoRoot = repoRoot;
 					const tabId = addTabFromMessage(msg);
-					broadcastTabsChanged();
+					broadcastTabsChanged(tabId);
 					try {
 						browserWindow.focus();
 					} catch {
@@ -1839,193 +2405,105 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 					return { ok: false, error: (err as Error).message };
 				}
 			},
-			getSessionEvents: async ({ sessionId }) => {
-				// Cline CLI sessions: read the durable transcript, not the opencode DB
-				if (isClineSession(sessionId)) {
-					try {
-						const result = await runClinePipeline(sessionId);
-						if (!result) return { ok: false, error: "Cline session not found or empty" };
-						return { ok: true, events: result.events, repoRoot: result.repoRoot, repos: result.repos, session: { slug: result.sessionSlug, title: result.sessionTitle, agent: "cline" } };
-					} catch (err) {
-						return { ok: false, error: (err as Error).message };
-					}
-				}
-				// pi CLI sessions: read the durable JSONL transcript, not the opencode DB
-				if (isPiSession(sessionId)) {
-					try {
-						const result = await runPiPipeline(sessionId);
-						if (!result) return { ok: false, error: "pi session not found or empty" };
-						return { ok: true, events: result.events, repoRoot: result.repoRoot, repos: result.repos, session: { slug: result.sessionSlug, title: result.sessionTitle, agent: "pi" } };
-					} catch (err) {
-						return { ok: false, error: (err as Error).message };
-					}
-				}
-				// Grok Build sessions: read durable updates.jsonl, not the opencode DB
-				if (isGrokSession(sessionId)) {
-					try {
-						const result = await runGrokPipeline(sessionId);
-						if (!result) return { ok: false, error: "Grok session not found or empty" };
-						return {
-							ok: true,
-							events: result.events,
-							repoRoot: result.repoRoot,
-							repos: result.repos,
-							session: {
-								slug: result.sessionSlug,
-								title: result.sessionTitle,
-								agent: "grok",
-							},
-						};
-					} catch (err) {
-						return { ok: false, error: (err as Error).message };
-					}
-				}
-				// Codex sessions are durable rollouts, never opencode SQLite rows.
-				if (isCodexSession(sessionId)) {
-					try {
-						const result = await runCodexPipeline(sessionId);
-						if (!result) return { ok: false, error: "Codex session not found or empty" };
-						return {
-							ok: true,
-							events: result.events,
-							repoRoot: result.repoRoot,
-							repos: result.repos,
-							session: {
-								slug: result.sessionSlug,
-								title: result.sessionTitle,
-								agent: "codex",
-							},
-						};
-					} catch (err) {
-						return { ok: false, error: (err as Error).message };
-					}
-				}
-				const dbPath = openCodeDBPath();
-				let db: import("bun:sqlite").Database | null = null;
+			getSessionEvents: async ({ sessionId, includeRaw, offset, limit, useCache }) => {
+				const built = await buildSessionEvents(sessionId, { includeRaw, useCache });
+				if (!built.ok) return { ok: false, error: built.error };
+				const total = built.events.length;
+				const start = Math.max(0, offset ?? 0);
+				const end = limit !== undefined ? Math.min(total, start + limit) : total;
+				return {
+					ok: true,
+					events: built.events.slice(start, end),
+					total,
+					hasMore: end < total,
+					repoRoot: built.repoRoot,
+					repos: built.repos,
+					session: built.session,
+				};
+			},
+
+			getAgentSessionsOverview: async ({ days }) => {
 				try {
-					const { Database } = await import("bun:sqlite");
-					db = new Database(dbPath, { readonly: true });
-					const rows = db
-						.prepare(
-							`SELECT id, aggregate_id, seq, type, data FROM event WHERE aggregate_id = ? ORDER BY seq ASC`,
-						)
-						.all(sessionId) as Array<{
+					const index = await buildSessionIndex({ days });
+					const sessions: SessionSummary[] = [];
+					for (const g of index.groups) sessions.push(g.parent);
+					sessions.push(...index.standalone);
+					const processed: Array<{
 						id: string;
-						aggregate_id: string;
-						seq: number;
-						type: string;
-						data: string;
-					}>;
-					// Extract session metadata from first event
-					let sessionSlug = "";
-					let sessionTitle = sessionId.slice(0, 12);
-					if (rows.length > 0) {
-						try {
-							const firstParsed = JSON.parse(rows[0].data) as Record<string, unknown>;
-							const info = firstParsed["info"] as Record<string, unknown> | undefined;
-							const rawTitle = info?.["title"];
-							if (typeof rawTitle === "string") sessionTitle = rawTitle;
-							const rawSlug = info?.["slug"];
-							if (typeof rawSlug === "string") sessionSlug = rawSlug;
-						} catch {
-							// best-effort
+						agent: string;
+						session: { slug: string; title: string; agent?: string };
+						repoRoot?: string;
+						repos: RepoInfo[];
+						events: SessionEventRow[];
+					}> = [];
+					for (const s of sessions) {
+						const res = await buildSessionEvents(s.id, { includeRaw: false, useCache: true });
+						if (res.ok) {
+							processed.push({
+								id: s.id,
+								agent: res.session.agent ?? s.agent ?? "opencode",
+								session: res.session,
+								repoRoot: res.repoRoot,
+								repos: res.repos,
+								events: res.events,
+							});
 						}
 					}
-					if (sessionTitle.startsWith("New session")) {
-						const promptText = firstUserPromptText(db, sessionId);
-						if (promptText) sessionTitle = promptText;
-					}
-					const universalEvents = opencodeRowsToUniversalEvents(
-						rows.map((r) => ({ id: r.id, aggregateId: r.aggregate_id, seq: r.seq, type: r.type, data: r.data })),
-					);
-					const alexandriaRepos = loadAlexandriaRepos();
-					const knownRoots = new Map<string, RepositoryInfo>();
-					for (const [path, repo] of alexandriaRepos) {
-						knownRoots.set(path, {
-							root: repo.root,
-							remoteUrl: repo.remoteUrl,
-							owner: repo.owner,
-							repo: repo.repo,
-						});
-					}
-					const { normalized, adapter } = await normalizeEventsWithAdapter(universalEvents, "", knownRoots);
-					// Auto-register any newly discovered git roots
-					for (const discovered of adapter.newlyDiscovered) {
-						registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
-					}
-					const accumulated = accumulateEvents(normalized, sessionTitle);
-					const events: SessionEventRow[] = accumulated.map((entry, i) => {
-						const rawEnvelope = entry.normalized.raw as { data?: unknown; type?: string; seq?: number } | undefined;
-						const seq = rawEnvelope?.seq ?? i;
-						return {
-							seq,
-							type: rawEnvelope?.type ?? entry.normalized.eventType,
-							raw: INCLUDE_RAW_EVENT_PAYLOADS ? rawEnvelope?.data : undefined,
-							normalized: INCLUDE_RAW_EVENT_PAYLOADS
-								? (entry.normalized as unknown as Record<string, unknown>)
-								: { timestamp: entry.normalized.timestamp },
-							accumulated: entry.accumulated as AgentSessionEvent | null,
-						};
-					});
-					const lastEvent = events[events.length - 1];
-					if (lastEvent) {
-						const lastTimestamp = (lastEvent.normalized as Record<string, unknown>)["timestamp"] as number | undefined ?? 0;
-						const lastAcc = lastEvent.accumulated ?? ({} as AgentSessionEvent);
-						const lastSessionName = lastAcc.sessionName ?? sessionTitle;
-						const lastSessionColor = lastAcc.sessionColor ?? "";
-						const lastContextTokens = lastAcc.contextTokens;
-						events.push({
-							seq: lastEvent.seq + 1,
-							type: "finished",
-							raw: null,
-							normalized: { timestamp: lastTimestamp },
-							accumulated: {
-								id: "",
-								timestamp: lastTimestamp,
-								sessionId: sessionSlug,
-								sessionName: lastSessionName,
-								sessionColor: lastSessionColor,
-								operation: "finished",
-								files: [],
-								dependencies: [],
-								description: `${lastSessionName} finished`,
-								layers: [],
-								contextTokens: lastContextTokens,
-							},
-						});
-					}
-					const repoSet = new Map<string, { root: string; fileCount: number }>();
-					for (const ev of normalized) {
-						if (!ev.files) continue;
-						for (const f of ev.files) {
-							const root = f.repository?.gitRoot;
-							if (root) {
-								const entry = repoSet.get(root) ?? { root, fileCount: 0 };
-								entry.fileCount++;
-								repoSet.set(root, entry);
-							}
-						}
-					}
-					const repos: RepoInfo[] = collectRepositories(normalized)
-						.map((r) => {
-							const entry = repoSet.get(r.root);
-							const parts = r.root.replace(/\/+$/, "").split("/");
-							return { root: r.root, fileCount: entry?.fileCount ?? 0, owner: r.owner ?? null, name: r.repo ?? parts[parts.length - 1] ?? null, editing: false };
-						})
-						.sort((a, b) => b.fileCount - a.fileCount);
-					const repoRoot = repos.length > 0 ? repos[0].root : undefined;
-					return { ok: true, events, repoRoot, repos, session: { slug: sessionSlug, title: sessionTitle, agent: "opencode" } };
+					return {
+						ok: true,
+						groups: index.groups,
+						standalone: index.standalone,
+						hasMore: index.hasMore,
+						processed,
+					};
 				} catch (err) {
-					return { ok: false, error: (err as Error).message };
-				} finally {
-					db?.close();
+					return {
+						ok: false,
+						error: (err as Error).message,
+						groups: [],
+						standalone: [],
+						processed: [],
+					};
 				}
 			},
+
 			listAnalyses: async () => {
 				return { analyses: analyses.summaries() };
 			},
-			analyzeSession: async ({ sessionId, title, agent }) => {
+			openSessionEventsTab: async ({ sessionId, title, agent }) => {
+				// Only opencode sessions are supported for now — its events live
+				// in sqlite as V1 rows. Cline/pi/grok/codex use durable transcripts
+				// with different shapes; the panel disables the button, but guard
+				// here too so the RPC can't be driven blind.
+				const agentName = (agent ?? "").toLowerCase();
+				if (agentName && agentName !== "opencode") {
+					return { ok: false, error: "agent not supported" };
+				}
+				const tabId = openSessionEventsTab(sessionId, title, agent);
+				return { ok: true, tabId };
+			},
+			openPromptTab: async () => {
+				const tabId = openPromptTab();
+				return { ok: true, tabId };
+			},
+			analyzeSession: async ({ sessionId, title, agent, force }) => {
 				const existing = analyses.findBySession(sessionId);
+				if (existing && force && existing.status !== "pending") {
+					// Redo: reset the record and restart extraction in place,
+					// keeping the same analysis id so open tabs stay wired to it.
+					// A `pending` record is left alone — extraction is already
+					// running, so force just falls through to the open/focus path.
+					analyses.save({
+						...existing,
+						status: "pending",
+						error: undefined,
+						model: undefined,
+						concepts: [],
+					});
+					const tabId = openAnalysisTab(existing.id);
+					analyzeSessionInBackground(existing.id, { sessionId, title, agent });
+					return { ok: true, analysisId: existing.id, tabId };
+				}
 				if (existing) {
 					// Idempotent: an analysis already exists for this session, so we
 					// just open (or focus) its tab and report the same analysis id.
@@ -2039,30 +2517,98 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 					sessionTitle: title,
 					agent,
 					createdAt: new Date().toISOString(),
-					status: "done",
-					concepts: [
-						stubConceptCard({
-							sessionId,
-							sessionTitle: title,
-							agent,
-						}),
-					],
+					status: "pending",
+					concepts: [],
 				});
 				const tabId = openAnalysisTab(id);
-				console.log(`[trail-viewer] analysis ${id} created for session ${sessionId} (stub)`);
+				analyzeSessionInBackground(id, { sessionId, title, agent });
 				return { ok: true, analysisId: id, tabId };
 			},
 			
-		},
+		};
+
+/**
+ * Fire-and-forget concept extraction for one analysis. The opencode run
+ * outlives the 5s RPC window, so the analysis is saved as `pending`,
+ * extraction happens here in the background, and a final tabsChanged refresh
+ * surfaces the result. Shared by the initial `analyzeSession` and retries
+ * (which reset the record to `pending` before calling back in).
+ */
+function analyzeSessionInBackground(
+	id: string,
+	opts: { sessionId: string; title?: string; agent?: string },
+): void {
+	void (async () => {
+		try {
+			const { sessionId, title, agent } = opts;
+			const loaded = await requests.getSessionEvents({ sessionId });
+			if (!loaded.ok || !loaded.events) {
+				throw new Error(loaded.error ?? "Session not found or empty");
+			}
+			const transcriptPath = writeTranscript({
+				sessionId,
+				sessionTitle:
+					loaded.session?.title ?? title ?? sessionId.slice(0, 12),
+				sessionSlug: loaded.session?.slug,
+				agent: loaded.session?.agent ?? agent,
+				repos: loaded.repos ?? [],
+				events: loaded.events,
+			});
+			const result = await runOpenCodeExtraction({
+				transcriptPath,
+				primaryRepoRoot: loaded.repoRoot,
+				task: extractTaskTemplate(
+					loaded.session?.title ?? sessionId,
+				),
+			});
+			if (!result.ok) throw new Error(result.error ?? "extraction failed");
+			const current = analyses.get(id);
+			if (!current) return;
+			analyses.save({
+				...current,
+				status: "done",
+				model: result.model,
+				concepts: (result.concepts ?? []).map((c) => ({
+					...c,
+					sessionIds: Array.from(
+						new Set([sessionId, ...(c.sessionIds ?? [])]),
+					),
+				})),
+			});
+			console.log(
+				`[trail-viewer] analysis ${id} complete (${(result.concepts ?? []).length} cards)`,
+			);
+		} catch (err) {
+			const current = analyses.get(id);
+			if (current) {
+				analyses.save({
+					...current,
+					status: "error",
+					error: (err as Error).message,
+				});
+			}
+			console.error(
+				`[trail-viewer] analysis ${id} failed: ${(err as Error).message}`,
+			);
+		} finally {
+			broadcastTabsChanged();
+		}
+	})();
+}
+
+const rpc = BrowserView.defineRPC<TrailViewerRPC>({
+	maxRequestTime: 5000,
+	handlers: {
+		requests,
 		messages: {},
 	},
 });
 
-function broadcastTabsChanged(): void {
+function broadcastTabsChanged(focusTabId?: string): void {
 	try {
 		(rpc.send as unknown as Record<string, (payload: unknown) => void>)[
 			"tabsChanged"
-		](null);
+		]({ focusTabId });
 	} catch (err) {
 		console.warn(`[trail-viewer] could not notify renderer: ${(err as Error).message}`);
 	}
@@ -2125,6 +2671,23 @@ const browserWindow = new BrowserWindow({
 // we want for a windowed viewer.
 browserWindow.maximize();
 
+// Background warm-up: process the recent window and hydrate the host's
+// resident store so the first click on Agent Sessions finds warm data instead
+// of a cold rebuild. Both run off to the side (yielding between sessions) so
+// tab switching stays responsive while they work.
+// Defer warm-up until the boot handshake settles. The warm-up runs on the same
+// event loop as the RPC socket server, so kicking it off immediately competes
+// with the webview's WebSocket handshake and can delay it past the renderer's
+// first RPC requests — electrobun drops messages sent before the socket is
+// OPEN (no queue), so listTabs/getTab time out and the window shows only the
+// header. Letting the handshake + initial requests land first fixes the race;
+// once the socket is open it stays open, so later requests interleave with
+// warm-up fine.
+setTimeout(() => {
+	void hydrateResidentStore();
+	void runSessionWarmup();
+}, 1500);
+
 function closeTabById(id: string): { ok: boolean; error?: string } {
 	if (
 		id === LIBRARY_TAB_ID ||
@@ -2136,9 +2699,11 @@ function closeTabById(id: string): { ok: boolean; error?: string } {
 	}
 	if (!tabs.has(id)) return { ok: false, error: `unknown tab: ${id}` };
 	tabs.delete(id);
-	if (activeTabId === id) {
+	// If the renderer was on this tab, the renderer picks its own fallback on
+	// the next refresh. We only keep the host's resume suggestion valid.
+	if (suggestedTabId === id) {
 		const remaining = Array.from(tabs.keys());
-		activeTabId = remaining[remaining.length - 1] ?? LIBRARY_TAB_ID;
+		suggestedTabId = remaining[remaining.length - 1] ?? LIBRARY_TAB_ID;
 	}
 	broadcastTabsChanged();
 	return { ok: true };
@@ -2177,7 +2742,7 @@ ApplicationMenu.setApplicationMenu([
 ApplicationMenu.on("application-menu-clicked", (event) => {
 	// Electrobun wraps the payload — `{ data: { action, id?, data? } }`.
 	const action = (event as { data?: { action?: string } }).data?.action;
-	if (action === "closeActiveTab") closeTabById(activeTabId);
+	if (action === "closeActiveTab") closeTabById(suggestedTabId);
 });
 
 console.log("[trail-viewer] window opened");
@@ -2185,13 +2750,14 @@ console.log("[trail-viewer] window opened");
 startIpcServer(async (msg) => {
 	try {
 		if (msg.kind === "ACTIVATE_TAB") {
-			// Switch a running viewer to a permanent tab (e.g. the CLI's
-			// `principal-ai agent-sessions` bringing the app forward).
+			// Bring a running viewer to a permanent tab (e.g. the CLI's
+			// `principal-ai agent-sessions`). The host suggests the focus; the
+			// renderer applies it to its own active-tab state.
 			if (msg.tabId !== LIBRARY_TAB_ID && msg.tabId !== AGENT_SESSIONS_TAB_ID) {
 				return { ok: false, error: `unknown permanent tab: ${msg.tabId}` };
 			}
-			activeTabId = msg.tabId;
-			broadcastTabsChanged();
+			suggestedTabId = msg.tabId;
+			broadcastTabsChanged(msg.tabId);
 			try {
 				browserWindow.focus();
 			} catch (err) {
@@ -2199,8 +2765,8 @@ startIpcServer(async (msg) => {
 			}
 			return { ok: true };
 		}
-		addTabFromMessage(msg);
-		broadcastTabsChanged();
+		const tabId = addTabFromMessage(msg);
+		broadcastTabsChanged(tabId);
 		try {
 			browserWindow.focus();
 		} catch (err) {

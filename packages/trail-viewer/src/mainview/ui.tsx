@@ -2,6 +2,7 @@
  * Small shared UI helpers for the trail-viewer mainview.
  */
 
+import type { ReactNode } from "react";
 import { useTheme } from "@principal-ade/industry-theme";
 
 export function relativeTime(ms: number): string {
@@ -15,9 +16,11 @@ export function relativeTime(ms: number): string {
 export function CenteredMessage({
 	title,
 	detail,
+	children,
 }: {
 	title: string;
 	detail?: string;
+	children?: ReactNode;
 }) {
 	const { theme } = useTheme();
 	return (
@@ -47,6 +50,7 @@ export function CenteredMessage({
 						{detail}
 					</div>
 				)}
+				{children}
 			</div>
 		</div>
 	);

@@ -22,7 +22,7 @@
       },
       "devDependencies": {
         "@principal-ade/industry-theme": "0.1.7",
-        "@principal-ai/agent-monitoring": "^0.3.33",
+        "@principal-ai/agent-monitoring": "^0.3.38",
         "@principal-ai/principal-view-core": "0.27.1",
         "@storybook/addon-docs": "10.1.2",
         "@storybook/addon-links": "10.1.2",
@@ -216,7 +216,7 @@
 
     "@principal-ade/panels": ["@principal-ade/panels@1.0.52", "", { "dependencies": { "@dnd-kit/core": "^6.3.1", "@dnd-kit/sortable": "^10.0.0", "@dnd-kit/utilities": "^3.2.2", "@principal-ade/industry-theme": "^0.1.1" }, "peerDependencies": { "react": ">=16.8.0", "react-dom": ">=16.8.0", "react-resizable-panels": "^3.0.0" } }, "sha512-QwCtGuJrt/BcGTLZ1EQWDkB264GAyx59fmSsyveuLk4PaHVGlP3cOi7y2lta+gLo3pPdad7AmxSVN1+/53QxGA=="],
 
-    "@principal-ai/agent-monitoring": ["@principal-ai/agent-monitoring@0.3.33", "", { "dependencies": { "dotenv": "^17.2.2", "drizzle-orm": "^0.44.5", "pg": "^8.16.3" } }, "sha512-DJXav4jJc/VRP+MiIU8WRDOvRCbMmyxGMbCkpfRN21an8aG2k5TYqENHDWEFxDPD+B1fZLafnuPUEY4PVs0KSA=="],
+    "@principal-ai/agent-monitoring": ["@principal-ai/agent-monitoring@0.3.38", "", { "dependencies": { "dotenv": "^17.2.2", "drizzle-orm": "^0.44.5", "pg": "^8.16.3" } }, "sha512-pT0liwnnEW9Qkp+XTxD7wBKmEfTJR3Kiu9KL65FRs/CW2iVfjciSGidj3mILMLleZDlEI4WUd0ot4IhqXJS6wA=="],
 
     "@principal-ai/codebase-composition": ["@principal-ai/codebase-composition@0.2.48", "", { "dependencies": { "@principal-ai/codebase-quality-lenses": "^0.1.62", "@principal-ai/quality-lens-registry": "^0.3.0", "@principal-ai/repository-abstraction": "^0.2.2", "ignore": "^5.3.0", "typescript": "^5.0.4" }, "optionalDependencies": { "pip-requirements-js": "^0.2.1", "smol-toml": "^1.6.0" } }, "sha512-4V7u3XolYXMXRoKcfYbVghTzu0Pn01K+Bc3+ceC49chqoQ6Yo4ghbMVtN38OlEHas+l3ZnNHbT9bbB4FNmPaVA=="],
 

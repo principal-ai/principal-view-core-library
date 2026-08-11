@@ -1,6 +1,6 @@
 {
   "name": "@principal-ai/principal-view-react",
-  "version": "0.15.10",
+  "version": "0.16.21",
   "description": "React components for graph-based principal view framework",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "@principal-ade/industry-theme": "0.1.7",
-    "@principal-ai/agent-monitoring": "^0.3.33",
+    "@principal-ai/agent-monitoring": "^0.3.38",
     "@principal-ai/principal-view-core": "0.27.1",
     "@storybook/addon-docs": "10.1.2",
     "@storybook/addon-links": "10.1.2",

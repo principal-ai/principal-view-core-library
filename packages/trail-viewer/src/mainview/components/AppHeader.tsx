@@ -14,6 +14,7 @@ import {
 	GitBranch,
 	Info,
 	RefreshCw,
+	ScrollText,
 	Terminal,
 	User,
 } from "lucide-react";
@@ -127,6 +128,32 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 					<RefreshCw size={16} />
 				</button>
 			)}
+			<button
+				type="button"
+				onClick={() => {
+					void electrobun.rpc!.request.openPromptTab({});
+				}}
+				title="View the concept-extractor prompt"
+				aria-label="View the concept-extractor prompt"
+				style={{
+					display: "flex",
+					alignItems: "center",
+					gap: 6,
+					height: 32,
+					padding: "0 12px",
+					borderRadius: 6,
+					background: "transparent",
+					border: `1px solid ${theme.colors.border}`,
+					color: theme.colors.text,
+					fontSize: theme.fontSizes[1],
+					fontFamily: theme.fonts.body,
+					cursor: "pointer",
+					flexShrink: 0,
+				}}
+			>
+				<ScrollText size={14} />
+				<span>Prompt</span>
+			</button>
 			{user && user.source !== "none" && (
 				<button
 					type="button"

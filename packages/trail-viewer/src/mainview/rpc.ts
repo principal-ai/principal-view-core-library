@@ -22,13 +22,15 @@ type TrailViewerRPC = {
 	};
 	webview: {
 		requests: Record<string, never>;
-		messages: Record<string, never>;
+		messages: TrailViewerMessages;
 	};
 };
 
 // Subscribers wired up in App: each becomes a callback that re-runs listTabs.
-// The bun host fires `tabsChanged` after LOAD_TRAIL, setActiveTab, closeTab.
-export const reloadSubscribers = new Set<() => void>();
+// The bun host fires `tabsChanged` after tabs open/close; the callback receives
+// the host's focus suggestion (a tab it wants on screen) so the renderer can
+// apply it to its own active-tab state.
+export const reloadSubscribers = new Set<(focusTabId?: string) => void>();
 
 // The mounted LibraryView registers its refresh here so the top-level AppHeader
 // can trigger a re-fetch of the trail list without prop-drilling through
@@ -44,8 +46,8 @@ const rpc = Electroview.defineRPC<TrailViewerRPC>({
 	handlers: {
 		requests: {},
 		messages: {
-			tabsChanged: () => {
-				for (const fn of reloadSubscribers) fn();
+			tabsChanged: (payload) => {
+				for (const fn of reloadSubscribers) fn(payload?.focusTabId);
 			},
 		},
 	},

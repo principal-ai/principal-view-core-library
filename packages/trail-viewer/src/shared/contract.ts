@@ -88,6 +88,21 @@ export interface ConceptCardData {
 
 export type AnalysisStatus = "pending" | "done" | "error";
 
+/** The extractor prompt surfaces: what the agent is asked, verbatim. Served as
+ *  the payload of a `kind: "prompt"` tab. */
+export interface ExtractionPromptInfo {
+	/** opencode agent name the run invokes. */
+	agent: string;
+	/** Model passed via `-m` on the run. */
+	model: string;
+	/** The agent's system prompt, read from its config file on disk. */
+	systemPrompt: string;
+	/** The task message template — `<session title>` is the interpolation point. */
+	taskTemplate: string;
+	/** Absolute path of the agent file the system prompt was read from. */
+	agentPath: string;
+}
+
 /** Full record for one analyzed session, stored host-side on disk. */
 export interface ConceptAnalysis {
 	id: string;
@@ -97,6 +112,8 @@ export interface ConceptAnalysis {
 	agent?: string;
 	createdAt: string;
 	status: AnalysisStatus;
+	/** Model that produced the extraction (the opencode run's model). */
+	model?: string;
 	/** Present when `status === "error"`. */
 	error?: string;
 	/** Concept cards teased out of the session. Empty until `status === "done"`. */
@@ -115,7 +132,7 @@ export interface AnalysisSummary {
 
 export interface TabSummary {
 	id: string;
-	kind: "library" | "trail" | "agent-sessions" | "mermaid-demo" | "concepts" | "analysis";
+	kind: "library" | "trail" | "agent-sessions" | "mermaid-demo" | "concepts" | "analysis" | "session-events" | "prompt";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -125,7 +142,7 @@ export interface TabFullState {
 	ok: boolean;
 	error?: string;
 	id: string;
-	kind: "library" | "trail" | "agent-sessions" | "mermaid-demo" | "concepts" | "analysis";
+	kind: "library" | "trail" | "agent-sessions" | "mermaid-demo" | "concepts" | "analysis" | "session-events" | "prompt";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -192,7 +209,14 @@ export interface UserIdentity {
 export type TrailViewerRequests = {
 	listTabs: {
 		params: Record<string, never>;
-		response: { tabs: TabSummary[]; activeTabId: string };
+		response: {
+			tabs: TabSummary[];
+			/** Which tab the host suggests showing: the boot start tab, a trail
+			 *  seeded by LOAD_TRAIL, or the last tab the renderer reported via
+			 *  setActiveTab. The renderer owns the active tab; it applies this
+			 *  only as its initial/resume value (until the user clicks). */
+			suggestedActiveTabId: string;
+		};
 	};
 	getTab: {
 		params: { id: string };
@@ -232,22 +256,85 @@ export type TrailViewerRequests = {
 		};
 	};
 	getSessionEvents: {
-		params: { sessionId: string };
+		params: {
+			sessionId: string;
+			/** Include the full raw event payloads. Off by default because raw
+			 *  payloads reach hundreds of MB per session; the session-events tab
+			 *  (the raw → normalized → accumulated feed) requests them. */
+			includeRaw?: boolean;
+			/** Page window over the built event set (by seq). The session-events
+			 *  tab pages so each RPC message stays bounded instead of shipping
+			 *  the whole session's raw payloads at once. */
+			offset?: number;
+			limit?: number;
+			/** Serve the processed timeline from the on-disk session cache.
+			 *  Defaults to true. Live refreshes (the 30s poll of working
+			 *  sessions) pass false so a growing session is always re-processed
+			 *  from raw rather than served stale. */
+			useCache?: boolean;
+		};
 		response: {
 			ok: boolean;
 			error?: string;
 			events?: SessionEventRow[];
+			/** Total rows in the built set, for pagination. */
+			total?: number;
+			/** True when more rows exist beyond this page. */
+			hasMore?: boolean;
 			repoRoot?: string;
 			repos?: RepoInfo[];
 			session?: { slug: string; title: string; agent?: string };
 		};
 	};
+	getAgentSessionsOverview: {
+		/** How many days back the overview covers (defaults to 7). */
+		params: { days?: number };
+		response: {
+			ok: boolean;
+			error?: string;
+			groups: SessionGroup[];
+			standalone: SessionSummary[];
+			/** True when opencode has at least one session older than the
+			 *  requested window — the signal for the renderer's "Load more"
+			 *  affordance. */
+			hasMore?: boolean;
+			/** Every processed session in the window, with its full (trimmed)
+			 *  event timeline, so the renderer can assemble the Agent Sessions
+			 *  view from a single call instead of N getSessionEvents
+			 *  round-trips. Served from the host's resident store / disk cache. */
+			processed: Array<{
+				id: string;
+				agent: string;
+				session: { slug: string; title: string; agent?: string };
+				repoRoot?: string;
+				repos: RepoInfo[];
+				events: SessionEventRow[];
+			}>;
+		};
+	};
+	openSessionEventsTab: {
+		params: { sessionId: string; title?: string; agent?: string };
+		response: { ok: boolean; error?: string; tabId?: string };
+	};
 	listAnalyses: {
 		params: Record<string, never>;
 		response: { analyses: AnalysisSummary[] };
 	};
+	openPromptTab: {
+		params: Record<string, never>;
+		response: { ok: boolean; error?: string; tabId?: string };
+	};
 	analyzeSession: {
-		params: { sessionId: string; title?: string; agent?: string };
+		params: {
+			sessionId: string;
+			title?: string;
+			agent?: string;
+			/** Re-run an existing analysis: the record is reset to `pending` and
+			 *  extraction restarts in place (same analysis id, so open tabs stay
+			 *  wired to it). Defaults to false — without it an existing record
+			 *  (even one in `error`) just re-opens its tab. */
+			force?: boolean;
+		};
 		response: {
 			ok: boolean;
 			error?: string;
@@ -295,9 +382,14 @@ export type TrailViewerRequests = {
 
 /** Host → renderer notifications. Keyed by message name. */
 export type TrailViewerMessages = {
-	/** Fired when the tab list or active tab changes (LOAD_TRAIL, close,
-	 *  switch). Renderer re-runs listTabs to refresh the strip. */
-	tabsChanged: null;
+	/** Fired when the tab list changes (LOAD_TRAIL, close, host-initiated
+	 *  opens). The renderer refreshes its registry from listTabs. `focusTabId`
+	 *  is present when the host wants a specific tab on screen (a tab it just
+	 *  created, or an external activation) — the renderer applies it to its own
+	 *  active-tab state; when absent the renderer keeps its current selection. */
+	tabsChanged: {
+		focusTabId?: string;
+	};
 }
 
 /** The bun side of the RPC, wrapper-agnostic — host wraps it in

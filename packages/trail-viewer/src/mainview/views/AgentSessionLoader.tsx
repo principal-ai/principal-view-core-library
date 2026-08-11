@@ -4,7 +4,7 @@
  *
  * Repos appear as cards the moment a session's processing discovers them, so
  * the loading screen reads as a live "what am I mapping" surface rather than a
- * bare spinner. Day 1 completing is the host's cue to hand over to the
+ * bare spinner. Day 1 completing is the cue for the view to auto-enter the
  * FileCityGuidePanel; later days keep paging in the background.
  */
 
@@ -87,13 +87,9 @@ export function AgentLogo({ agent, size = 14 }: { agent: string; size?: number }
 export function AgentSessionLoader({
 	repos,
 	agents,
-	allDaysLoaded,
-	onEnter,
 }: {
 	repos: DiscoveredRepo[];
 	agents: string[];
-	allDaysLoaded: boolean;
-	onEnter: () => void;
 }) {
 	const { theme } = useTheme();
 	const presentAgents = new Set(agents.map((a) => a.toLowerCase()));
@@ -337,41 +333,6 @@ export function AgentSessionLoader({
 						Reading session timelines to find repos…
 					</div>
 				)}
-
-				{/* Enter affordance — appears once the whole window has finished
-				    loading. The loader doesn't auto-dismiss; the user enters the
-				    city when they're ready. */}
-				{allDaysLoaded ? (
-					<div
-						style={{
-							display: "flex",
-							justifyContent: "center",
-							marginTop: 32,
-						}}
-					>
-						<button
-							type="button"
-							onClick={onEnter}
-							style={{
-								padding: "10px 32px",
-								borderRadius: 6,
-								border: "none",
-								background: theme.colors.accent,
-								color: theme.colors.background,
-								fontFamily: theme.fonts.heading,
-								fontSize: theme.fontSizes[2],
-								fontWeight: 600,
-								letterSpacing: 0.3,
-								cursor: "pointer",
-								transition: "opacity 150ms",
-							}}
-							onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
-							onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-						>
-							Enter
-						</button>
-					</div>
-				) : null}
 			</div>
 		</div>
 	);

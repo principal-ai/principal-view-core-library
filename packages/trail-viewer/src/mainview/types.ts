@@ -16,6 +16,8 @@ export type TabState =
 	| { kind: "mermaid-demo" }
 	| { kind: "concepts" }
 	| { kind: "analysis"; id: string; analysisId: string }
+	| { kind: "session-events"; id: string; sessionId: string }
+	| { kind: "prompt"; id: string }
 	| { kind: "error"; message: string }
 	| {
 			kind: "ready";

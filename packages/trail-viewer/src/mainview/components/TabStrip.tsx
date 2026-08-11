@@ -43,13 +43,6 @@ export function TabStrip({
 					tab.kind === "agent-sessions" ||
 					tab.kind === "mermaid-demo" ||
 					tab.kind === "concepts";
-				const dotColor = tab.kind === "agent-sessions"
-					? theme.colors.accent ?? "#4ec9b0"
-					: isPermanent
-						? theme.colors.text
-						: tab.mode === "remote"
-							? theme.colors.accent ?? "#4ec9b0"
-							: theme.colors.textMuted ?? "#888";
 				return (
 					<div
 						key={tab.id}
@@ -77,15 +70,6 @@ export function TabStrip({
 						}}
 						title={tab.title}
 					>
-						<span
-							style={{
-								width: 6,
-								height: 6,
-								borderRadius: tab.kind === "library" ? 1 : "50%",
-								background: dotColor,
-								flexShrink: 0,
-							}}
-						/>
 						<span
 							style={{
 								whiteSpace: "nowrap",
