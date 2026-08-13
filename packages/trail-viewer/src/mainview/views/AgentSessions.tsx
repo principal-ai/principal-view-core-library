@@ -11,7 +11,7 @@
  * panel, never rebuilds it.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTheme } from "@principal-ade/industry-theme";
 import {
 	PanelEventBus,
@@ -149,6 +149,7 @@ export function buildAgentSessionsView(opts: {
 		models: opts.models,
 		workingDirectory: opts.repoRoot,
 		stats,
+		timeline: agentSessionEvents,
 	};
 
 	return {
@@ -219,7 +220,7 @@ function dayLabelOf(key: string): string {
 const INITIAL_DAY_WINDOW = 7;
 const LOAD_MORE_STEP = 7;
 
-export function AgentSessionsOverviewView() {
+export function AgentSessionsOverviewView({ active = true }: { active?: boolean }) {
 	const { theme } = useTheme();
 	const [summaries, setSummaries] = useState<SessionSummary[]>([]);
 	const [sessionsById, setSessionsById] = useState<Map<string, AgentSessionView>>(new Map());
@@ -239,6 +240,15 @@ export function AgentSessionsOverviewView() {
 	const [analyzedSessionIds, setAnalyzedSessionIds] = useState<Set<string>>(
 		new Set(),
 	);
+	// The 3D panel (WebGL + city build) only mounts once the tab has been shown
+	// at least once — no hidden-GPU cost before the first visit — then stays
+	// mounted so switching away and back preserves camera/selection state.
+	const [panelEngaged, setPanelEngaged] = useState(false);
+	// Layout effect so the panel mounts before paint on the first activation —
+	// no "Loading city…" flash between the click and the panel.
+	useLayoutEffect(() => {
+		if (active) setPanelEngaged(true);
+	}, [active]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -318,6 +328,89 @@ export function AgentSessionsOverviewView() {
 				if (cancelled) return;
 				setError(err instanceof Error ? err.message : String(err));
 				setLoaded(true);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [daysWindow]);
+
+	// --- Single-call overview seed ------------------------------------------
+	// The host keeps the recent window warm (resident store + disk cache), so
+	// fetch it in ONE call and seed every piece of view state at once. The
+	// panel mounts immediately (no per-session getSessionEvents round-trips);
+	// sessions the overview hasn't processed yet (warm-up still finishing) fall
+	// through to the day-paging loop below, which upgrades them in place. Runs
+	// once — Load more / refreshes keep using the incremental listSessions +
+	// day-paging path.
+	const overviewSeeded = useRef(false);
+	useEffect(() => {
+		if (overviewSeeded.current) return;
+		let cancelled = false;
+		(async () => {
+			try {
+				const res = await electrobun.rpc!.request.getAgentSessionsOverview({
+					days: daysWindow,
+				});
+				if (cancelled || !res.ok || res.processed.length === 0) return;
+
+				const topSessions = [
+					...res.groups.map((g) => g.parent),
+					...res.standalone,
+				].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+				setSummaries(topSessions);
+				setHostHasMore(res.hasMore ?? false);
+
+				const nextSessions = new Map<string, AgentSessionView>();
+				const nextEvents = new Map<string, AgentSessionEvent[]>();
+				const nextRepos = new Map<string, DiscoveredRepo>();
+				const nextAgents = new Set<string>();
+				for (const p of res.processed) {
+					const summary = topSessions.find((s) => s.id === p.id);
+					const slice = buildAgentSessionsView({
+						sessionId: p.id,
+						title: p.session.title,
+						events: p.events,
+						sessionMeta: p.session,
+						dirSet: new Set(),
+						repoOwner: p.repos[0]?.owner ?? null,
+						repoName: p.repos[0]?.name ?? null,
+						repoRoot: p.repoRoot,
+						models: summary?.models,
+					});
+					if (!slice) continue;
+					nextSessions.set(p.id, slice.sessions[0]);
+					nextEvents.set(p.id, slice.events ?? []);
+					nextAgents.add(slice.sessions[0].agent ?? p.agent);
+					for (const r of p.repos) {
+						const parts = r.root.replace(/\/+$/, "").split("/");
+						const existing = nextRepos.get(r.root);
+						const agents = existing
+							? Array.from(new Set([...existing.agents, p.agent]))
+							: [p.agent];
+						nextRepos.set(r.root, {
+							root: r.root,
+							name: r.name ?? parts[parts.length - 1] ?? "",
+							owner: r.owner ?? null,
+							fileCount: Math.max(existing?.fileCount ?? 0, r.fileCount),
+							sessionCount: (existing?.sessionCount ?? 0) + 1,
+							agents,
+						});
+					}
+				}
+				sessionsByIdRef.current = nextSessions;
+				eventsByIdRef.current = nextEvents;
+				setSessionsById(nextSessions);
+				setEventsById(nextEvents);
+				setDiscoveredRepos(nextRepos);
+				setSeenAgents(nextAgents);
+				// Mount the panel immediately; unprocessed sessions page in
+				// behind it via the day-paging loop below.
+				overviewSeeded.current = true;
+				setLoaded(true);
+				setReady(true);
+			} catch {
+				// Fall through to the per-session day-paging path.
 			}
 		})();
 		return () => {
@@ -632,8 +725,10 @@ export function AgentSessionsOverviewView() {
 	// Static superset of city sources — one per discovered repo, in discovery
 	// order (append-only, so sources never reshuffle as later sessions bump
 	// file counts). Never rebuilt on selection; the panel's agent-sessions mode
-	// focuses (dims) sources internally instead.
+	// focuses (dims) sources internally instead. Building a city is CPU-heavy,
+	// so it's deferred until the panel has been engaged (`panelEngaged`).
 	const citySources = useMemo<CitySource[] | undefined>(() => {
+		if (!panelEngaged) return undefined;
 		const repos = Array.from(discoveredRepos.values());
 		const withTrees = repos.filter((r) => trees.has(r.root));
 		if (withTrees.length === 0) return undefined;
@@ -653,7 +748,7 @@ export function AgentSessionsOverviewView() {
 			});
 		}
 		return sources.length > 0 ? sources : undefined;
-	}, [discoveredRepos, trees]);
+	}, [discoveredRepos, trees, panelEngaged]);
 
 	const primaryRepo = useMemo(() => {
 		for (const r of discoveredRepos.values()) {
@@ -827,7 +922,7 @@ export function AgentSessionsOverviewView() {
 	return (
 		<div style={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
 			<div style={{ flex: 1, minWidth: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-				{view ? (
+				{view && panelEngaged ? (
 					<div style={{ flex: 1, minHeight: 0 }}>
 						<FileCityGuidePanel context={guideContext} actions={guideActions} events={panelEvents} citySources={citySources} />
 					</div>
