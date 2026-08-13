@@ -38,7 +38,7 @@ import {
 import type { CitySource } from "@principal-ai/file-city-react";
 import type { NormalizedPathInfo } from "@principal-ai/agent-monitoring";
 import type { SessionEventRow, SessionSummary } from "../../shared/contract";
-import { electrobun } from "../rpc";
+import { electrobun, sessionRefreshers } from "../rpc";
 import { CenteredMessage } from "../ui";
 import { AgentSessionLoader, type DiscoveredRepo } from "./AgentSessionLoader";
 
@@ -361,11 +361,20 @@ export function AgentSessionsOverviewView({ active = true }: { active?: boolean 
 				setSummaries(topSessions);
 				setHostHasMore(res.hasMore ?? false);
 
-				const nextSessions = new Map<string, AgentSessionView>();
-				const nextEvents = new Map<string, AgentSessionEvent[]>();
+				// Merge into whatever the live poll / day-paging have already
+				// committed. The overview snapshot was computed at RPC-start
+				// (possibly from a stale disk cache), so committing it wholesale
+				// would clobber a session the poll just refreshed with today's
+				// events. Skip any session that's already loaded; only add the
+				// ones that aren't there yet.
+				const nextSessions = new Map<string, AgentSessionView>(sessionsByIdRef.current);
+				const nextEvents = new Map<string, AgentSessionEvent[]>(eventsByIdRef.current);
 				const nextRepos = new Map<string, DiscoveredRepo>();
 				const nextAgents = new Set<string>();
 				for (const p of res.processed) {
+					// Check the live ref (not a captured snapshot) so a poll that
+					// landed mid-seed isn't overwritten.
+					if (sessionsByIdRef.current.has(p.id)) continue;
 					const summary = topSessions.find((s) => s.id === p.id);
 					const slice = buildAgentSessionsView({
 						sessionId: p.id,
@@ -402,8 +411,16 @@ export function AgentSessionsOverviewView({ active = true }: { active?: boolean 
 				eventsByIdRef.current = nextEvents;
 				setSessionsById(nextSessions);
 				setEventsById(nextEvents);
-				setDiscoveredRepos(nextRepos);
-				setSeenAgents(nextAgents);
+				setDiscoveredRepos((prev) => {
+					const merged = new Map(prev);
+					for (const [root, r] of nextRepos) merged.set(root, r);
+					return merged;
+				});
+				setSeenAgents((prev) => {
+					const merged = new Set(prev);
+					for (const a of nextAgents) merged.add(a);
+					return merged;
+				});
 				// Mount the panel immediately; unprocessed sessions page in
 				// behind it via the day-paging loop below.
 				overviewSeeded.current = true;
@@ -475,13 +492,15 @@ export function AgentSessionsOverviewView({ active = true }: { active?: boolean 
 		}
 	}, []);
 
-	// --- Live refresh: re-fetch an active session and append only the events
-	// that are new since the last load. Bypasses the disk cache (`useCache:
-	// false`) so a growing session is always re-processed from raw rather than
-	// served the last cached snapshot. Returns true if anything changed, so the
-	// poll can leave state untouched (no re-render) when nothing moved. ---
-	const loadSessionLive = useCallback(async (s: SessionSummary): Promise<boolean> => {
-		const res = await electrobun.rpc!.request.getSessionEvents({ sessionId: s.id, useCache: false });
+	// --- Live refresh: re-fetch a session and append only the events that are
+	// new since the last load. With `useCache: false` the host serves the
+	// current cache immediately and hands the re-process to the warm-up worker
+	// (off the host loop); the real update lands when `sessionsUpdated` fires
+	// and this runs again with `useCache: true` against the worker's fresh
+	// cache. Returns true if anything changed, so the poll leaves state
+	// untouched (no re-render) when nothing moved. ---
+	const loadSessionLive = useCallback(async (s: SessionSummary, useCache: boolean): Promise<boolean> => {
+		const res = await electrobun.rpc!.request.getSessionEvents({ sessionId: s.id, useCache });
 		if (!res.ok || !res.events || res.events.length === 0) return false;
 		const slice = buildAgentSessionsView({
 			sessionId: s.id,
@@ -578,10 +597,23 @@ export function AgentSessionsOverviewView({ active = true }: { active?: boolean 
 				setDayIndex(0);
 			}
 
-			const working = relevant.filter((s) => known.get(s.id)?.state === "working");
-			for (const s of working) {
+			// Re-process sessions that have grown since we last loaded them. The
+			// pipeline appends a synthetic "finished" row to every timeline, so
+			// the loaded state is always "done" — the reliable signal is the
+			// summary's lastEventAt: a session only re-processes when it's newer
+			// than what's loaded, so finished sessions stop costing re-processes
+			// while a still-running session catches up to today's events.
+			const stale = relevant.filter((s) => {
+				const v = known.get(s.id);
+				if (!v) return false;
+				if (v.state === "working") return true;
+				const loadedLast = v.lastEventAt ? new Date(v.lastEventAt).getTime() : 0;
+				const summaryLast = s.lastEventAt ? new Date(s.lastEventAt).getTime() : 0;
+				return summaryLast > loadedLast;
+			});
+			for (const s of stale) {
 				try {
-					await loadSessionLive(s);
+					await loadSessionLive(s, false);
 				} catch (err) {
 					console.error("[AgentSessionsOverview] live event refresh failed:", s.id, err);
 				}
@@ -592,14 +624,42 @@ export function AgentSessionsOverviewView({ active = true }: { active?: boolean 
 	}, [windowStart, loadSessionLive]);
 
 	// Poll loop — starts once the initial load has listed sessions; cleared on
-	// unmount. No overlap guard needed: each tick awaits its own work.
+	// unmount. No overlap guard needed: each tick awaits its own work. Runs one
+	// immediate refresh on start so a session that grew while we were away (or
+	// whose cache is stale) corrects right away instead of after the first 30s.
 	useEffect(() => {
 		if (!loaded) return;
+		void refreshLive();
 		const t = setInterval(() => {
 			void refreshLive();
 		}, 30_000);
 		return () => clearInterval(t);
 	}, [loaded, refreshLive]);
+
+	// --- Worker refresh push -------------------------------------------------
+	// The host hands live re-processes to the warm-up worker and notifies us via
+	// `sessionsUpdated` when a session's disk cache is fresh. Re-fetch it (a
+	// cache read now) and diff-append — this is what actually surfaces new
+	// events for a growing session without the host re-processing on its loop.
+	useEffect(() => {
+		const onSessionsUpdated = (sessionIds: string[]): void => {
+			void (async () => {
+				for (const id of sessionIds) {
+					const summary = summaries.find((s) => s.id === id);
+					if (!summary) continue;
+					try {
+						await loadSessionLive(summary, true);
+					} catch (err) {
+						console.error("[AgentSessionsOverview] refreshed session fetch failed:", id, err);
+					}
+				}
+			})();
+		};
+		sessionRefreshers.add(onSessionsUpdated);
+		return () => {
+			sessionRefreshers.delete(onSessionsUpdated);
+		};
+	}, [summaries, loadSessionLive]);
 
 	// --- Day paging: process one calendar day at a time -----------------------
 	// Completing a day advances `dayIndex`, which re-runs this effect for the

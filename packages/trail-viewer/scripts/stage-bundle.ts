@@ -41,6 +41,43 @@ cpSync(SRC_APP, DEST_APP, { recursive: true });
 console.log(`stage-bundle: ${SRC_APP} -> ${DEST_APP}`);
 
 /**
+ * Compile the session warm-up worker into the staged app. electrobun's bun
+ * bundler only emits the single host entry (app/bun/index.js) and leaves
+ * `new Worker(new URL("./session-warmup-worker.ts", …))` unresolved — so the
+ * packaged host would look for a missing sibling. Building the worker here and
+ * dropping it next to index.js makes the URL resolve at runtime. (Dev mode
+ * needs none of this: bun runs the `.ts` source directly.)
+ */
+const workerSrc = join(pkgRoot, "src", "bun", "session-warmup-worker.ts");
+const workerOut = join(
+	DEST_APP,
+	"Contents",
+	"Resources",
+	"app",
+	"bun",
+	"session-warmup-worker.js",
+);
+const workerBuild = spawnSync(
+	"bun",
+	[
+		"build",
+		workerSrc,
+		"--target",
+		"bun",
+		"--outfile",
+		workerOut,
+	],
+	{ encoding: "utf8" },
+);
+if (workerBuild.status !== 0) {
+	console.error(
+		`stage-bundle: failed to build warm-up worker: ${workerBuild.stderr?.trim()}`,
+	);
+	process.exit(1);
+}
+console.log(`stage-bundle: warm-up worker -> ${workerOut}`);
+
+/**
  * Set a plist key, adding it if absent (PlistBuddy's `Set` fails on a missing
  * key, so fall back to `Add`). macOS reads the app name from CFBundleName (app
  * menu) and CFBundleDisplayName (Finder/Dock), so we set both.

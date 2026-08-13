@@ -26,7 +26,6 @@ import { AppHeader } from "./components/AppHeader";
 import { TabStrip } from "./components/TabStrip";
 import { AgentSessionsOverviewView } from "./views/AgentSessions";
 import { LibraryView } from "./views/LibraryView";
-import { MermaidDemoView } from "./views/MermaidDemoView";
 import { ConceptCardsView } from "./views/ConceptCardsView";
 import { AnalysisView } from "./views/AnalysisView";
 import { SessionEventsView } from "./views/SessionEventsView";
@@ -77,10 +76,10 @@ class ErrorBoundary extends Component<
 }
 
 // Permanent, non-trail tab ids. These views stay mounted once visited (hidden
-// while inactive), so heavy views like Agent Sessions don't reload every time
-// you switch back to them. Trail tabs are excluded — each one mounts a full 3D
+// while inactive), so heavy views like the library don't reload every time you
+// switch back to them. Trail tabs are excluded — each one mounts a full 3D
 // city, so only the active trail is mounted at a time.
-const STATIC_TAB_IDS = new Set(["library", "agent-sessions", "mermaid-demo", "concepts"]);
+const STATIC_TAB_IDS = new Set(["library", "agent-sessions", "concepts"]);
 
 // Permanent tabs carry no host payload — their resolved state is known from the
 // tab id alone, so they mount without a getTab round-trip. The static views
@@ -89,7 +88,6 @@ const STATIC_TAB_IDS = new Set(["library", "agent-sessions", "mermaid-demo", "co
 function staticTabState(tabId: string): TabState | null {
 	if (tabId === "library") return { kind: "library" };
 	if (tabId === "agent-sessions") return { kind: "agent-sessions" };
-	if (tabId === "mermaid-demo") return { kind: "mermaid-demo" };
 	if (tabId === "concepts") return { kind: "concepts" };
 	return null;
 }
@@ -99,7 +97,6 @@ function staticTabState(tabId: string): TabState | null {
 function renderStaticView(state: TabState): ReactNode | null {
 	if (state.kind === "library") return <LibraryView />;
 	if (state.kind === "agent-sessions") return <AgentSessionsOverviewView />;
-	if (state.kind === "mermaid-demo") return <MermaidDemoView />;
 	if (state.kind === "concepts") return <ConceptCardsView />;
 	return null;
 }

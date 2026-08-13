@@ -1,32 +1,55 @@
 /**
- * ConceptCardsView — a feed of concept cards.
+ * ConceptCardsView — a feed of saved concept cards.
+ *
+ * The Concepts tab is reserved for *saved* concepts: it renders whatever the
+ * user has deliberately kept out of session analyses (the on-disk saved
+ * store, surfaced via the host's `listSavedConcepts`). Nothing auto-extracted
+ * appears here until it's saved.
  *
  * Each card is a compact post: the concept's title, its generic change-type
  * visual (execution / derive / integration / ui), and a footer of repos +
  * sessions. Clicking a card opens the concept's specific mermaid diagram in a
  * full-view modal — keeping the feed scannable while the detail lives behind a
- * click.
+ * click. Cards in the feed carry a Save/Unsave toggle so they can be dropped
+ * back out.
  *
  * The diagram renders through `IndustryLazyMermaidDiagram` from themed-markdown
  * (the non-interactive renderer).
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTheme } from "@principal-ade/industry-theme";
 import { IndustryLazyMermaidDiagram } from "themed-markdown";
-import { electrobun } from "../rpc";
+import { electrobun, reloadSubscribers } from "../rpc";
 import { AgentLogo } from "./AgentSessionLoader";
 import { ChangeTypeVisual } from "../components/ChangeTypeVisual";
-import { CONCEPT_CARDS, CHANGE_TYPE_LABELS } from "../concepts";
+import { CHANGE_TYPE_LABELS } from "../concepts";
 import type { ConceptCard } from "../concepts";
-import type { SessionSummary } from "../../shared/contract";
+import type { SavedConcept, SessionSummary } from "../../shared/contract";
 
 export function ConceptCardsView() {
 	const { theme } = useTheme();
+	const [concepts, setConcepts] = useState<SavedConcept[]>([]);
 	const [sessions, setSessions] = useState<Map<string, SessionSummary>>(
 		new Map(),
 	);
 	const [openId, setOpenId] = useState<string | null>(null);
+
+	const loadConcepts = useCallback(() => {
+		void electrobun.rpc!.request
+			.listSavedConcepts({})
+			.then((res) => setConcepts(res.concepts))
+			.catch(() => setConcepts([]));
+	}, []);
+
+	useEffect(() => {
+		loadConcepts();
+		// The host broadcasts tabsChanged after save/unsave — refresh the feed.
+		reloadSubscribers.add(loadConcepts);
+		return () => {
+			reloadSubscribers.delete(loadConcepts);
+		};
+	}, [loadConcepts]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -52,7 +75,19 @@ export function ConceptCardsView() {
 		};
 	}, []);
 
-	const openConcept = CONCEPT_CARDS.find((c) => c.id === openId) ?? null;
+	const openConcept =
+		concepts.find((c) => c.savedConceptId === openId) ?? null;
+
+	const toggleSave = useCallback((concept: SavedConcept) => {
+		void electrobun.rpc!.request
+			.unsaveConcept({ savedConceptId: concept.savedConceptId })
+			.then(() =>
+				setConcepts((prev) =>
+					prev.filter((c) => c.savedConceptId !== concept.savedConceptId),
+				),
+			)
+			.catch(() => {});
+	}, []);
 
 	return (
 		<div
@@ -76,15 +111,33 @@ export function ConceptCardsView() {
 					padding: "20px 24px 40px",
 				}}
 			>
-				{CONCEPT_CARDS.map((concept) => (
-					<FeedCard
-						key={concept.id}
-						concept={concept}
-						sessions={sessions}
-						theme={theme}
-						onOpen={() => setOpenId(concept.id)}
-					/>
-				))}
+				{concepts.length === 0 ? (
+					<div
+						style={{
+							color: theme.colors.textMuted,
+							fontSize: theme.fontSizes[2],
+							paddingTop: 40,
+							textAlign: "center",
+						}}
+					>
+						No saved concepts yet.
+						<div style={{ fontSize: theme.fontSizes[1], marginTop: 6 }}>
+							Open a session analysis and hit "Save" on a card to keep it here.
+						</div>
+					</div>
+				) : (
+					concepts.map((concept) => (
+						<FeedCard
+							key={concept.savedConceptId}
+							concept={concept}
+							sessions={sessions}
+							theme={theme}
+							saved
+							onToggleSave={() => toggleSave(concept)}
+							onOpen={() => setOpenId(concept.savedConceptId)}
+						/>
+					))
+				)}
 			</div>
 
 			{openConcept && (
@@ -102,11 +155,15 @@ export function FeedCard({
 	concept,
 	sessions,
 	theme,
+	saved,
+	onToggleSave,
 	onOpen,
 }: {
-	concept: ConceptCard;
+	concept: ConceptCard & { savedConceptId?: string };
 	sessions: Map<string, SessionSummary>;
 	theme: ReturnType<typeof useTheme>["theme"];
+	saved?: boolean;
+	onToggleSave?: () => void;
 	onOpen: () => void;
 }) {
 	const [showAllRepos, setShowAllRepos] = useState(false);
@@ -144,7 +201,7 @@ export function FeedCard({
 				e.currentTarget.style.borderColor = theme.colors.border ?? "#333";
 			}}
 		>
-			{/* Header: change type above repos (left) + sessions (right), then the title */}
+			{/* Header: change type (left) + save toggle (right), then the title */}
 			<div
 				style={{
 					display: "flex",
@@ -156,18 +213,69 @@ export function FeedCard({
 					background: theme.colors.background,
 				}}
 			>
-				<span
+				<div
 					style={{
-						fontSize: theme.fontSizes[0],
-						color: theme.colors.primary,
-						fontFamily: theme.fonts.monospace,
-						textTransform: "uppercase",
-						letterSpacing: 1,
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "space-between",
+						gap: 12,
 						marginBottom: 8,
 					}}
 				>
-					{CHANGE_TYPE_LABELS[concept.changeType]}
-				</span>
+					<span
+						style={{
+							fontSize: theme.fontSizes[0],
+							color: theme.colors.primary,
+							fontFamily: theme.fonts.monospace,
+							textTransform: "uppercase",
+							letterSpacing: 1,
+						}}
+					>
+						{CHANGE_TYPE_LABELS[concept.changeType]}
+					</span>
+					{onToggleSave && (
+						<span
+							role="button"
+							tabIndex={0}
+							onClick={(e) => {
+								e.stopPropagation();
+								onToggleSave();
+							}}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" || e.key === " ") {
+									e.preventDefault();
+									e.stopPropagation();
+									onToggleSave();
+								}
+							}}
+							style={{
+								display: "flex",
+								alignItems: "center",
+								gap: 4,
+								padding: "2px 8px",
+								borderRadius: 999,
+								border: `1px solid ${theme.colors.border ?? "#333"}`,
+								background: theme.colors.background,
+								color: saved
+									? theme.colors.primary
+									: theme.colors.textSecondary,
+								fontFamily: theme.fonts.monospace,
+								fontSize: theme.fontSizes[0],
+								textTransform: "uppercase",
+								letterSpacing: 0.5,
+								cursor: "pointer",
+								flexShrink: 0,
+							}}
+							title={
+								saved
+									? "Remove from saved concepts"
+									: "Save this concept"
+							}
+						>
+							{saved ? "Saved" : "Save"}
+						</span>
+					)}
+				</div>
 				<div
 					style={{
 						display: "flex",
@@ -291,6 +399,54 @@ export function FeedCard({
 				>
 					{concept.title}
 				</span>
+				{concept.files && concept.files.length > 0 && (
+					<div
+						style={{
+							display: "flex",
+							flexWrap: "wrap",
+							gap: 6,
+							marginTop: 10,
+						}}
+					>
+						{concept.files.map((purl) => (
+							<span
+								key={purl}
+								role="button"
+								tabIndex={0}
+								onClick={(e) => {
+									e.stopPropagation();
+									void electrobun.rpc!.request
+										.openFile({ purl })
+										.catch(() => {});
+								}}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" || e.key === " ") {
+										e.preventDefault();
+										e.stopPropagation();
+										void electrobun.rpc!.request
+											.openFile({ purl })
+											.catch(() => {});
+									}
+								}}
+								style={{
+									display: "inline-flex",
+									alignItems: "center",
+									padding: "2px 8px",
+									borderRadius: 4,
+									border: `1px solid ${theme.colors.border ?? "#333"}`,
+									background: theme.colors.background,
+									color: theme.colors.textSecondary,
+									fontFamily: theme.fonts.monospace,
+									fontSize: theme.fontSizes[0],
+									cursor: "pointer",
+								}}
+								title={purl}
+							>
+								{purl.split("#")[1] ?? purl}
+							</span>
+						))}
+					</div>
+				)}
 			</div>
 
 			{/* Main visual: the mermaid diagram stays mounted, with the change-type
@@ -309,7 +465,7 @@ export function FeedCard({
 			>
 				<IndustryLazyMermaidDiagram
 					code={concept.mermaid}
-					id={`concept-${concept.id}-diagram`}
+					id={`concept-${concept.savedConceptId ?? concept.id}-diagram`}
 					theme={theme}
 					maxHeight="calc(100vh - 420px)"
 					showChrome={false}
@@ -357,7 +513,7 @@ export function DiagramModal({
 	theme,
 	onClose,
 }: {
-	concept: ConceptCard;
+	concept: ConceptCard & { savedConceptId?: string };
 	theme: ReturnType<typeof useTheme>["theme"];
 	onClose: () => void;
 }) {
@@ -443,7 +599,7 @@ export function DiagramModal({
 				>
 					<IndustryLazyMermaidDiagram
 						code={concept.mermaid}
-						id={`concept-${concept.id}-diagram`}
+						id={`concept-${concept.savedConceptId ?? concept.id}-diagram`}
 						theme={theme}
 						maxHeight="calc(86vh - 120px)"
 						showChrome={false}

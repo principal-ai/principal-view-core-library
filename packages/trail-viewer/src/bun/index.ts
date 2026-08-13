@@ -23,7 +23,7 @@ import {
 	type RPCSchema,
 } from "electrobun/bun";
 import { promises as fs } from "node:fs";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { dirname, isAbsolute, join, resolve } from "node:path";
@@ -31,12 +31,6 @@ import {
 	extractPurlFromRemoteUrl,
 	parsePurl,
 } from "@principal-ai/alexandria-core-library";
-import {
-	normalizeEventsWithAdapter,
-	accumulateEvents,
-	collectRepositories,
-	opencodeRowsToUniversalEvents,
-} from "@principal-ai/principal-view-core/pipeline";
 import { parseTourOrThrow } from "@principal-ai/file-city-builder";
 import { readFileRemote as fetchRemoteSlice } from "./remote-files";
 import { handoffToRunning, startIpcServer, type LoadTrailMessage } from "./ipc";
@@ -47,12 +41,12 @@ import {
 	resolveUserIdentity,
 } from "./library";
 import { analyses, newAnalysisId } from "./analyses";
+import { savedConcepts } from "./saved";
 import { runOpenCodeExtraction, writeTranscript, extractTaskTemplate, getExtractionPromptInfo } from "./extraction";
 import type {
 	PayloadKind,
 	RepoInfo,
 	SessionEventRow,
-	SessionGroup,
 	SessionSummary,
 	TabFullState,
 	TabSummary,
@@ -60,55 +54,13 @@ import type {
 	TrailViewerRequests,
 	ViewerMode,
 } from "../shared/contract";
+import { resolveRepoRootFromAlexandria } from "./alexandria";
 import {
-	resolveRepoRootFromAlexandria,
-	loadAlexandriaRepos,
-	registerProjectInAlexandria,
-} from "./alexandria";
-import {
-	createAccumulatedState,
-	eventOp,
-	PathNormalizationService,
-	ClineSessionReader,
-	cleanClinePrompt,
-	PiSessionReader,
-	GrokSessionReader,
-	CodexSessionReader,
-} from "@principal-ai/agent-monitoring";
-import type { AgentSessionEvent, UniversalAgentSessionEvent, RepositoryInfo } from "@principal-ai/agent-monitoring";
-import { BunNormalizationAdapter } from "./normalizationAdapter";
-import {
-	readCachedSessionEvents,
-	writeCachedSessionEvents,
-	trimSessionEventRows,
-} from "./session-cache";
-
-function openCodeDBPath(): string {
-	const env = process.env as Record<string, string | undefined>;
-	if (env["OPENCODE_DATA_DIR"]) return `${env["OPENCODE_DATA_DIR"]}/opencode/opencode.db`;
-	const home = env["HOME"] || env["USERPROFILE"] || "/root";
-	const xdgData = env["XDG_DATA_HOME"] || `${home}/.local/share`;
-	return `${xdgData}/opencode/opencode.db`;
-}
-
-// When set to "1", getSessionEvents responses include the full raw event payload
-// and the full normalized event. Default (unset) ships only the trimmed fields
-// the File City renderer consumes (timestamp + accumulated) — opencode raw
-// payloads reach hundreds of MB per session and freeze the agent drawer. A
-// future diagnosing UI that compares the raw → normalized → accumulated
-// pipeline enables this to get the full shapes.
-const INCLUDE_RAW_EVENT_PAYLOADS =
-	((process.env as Record<string, string | undefined>)["TRAIL_INCLUDE_RAW"] ?? "") === "1";
-
-/**
- * Host-side cache of fully-built session event rows, keyed by
- * `${sessionId}:${includeRaw}`. The opencode pipeline (normalize + accumulate)
- * needs the whole session before any row is correct, so the full set is built
- * once and paginated requests serve slices from this cache instead of re-running
- * the pipeline per page. Bounded so a busy trail-viewer doesn't hoard whole
- * sessions; raw payloads can reach hundreds of MB per session.
- */
-const sessionEventsCache = new Map<string, SessionEventRow[]>();
+	buildSessionIndex,
+	processSessionEvents,
+	type BuiltSessionEvents,
+	type SessionWarmupEvent,
+} from "./session-pipeline";
 
 /**
  * Resident store — the in-memory home for the recent window's processed
@@ -129,55 +81,54 @@ function boundResidentStore(): void {
 	}
 }
 
-// Cline CLI stores its durable data under its own convention (~/.cline/data),
-// not XDG. The reader handles the path resolution; we just need a singleton
-// and a way to tell Cline sessions apart from opencode sessions.
-const clineReader = new ClineSessionReader();
+/**
+ * RPC-facing session loader: resident store → shared pipeline → resident
+ * promotion. The disk-cache fast path and the processing pipeline live in
+ * `session-pipeline.ts` (`processSessionEvents`); this host wrapper adds the
+ * in-memory resident layer on top so the visible window is served with zero
+ * I/O after its first build.
+ */
+async function buildSessionEvents(
+	sessionId: string,
+	opts: { includeRaw?: boolean; useCache?: boolean },
+): Promise<BuiltSessionEvents> {
+	const includeRaw = opts.includeRaw === true;
+	const useCache = opts.useCache !== false;
 
-function isClineSession(sessionId: string): boolean {
-	return clineReader.readSession(sessionId) !== null;
-}
-
-// pi CLI stores its durable sessions under ~/.pi/agent/sessions (JSONL files).
-// Same durable-transcript pattern as Cline: one file per session, tree-shaped.
-const piReader = new PiSessionReader();
-
-function isPiSession(sessionId: string): boolean {
-	return piReader.readSession(sessionId) !== null;
-}
-
-// Grok Build stores durable sessions under ~/.grok/sessions/<cwd>/<id>/
-// (summary.json + updates.jsonl). Same stage-1 reader shape as Cline/pi.
-const grokReader = new GrokSessionReader();
-
-function isGrokSession(sessionId: string): boolean {
-	return grokReader.readSession(sessionId) !== null;
-}
-
-// Codex stores durable rollout JSONL under ~/.codex/sessions.
-const codexReader = new CodexSessionReader();
-
-function isCodexSession(sessionId: string): boolean {
-	return codexReader.readSession(sessionId) !== null;
+	// Resident store — in-memory fast path for the visible window. Gated on
+	// `useCache` like the disk path so live refreshes (`useCache: false`) always
+	// re-process a growing session instead of serving a stale snapshot.
+	if (useCache && !includeRaw) {
+		const resident = residentEvents.get(sessionId);
+		if (resident) return { ok: true, ...resident };
+	}
+	const res = await processSessionEvents(sessionId, { includeRaw, useCache });
+	if (res.ok && !includeRaw) {
+		residentEvents.set(sessionId, {
+			events: res.events,
+			repoRoot: res.repoRoot,
+			repos: res.repos,
+			session: res.session,
+		});
+		boundResidentStore();
+	}
+	return res;
 }
 
 // ---------------------------------------------------------------------------
-// Background warm-up
+// Background warm-up (Bun.Worker)
 //
-// At boot the host processes the recent session window in the background so a
-// cold app start finds a warm cache the moment the renderer visits the Agent
-// Sessions tab — no lazy re-processing on first click. It runs on the host's
-// own event loop but yields between sessions (`await Bun.sleep(0)`), so RPC
-// responses interleave and the tab click never queues behind the whole window.
+// Warm the recent session window at boot so even a cold cache is pre-built,
+// WITHOUT touching this host's single-threaded event loop — in-process warm-up
+// starved the webview's initial RPCs (listTabs timed out → the tab strip never
+// populated). The worker is a separate thread running `session-pipeline.ts`
+// directly; it writes the shared disk cache and the host reads it, so the only
+// cross-thread traffic is control signals (postMessage), never event payloads.
 //
-// A true parallel worker is the eventual target (run the same pipeline in a
-// `Bun.Worker`). That needs the session-processing code extracted into a
-// standalone module with its own build artifact, because (a) `bun build`
-// doesn't emit sibling chunks for `new Worker(new URL("./x.ts", …))` — the
-// electrobun single-entry bundle would reference a missing file — and (b) the
-// bundle imports `electrobun/bun`, which hangs outside the electrobun runtime
-// (verified empirically). Until then the yielding in-process loop delivers the
-// same warm-data UX without blocking clicks.
+// The worker is its own build artifact: `bun build` doesn't emit sibling
+// chunks for `new Worker(new URL(...))`, so dev resolves the `.ts` source and
+// the packaged app resolves the compiled `session-warmup-worker.js` staged
+// next to `index.js` by scripts/stage-bundle.ts.
 // ---------------------------------------------------------------------------
 
 function warmupDays(): number {
@@ -186,573 +137,79 @@ function warmupDays(): number {
 	return Number.isFinite(n) && n > 0 ? n : 7;
 }
 
-let warmupRunning = false;
+function warmupWorkerURL(): URL {
+	// Dev runs the host as .ts; packaged builds run it as .js. The worker
+	// sibling keeps the same extension so the packaged stage step can emit it.
+	const ext = import.meta.url.endsWith(".ts") ? "ts" : "js";
+	return new URL(`./session-warmup-worker.${ext}`, import.meta.url);
+}
 
-/** Process every session in the recent window (write-through disk cache +
- *  resident store). Yields between sessions so the host's RPC loop stays
- *  responsive. No-op if already running (callers guard against overlap). */
-async function runSessionWarmup(): Promise<void> {
-	if (warmupRunning) return;
-	warmupRunning = true;
-	const started = Date.now();
-	let total = 0;
-	let ready = 0;
+let warmupWorker: Worker | null = null;
+
+// Sessions the renderer asked to live-refresh (getSessionEvents with
+// `useCache: false`). When the worker reports one of these done, the host
+// invalidates its resident copy (the worker's disk cache is now fresher) and
+// pushes `sessionsUpdated` so the renderer re-fetches.
+const requestedLiveRefresh = new Set<string>();
+
+/** Ask the worker to re-process a set of sessions off-loop. Returns false when
+ *  no worker is running (caller falls back to inline processing). */
+function refreshInWorker(sessionIds: string[]): boolean {
+	if (!warmupWorker) return false;
+	for (const id of sessionIds) requestedLiveRefresh.add(id);
+	warmupWorker.postMessage({ type: "refresh", sessionIds });
+	return true;
+}
+
+/** Push a host→renderer notification that these sessions' caches are fresh. */
+function broadcastSessionsUpdated(sessionIds: string[]): void {
+	if (sessionIds.length === 0) return;
 	try {
-		const index = await buildSessionIndex({ days: warmupDays() });
-		const sessions: SessionSummary[] = [];
-		for (const g of index.groups) sessions.push(g.parent);
-		sessions.push(...index.standalone);
-		total = sessions.length;
-		for (const s of sessions) {
-			try {
-				const res = await buildSessionEvents(s.id, {
-					includeRaw: false,
-					useCache: true,
-				});
-				if (res.ok) ready++;
-			} catch (err) {
-				console.warn(`[trail-viewer] warmup skipped ${s.id}: ${(err as Error).message}`);
-			}
-			// Yield so pending RPCs (listTabs, getSessionEvents, …) interleave —
-			// warm-up is background work and must not starve the bridge.
-			await Bun.sleep(0);
-		}
+		(rpc.send as unknown as Record<string, (payload: unknown) => void>)[
+			"sessionsUpdated"
+		]({ sessionIds });
 	} catch (err) {
-		console.warn(`[trail-viewer] warmup index failed: ${(err as Error).message}`);
+		console.warn(`[trail-viewer] could not notify renderer of session updates: ${(err as Error).message}`);
 	}
-	warmupRunning = false;
-	console.log(
-		`[trail-viewer] warmup done: ${ready}/${total} sessions ready in ${Date.now() - started}ms`,
-	);
 }
 
-/** Read the recent window's processed sessions from the disk cache into the
- *  resident store so the renderer's first getSessionEvents / overview calls
- *  never touch the processing pipeline. Runs in the background after boot. */
-async function hydrateResidentStore(): Promise<void> {
+/** Spawn the warm-up worker (once) and kick off a warmup pass. Fire-and-forget;
+ *  the worker does the heavy pipeline work off this host's event loop. */
+function startWarmupWorker(): void {
+	if (warmupWorker) return;
 	try {
-		const index = await buildSessionIndex({ days: warmupDays() });
-		const sessions: SessionSummary[] = [];
-		for (const g of index.groups) sessions.push(g.parent);
-		sessions.push(...index.standalone);
-		let loaded = 0;
-		for (const s of sessions) {
-			const cached = readCachedSessionEvents(s.id);
-			if (cached) {
-				residentEvents.set(s.id, {
-					events: cached.events,
-					repoRoot: cached.repoRoot,
-					repos: cached.repos,
-					session: cached.session,
-				});
-				loaded++;
+		const worker = new Worker(warmupWorkerURL());
+		warmupWorker = worker;
+		worker.addEventListener("message", (ev: MessageEvent) => {
+			const msg = ev.data as SessionWarmupEvent;
+			if (msg.type === "progress") {
+				// A requested live-refresh finished: drop the host's resident
+				// copy so the next read hits the worker's fresh disk cache, and
+				// tell the renderer to re-fetch.
+				if (requestedLiveRefresh.delete(msg.sessionId)) {
+					residentEvents.delete(msg.sessionId);
+					broadcastSessionsUpdated([msg.sessionId]);
+				}
+			} else if (msg.type === "done") {
+				console.log(`[trail-viewer] warmup worker: ${msg.processed}/${msg.total} sessions ready`);
+			} else if (msg.type === "error") {
+				console.warn(`[trail-viewer] warmup worker error: ${msg.message}`);
 			}
-		}
-		boundResidentStore();
-		console.log(`[trail-viewer] resident store hydrated: ${loaded}/${sessions.length} sessions`);
+		});
+		worker.addEventListener("error", (err: ErrorEvent) => {
+			console.warn(`[trail-viewer] warmup worker failed: ${err.message}`);
+			warmupWorker = null;
+		});
+		worker.postMessage({ type: "warmup", days: warmupDays() });
 	} catch (err) {
-		console.warn(`[trail-viewer] resident store hydration failed: ${(err as Error).message}`);
+		console.warn(`[trail-viewer] could not start warmup worker: ${(err as Error).message}`);
 	}
 }
 
-// Shared Cline pipeline: reader → normalizePathsBatch → eventOp loop.
-// Returns the same shapes getSessionEvents build so the Cline branch can
-// drop into the existing response assembly with no extra plumbing.
-interface ClinePipelineResult {
-	rawEvents: UniversalAgentSessionEvent[];
-	normalizedEvents: import("@principal-ai/agent-monitoring").RepoNormalizedUniversalAgentSessionEvent[];
-	accState: ReturnType<typeof createAccumulatedState>;
-	events: SessionEventRow[];
-	repos: RepoInfo[];
-	repoRoot: string | undefined;
-	sessionTitle: string;
-	sessionSlug: string;
-}
 
-async function runClinePipeline(sessionId: string): Promise<ClinePipelineResult | null> {
-	const record = clineReader.readSession(sessionId);
-	if (!record) return null;
-
-	// Title/name: prefer the (tag-stripped) session prompt, truncated; fall back
-	// to a readable label rather than the raw session id string.
-	const promptText = cleanClinePrompt(record.metadata.prompt ?? "");
-	const sessionTitle = promptText
-		? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
-		: "Cline session";
-	const sessionSlug = "";
-
-	const rawEvents = clineReader.toUniversalEvents(sessionId);
-	if (rawEvents.length === 0) return null;
-
-	const alexandriaRepos = loadAlexandriaRepos();
-	const knownRoots = new Map<string, RepositoryInfo>();
-	for (const [path, repo] of alexandriaRepos) {
-		knownRoots.set(path, {
-			root: repo.root,
-			remoteUrl: repo.remoteUrl,
-			owner: repo.owner,
-			repo: repo.repo,
-		});
-	}
-	const adapter = new BunNormalizationAdapter(knownRoots);
-	const normalizationService = new PathNormalizationService(adapter);
-
-	const normalizedEvents = await normalizationService.normalizePathsBatch(
-		rawEvents,
-		record.metadata.workspace_root || record.metadata.cwd || "",
-	);
-
-	// Auto-register any newly discovered git roots
-	for (const discovered of adapter.newlyDiscovered) {
-		registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
-	}
-
-	const accState = createAccumulatedState(sessionTitle);
-	const events: SessionEventRow[] = [];
-	const repoSet = new Map<string, { root: string; fileCount: number }>();
-
-	for (let i = 0; i < normalizedEvents.length; i++) {
-		const normalizedEvent = normalizedEvents[i];
-		const accResult = eventOp(accState, normalizedEvent);
-		events.push({
-			seq: i,
-			type: normalizedEvent.eventType,
-			raw: INCLUDE_RAW_EVENT_PAYLOADS ? normalizedEvent.raw : undefined,
-			normalized: INCLUDE_RAW_EVENT_PAYLOADS
-				? (normalizedEvent as unknown as Record<string, unknown>)
-				: { timestamp: normalizedEvent.timestamp },
-			accumulated: accResult,
-		});
-		if (normalizedEvent.files) {
-			for (const f of normalizedEvent.files) {
-				const root = f.repository?.gitRoot;
-				if (root) {
-					const entry = repoSet.get(root) ?? { root, fileCount: 0 };
-					entry.fileCount++;
-					repoSet.set(root, entry);
-				}
-			}
-		}
-	}
-
-	// Append a "finished" row like the opencode path does
-	const lastEvent = events[events.length - 1];
-	if (lastEvent) {
-		const lastTimestamp = (lastEvent.normalized as Record<string, unknown>)["timestamp"] as number | undefined ?? 0;
-		events.push({
-			seq: lastEvent.seq + 1,
-			type: "finished",
-			raw: null,
-			normalized: { timestamp: lastTimestamp },
-			accumulated: {
-				id: "",
-				timestamp: lastTimestamp,
-				sessionId: sessionId,
-				sessionName: accState.sessionName,
-				sessionColor: accState.sessionColor,
-				operation: "finished",
-				files: [],
-				dependencies: [],
-				description: `${accState.sessionName} finished`,
-				layers: [],
-				contextTokens: accState.contextTokens,
-			},
-		});
-	}
-
-	const repos = Array.from(repoSet.values())
-		.sort((a, b) => b.fileCount - a.fileCount)
-		.map((r) => {
-			const parts = r.root.replace(/\/+$/, "").split("/");
-			const known = knownRoots.get(r.root);
-			return { root: r.root, fileCount: r.fileCount, owner: known?.owner ?? null, name: parts[parts.length - 1] ?? null, editing: false };
-		});
-	const repoRoot = repos.length > 0 ? repos[0].root : undefined;
-
-	return { rawEvents, normalizedEvents, accState, events, repos, repoRoot, sessionTitle, sessionSlug };
-}
-
-// Shared pi pipeline: reader → normalizePathsBatch → eventOp loop.
-// Same shapes as runClinePipeline so both drop into the existing response
-// assembly with no extra plumbing.
-async function runPiPipeline(sessionId: string): Promise<ClinePipelineResult | null> {
-	const record = piReader.readSession(sessionId);
-	if (!record) return null;
-
-	// Title/name: prefer the first user prompt, truncated; fall back to a
-	// readable label rather than the raw session id string.
-	const promptText = record.firstPrompt;
-	const sessionTitle = promptText
-		? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
-		: "pi session";
-	const sessionSlug = "";
-
-	const rawEvents = piReader.toUniversalEvents(sessionId);
-	if (rawEvents.length === 0) return null;
-
-	const alexandriaRepos = loadAlexandriaRepos();
-	const knownRoots = new Map<string, RepositoryInfo>();
-	for (const [path, repo] of alexandriaRepos) {
-		knownRoots.set(path, {
-			root: repo.root,
-			remoteUrl: repo.remoteUrl,
-			owner: repo.owner,
-			repo: repo.repo,
-		});
-	}
-	const adapter = new BunNormalizationAdapter(knownRoots);
-	const normalizationService = new PathNormalizationService(adapter);
-
-	// The pi session header carries the working directory; that is the repo to
-	// normalize against (the ~/.pi sessions dir itself is never a repo).
-	const normalizedEvents = await normalizationService.normalizePathsBatch(
-		rawEvents,
-		record.header.cwd || "",
-	);
-
-	// Auto-register any newly discovered git roots
-	for (const discovered of adapter.newlyDiscovered) {
-		registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
-	}
-
-	const accState = createAccumulatedState(sessionTitle);
-	const events: SessionEventRow[] = [];
-	const repoSet = new Map<string, { root: string; fileCount: number }>();
-
-	for (let i = 0; i < normalizedEvents.length; i++) {
-		const normalizedEvent = normalizedEvents[i];
-		const accResult = eventOp(accState, normalizedEvent);
-		events.push({
-			seq: i,
-			type: normalizedEvent.eventType,
-			raw: INCLUDE_RAW_EVENT_PAYLOADS ? normalizedEvent.raw : undefined,
-			normalized: INCLUDE_RAW_EVENT_PAYLOADS
-				? (normalizedEvent as unknown as Record<string, unknown>)
-				: { timestamp: normalizedEvent.timestamp },
-			accumulated: accResult,
-		});
-		if (normalizedEvent.files) {
-			for (const f of normalizedEvent.files) {
-				const root = f.repository?.gitRoot;
-				if (root) {
-					const entry = repoSet.get(root) ?? { root, fileCount: 0 };
-					entry.fileCount++;
-					repoSet.set(root, entry);
-				}
-			}
-		}
-	}
-
-	// Append a "finished" row like the opencode path does
-	const lastEvent = events[events.length - 1];
-	if (lastEvent) {
-		const lastTimestamp = (lastEvent.normalized as Record<string, unknown>)["timestamp"] as number | undefined ?? 0;
-		events.push({
-			seq: lastEvent.seq + 1,
-			type: "finished",
-			raw: null,
-			normalized: { timestamp: lastTimestamp },
-			accumulated: {
-				id: "",
-				timestamp: lastTimestamp,
-				sessionId: sessionId,
-				sessionName: accState.sessionName,
-				sessionColor: accState.sessionColor,
-				operation: "finished",
-				files: [],
-				dependencies: [],
-				description: `${accState.sessionName} finished`,
-				layers: [],
-				contextTokens: accState.contextTokens,
-			},
-		});
-	}
-
-	const repos = Array.from(repoSet.values())
-		.sort((a, b) => b.fileCount - a.fileCount)
-		.map((r) => {
-			const parts = r.root.replace(/\/+$/, "").split("/");
-			const known = knownRoots.get(r.root);
-			return { root: r.root, fileCount: r.fileCount, owner: known?.owner ?? null, name: parts[parts.length - 1] ?? null, editing: false };
-		});
-	const repoRoot = repos.length > 0 ? repos[0].root : undefined;
-
-	return { rawEvents, normalizedEvents, accState, events, repos, repoRoot, sessionTitle, sessionSlug };
-}
-
-// Shared Grok pipeline: reader → normalizePathsBatch → eventOp loop.
-// Same shapes as runClinePipeline / runPiPipeline.
-async function runGrokPipeline(sessionId: string): Promise<ClinePipelineResult | null> {
-	const record = grokReader.readSession(sessionId);
-	if (!record) return null;
-
-	const promptText = (record.firstPrompt ?? "").trim();
-	const sessionTitle =
-		record.title ||
-		(promptText
-			? promptText.length > 80
-				? `${promptText.slice(0, 80)}…`
-				: promptText
-			: "Grok session");
-	const sessionSlug = "";
-
-	const rawEvents = grokReader.toUniversalEvents(sessionId);
-	if (rawEvents.length === 0) return null;
-
-	const alexandriaRepos = loadAlexandriaRepos();
-	const knownRoots = new Map<string, RepositoryInfo>();
-	for (const [path, repo] of alexandriaRepos) {
-		knownRoots.set(path, {
-			root: repo.root,
-			remoteUrl: repo.remoteUrl,
-			owner: repo.owner,
-			repo: repo.repo,
-		});
-	}
-	const adapter = new BunNormalizationAdapter(knownRoots);
-	const normalizationService = new PathNormalizationService(adapter);
-
-	// summary.info.cwd is the project working directory — not ~/.grok/sessions.
-	const normalizedEvents = await normalizationService.normalizePathsBatch(
-		rawEvents,
-		record.cwd || "",
-	);
-
-	for (const discovered of adapter.newlyDiscovered) {
-		registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
-	}
-
-	const accState = createAccumulatedState(sessionTitle);
-	const events: SessionEventRow[] = [];
-	const repoSet = new Map<string, { root: string; fileCount: number }>();
-
-	for (let i = 0; i < normalizedEvents.length; i++) {
-		const normalizedEvent = normalizedEvents[i];
-		const accResult = eventOp(accState, normalizedEvent);
-		events.push({
-			seq: i,
-			type: normalizedEvent.eventType,
-			raw: INCLUDE_RAW_EVENT_PAYLOADS ? normalizedEvent.raw : undefined,
-			normalized: INCLUDE_RAW_EVENT_PAYLOADS
-				? (normalizedEvent as unknown as Record<string, unknown>)
-				: { timestamp: normalizedEvent.timestamp },
-			accumulated: accResult,
-		});
-		if (normalizedEvent.files) {
-			for (const f of normalizedEvent.files) {
-				const root = f.repository?.gitRoot;
-				if (root) {
-					const entry = repoSet.get(root) ?? { root, fileCount: 0 };
-					entry.fileCount++;
-					repoSet.set(root, entry);
-				}
-			}
-		}
-	}
-
-	const lastEvent = events[events.length - 1];
-	if (lastEvent) {
-		const lastTimestamp = (lastEvent.normalized as Record<string, unknown>)["timestamp"] as number | undefined ?? 0;
-		events.push({
-			seq: lastEvent.seq + 1,
-			type: "finished",
-			raw: null,
-			normalized: { timestamp: lastTimestamp },
-			accumulated: {
-				id: "",
-				timestamp: lastTimestamp,
-				sessionId: sessionId,
-				sessionName: accState.sessionName,
-				sessionColor: accState.sessionColor,
-				operation: "finished",
-				files: [],
-				dependencies: [],
-				description: `${accState.sessionName} finished`,
-				layers: [],
-				contextTokens: accState.contextTokens,
-			},
-		});
-	}
-
-	const repos = Array.from(repoSet.values())
-		.sort((a, b) => b.fileCount - a.fileCount)
-		.map((r) => {
-			const parts = r.root.replace(/\/+$/, "").split("/");
-			const known = knownRoots.get(r.root);
-			return { root: r.root, fileCount: r.fileCount, owner: known?.owner ?? null, name: parts[parts.length - 1] ?? null, editing: false };
-		});
-	const repoRoot = repos.length > 0 ? repos[0].root : (record.cwd || undefined);
-
-	return { rawEvents, normalizedEvents, accState, events, repos, repoRoot, sessionTitle, sessionSlug };
-}
-
-// Codex uses the same durable-reader → normalize → accumulate path as Grok.
-async function runCodexPipeline(sessionId: string): Promise<ClinePipelineResult | null> {
-	const record = codexReader.readSession(sessionId);
-	if (!record) return null;
-
-	const promptText = record.firstPrompt.trim();
-	const sessionTitle = promptText
-		? promptText.length > 80
-			? `${promptText.slice(0, 80)}…`
-			: promptText
-		: "Codex session";
-	const sessionSlug = "";
-	const rawEvents = codexReader.toUniversalEvents(sessionId);
-	if (rawEvents.length === 0) return null;
-
-	const alexandriaRepos = loadAlexandriaRepos();
-	const knownRoots = new Map<string, RepositoryInfo>();
-	for (const [path, repo] of alexandriaRepos) {
-		knownRoots.set(path, {
-			root: repo.root,
-			remoteUrl: repo.remoteUrl,
-			owner: repo.owner,
-			repo: repo.repo,
-		});
-	}
-	const adapter = new BunNormalizationAdapter(knownRoots);
-	const normalizationService = new PathNormalizationService(adapter);
-	const normalizedEvents = await normalizationService.normalizePathsBatch(
-		rawEvents,
-		record.cwd || "",
-	);
-
-	for (const discovered of adapter.newlyDiscovered) {
-		registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
-	}
-
-	const accState = createAccumulatedState(sessionTitle);
-	const events: SessionEventRow[] = [];
-	const repoSet = new Map<string, { root: string; fileCount: number }>();
-	for (let i = 0; i < normalizedEvents.length; i++) {
-		const normalizedEvent = normalizedEvents[i];
-		const accResult = eventOp(accState, normalizedEvent);
-		events.push({
-			seq: i,
-			type: normalizedEvent.eventType,
-			raw: INCLUDE_RAW_EVENT_PAYLOADS ? normalizedEvent.raw : undefined,
-			normalized: INCLUDE_RAW_EVENT_PAYLOADS
-				? (normalizedEvent as unknown as Record<string, unknown>)
-				: { timestamp: normalizedEvent.timestamp },
-			accumulated: accResult,
-		});
-		for (const file of normalizedEvent.files ?? []) {
-			const root = file.repository?.gitRoot;
-			if (!root) continue;
-			const entry = repoSet.get(root) ?? { root, fileCount: 0 };
-			entry.fileCount++;
-			repoSet.set(root, entry);
-		}
-	}
-
-	const lastEvent = events[events.length - 1];
-	if (lastEvent) {
-		const lastTimestamp =
-			((lastEvent.normalized as Record<string, unknown>)["timestamp"] as number | undefined) ?? 0;
-		events.push({
-			seq: lastEvent.seq + 1,
-			type: "finished",
-			raw: null,
-			normalized: { timestamp: lastTimestamp },
-			accumulated: {
-				id: "",
-				timestamp: lastTimestamp,
-				sessionId,
-				sessionName: accState.sessionName,
-				sessionColor: accState.sessionColor,
-				operation: "finished",
-				files: [],
-				dependencies: [],
-				description: `${accState.sessionName} finished`,
-				layers: [],
-				contextTokens: accState.contextTokens,
-			},
-		});
-	}
-
-	const repos = Array.from(repoSet.values())
-		.sort((a, b) => b.fileCount - a.fileCount)
-		.map((repo) => {
-			const parts = repo.root.replace(/\/+$/, "").split("/");
-			const known = knownRoots.get(repo.root);
-			return {
-				root: repo.root,
-				fileCount: repo.fileCount,
-				owner: known?.owner ?? null,
-				name: parts[parts.length - 1] ?? null,
-				editing: false,
-			};
-		});
-	const repoRoot = repos.length > 0 ? repos[0].root : record.cwd || undefined;
-
-	return { rawEvents, normalizedEvents, accState, events, repos, repoRoot, sessionTitle, sessionSlug };
-}
-
-// Durable-transcript branches (cline/pi/grok/codex) all share one response
-// assembly: persist the processed result to the disk cache, then return the
-// same `ok: true` shape each branch currently builds inline.
-function respondWithCachedPipeline(
-	sessionId: string,
-	agent: string,
-	result: ClinePipelineResult,
-): {
-	ok: true;
-	events: SessionEventRow[];
-	repoRoot: string | undefined;
-	repos: RepoInfo[];
-	session: { slug: string; title: string; agent: string };
-} {
-	writeCachedSessionEvents(sessionId, {
-		agent,
-		session: { slug: result.sessionSlug, title: result.sessionTitle, agent },
-		repoRoot: result.repoRoot,
-		repos: result.repos,
-		events: trimSessionEventRows(result.events),
-	});
-	return {
-		ok: true,
-		events: result.events,
-		repoRoot: result.repoRoot,
-		repos: result.repos,
-		session: { slug: result.sessionSlug, title: result.sessionTitle, agent },
-	};
-}
-
-// opencode stores a placeholder title ("New session - <iso timestamp>") on
-// sessions it never generated a title for. Surface the first real user prompt
-// text instead so the agent-sessions list reads as actual tasks.
-function firstUserPromptText(
-	db: import("bun:sqlite").Database,
-	aggregateId: string,
-): string {
-	const userMsg = db
-		.prepare(
-			`SELECT json_extract(data, '$.info.id') AS id
-			 FROM event
-			 WHERE aggregate_id = ? AND type = 'message.updated.1'
-			   AND json_extract(data, '$.info.role') = 'user'
-			 ORDER BY seq ASC LIMIT 1`,
-		)
-		.get(aggregateId) as { id: string | null } | null;
-	if (!userMsg?.id) return "";
-	const part = db
-		.prepare(
-			`SELECT json_extract(data, '$.part.text') AS text
-			 FROM event
-			 WHERE aggregate_id = ? AND type = 'message.part.updated.1'
-			   AND json_extract(data, '$.part.messageID') = ?
-			   AND json_extract(data, '$.part.type') = 'text'
-			 ORDER BY seq ASC LIMIT 1`,
-		)
-		.get(aggregateId, userMsg.id) as { text: string | null } | null;
-	if (typeof part?.text !== "string" || part.text === "") return "";
-	return part.text.replace(/\s+/g, " ").trim();
-}
 
 const LIBRARY_TAB_ID = "library";
 const AGENT_SESSIONS_TAB_ID = "agent-sessions";
-const MERMAID_DEMO_TAB_ID = "mermaid-demo";
 const CONCEPTS_TAB_ID = "concepts";
 
 // ---------------------------------------------------------------------------
@@ -796,7 +253,6 @@ function resolveStartTab(): string {
 	if (
 		raw === AGENT_SESSIONS_TAB_ID ||
 		raw === LIBRARY_TAB_ID ||
-		raw === MERMAID_DEMO_TAB_ID ||
 		raw === CONCEPTS_TAB_ID
 	) {
 		return raw;
@@ -837,12 +293,6 @@ interface AgentSessionsTabState {
 	title: "Agent Sessions";
 }
 
-interface MermaidDemoTabState {
-	id: typeof MERMAID_DEMO_TAB_ID;
-	kind: "mermaid-demo";
-	title: "Session Concepts";
-}
-
 interface ConceptsTabState {
 	id: typeof CONCEPTS_TAB_ID;
 	kind: "concepts";
@@ -873,7 +323,6 @@ interface PromptTabState {
 type TabState =
 	| LibraryTabState
 	| AgentSessionsTabState
-	| MermaidDemoTabState
 	| ConceptsTabState
 	| AnalysisTabState
 	| SessionEventsTabState
@@ -890,11 +339,6 @@ tabs.set(LIBRARY_TAB_ID, {
 	id: LIBRARY_TAB_ID,
 	kind: "library",
 	title: "Trails",
-});
-tabs.set(MERMAID_DEMO_TAB_ID, {
-	id: MERMAID_DEMO_TAB_ID,
-	kind: "mermaid-demo",
-	title: "Session Concepts",
 });
 tabs.set(CONCEPTS_TAB_ID, {
 	id: CONCEPTS_TAB_ID,
@@ -1421,17 +865,16 @@ function persistShareMutation(
 
 
 /**
- * Permanent, non-trail tabs (library, agent sessions, mermaid demo, concepts).
+ * Permanent, non-trail tabs (library, agent sessions, concepts).
  * They carry no trail payload and don't serve files or notes; several RPC
  * handlers use this to reject calls aimed at trail-only state.
  */
 function isStaticTab(
 	tab: TabState,
-): tab is LibraryTabState | AgentSessionsTabState | MermaidDemoTabState | ConceptsTabState {
+): tab is LibraryTabState | AgentSessionsTabState | ConceptsTabState {
 	return (
 		tab.kind === "library" ||
 		tab.kind === "agent-sessions" ||
-		tab.kind === "mermaid-demo" ||
 		tab.kind === "concepts"
 	);
 }
@@ -1535,17 +978,6 @@ type RequestHandlers = {
 	) => TrailViewerRequests[K]["response"] | Promise<TrailViewerRequests[K]["response"]>;
 };
 
-/** One session's fully-processed result, as served by getSessionEvents. */
-type BuiltSessionEvents =
-	| {
-			ok: true;
-			events: SessionEventRow[];
-			repoRoot?: string;
-			repos: RepoInfo[];
-			session: { slug: string; title: string; agent?: string };
-	  }
-	| { ok: false; error: string };
-
 /** The resident store's value — the trimmed events plus the metadata the RPC
  *  responses carry, so a memory hit needs no extra reads. */
 interface ResidentSession {
@@ -1560,585 +992,7 @@ interface ResidentSession {
  * parent/child grouping) plus durable-transcript agents (cline/pi/grok/codex).
  * Shared by the listSessions RPC and the warm-up worker.
  */
-async function buildSessionIndex({ days }: { days?: number }): Promise<{
-	groups: SessionGroup[];
-	standalone: SessionSummary[];
-	hasMore?: boolean;
-}> {
-	const dayCount = Math.max(1, Math.floor(days ?? 7));
-	const cutoff = Date.now() - dayCount * 86400000;
-	const dbPath = openCodeDBPath();
-	let db: import("bun:sqlite").Database | null = null;
-	try {
-		const { Database } = await import("bun:sqlite");
-		db = new Database(dbPath, { readonly: true });
-		const sevenDaysAgo = cutoff;
-		// One pass over every session's first event — the window split
-		// happens in JS so we never scan the (large) event table twice.
-		const firstEvents = db
-			.prepare(
-				`SELECT
-					e.aggregate_id,
-					e.data
-				FROM event e
-				WHERE e.seq = (SELECT MIN(e2.seq) FROM event e2 WHERE e2.aggregate_id = e.aggregate_id)
-				ORDER BY e.seq DESC`,
-			)
-			.all() as Array<{
-			aggregate_id: string;
-			data: string;
-		}>;
-		const idToSummary = new Map<string, SessionSummary>();
-		// Older-than-window signal: any session whose first event predates
-		// the cutoff. Drives the renderer's "Load more" affordance.
-		let hasOlder = false;
-		for (const row of firstEvents) {
-			let title = row.aggregate_id.slice(0, 12);
-			let slug = "";
-			let createdAtStr = "";
-			const durationMs = 0;
-			try {
-				const parsed = JSON.parse(row.data) as Record<string, unknown>;
-				const info = parsed["info"] as Record<string, unknown> | undefined;
-				const rawTitle = info?.["title"];
-				if (typeof rawTitle === "string") {
-					title = rawTitle;
-				}
-				const rawSlug = info?.["slug"];
-				if (typeof rawSlug === "string") {
-					slug = rawSlug;
-				}
-				const rawTime = info?.["time"] as Record<string, unknown> | undefined;
-				const rawCreated = rawTime?.["created"];
-				if (typeof rawCreated === "number") {
-					createdAtStr = new Date(rawCreated).toISOString();
-				}
-			} catch {
-				// best-effort parse
-			}
-			// Sessions the old SQL cutoff would have dropped (no date, or
-			// predating the window) never enter the list; predating ones
-			// still count as "more exists".
-			const createdMs = createdAtStr ? new Date(createdAtStr).getTime() : 0;
-			if (!createdMs) continue;
-			if (createdMs <= cutoff) {
-				hasOlder = true;
-				continue;
-			}
-			if (title.startsWith("New session")) {
-				const promptText = firstUserPromptText(db, row.aggregate_id);
-				if (promptText) title = promptText;
-			}
-			idToSummary.set(row.aggregate_id, {
-				id: row.aggregate_id,
-				title,
-				slug,
-				createdAt: createdAtStr,
-				durationMs,
-				eventCount: 0,
-				isFinished: false,
-				models: undefined,
-			});
-		}
-		// opencode stamps the session model into the `info` blob; the
-		// created event only carries it ~1/3 of the time but every
-		// session.updated event does, so take the earliest event that
-		// has it. The model is static per session, so one id suffices.
-		const modelRows = db
-			.prepare(
-				`SELECT
-					aggregate_id,
-					json_extract(data, '$.info.model.id') AS model_id
-				FROM event
-				WHERE aggregate_id IN (
-					SELECT aggregate_id
-					FROM event
-					WHERE json_extract(data, '$.info.time.created') > ?
-				)
-					AND json_extract(data, '$.info.model.id') IS NOT NULL
-				GROUP BY aggregate_id`,
-			)
-			.all(sevenDaysAgo) as Array<{ aggregate_id: string; model_id: string | null }>;
-		for (const m of modelRows) {
-			const summary = idToSummary.get(m.aggregate_id);
-			if (summary && m.model_id) summary.models = [m.model_id];
-		}
-		const relations = db
-			.prepare(
-				`SELECT
-					json_extract(data, '$.part.state.metadata.parentSessionId') AS parent_id,
-					json_extract(data, '$.part.state.metadata.sessionId') AS child_id,
-					json_extract(data, '$.part.state.status') AS status
-				FROM event
-				WHERE seq IN (
-					SELECT MAX(seq)
-					FROM event
-					WHERE json_extract(data, '$.part.type') = 'tool'
-						AND json_extract(data, '$.part.tool') = 'task'
-						AND json_extract(data, '$.part.state.metadata.sessionId') IS NOT NULL
-					GROUP BY json_extract(data, '$.part.state.metadata.sessionId')
-				)`,
-			)
-			.all() as Array<{ parent_id: string; child_id: string; status: string | null }>;
-		const childIds = new Set<string>();
-		const groups: SessionGroup[] = [];
-		for (const rel of relations) {
-			if (!rel.parent_id || !rel.child_id) continue;
-			const child = idToSummary.get(rel.child_id);
-			if (!child) continue;
-			if (rel.status === "completed" || rel.status === "error") {
-				child.isFinished = true;
-			}
-			childIds.add(rel.child_id);
-		}
-		for (const summary of idToSummary.values()) {
-			if (childIds.has(summary.id)) continue;
-			const childList: SessionSummary[] = [];
-			for (const rel of relations) {
-				if (rel.parent_id === summary.id) {
-					const child = idToSummary.get(rel.child_id);
-					if (child) childList.push(child);
-				}
-			}
-			if (childList.length > 0) {
-				groups.push({ parent: { ...summary }, children: childList });
-			}
-		}
-		const standalone: SessionSummary[] = [];
-		for (const summary of idToSummary.values()) {
-			if (childIds.has(summary.id)) continue;
-			if (!groups.some((g) => g.parent.id === summary.id)) {
-				standalone.push(summary);
-			}
-		}
-		// Append Cline CLI sessions (durable transcript, not in opencode DB)
-		for (const clineSession of clineReader.listSessions()) {
-			const meta = clineSession.metadata;
-			const promptText = cleanClinePrompt(meta.prompt ?? "");
-			const title = promptText
-				? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
-				: "Cline session";
-			const createdAtStr = meta.started_at ?? "";
-			const durationMs = meta.ended_at
-				? new Date(meta.ended_at).getTime() - new Date(meta.started_at ?? meta.ended_at).getTime()
-				: 0;
-			const eventCount = clineReader.readMessages(clineSession.sessionId)?.messages.length ?? 0;
-			standalone.push({
-				id: clineSession.sessionId,
-				title,
-				slug: "",
-				createdAt: createdAtStr,
-				lastEventAt: meta.ended_at ?? meta.started_at ?? undefined,
-				durationMs,
-				eventCount,
-				isFinished: meta.status === "completed" || meta.status === "failed",
-				models: meta.model ? [meta.model] : undefined,
-				agent: "cline",
-			});
-		}
-		// Append pi CLI sessions (durable JSONL transcript, not in opencode DB)
-		for (const piSession of piReader.listSessions()) {
-			const promptText = piSession.firstPrompt;
-			const title = promptText
-				? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
-				: "pi session";
-			const createdAtStr = piSession.header.timestamp ?? "";
-			const durationMs = Math.max(0, piSession.lastActivity - new Date(createdAtStr || 0).getTime());
-			standalone.push({
-				id: piSession.sessionId,
-				title,
-				slug: "",
-				createdAt: createdAtStr,
-				lastEventAt: new Date(piSession.lastActivity).toISOString(),
-				durationMs,
-				eventCount: piSession.messageCount,
-				isFinished: false,
-				agent: "pi",
-			});
-		}
-		// Append Grok Build sessions (durable updates.jsonl under ~/.grok/sessions)
-		for (const grokSession of grokReader.listSessions()) {
-			const createdAtStr = grokSession.createdAt ?? "";
-			const durationMs = Math.max(
-				0,
-				grokSession.lastActivity - new Date(createdAtStr || 0).getTime(),
-			);
-			standalone.push({
-				id: grokSession.sessionId,
-				title: grokSession.title || "Grok session",
-				slug: "",
-				createdAt: createdAtStr,
-				lastEventAt: new Date(grokSession.lastActivity).toISOString(),
-				durationMs,
-				eventCount: grokSession.messageCount,
-				isFinished: false,
-				models: grokSession.modelId ? [grokSession.modelId] : undefined,
-				agent: "grok",
-			});
-		}
-		// Append Codex durable rollout sessions (under ~/.codex/sessions).
-		for (const codexSession of codexReader.listSessions()) {
-			const createdAtStr =
-				typeof codexSession.meta.timestamp === "string"
-					? codexSession.meta.timestamp
-					: new Date(codexSession.lastActivity).toISOString();
-			standalone.push({
-				id: codexSession.sessionId,
-				title: codexSession.firstPrompt || "Codex session",
-				slug: "",
-				createdAt: createdAtStr,
-				lastEventAt: new Date(codexSession.lastActivity).toISOString(),
-				durationMs: 0,
-				eventCount: codexSession.messageCount,
-				isFinished: false,
-				models:
-					typeof codexSession.meta.model_provider === "string"
-						? [codexSession.meta.model_provider]
-						: undefined,
-				agent: "codex",
-			});
-		}
-		return { groups, standalone, hasMore: hasOlder };
-	} catch (err) {
-		console.warn(`[trail-viewer] listSessions failed: ${(err as Error).message}`);
-		// Still surface durable-transcript agents when the opencode DB is missing.
-		const standalone: SessionSummary[] = [];
-		try {
-			for (const clineSession of clineReader.listSessions()) {
-				const meta = clineSession.metadata;
-				const promptText = cleanClinePrompt(meta.prompt ?? "");
-				const title = promptText
-					? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
-					: "Cline session";
-				standalone.push({
-					id: clineSession.sessionId,
-					title,
-					slug: "",
-					createdAt: meta.started_at ?? "",
-					durationMs: 0,
-					eventCount: clineReader.readMessages(clineSession.sessionId)?.messages.length ?? 0,
-					isFinished: meta.status === "completed" || meta.status === "failed",
-					agent: "cline",
-				});
-			}
-			for (const piSession of piReader.listSessions()) {
-				const promptText = piSession.firstPrompt;
-				const title = promptText
-					? promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText
-					: "pi session";
-				standalone.push({
-					id: piSession.sessionId,
-					title,
-					slug: "",
-					createdAt: piSession.header.timestamp ?? "",
-					durationMs: 0,
-					eventCount: piSession.messageCount,
-					isFinished: false,
-					agent: "pi",
-				});
-			}
-			for (const grokSession of grokReader.listSessions()) {
-				standalone.push({
-					id: grokSession.sessionId,
-					title: grokSession.title || "Grok session",
-					slug: "",
-					createdAt: grokSession.createdAt ?? "",
-					durationMs: 0,
-					eventCount: grokSession.messageCount,
-					isFinished: false,
-					agent: "grok",
-				});
-			}
-			for (const codexSession of codexReader.listSessions()) {
-				standalone.push({
-					id: codexSession.sessionId,
-					title: codexSession.firstPrompt || "Codex session",
-					slug: "",
-					createdAt:
-						typeof codexSession.meta.timestamp === "string"
-							? codexSession.meta.timestamp
-							: "",
-					durationMs: 0,
-					eventCount: codexSession.messageCount,
-					isFinished: false,
-					agent: "codex",
-				});
-			}
-		} catch {
-			// best-effort
-		}
-		return { groups: [], standalone, hasMore: false };
-	} finally {
-		db?.close();
-	}
-}
 
-/**
- * Build (or serve from cache) a session's full processed event timeline.
- * Fast-path order: resident store → disk cache → pipeline. The disk cache is
- * the durable layer (warm restarts); the resident store is the in-memory home
- * for the visible window (zero-I/O serving). Fresh builds write through to the
- * disk cache so later processes (the warm-up worker, other RPC calls) find the
- * session already processed. Shared by the getSessionEvents RPC and the
- * warm-up worker.
- */
-async function buildSessionEvents(
-	sessionId: string,
-	opts: { includeRaw?: boolean; useCache?: boolean },
-): Promise<BuiltSessionEvents> {
-	const includeRaw = opts.includeRaw === true;
-	const useCache = opts.useCache !== false;
-
-	// Resident store — in-memory fast path for the visible window. Gated on
-	// `useCache` like the disk path below so live refreshes (`useCache: false`)
-	// always re-process a growing session instead of serving a stale snapshot.
-	if (useCache && !includeRaw) {
-		const resident = residentEvents.get(sessionId);
-		if (resident) return { ok: true, ...resident };
-	}
-	// Disk-cache fast path — serves a previously processed (trimmed) timeline
-	// without re-running normalize + accumulate. Used for initial loads only:
-	// live refreshes pass `useCache: false`, and the raw-feed view requests
-	// `includeRaw`, which the cache never stores. Version-stamped so a pipeline
-	// change invalidates all.
-	if (useCache && !includeRaw) {
-		const cached = readCachedSessionEvents(sessionId);
-		if (cached) {
-			const resident: ResidentSession = {
-				events: cached.events,
-				repoRoot: cached.repoRoot,
-				repos: cached.repos,
-				session: cached.session,
-			};
-			residentEvents.set(sessionId, resident);
-			boundResidentStore();
-			return { ok: true, ...resident };
-		}
-	}
-	// Cline CLI sessions: read the durable transcript, not the opencode DB
-	if (isClineSession(sessionId)) {
-		try {
-			const result = await runClinePipeline(sessionId);
-			if (!result) return { ok: false, error: "Cline session not found or empty" };
-			return cacheAndRespond(sessionId, "cline", result, includeRaw);
-		} catch (err) {
-			return { ok: false, error: (err as Error).message };
-		}
-	}
-	// pi CLI sessions: read the durable JSONL transcript, not the opencode DB
-	if (isPiSession(sessionId)) {
-		try {
-			const result = await runPiPipeline(sessionId);
-			if (!result) return { ok: false, error: "pi session not found or empty" };
-			return cacheAndRespond(sessionId, "pi", result, includeRaw);
-		} catch (err) {
-			return { ok: false, error: (err as Error).message };
-		}
-	}
-	// Grok Build sessions: read durable updates.jsonl, not the opencode DB
-	if (isGrokSession(sessionId)) {
-		try {
-			const result = await runGrokPipeline(sessionId);
-			if (!result) return { ok: false, error: "Grok session not found or empty" };
-			return cacheAndRespond(sessionId, "grok", result, includeRaw);
-		} catch (err) {
-			return { ok: false, error: (err as Error).message };
-		}
-	}
-	// Codex sessions are durable rollouts, never opencode SQLite rows.
-	if (isCodexSession(sessionId)) {
-		try {
-			const result = await runCodexPipeline(sessionId);
-			if (!result) return { ok: false, error: "Codex session not found or empty" };
-			return cacheAndRespond(sessionId, "codex", result, includeRaw);
-		} catch (err) {
-			return { ok: false, error: (err as Error).message };
-		}
-	}
-	// opencode sessions: raw V1 rows in sqlite. The full event set is built
-	// once (normalize + accumulate need the whole session for correct
-	// accumulated rows), cached, and served in pages so the webview never
-	// receives the session's whole raw payload in one RPC message.
-	const cacheKey = `opencode:${sessionId}:${includeRaw ? "raw" : "min"}`;
-	let events = sessionEventsCache.get(cacheKey);
-	let sessionSlug = "";
-	let sessionTitle = sessionId.slice(0, 12);
-	let repoRoot: string | undefined;
-	let repos: RepoInfo[] = [];
-	if (!events) {
-		const dbPath = openCodeDBPath();
-		let db: import("bun:sqlite").Database | null = null;
-		try {
-			const { Database } = await import("bun:sqlite");
-			db = new Database(dbPath, { readonly: true });
-			const rows = db
-				.prepare(
-					`SELECT id, aggregate_id, seq, type, data FROM event WHERE aggregate_id = ? ORDER BY seq ASC`,
-				)
-				.all(sessionId) as Array<{
-				id: string;
-				aggregate_id: string;
-				seq: number;
-				type: string;
-				data: string;
-			}>;
-			// Extract session metadata from first event
-			if (rows.length > 0) {
-				try {
-					const firstParsed = JSON.parse(rows[0].data) as Record<string, unknown>;
-					const info = firstParsed["info"] as Record<string, unknown> | undefined;
-					const rawTitle = info?.["title"];
-					if (typeof rawTitle === "string") sessionTitle = rawTitle;
-					const rawSlug = info?.["slug"];
-					if (typeof rawSlug === "string") sessionSlug = rawSlug;
-				} catch {
-					// best-effort
-				}
-			}
-			if (sessionTitle.startsWith("New session")) {
-				const promptText = firstUserPromptText(db, sessionId);
-				if (promptText) sessionTitle = promptText;
-			}
-			const universalEvents = opencodeRowsToUniversalEvents(
-				rows.map((r) => ({ id: r.id, aggregateId: r.aggregate_id, seq: r.seq, type: r.type, data: r.data })),
-			);
-			const alexandriaRepos = loadAlexandriaRepos();
-			const knownRoots = new Map<string, RepositoryInfo>();
-			for (const [path, repo] of alexandriaRepos) {
-				knownRoots.set(path, {
-					root: repo.root,
-					remoteUrl: repo.remoteUrl,
-					owner: repo.owner,
-					repo: repo.repo,
-				});
-			}
-			const { normalized, adapter } = await normalizeEventsWithAdapter(universalEvents, "", knownRoots);
-			// Auto-register any newly discovered git roots
-			for (const discovered of adapter.newlyDiscovered) {
-				registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
-			}
-			const accumulated = accumulateEvents(normalized, sessionTitle);
-			const includeRawPayload = INCLUDE_RAW_EVENT_PAYLOADS || includeRaw;
-			const built: SessionEventRow[] = accumulated.map((entry, i) => {
-				const rawEnvelope = entry.normalized.raw as { data?: unknown; type?: string; seq?: number } | undefined;
-				const seq = rawEnvelope?.seq ?? i;
-				return {
-					seq,
-					type: rawEnvelope?.type ?? entry.normalized.eventType,
-					// Full raw V1 event (id/aggregateId/seq/type/data) when the
-					// session-events feed requests it — the raw column renders
-					// the complete payload, not just its `data` half.
-					raw: includeRawPayload ? (rawEnvelope as unknown) : undefined,
-					normalized: includeRawPayload
-						? (entry.normalized as unknown as Record<string, unknown>)
-						: { timestamp: entry.normalized.timestamp },
-					accumulated: entry.accumulated as AgentSessionEvent | null,
-				};
-			});
-			const lastEvent = built[built.length - 1];
-			if (lastEvent) {
-				const lastTimestamp = (lastEvent.normalized as Record<string, unknown>)["timestamp"] as number | undefined ?? 0;
-				const lastAcc = lastEvent.accumulated ?? ({} as AgentSessionEvent);
-				const lastSessionName = lastAcc.sessionName ?? sessionTitle;
-				const lastSessionColor = lastAcc.sessionColor ?? "";
-				const lastContextTokens = lastAcc.contextTokens;
-				built.push({
-					seq: lastEvent.seq + 1,
-					type: "finished",
-					raw: null,
-					normalized: { timestamp: lastTimestamp },
-					accumulated: {
-						id: "",
-						timestamp: lastTimestamp,
-						sessionId: sessionSlug,
-						sessionName: lastSessionName,
-						sessionColor: lastSessionColor,
-						operation: "finished",
-						files: [],
-						dependencies: [],
-						description: `${lastSessionName} finished`,
-						layers: [],
-						contextTokens: lastContextTokens,
-					},
-				});
-			}
-			const repoSet = new Map<string, { root: string; fileCount: number }>();
-			for (const ev of normalized) {
-				if (!ev.files) continue;
-				for (const f of ev.files) {
-					const root = f.repository?.gitRoot;
-					if (root) {
-						const entry = repoSet.get(root) ?? { root, fileCount: 0 };
-						entry.fileCount++;
-						repoSet.set(root, entry);
-					}
-				}
-			}
-			repos = collectRepositories(normalized)
-				.map((r) => {
-					const entry = repoSet.get(r.root);
-					const parts = r.root.replace(/\/+$/, "").split("/");
-					return { root: r.root, fileCount: entry?.fileCount ?? 0, owner: r.owner ?? null, name: r.repo ?? parts[parts.length - 1] ?? null, editing: false };
-				})
-				.sort((a, b) => b.fileCount - a.fileCount);
-			repoRoot = repos.length > 0 ? repos[0].root : undefined;
-			events = built;
-			// Write-through the freshly processed timeline so cold starts serve
-			// it from disk instead of re-running the pipeline. Trimmed form only;
-			// `includeRaw` never hits this.
-			writeCachedSessionEvents(sessionId, {
-				agent: "opencode",
-				session: { slug: sessionSlug, title: sessionTitle, agent: "opencode" },
-				repoRoot,
-				repos,
-				events: trimSessionEventRows(built),
-			});
-			sessionEventsCache.set(cacheKey, events);
-			// Bounded cache — raw payloads are heavy; evict oldest
-			// entries once we hold more than a few sessions.
-			while (sessionEventsCache.size > 4) {
-				const oldestKey = sessionEventsCache.keys().next().value;
-				if (oldestKey === undefined) break;
-				sessionEventsCache.delete(oldestKey);
-			}
-		} catch (err) {
-			return { ok: false, error: (err as Error).message };
-		} finally {
-			db?.close();
-		}
-	}
-	const session: { slug: string; title: string; agent?: string } = {
-		slug: sessionSlug,
-		title: sessionTitle,
-		agent: "opencode",
-	};
-	if (!includeRaw) {
-		residentEvents.set(sessionId, { events, repoRoot, repos, session });
-		boundResidentStore();
-	}
-	return { ok: true, events, repoRoot, repos, session };
-}
-
-/** Durable-transcript branches: persist the result to disk + resident store,
- *  then return the same `ok: true` shape each branch builds. */
-function cacheAndRespond(
-	sessionId: string,
-	agent: string,
-	result: ClinePipelineResult,
-	includeRaw: boolean,
-): BuiltSessionEvents {
-	const res = respondWithCachedPipeline(sessionId, agent, result);
-	if (!includeRaw) {
-		residentEvents.set(sessionId, {
-			events: res.events,
-			repoRoot: res.repoRoot,
-			repos: res.repos,
-			session: res.session,
-		});
-		boundResidentStore();
-	}
-	return res;
-}
 
 const requests: RequestHandlers = {
 			listTabs: () => ({
@@ -2171,7 +1025,7 @@ const requests: RequestHandlers = {
 			readFile: async ({ tabId, path, repo }) => {
 				const tab = getTab(tabId);
 				if (!tab) return { ok: false, error: `unknown tab: ${tabId}` };
-				if (tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
+				if (tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
 					return { ok: false, error: `${tab.kind} tab does not serve files` };
 				}
 				return tab.mode === "remote"
@@ -2182,7 +1036,7 @@ const requests: RequestHandlers = {
 				const walkPath = path ?? null;
 				if (!walkPath) {
 					const tab = getTab(tabId);
-					if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") return { files: [] };
+					if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") return { files: [] };
 					return tab.mode === "remote"
 						? getFileTreeRemote(tab)
 						: { files: await walkFiles(tab.repoRoot) };
@@ -2205,7 +1059,7 @@ const requests: RequestHandlers = {
 
 			createTrailNote: ({ tabId, draft }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -2230,7 +1084,7 @@ const requests: RequestHandlers = {
 			},
 			updateTrailNote: ({ tabId, noteId, body }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -2264,6 +1118,40 @@ const requests: RequestHandlers = {
 				const ok = Utils.openExternal(url);
 				return { ok };
 			},
+			openFile: ({ purl }) => {
+				const parsed = parsePurl(purl);
+				const owner = parsed?.namespace;
+				const name = parsed?.name;
+				const subpath = parsed?.subpath;
+				if (!owner || !name || !subpath) {
+					return {
+						ok: false,
+						error: "expected pkg:<type>/<owner>/<name>#<path>",
+					};
+				}
+				const rel = safeSubpath(subpath);
+				if (rel === null) {
+					return { ok: false, error: "unsafe file path in purl" };
+				}
+				// Prefer the Alexandria registry: if owner/name maps to a local
+				// clone on disk, open the file there.
+				const root = resolveRepoRootFromAlexandria(owner, name);
+				if (root) {
+					const abs = join(root, rel);
+					if (existsSync(abs)) {
+						Utils.openExternal(`file://${abs}`);
+						return { ok: true };
+					}
+				}
+				// Fallback: open on GitHub (default branch "main"; a 404 shows
+				// GitHub's own navigate-to-default-branch affordance).
+				const url = `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/blob/main/${rel
+					.split("/")
+					.map(encodeURIComponent)
+					.join("/")}`;
+				Utils.openExternal(url);
+				return { ok: true };
+			},
 			getUserIdentity: async () => {
 				// Source repoRoot/token from a trail tab (the suggested/active one
 				// first, else any) for the git/token fallbacks. The gh-CLI path
@@ -2279,7 +1167,7 @@ const requests: RequestHandlers = {
 			},
 			shareTrail: ({ tabId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -2364,7 +1252,7 @@ const requests: RequestHandlers = {
 			},
 			deleteTrailNote: ({ tabId, noteId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "mermaid-demo" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -2406,7 +1294,24 @@ const requests: RequestHandlers = {
 				}
 			},
 			getSessionEvents: async ({ sessionId, includeRaw, offset, limit, useCache }) => {
-				const built = await buildSessionEvents(sessionId, { includeRaw, useCache });
+				// A live refresh (`useCache: false`) no longer re-processes on
+				// this host's event loop: serve the current cache for the
+				// immediate response and kick the warm-up worker to re-process
+				// off-loop. When it finishes, `sessionsUpdated` tells the
+				// renderer to re-fetch the fresh cache. Falls back to inline
+				// processing if no worker is running.
+				const wantLive = useCache === false && !includeRaw;
+				let built = await buildSessionEvents(sessionId, {
+					includeRaw,
+					useCache: wantLive ? true : useCache,
+				});
+				if (built.ok && wantLive && !refreshInWorker([sessionId])) {
+					const live = await processSessionEvents(sessionId, {
+						includeRaw: false,
+						useCache: false,
+					});
+					if (live.ok) built = live;
+				}
 				if (!built.ok) return { ok: false, error: built.error };
 				const total = built.events.length;
 				const start = Math.max(0, offset ?? 0);
@@ -2469,6 +1374,40 @@ const requests: RequestHandlers = {
 
 			listAnalyses: async () => {
 				return { analyses: analyses.summaries() };
+			},
+			listSavedConcepts: async () => {
+				return { concepts: savedConcepts.list() };
+			},
+			saveConcept: async ({ analysisId, conceptId }) => {
+				const analysis = analyses.get(analysisId);
+				if (!analysis) {
+					return { ok: false, error: `unknown analysis: ${analysisId}` };
+				}
+				const concept = analysis.concepts.find((c) => c.id === conceptId);
+				if (!concept) {
+					return {
+						ok: false,
+						error: `concept ${conceptId} not found in analysis ${analysisId}`,
+					};
+				}
+				const savedConceptId = `saved-${analysisId}-${conceptId}`;
+				const existing = savedConcepts.get(savedConceptId);
+				if (existing) return { ok: true, savedConcept: existing };
+				const saved = savedConcepts.save({
+					...concept,
+					savedConceptId,
+					source: "analysis",
+					sourceAnalysisId: analysis.id,
+					sourceSessionId: analysis.sessionId,
+					savedAt: new Date().toISOString(),
+				});
+				broadcastTabsChanged();
+				return { ok: true, savedConcept: saved };
+			},
+			unsaveConcept: async ({ savedConceptId }) => {
+				savedConcepts.remove(savedConceptId);
+				broadcastTabsChanged();
+				return { ok: true };
 			},
 			openSessionEventsTab: async ({ sessionId, title, agent }) => {
 				// Only opencode sessions are supported for now — its events live
@@ -2596,6 +1535,21 @@ function analyzeSessionInBackground(
 	})();
 }
 
+/** Normalize a purl subpath to a repo-root-relative path, rejecting anything
+ *  that escapes the root. The purl spec forbids `.`/`..` segments, so we reject
+ *  rather than normalize-and-hope — the result is later joined onto a real
+ *  clone dir. Mirrors the electron-app's `resolvePurlLink` guard. */
+function safeSubpath(subpath: string): string | null {
+	if (subpath.startsWith("/")) return null;
+	const parts: string[] = [];
+	for (const seg of subpath.split("/")) {
+		if (seg === "" || seg === ".") continue;
+		if (seg === "..") return null; // traversal — reject
+		parts.push(seg);
+	}
+	return parts.length > 0 ? parts.join("/") : null;
+}
+
 const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 	maxRequestTime: 5000,
 	handlers: {
@@ -2671,28 +1625,16 @@ const browserWindow = new BrowserWindow({
 // we want for a windowed viewer.
 browserWindow.maximize();
 
-// Background warm-up: process the recent window and hydrate the host's
-// resident store so the first click on Agent Sessions finds warm data instead
-// of a cold rebuild. Both run off to the side (yielding between sessions) so
-// tab switching stays responsive while they work.
-// Defer warm-up until the boot handshake settles. The warm-up runs on the same
-// event loop as the RPC socket server, so kicking it off immediately competes
-// with the webview's WebSocket handshake and can delay it past the renderer's
-// first RPC requests — electrobun drops messages sent before the socket is
-// OPEN (no queue), so listTabs/getTab time out and the window shows only the
-// header. Letting the handshake + initial requests land first fixes the race;
-// once the socket is open it stays open, so later requests interleave with
-// warm-up fine.
-setTimeout(() => {
-	void hydrateResidentStore();
-	void runSessionWarmup();
-}, 1500);
+// Spawn the background warm-up worker (off this host's event loop) so the
+// recent window's disk cache is pre-built before the user opens Agent
+// Sessions. The worker thread never starves the webview's initial RPCs — the
+// tab strip populates normally while warm-up runs in parallel.
+startWarmupWorker();
 
 function closeTabById(id: string): { ok: boolean; error?: string } {
 	if (
 		id === LIBRARY_TAB_ID ||
 		id === AGENT_SESSIONS_TAB_ID ||
-		id === MERMAID_DEMO_TAB_ID ||
 		id === CONCEPTS_TAB_ID
 	) {
 		return { ok: false, error: "permanent tab cannot be closed" };

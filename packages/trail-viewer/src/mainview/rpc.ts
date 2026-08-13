@@ -32,6 +32,11 @@ type TrailViewerRPC = {
 // apply it to its own active-tab state.
 export const reloadSubscribers = new Set<(focusTabId?: string) => void>();
 
+// The mounted Agent Sessions view registers here so it re-fetches sessions the
+// host's warm-up worker just refreshed (their disk cache is now fresh). The
+// host fires `sessionsUpdated` after a live-refresh pass completes.
+export const sessionRefreshers = new Set<(sessionIds: string[]) => void>();
+
 // The mounted LibraryView registers its refresh here so the top-level AppHeader
 // can trigger a re-fetch of the trail list without prop-drilling through
 // ActiveTab. Only the library tab's view registers, so this is effectively a
@@ -48,6 +53,11 @@ const rpc = Electroview.defineRPC<TrailViewerRPC>({
 		messages: {
 			tabsChanged: (payload) => {
 				for (const fn of reloadSubscribers) fn(payload?.focusTabId);
+			},
+			sessionsUpdated: (payload) => {
+				const sessionIds = payload?.sessionIds ?? [];
+				if (sessionIds.length === 0) return;
+				for (const fn of sessionRefreshers) fn(sessionIds);
 			},
 		},
 	},

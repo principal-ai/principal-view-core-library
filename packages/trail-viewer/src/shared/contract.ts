@@ -84,6 +84,30 @@ export interface ConceptCardData {
 	points: string[];
 	/** Mermaid source for the right (diagram) side of the card. */
 	mermaid: string;
+	/** Optional rich markdown prose (paragraphs, tables, blockquotes) for slide
+	 *  presentation. When absent, renderers derive a slide from `description`
+	 *  + `points`. */
+	markdown?: string;
+	/** Purl file-refs (`pkg:<type>/<owner>/<name>#<repo-root-relative-path>`)
+	 *  the concept is about — click-to-open sources. Resolved by the host via
+	 *  `openFile`. Optional; extracted cards may carry 1–3 of these. */
+	files?: string[];
+}
+
+/** A concept card deliberately saved out of an analysis. Carries the full card
+ *  (a copy — safe from later re-extraction) plus provenance. What the Concepts
+ *  tab renders. */
+export interface SavedConcept extends ConceptCardData {
+	/** Stable store key — `saved-<analysisId>-<cardId>`. */
+	savedConceptId: string;
+	/** Where the card came from. `analysis` today; reserved for future curated
+	 *  imports. */
+	source: "curated" | "analysis";
+	/** The analysis this card was saved out of, when `source === "analysis"`. */
+	sourceAnalysisId?: string;
+	/** The session that analysis covers, when `source === "analysis"`. */
+	sourceSessionId?: string;
+	savedAt: string;
 }
 
 export type AnalysisStatus = "pending" | "done" | "error";
@@ -132,7 +156,7 @@ export interface AnalysisSummary {
 
 export interface TabSummary {
 	id: string;
-	kind: "library" | "trail" | "agent-sessions" | "mermaid-demo" | "concepts" | "analysis" | "session-events" | "prompt";
+	kind: "library" | "trail" | "agent-sessions" | "concepts" | "analysis" | "session-events" | "prompt";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -142,7 +166,7 @@ export interface TabFullState {
 	ok: boolean;
 	error?: string;
 	id: string;
-	kind: "library" | "trail" | "agent-sessions" | "mermaid-demo" | "concepts" | "analysis" | "session-events" | "prompt";
+	kind: "library" | "trail" | "agent-sessions" | "concepts" | "analysis" | "session-events" | "prompt";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -320,6 +344,24 @@ export type TrailViewerRequests = {
 		params: Record<string, never>;
 		response: { analyses: AnalysisSummary[] };
 	};
+	listSavedConcepts: {
+		params: Record<string, never>;
+		response: { concepts: SavedConcept[] };
+	};
+	saveConcept: {
+		params: { analysisId: string; conceptId: string };
+		response: {
+			ok: boolean;
+			error?: string;
+			/** The saved record — an existing one when the card was already
+			 *  saved (the action is idempotent). */
+			savedConcept?: SavedConcept;
+		};
+	};
+	unsaveConcept: {
+		params: { savedConceptId: string };
+		response: { ok: boolean; error?: string };
+	};
 	openPromptTab: {
 		params: Record<string, never>;
 		response: { ok: boolean; error?: string; tabId?: string };
@@ -365,6 +407,10 @@ export type TrailViewerRequests = {
 		params: { url: string };
 		response: { ok: boolean };
 	};
+	openFile: {
+		params: { purl: string };
+		response: { ok: boolean; error?: string };
+	};
 	shareTrail: {
 		params: { tabId: string };
 		response: {
@@ -389,6 +435,11 @@ export type TrailViewerMessages = {
 	 *  active-tab state; when absent the renderer keeps its current selection. */
 	tabsChanged: {
 		focusTabId?: string;
+	};
+	/** The warm-up worker re-processed these sessions (a live-refresh request)
+	 *  and their disk cache is now fresh. The renderer should re-fetch them. */
+	sessionsUpdated: {
+		sessionIds: string[];
 	};
 }
 

@@ -73,6 +73,26 @@ export function buildTranscript(src: TranscriptSource): string {
 		lines.push("- **Repos**:");
 		lines.push(...repoLines);
 	}
+
+	// Files the session touched — repo-root-relative when the accumulated layer
+	// knows the repo, otherwise the display path. Deduped so the agent can cite
+	// specific files as purl refs without scanning raw payloads.
+	const files: string[] = [];
+	const seen = new Set<string>();
+	for (const ev of src.events) {
+		for (const f of ev.accumulated?.files ?? []) {
+			const p = f.repository?.relativePath || f.displayPath;
+			if (p && !seen.has(p)) {
+				seen.add(p);
+				files.push(p);
+			}
+		}
+	}
+	if (files.length > 0) {
+		lines.push("- **Files**:");
+		lines.push(...files.map((f) => `  - ${f}`));
+	}
+
 	lines.push("");
 	lines.push("## What happened (accumulated event timeline)");
 	lines.push("");
@@ -354,6 +374,20 @@ function validateCard(
 				}))
 				.filter((re) => re.owner !== "" && re.name !== "")
 		: [];
+	// Purl file-refs — keep only well-formed `pkg:<type>/<owner>/<name>#<path>`
+	// refs with a subpath; the host parses + path-safety-checks them on open.
+	const files = Array.isArray(r["files"])
+		? (r["files"] as unknown[])
+				.filter((f): f is string => typeof f === "string")
+				.map((f) => f.trim())
+				.filter((f) => {
+					if (!f.startsWith("pkg:") || !f.includes("#")) return false;
+					const [base] = f.split("#");
+					const segs = base.split("/").slice(1);
+					return segs.length >= 2; // type + owner + name
+				})
+				.slice(0, 8)
+		: [];
 	return {
 		id:
 			typeof r["id"] === "string" && (r["id"] as string).trim()
@@ -370,5 +404,10 @@ function validateCard(
 			typeof r["mermaid"] === "string" && (r["mermaid"] as string).trim()
 				? (r["mermaid"] as string).trim()
 				: "",
+		markdown:
+			typeof r["markdown"] === "string" && (r["markdown"] as string).trim()
+				? (r["markdown"] as string).trim()
+				: undefined,
+		files: files.length > 0 ? files : undefined,
 	};
 }
