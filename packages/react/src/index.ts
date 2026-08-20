@@ -211,3 +211,34 @@ export type {
   SessionEventFeedGroupedProps,
   SessionEventFeedRow,
 } from './components/session-events';
+
+// Graphify integration types (graph.json data model)
+export type {
+  JsonValue,
+  GraphifyFileType,
+  GraphifyConfidence,
+  GraphifyNodeType,
+  GraphifyRelation,
+  GraphifyNode,
+  GraphifyEdge,
+  GraphifyHyperedge,
+  GraphifyGraphMetadata,
+  GraphifyGraph,
+} from './graphify';
+export type {
+  GraphifyAnchorResolution,
+  SubsystemGraphifyAnchor,
+  GraphifyMethodInfo,
+  GraphifyPropertyInfo,
+  GraphifyParamInfo,
+  GraphifyCallInfo,
+  GraphifyReferenceInfo,
+  GraphifyImportInfo,
+  GraphifyClassDetail,
+  GraphifyFunctionDetail,
+  GraphifyTypeDetail,
+  GraphifyModuleDetail,
+  GraphifyExternalDetail,
+  GraphifyComponentDetail,
+  GraphifyEdgeRef,
+} from './graphify';

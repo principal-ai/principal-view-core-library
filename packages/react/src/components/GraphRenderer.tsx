@@ -1901,7 +1901,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   // Handle node drag to show alignment guides
   const handleNodeDrag = useCallback(
-    (_event: React.MouseEvent, node: Node) => {
+    (_event: MouseEvent | TouchEvent, node: Node) => {
       // Allow dragging if editable OR if this node is in draggableNodeIds
       const canDrag = editable || draggableNodeIds?.has(node.id);
       if (!canDrag) return;
@@ -1917,7 +1917,7 @@ const GraphRendererInner: React.FC<GraphRendererInnerProps> = ({
 
   // Clear guides when drag ends and notify parent
   const handleNodeDragStop = useCallback(
-    (_event: React.MouseEvent, node: Node) => {
+    (_event: MouseEvent | TouchEvent, node: Node) => {
       setAlignmentGuides([]);
 
       // Call the callback if provided (for draggable nodes outside edit mode)

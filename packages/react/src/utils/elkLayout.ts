@@ -48,6 +48,25 @@ export interface ElkLayoutOptions {
   edgeNodeSpacing?: number;
 
   /**
+   * Minimum horizontal distance between layers (node-to-node across layers).
+   * Controls the gap that prevents nodes in adjacent layers from overlapping.
+   * @default 0
+   */
+  interLayerSpacing?: number;
+
+  /**
+   * Reserve space along edges for inline labels so they don't overlap nodes
+   * or other edges. When enabled ELK places labels inline on the edge with the
+   * given margin model.
+   */
+  edgeLabels?: {
+    /** Whether to reserve label space in the layout. @default true */
+    enabled?: boolean;
+    /** Placement of inline labels. @default 'CENTER' */
+    placement?: 'CENTER' | 'TAIL' | 'HEAD';
+  };
+
+  /**
    * Layout direction
    * @default 'RIGHT'
    */
@@ -62,6 +81,8 @@ export interface ElkLayoutResult {
   edgePaths: Map<string, string>;
   /** Edge label positions, keyed by edge ID */
   edgeLabelPositions: Map<string, { x: number; y: number }>;
+  /** Raw ELK path points per edge (for debugging). */
+  edgePathPoints: Map<string, Point[]>;
 }
 
 /** Point in 2D space */
@@ -216,6 +237,8 @@ function getElkOptions(options: ElkLayoutOptions): LayoutOptions {
     nodeSpacing = 50,
     edgeSpacing = 8,
     edgeNodeSpacing = 10,
+    interLayerSpacing = 0,
+    edgeLabels,
     direction = 'RIGHT',
   } = options;
 
@@ -228,6 +251,7 @@ function getElkOptions(options: ElkLayoutOptions): LayoutOptions {
     'elk.spacing.edgeNode': String(edgeNodeSpacing),
     'elk.layered.spacing.edgeEdgeBetweenLayers': String(edgeSpacing),
     'elk.layered.spacing.edgeNodeBetweenLayers': String(edgeNodeSpacing),
+    'elk.layered.spacing.nodeNodeBetweenLayers': String(interLayerSpacing),
     // Port constraints - edges connect at specific sides
     'elk.portConstraints': 'FIXED_SIDE',
     // Improve orthogonal routing quality
@@ -238,6 +262,14 @@ function getElkOptions(options: ElkLayoutOptions): LayoutOptions {
     // Higher thoroughness = better edge routing (1-100)
     'elk.layered.thoroughness': '50',
   };
+
+  // Reserve space for inline edge labels so they don't overlap nodes/edges.
+  if (edgeLabels?.enabled !== false) {
+    const placement = edgeLabels?.placement ?? 'CENTER';
+    baseOptions['elk.edgeLabels.inline'] = 'true';
+    baseOptions['elk.edgeLabels.inlinePlacement'] = placement;
+    baseOptions['elk.layered.edgeLabels.centerLabelPlacementStrategy'] = 'CENTER_LAYER';
+  }
 
   // Set edge routing style
   switch (routingStyle) {
@@ -269,6 +301,7 @@ export async function computeElkLayout(
   options: ElkLayoutOptions = {}
 ): Promise<ElkLayoutResult> {
   const { preserveNodePositions = true } = options;
+  const edgeLabels = options.edgeLabels;
 
   // Build a map of original node positions BEFORE passing to ELK
   // (ELK mutates the input nodes in place, so we must save positions first)
@@ -281,6 +314,13 @@ export async function computeElkLayout(
   const elkNodes: ElkNode[] = nodes.map((node) => {
     const width = node.measured?.width ?? node.width ?? 200;
     const height = node.measured?.height ?? node.height ?? 100;
+
+    // Optional explicit layout layer, read from node data (e.g. our subsystem
+    // components carry `data.component.layer`). Forces ELK to place the node in
+    // that layer so the graph reads as a pipeline rather than a guess.
+    let layer: number | undefined;
+    const nd = node.data as { component?: { layer?: number }; layer?: number } | undefined;
+    layer = nd?.layer ?? nd?.component?.layer;
 
     return {
       id: node.id,
@@ -297,6 +337,7 @@ export async function computeElkLayout(
       ],
       properties: {
         'portConstraints': 'FIXED_SIDE',
+        ...(layer !== undefined ? { 'layering.layer': String(layer) } : {}),
       },
     };
   });
@@ -378,11 +419,20 @@ export async function computeElkLayout(
     const isHorizontalFirst = sourcePort.endsWith('_right') || sourcePort.endsWith('_left');
     edgeRoutingDirection.set(edge.id, isHorizontalFirst);
 
-    return {
+    const elkEdge: ElkExtendedEdge = {
       id: edge.id,
       sources: [sourcePort],
       targets: [targetPort],
     };
+    // Estimated label size so ELK reserves room to render the inline label
+    // without it overlapping nodes or sibling edges.
+    if (edgeLabels?.enabled !== false && typeof edge.label === 'string') {
+      const text = edge.label;
+      const labelWidth = Math.max(20, text.length * 7); // ~7px per mono char
+      const labelHeight = 14;
+      elkEdge.labels = [{ text, width: labelWidth, height: labelHeight }];
+    }
+    return elkEdge;
   });
 
   // Create ELK graph
@@ -407,6 +457,7 @@ export async function computeElkLayout(
   // Extract results
   const edgePaths = new Map<string, string>();
   const edgeLabelPositions = new Map<string, { x: number; y: number }>();
+  const edgePathPoints = new Map<string, Point[]>();
 
   // Process edges
   if (layoutedGraph.edges) {
@@ -462,9 +513,37 @@ export async function computeElkLayout(
           }
         }
 
-        // For orthogonal routing, rebuild the path with proper right-angle bends
-        // The transformation can distort ELK's bend points, so we compute fresh bends
-        if (options.routingStyle === 'orthogonal') {
+        // Use ELK's native label position (it accounts for node avoidance)
+        // and apply the same coordinate offset.
+        if (edge.labels && edge.labels.length > 0) {
+          const elkLabel = edge.labels[0];
+          // Raw ELK label position — no conversion.
+          let lx = elkLabel.x ?? 0;
+          let ly = elkLabel.y ?? 0;
+          if (preserveNodePositions && sourceOriginal && sourceElk && targetOriginal && targetElk) {
+            const sourceOffset = {
+              x: sourceOriginal.x - sourceElk.x,
+              y: sourceOriginal.y - sourceElk.y,
+            };
+            const targetOffset = {
+              x: targetOriginal.x - targetElk.x,
+              y: targetOriginal.y - targetElk.y,
+            };
+            // Interpolate offset based on label position along the edge
+            const startX = allPoints[0].x;
+            const endX = allPoints[allPoints.length - 1].x;
+            const rangeX = Math.abs(endX - startX) || 1;
+            const t = Math.min(1, Math.max(0, Math.abs(lx - startX) / rangeX));
+            lx += sourceOffset.x + (targetOffset.x - sourceOffset.x) * t;
+            ly += sourceOffset.y + (targetOffset.y - sourceOffset.y) * t;
+          }
+          edgeLabelPositions.set(edge.id, { x: lx, y: ly });
+        }
+
+        // For orthogonal routing with preserved positions, the offset can distort
+        // ELK's bend points, so we rebuild the path. Otherwise, use ELK's bends
+        // as-is since they already account for label placement and node avoidance.
+        if (options.routingStyle === 'orthogonal' && preserveNodePositions) {
           const start = allPoints[0];
           const end = allPoints[allPoints.length - 1];
           const dx = Math.abs(end.x - start.x);
@@ -502,10 +581,7 @@ export async function computeElkLayout(
             : pointsToPath(allPoints);
 
         edgePaths.set(edge.id, path);
-
-        // Calculate label position
-        const labelPos = calculatePathMidpoint(allPoints);
-        edgeLabelPositions.set(edge.id, labelPos);
+        edgePathPoints.set(edge.id, [...allPoints]);
       }
     }
   }
@@ -528,6 +604,7 @@ export async function computeElkLayout(
     nodes: resultNodes,
     edgePaths,
     edgeLabelPositions,
+    edgePathPoints,
   };
 }
 
