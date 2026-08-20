@@ -302,6 +302,7 @@ export async function computeElkLayout(
 ): Promise<ElkLayoutResult> {
   const { preserveNodePositions = true } = options;
   const edgeLabels = options.edgeLabels;
+  const direction = options.direction ?? 'RIGHT';
 
   // Build a map of original node positions BEFORE passing to ELK
   // (ELK mutates the input nodes in place, so we must save positions first)
@@ -373,7 +374,18 @@ export async function computeElkLayout(
       };
     }
 
-    // Fallback to position-based calculation
+    // When ELK repositions nodes (preserveNodePositions=false), the initial
+    // grid positions are unreliable — use the layout direction instead.
+    if (!preserveNodePositions) {
+      switch (direction) {
+        case 'RIGHT': return { sourcePort: `${sourceId}_right`, targetPort: `${targetId}_left` };
+        case 'LEFT':  return { sourcePort: `${sourceId}_left`,  targetPort: `${targetId}_right` };
+        case 'DOWN':  return { sourcePort: `${sourceId}_bottom`, targetPort: `${targetId}_top` };
+        case 'UP':    return { sourcePort: `${sourceId}_top`,    targetPort: `${targetId}_bottom` };
+      }
+    }
+
+    // Fallback to position-based calculation (for preserveNodePositions=true)
     const sourcePos = originalPositions.get(sourceId);
     const targetPos = originalPositions.get(targetId);
 
