@@ -30,6 +30,7 @@ export interface AnalysisStore {
 	list: () => ConceptAnalysis[];
 	summaries: () => AnalysisSummary[];
 	save: (analysis: ConceptAnalysis) => ConceptAnalysis;
+	remove: (id: string) => boolean;
 }
 
 function loadAll(): Map<string, ConceptAnalysis> {
@@ -85,6 +86,12 @@ export function createAnalysisStore(): AnalysisStore {
 			map.set(analysis.id, analysis);
 			persistAll(map);
 			return analysis;
+		},
+		remove(id) {
+			const map = loadAll();
+			const existed = map.delete(id);
+			if (existed) persistAll(map);
+			return existed;
 		},
 	};
 }

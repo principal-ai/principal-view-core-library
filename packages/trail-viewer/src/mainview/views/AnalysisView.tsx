@@ -1,11 +1,12 @@
 /**
  * AnalysisView — renders one session's concept analysis (a `kind: "analysis"`
- * tab) as a feed of concept cards.
+ * tab) as a feed of concept cards and/or subsystem snapshots.
  *
  * The cards reuse the same `FeedCard` / `DiagramModal` from ConceptCardsView,
  * so analyzed sessions and the saved Concepts feed look and behave the same.
- * The view reads its analysis from the host via `getTab` (the tab payload is
- * the `ConceptAnalysis` record).
+ * Subsystem snapshots render through `SubsystemSnapshots` (sequence-central),
+ * one card per subsystem the session touched. The view reads its analysis from
+ * the host via `getTab` (the tab payload is the `ConceptAnalysis` record).
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -15,6 +16,7 @@ import type { MermaidMarkdownSlide } from "themed-markdown";
 import { electrobun, reloadSubscribers } from "../rpc";
 import { CenteredMessage } from "../ui";
 import { FeedCard, DiagramModal } from "./ConceptCardsView";
+import { SubsystemSnapshots } from "./SubsystemSnapshots";
 import { CHANGE_TYPE_LABELS } from "../concepts";
 import type {
 	ConceptAnalysis,
@@ -22,7 +24,7 @@ import type {
 	SessionSummary,
 } from "../../shared/contract";
 
-type ViewMode = "cards" | "slides";
+type ViewMode = "cards" | "slides" | "subsystems";
 
 /** Map a concept card to a presentation slide. Cards that carry authored
  *  `markdown` prose use it verbatim; the rest get a slide derived from the
@@ -102,6 +104,18 @@ export function AnalysisView({
 			reloadSubscribers.delete(loadAnalysis);
 		};
 	}, [loadAnalysis]);
+
+	// When an analysis has subsystem snapshots but no concept cards (e.g. the
+	// seeded sample), land on the subsystems view rather than an empty feed.
+	useEffect(() => {
+		if (analysis?.status !== "done") return;
+		if (
+			(analysis.subsystems?.length ?? 0) > 0 &&
+			analysis.concepts.length === 0
+		) {
+			setViewMode("subsystems");
+		}
+	}, [analysis]);
 
 	// Redo a failed extraction in place: the host resets the record to `pending`
 	// and restarts the opencode run under the same analysis id, then broadcasts
@@ -316,7 +330,9 @@ export function AnalysisView({
 						flexShrink: 0,
 					}}
 				>
-					{analysis.status === "done" && analysis.concepts.length > 0 && (
+					{analysis.status === "done" &&
+						(analysis.concepts.length > 0 ||
+							(analysis.subsystems?.length ?? 0) > 0) && (
 						<div
 							style={{
 								display: "flex",
@@ -327,7 +343,13 @@ export function AnalysisView({
 								overflow: "hidden",
 							}}
 						>
-							{(["cards", "slides"] as const).map((mode) => (
+							{(() => {
+								const modes: ViewMode[] = ["cards", "slides"];
+								if ((analysis.subsystems?.length ?? 0) > 0) {
+									modes.push("subsystems");
+								}
+								return modes;
+							})().map((mode) => (
 								<button
 									key={mode}
 									type="button"
@@ -372,9 +394,11 @@ export function AnalysisView({
 				</span>
 			</div>
 
-			{analysis.status === "done" &&
-			analysis.concepts.length > 0 &&
-			viewMode === "slides" ? (
+			{analysis.status === "done" && viewMode === "subsystems" ? (
+				<SubsystemSnapshots subsystems={analysis.subsystems ?? []} />
+			) : analysis.status === "done" &&
+			  analysis.concepts.length > 0 &&
+			  viewMode === "slides" ? (
 				<MermaidMarkdownPresentation
 					slides={slides}
 					theme={theme}
@@ -405,7 +429,7 @@ export function AnalysisView({
 								paddingTop: 40,
 							}}
 						>
-							<span>Extracting concept cards…</span>
+							<span>Extracting concept cards + subsystems…</span>
 							<span
 								style={{
 									fontSize: theme.fontSizes[0],

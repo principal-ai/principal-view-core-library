@@ -1,16 +1,20 @@
 /**
- * Real concept extraction — turns a session's accumulated event layer into a
- * transcript, hands it to the `concept-extractor` opencode agent, and parses
- * the JSON concept cards back out.
+ * Session understanding — turns a session's beat analysis into a brief the
+ * extractor agent can act on, then runs the agent and parses arc-summary
+ * cards out.
  *
  * This is the Phase-2 replacement for `stubConceptCard`: the host saves a
  * `pending` analysis, runs this in the background (the opencode run outlives
  * the 5s RPC window), then persists the parsed cards or the error.
  *
- * The transcript deliberately carries the *accumulated* semantic layer (the
- * `description` lines the pipeline already distilled), never raw event
- * payloads. If the agent needs more signal, we enrich that layer — the agent
- * can also read the session's repos directly (it is not sandboxed).
+ * The host does the *mechanical* front half (beat segmentation, kind/function
+ * classification, file collection — see `beat-analysis.ts`) and hands the
+ * agent a brief: the beats, the CLI accessor for the full accumulated feed,
+ * and the procedure for the *judgment* half (grouping beats into arcs and
+ * detours, naming each arc's concept, writing the concept/evidence summary,
+ * and producing the mermaid). The agent reads the accumulated feed itself via
+ * the CLI so it can enrich summaries with real event content; it is not
+ * sandboxed from the session's repos.
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -21,8 +25,16 @@ import type {
 	ConceptChangeType,
 	ExtractionPromptInfo,
 	RepoInfo,
-	SessionEventRow,
+	SubsystemEntryPoint,
+	SubsystemEntryPointKind,
+	SubsystemFileRef,
+	SubsystemIntegration,
+	SubsystemIntegrationMechanism,
+	SubsystemSnapshot,
+	SubsystemTestSuite,
 } from "../shared/contract";
+import type { BeatAnalysis } from "./beat-analysis";
+import { buildBeatBrief } from "./beat-analysis";
 
 /** Fixed extractor model — the opencode-go provider's fast flash model. */
 export const EXTRACTOR_MODEL = "opencode-go/deepseek-v4-flash";
@@ -40,92 +52,154 @@ export const EXTRACTOR_AGENT_PATH =
 	process.env["TRAIL_EXTRACTOR_AGENT_PATH"] ??
 	join(homedir(), ".config", "opencode", "agents", `${CONCEPT_EXTRACTOR_AGENT}.md`);
 
-const TRANSCRIPT_DIR = join(homedir(), ".principal", "transcripts");
-
 // ---------------------------------------------------------------------------
-// Transcript building
+// Brief building
 // ---------------------------------------------------------------------------
 
-export interface TranscriptSource {
+export interface BriefSource {
 	sessionId: string;
 	sessionTitle: string;
 	sessionSlug?: string;
 	agent?: string;
 	repos: RepoInfo[];
-	events: SessionEventRow[];
+	beats: BeatAnalysis;
 }
 
-/** Render the accumulated event layer as plain numbered prose, with a header
- *  naming the session, agent, and every repo the session touched. */
-export function buildTranscript(src: TranscriptSource): string {
+/** The CLI accessor the agent runs to fetch the full accumulated feed. The
+ *  command is published with the `--view` flag the extractor relies on. */
+export function buildAccessorCommand(sessionId: string): string {
+	return `principal-ai agent-session fetch ${sessionId} --view accumulated`;
+}
+
+/**
+ * Render the brief the extractor agent acts on: session identity, the accessor
+ * command + repo roots, the host-computed beats, and the procedure + output
+ * contract for the judgment half. Deliberately *not* a transcript dump — the
+ * agent runs the accessor itself when it needs the full event content.
+ */
+export function buildBrief(src: BriefSource): string {
 	const lines: string[] = [];
-	lines.push("# Session Analysis Transcript");
+	lines.push("# Session understanding brief");
 	lines.push("");
 	lines.push(`- **Session**: ${src.sessionTitle}`);
 	lines.push(`- **Agent**: ${src.agent ?? "opencode"}`);
 	if (src.sessionSlug) lines.push(`- **Slug**: ${src.sessionSlug}`);
-	const repoLines = src.repos.map((r) => {
-		const identity =
-			r.owner && r.name ? `${r.owner}/${r.name}` : r.name ?? r.root;
-		return `- ${r.root}${identity === r.root ? "" : ` (${identity})`}`;
-	});
-	if (repoLines.length > 0) {
-		lines.push("- **Repos**:");
-		lines.push(...repoLines);
-	}
-
-	// Files the session touched — repo-root-relative when the accumulated layer
-	// knows the repo, otherwise the display path. Deduped so the agent can cite
-	// specific files as purl refs without scanning raw payloads.
-	const files: string[] = [];
-	const seen = new Set<string>();
-	for (const ev of src.events) {
-		for (const f of ev.accumulated?.files ?? []) {
-			const p = f.repository?.relativePath || f.displayPath;
-			if (p && !seen.has(p)) {
-				seen.add(p);
-				files.push(p);
-			}
+	lines.push(`- **Session id**: ${src.sessionId}`);
+	lines.push("");
+	lines.push("## Access");
+	lines.push("");
+	lines.push(
+		`Fetch the session's full accumulated event feed yourself by running the CLI accessor:`,
+	);
+	lines.push("");
+	lines.push(`    ${buildAccessorCommand(src.sessionId)}`);
+	lines.push("");
+	lines.push(
+		"The output carries `operation`, `description`, and `files` per event — use it to enrich the beat summaries below when you need the underlying event content.",
+	);
+	if (src.repos.length > 0) {
+		lines.push("");
+		lines.push("**Repos the session worked in** (roots — cite files from here as purl refs):");
+		for (const r of src.repos) {
+			const identity =
+				r.owner && r.name ? `${r.owner}/${r.name}` : r.name ?? r.root;
+			lines.push(`- ${r.root}${identity === r.root ? "" : ` (${identity})`}`);
 		}
 	}
-	if (files.length > 0) {
-		lines.push("- **Files**:");
-		lines.push(...files.map((f) => `  - ${f}`));
-	}
-
 	lines.push("");
-	lines.push("## What happened (accumulated event timeline)");
+	lines.push(buildBeatBrief(src.beats));
 	lines.push("");
-	let n = 0;
-	for (const ev of src.events) {
-		const acc = ev.accumulated;
-		const text = acc?.description?.trim() || (acc?.operation?.trim() || "").trim();
-		if (!text) continue;
-		n++;
-		lines.push(`${n}. ${text}`);
-	}
-	if (n === 0) lines.push("(no accumulated events)");
+	lines.push("## Task");
 	lines.push("");
+	lines.push(
+		"Group the beats into arcs and detours and produce one card per arc/detour. An **arc** is a main thread of the session (a concept that recurs and accumulates, e.g. \"build the session service\"). A **detour** is a self-contained sequence of content beats that deviates from the main threads, resolves, and hands control back (opens with a problem report like \"none of the tabs are showing\", closes with a transition like \"yep that fixed it\").",
+	);
+	lines.push("");
+	lines.push(
+		"Rules: a bug-fix sequence is a detour only when its subject matches **no arc**'s concept — if it matches an arc (e.g. a caching bug in a session with a caching arc), it is evidence for that arc, not a detour. Work beats are concept-poor (agreement gestures like \"yes please\", \"lets do it\"); name each arc's concept from its plan/Q&A beats and its files, not from the work-beat text.",
+	);
+	lines.push("");
+	lines.push(
+		"Each card's `description` states the concept (the *what*); `points` list the evidence (the *that* — which beats and what happened). Keep `keyBeats` to the beat indices the arc spans and set `arcKind` to `\"arc\"` or `\"detour\"`.",
+	);
+	lines.push("");
+	lines.push("## Output contract");
+	lines.push("");
+	lines.push(
+		"Respond with **only** a single JSON object — no prose before or after, no markdown fences:",
+	);
+	lines.push("");
+	lines.push('```json\n{ "concepts": [ ... ], "subsystems": [ ... ] }\n```');
+	lines.push("");
+	lines.push(
+		"Each element is an arc-summary card. All fields below are required unless marked optional:",
+	);
+	lines.push("");
+	lines.push('```json\n{');
+	lines.push('  "id": "kebab-case-short-id",');
+	lines.push('  "title": "Short, specific title naming the arc concept",');
+	lines.push('  "changeType": "execution | derive | integration | ui",');
+	lines.push('  "arcKind": "arc | detour",');
+	lines.push('  "keyBeats": [1, 3, 5],');
+	lines.push('  "sessionIds": ["<the session id from the brief header>"],');
+	lines.push('  "repos": [{ "owner": "<owner>", "name": "<name>" }],');
+	lines.push('  "description": "One or two sentences stating the concept (the what).",');
+	lines.push('  "points": ["Short bullet stating evidence (the that)", "..."],');
+	lines.push('  "mermaid": "flowchart LR\\n  ...",');
+	lines.push('  "markdown": "# Markdown prose for the slide view",');
+	lines.push('  "files": ["pkg:github/owner/name#packages/core/src/index.ts"]');
+	lines.push('}\n```');
+	lines.push("");
+	lines.push("## Subsystem snapshots");
+	lines.push("");
+	lines.push(
+		"The session may cover **several subsystems** — emit one snapshot per subsystem the session worked on or analyzed. A subsystem is a snapshot of a concept being worked on: the durable, verifiable record of what that concept means in the code at this point. Cluster on **edited** files (repo-root-relative paths only), never read/touch noise. Shared seams (registries, barrels, package facades) are **integration-edge targets, not members** — a reader \"registers into\" the registry rather than listing it as a file.",
+	);
+	lines.push("");
+	lines.push('```json\n{');
+	lines.push('  "id": "kebab-case-short-id",');
+	lines.push('  "name": "Stable name of the concept being worked on",');
+	lines.push('  "description": "One or two sentences: what this subsystem is.",');
+	lines.push('  "repo": { "owner": "<owner>", "name": "<name>" },');
+	lines.push('  "files": [{ "purl": "pkg:github/owner/name#src/foo.ts", "role": "core | supporting", "purpose": "one-line purpose" }],');
+	lines.push('  "entryPoints": [{ "symbol": "FooBar", "kind": "class | function | interface | type | const | method", "file": "pkg:...#src/foo.ts", "line": 36, "signature": "export class FooBar {" }],');
+	lines.push('  "integrations": [{ "to": "<other subsystem or pkg:...#symbol>", "mechanism": "imports | calls | extends | registers-into", "refs": ["pkg:...#src/foo.ts"] }],');
+	lines.push('  "fixtures": ["pkg:github/owner/name#test-data/fixture.jsonl"],');
+	lines.push('  "testSuites": [{ "file": "pkg:...#V2RealSession.test.ts", "exercises": ["FooBar.normalize"], "verifies": "maps the prompt lifecycle" }],');
+	lines.push('  "sequenceMermaid": "sequenceDiagram\\n    ...",');
+	lines.push('  "graphMermaid": "flowchart LR\\n    ...",');
+	lines.push('  "sessionIds": ["<the session id from the brief header>"]');
+	lines.push('}\n```');
+	lines.push("");
+	lines.push(
+		"Rules: emit an empty `subsystems: []` when the session was purely exploratory with no file cluster. `entryPoints[].symbol` and `signature` must be **verbatim from the code** (read the file; `line` is 1-based). `sequenceMermaid` is the session's story for that subsystem (the per-capture, central layer); `graphMermaid` is the component graph — nodes are kind-tagged components, packages render as subgraphs, only cross-package edges leave the box, and shared seams (registries/barrels/facades) are edge targets, never member nodes. `testSuites`/`fixtures` capture how it is tested, separate from how it exists.",
+	);
+	lines.push("");
+	lines.push(
+		"`entries` may span multiple repos (e.g. building in one repo, integrating into consumers in another) — one snapshot can carry files/integrations from several repos, or you may emit separate snapshots per cluster.",
+	);
 	return lines.join("\n");
 }
 
-/** Write the transcript to `~/.principal/transcripts/<id>.md` and return its
- *  path (the file the opencode run attaches with `-f`). */
-export function writeTranscript(src: TranscriptSource): string {
+/** Write the brief to `~/.principal/transcripts/<id>.md` and return its path
+ *  (kept for compatibility/debugging; the run no longer attaches it). */
+export function writeBrief(src: BriefSource): string {
 	mkdirSync(TRANSCRIPT_DIR, { recursive: true });
 	const safeId = src.sessionId.replace(/[^a-zA-Z0-9_-]/g, "_");
-	const path = join(TRANSCRIPT_DIR, `${safeId}.md`);
-	writeFileSync(path, buildTranscript(src), "utf8");
+	const path = join(TRANSCRIPT_DIR, `${safeId}.brief.md`);
+	writeFileSync(path, buildBrief(src), "utf8");
 	return path;
 }
+
+const TRANSCRIPT_DIR = join(homedir(), ".principal", "transcripts");
 
 // ---------------------------------------------------------------------------
 // Prompt surfaces
 // ---------------------------------------------------------------------------
 
-/** The task message template — one interpolation (the session title). */
+/** The task message template — the brief is the task (access + procedure). */
 export function extractTaskTemplate(sessionTitle: string): string {
-	return `Extract concept cards from the session "${sessionTitle}". Respond with ONLY a JSON object: {"concepts": [...]}.`;
+	return `Read the session brief below, run the accessor to fetch the accumulated feed, group the beats into arcs/detours, and emit arc-summary cards for "${sessionTitle}". Respond with ONLY a JSON object: {"concepts": [...]}.`;
 }
 
 /** Read the extractor agent's system prompt from its config file. Falls back to
@@ -158,19 +232,19 @@ export interface ExtractionResult {
 	ok: boolean;
 	error?: string;
 	concepts?: ConceptCardData[];
+	/** Subsystem snapshots teased out of the session — one per subsystem. */
+	subsystems?: SubsystemSnapshot[];
 	/** Model the run reported via `-m` (deterministic, but kept on the record). */
 	model?: string;
 }
 
 /**
- * Spawn `opencode run` with the concept-extractor agent and the transcript
- * attached, then parse the JSONL event stream for the agent's JSON response.
- *
- * NOTE: the message positional MUST precede `-f` — the file flag is
- * array-typed and greedily consumes any positional that follows it.
+ * Spawn `opencode run` with the concept-extractor agent and the brief as the
+ * task message, then parse the JSONL event stream for the agent's JSON
+ * response. The brief is the task (not a `-f` attachment) so the agent runs
+ * the CLI accessor itself to fetch the accumulated feed.
  */
 export async function runOpenCodeExtraction(opts: {
-	transcriptPath: string;
 	primaryRepoRoot?: string;
 	task: string;
 }): Promise<ExtractionResult> {
@@ -185,7 +259,6 @@ export async function runOpenCodeExtraction(opts: {
 	];
 	if (opts.primaryRepoRoot) args.push("--dir", opts.primaryRepoRoot);
 	args.push(opts.task);
-	args.push("-f", opts.transcriptPath);
 
 	const proc = Bun.spawn({
 		cmd: [OPENCODE_BIN, ...args],
@@ -211,14 +284,15 @@ export async function runOpenCodeExtraction(opts: {
 	if (error) return { ok: false, error, model: EXTRACTOR_MODEL };
 
 	const concepts = parseConceptsJson(text);
-	if (concepts.length === 0) {
+	const subsystems = parseSubsystemsJson(text);
+	if (concepts.length === 0 && subsystems.length === 0) {
 		return {
 			ok: false,
-			error: "Extractor returned no parseable concept cards",
+			error: "Extractor returned no parseable concept cards or subsystems",
 			model: EXTRACTOR_MODEL,
 		};
 	}
-	return { ok: true, concepts, model: EXTRACTOR_MODEL };
+	return { ok: true, concepts, subsystems, model: EXTRACTOR_MODEL };
 }
 
 /** Walk the NDJSON `opencode run --format json` stream. The agent's answer is
@@ -250,8 +324,47 @@ function parseRunOutput(
 /** Extract a `{ "concepts": [...] }` (or bare `[...]`) JSON value from the
  *  agent's reply, tolerating a bit of prose and markdown fences. */
 function parseConceptsJson(raw: string): ConceptCardData[] {
+	const parsed = extractTopLevelJson(raw);
+	if (parsed === null) return [];
+
+	const arr = Array.isArray(parsed)
+		? parsed
+		: (parsed as { concepts?: unknown }).concepts;
+	if (!Array.isArray(arr)) return [];
+
+	const out: ConceptCardData[] = [];
+	for (const item of arr) {
+		const card = validateCard(item, out.length);
+		if (card) out.push(card);
+	}
+	return out;
+}
+
+/** Extract the `{ "subsystems": [...] }` array from the agent's reply, tolerant
+ *  of prose + fences, validating each snapshot loosely (missing optional facets
+ *  are dropped, not fatal). */
+function parseSubsystemsJson(raw: string): SubsystemSnapshot[] {
+	const parsed = extractTopLevelJson(raw);
+	if (parsed === null) return [];
+
+	const arr = Array.isArray(parsed)
+		? []
+		: (parsed as { subsystems?: unknown }).subsystems;
+	if (!Array.isArray(arr)) return [];
+
+	const out: SubsystemSnapshot[] = [];
+	for (const item of arr) {
+		const s = validateSubsystem(item, out.length);
+		if (s) out.push(s);
+	}
+	return out;
+}
+
+/** Parse the top-level JSON value (object or array) out of the agent's reply,
+ *  tolerating prose and markdown fences. */
+function extractTopLevelJson(raw: string): unknown | null {
 	const text = raw.trim();
-	if (!text) return [];
+	if (!text) return null;
 
 	let parsed: unknown = null;
 	try {
@@ -280,19 +393,7 @@ function parseConceptsJson(raw: string): ConceptCardData[] {
 			}
 		}
 	}
-	if (parsed === null) return [];
-
-	const arr = Array.isArray(parsed)
-		? parsed
-		: (parsed as { concepts?: unknown }).concepts;
-	if (!Array.isArray(arr)) return [];
-
-	const out: ConceptCardData[] = [];
-	for (const item of arr) {
-		const card = validateCard(item, out.length);
-		if (card) out.push(card);
-	}
-	return out;
+	return parsed;
 }
 
 /** Pull the outermost balanced JSON value (object or array) out of a string. */
@@ -388,6 +489,13 @@ function validateCard(
 				})
 				.slice(0, 8)
 		: [];
+	const keyBeats = Array.isArray(r["keyBeats"])
+		? (r["keyBeats"] as unknown[])
+				.filter((k): k is number => typeof k === "number")
+				.map((k) => Math.floor(k))
+				.filter((k) => k >= 1)
+		: [];
+	const arcKind = r["arcKind"] === "detour" ? "detour" : r["arcKind"] === "arc" ? "arc" : undefined;
 	return {
 		id:
 			typeof r["id"] === "string" && (r["id"] as string).trim()
@@ -409,5 +517,159 @@ function validateCard(
 				? (r["markdown"] as string).trim()
 				: undefined,
 		files: files.length > 0 ? files : undefined,
+		arcKind,
+		keyBeats: keyBeats.length > 0 ? keyBeats : undefined,
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Subsystem snapshot validation
+// ---------------------------------------------------------------------------
+
+const SUBSYSTEM_ENTRY_KINDS: SubsystemEntryPointKind[] = [
+	"class",
+	"function",
+	"interface",
+	"type",
+	"const",
+	"method",
+];
+
+const INTEGRATION_MECHANISMS: SubsystemIntegrationMechanism[] = [
+	"imports",
+	"calls",
+	"extends",
+	"registers-into",
+];
+
+/** A well-formed purl file-ref: `pkg:<type>/<owner>/<name>#<subpath>`. */
+function isPurlFileRef(v: string): boolean {
+	if (!v.startsWith("pkg:") || !v.includes("#")) return false;
+	const segs = v.split("#")[0].split("/").slice(1);
+	return segs.length >= 2; // type + owner + name
+}
+
+function str(r: Record<string, unknown>, key: string): string | undefined {
+	const v = r[key];
+	return typeof v === "string" && (v as string).trim()
+		? (v as string).trim()
+		: undefined;
+}
+
+/** Validate one subsystem snapshot loosely — name is required; every optional
+ *  facet tolerates malformed entries by dropping them rather than failing. */
+function validateSubsystem(raw: unknown, idx: number): SubsystemSnapshot | null {
+	if (typeof raw !== "object" || raw === null) return null;
+	const r = raw as Record<string, unknown>;
+	const name = str(r, "name");
+	if (!name) return null;
+
+	const files: SubsystemFileRef[] = [];
+	if (Array.isArray(r["files"])) {
+		for (const f of r["files"] as unknown[]) {
+			if (typeof f !== "object" || f === null) continue;
+			const fr = f as Record<string, unknown>;
+			const purl = str(fr, "purl");
+			if (!purl || !isPurlFileRef(purl)) continue;
+			files.push({
+				purl,
+				role: fr["role"] === "supporting" ? "supporting" : "core",
+				purpose: str(fr, "purpose"),
+			});
+		}
+	}
+
+	const entryPoints: SubsystemEntryPoint[] = [];
+	if (Array.isArray(r["entryPoints"])) {
+		for (const ep of r["entryPoints"] as unknown[]) {
+			if (typeof ep !== "object" || ep === null) continue;
+			const er = ep as Record<string, unknown>;
+			const symbol = str(er, "symbol");
+			const file = str(er, "file");
+			if (!symbol || !file || !isPurlFileRef(file)) continue;
+			const kind = SUBSYSTEM_ENTRY_KINDS.includes(
+				er["kind"] as SubsystemEntryPointKind,
+			)
+				? (er["kind"] as SubsystemEntryPointKind)
+				: "function";
+			const line = typeof er["line"] === "number" ? Math.floor(er["line"]) : undefined;
+			entryPoints.push({ symbol, kind, file, line, signature: str(er, "signature") });
+		}
+	}
+
+	const integrations: SubsystemIntegration[] = [];
+	if (Array.isArray(r["integrations"])) {
+		for (const it of r["integrations"] as unknown[]) {
+			if (typeof it !== "object" || it === null) continue;
+			const ir = it as Record<string, unknown>;
+			const to = str(ir, "to");
+			if (!to) continue;
+			const refs = Array.isArray(ir["refs"])
+				? (ir["refs"] as unknown[]).filter((x): x is string => typeof x === "string")
+				: [];
+			integrations.push({
+				to,
+				mechanism: INTEGRATION_MECHANISMS.includes(
+					ir["mechanism"] as SubsystemIntegrationMechanism,
+				)
+					? (ir["mechanism"] as SubsystemIntegrationMechanism)
+					: "imports",
+				refs,
+			});
+		}
+	}
+
+	const fixtures = Array.isArray(r["fixtures"])
+		? (r["fixtures"] as unknown[])
+				.filter((f): f is string => typeof f === "string" && isPurlFileRef(f.trim()))
+				.map((f) => f.trim())
+				.slice(0, 12)
+		: [];
+
+	const testSuites: SubsystemTestSuite[] = [];
+	if (Array.isArray(r["testSuites"])) {
+		for (const t of r["testSuites"] as unknown[]) {
+			if (typeof t !== "object" || t === null) continue;
+			const tr = t as Record<string, unknown>;
+			const file = str(tr, "file");
+			if (!file || !isPurlFileRef(file)) continue;
+			testSuites.push({
+				file,
+				exercises: Array.isArray(tr["exercises"])
+					? (tr["exercises"] as unknown[]).filter((x): x is string => typeof x === "string")
+					: [],
+				verifies: str(tr, "verifies"),
+			});
+		}
+	}
+
+	const sessionIds = Array.isArray(r["sessionIds"])
+		? (r["sessionIds"] as unknown[]).filter((s): s is string => typeof s === "string")
+		: [];
+
+	const repoRaw = r["repo"];
+	const repo =
+		typeof repoRaw === "object" && repoRaw !== null
+			? (() => {
+					const or = repoRaw as Record<string, unknown>;
+					const owner = str(or, "owner");
+					const repoName = str(or, "name");
+					return owner && repoName ? { owner, name: repoName } : undefined;
+				})()
+			: undefined;
+
+	return {
+		id: str(r, "id") ?? `subsystem-${idx}`,
+		name,
+		description: str(r, "description"),
+		repo,
+		files,
+		entryPoints,
+		integrations,
+		fixtures,
+		testSuites,
+		sequenceMermaid: str(r, "sequenceMermaid"),
+		graphMermaid: str(r, "graphMermaid"),
+		sessionIds,
 	};
 }

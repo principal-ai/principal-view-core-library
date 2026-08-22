@@ -26,10 +26,11 @@ import { AppHeader } from "./components/AppHeader";
 import { TabStrip } from "./components/TabStrip";
 import { AgentSessionsOverviewView } from "./views/AgentSessions";
 import { LibraryView } from "./views/LibraryView";
-import { ConceptCardsView } from "./views/ConceptCardsView";
+import { SubsystemGraphsView } from "./views/SubsystemGraphsView";
 import { AnalysisView } from "./views/AnalysisView";
 import { SessionEventsView } from "./views/SessionEventsView";
 import { PromptView } from "./views/PromptView";
+import { SubsystemGraphView } from "./views/SubsystemGraphView";
 import { TrailViewer } from "./views/TrailViewer";
 import { TourViewer } from "./views/TourViewer";
 
@@ -79,7 +80,7 @@ class ErrorBoundary extends Component<
 // while inactive), so heavy views like the library don't reload every time you
 // switch back to them. Trail tabs are excluded — each one mounts a full 3D
 // city, so only the active trail is mounted at a time.
-const STATIC_TAB_IDS = new Set(["library", "agent-sessions", "concepts"]);
+const STATIC_TAB_IDS = new Set(["library", "agent-sessions", "subsystems"]);
 
 // Permanent tabs carry no host payload — their resolved state is known from the
 // tab id alone, so they mount without a getTab round-trip. The static views
@@ -88,7 +89,7 @@ const STATIC_TAB_IDS = new Set(["library", "agent-sessions", "concepts"]);
 function staticTabState(tabId: string): TabState | null {
 	if (tabId === "library") return { kind: "library" };
 	if (tabId === "agent-sessions") return { kind: "agent-sessions" };
-	if (tabId === "concepts") return { kind: "concepts" };
+	if (tabId === "subsystems") return { kind: "subsystems" };
 	return null;
 }
 
@@ -97,7 +98,7 @@ function staticTabState(tabId: string): TabState | null {
 function renderStaticView(state: TabState): ReactNode | null {
 	if (state.kind === "library") return <LibraryView />;
 	if (state.kind === "agent-sessions") return <AgentSessionsOverviewView />;
-	if (state.kind === "concepts") return <ConceptCardsView />;
+	if (state.kind === "subsystems") return <SubsystemGraphsView />;
 	return null;
 }
 
@@ -143,6 +144,14 @@ function ActiveTab({
 				}
 				if (tab.kind === "prompt") {
 					setState({ kind: "prompt", id: tab.id });
+					return;
+				}
+				if (tab.kind === "subsystem-graph") {
+					setState({
+						kind: "subsystem-graph",
+						id: tab.id,
+						graphId: tab.graphId ?? "",
+					});
 					return;
 				}
 				if (!tab.ok || !tab.payload) {
@@ -207,9 +216,8 @@ function ActiveTab({
 	if (isStaticMounted) return null;
 	if (state.kind === "loading") {
 		// The agent-sessions tab mounts its own "Pulling Agent Sessions" loader,
-		// and concepts mounts its own session-indexing header, so a "Loading
-		// trail…" flash here would double up and read wrong.
-		if (tabId === "agent-sessions" || tabId === "concepts") return null;
+		// so a "Loading trail…" flash here would double up and read wrong.
+		if (tabId === "agent-sessions") return null;
 		return <CenteredMessage title="Loading trail…" />;
 	}
 	if (state.kind === "error")
@@ -247,6 +255,9 @@ function ActiveTab({
 	if (state.kind === "prompt") {
 		return <PromptView tabId={state.id} />;
 	}
+	if (state.kind === "subsystem-graph") {
+		return <SubsystemGraphView tabId={state.id} graphId={state.graphId} />;
+	}
 	// Static tab resolved — the rendered view is registered with App's
 	// keep-mounted stack and rendered there, not here.
 	return null;
@@ -258,7 +269,7 @@ export function App() {
 	// The renderer owns the on-screen tab: clicks apply locally and instantly.
 	// The host only ever *suggests* a tab (boot/resume via listTabs, or a
 	// focusTabId on tabsChanged when it opens a tab / is externally activated).
-	const [activeTabId, setActiveTabId] = useState<string>("concepts");
+	const [activeTabId, setActiveTabId] = useState<string>("subsystems");
 	// Read the current active tab without re-registering the refresh callback.
 	const activeTabIdRef = useRef(activeTabId);
 	activeTabIdRef.current = activeTabId;
@@ -266,8 +277,8 @@ export function App() {
 	// override their own selection on a later listTabs.
 	const userChoseRef = useRef(false);
 
-	// Keep-mounted views for permanent tabs (library, agent sessions, mermaid
-	// demo, concepts). Each view registers once on first visit and stays in the
+	// Keep-mounted views for permanent tabs (library, agent sessions,
+	// subsystems). Each view registers once on first visit and stays in the
 	// stack hidden via display:none while inactive, so switching back doesn't
 	// remount (and reload) it.
 	const mountedViews = useRef<Map<string, ReactNode>>(new Map());

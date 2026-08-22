@@ -10,9 +10,11 @@ import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
+	AlertTriangle,
 	ExternalLink,
 	GitBranch,
 	Info,
+	Loader2,
 	RefreshCw,
 	ScrollText,
 	Terminal,
@@ -20,8 +22,15 @@ import {
 } from "lucide-react";
 import { useTheme } from "@principal-ade/industry-theme";
 import { FileCityLogo } from "@principal-ai/logo-component";
-import type { UserIdentity } from "../../shared/contract";
-import { electrobun, refreshLibrary } from "../rpc";
+import type {
+	AnalysisSummary,
+	ConceptAnalysis,
+	OpencodeServerStatus,
+	UserIdentity,
+} from "../../shared/contract";
+import { electrobun, refreshLibrary, reloadSubscribers } from "../rpc";
+import { FailuresModal } from "./FailuresModal";
+import { ServerSessionsModal } from "./ServerSessionsModal";
 
 export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 	const { theme } = useTheme();
@@ -44,9 +53,101 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 		};
 	}, []);
 
+	// Whether the opencode v2 server is up. Probed host-side (reads the server's
+	// registration + password from disk, then GETs /api/health) and polled here
+	// every 10s so the chip tracks the server coming and going without the user
+	// refreshing. `null` = first probe not yet answered (or a probe error).
+	const [serverStatus, setServerStatus] = useState<OpencodeServerStatus | null>(null);
+	useEffect(() => {
+		let alive = true;
+		const check = async () => {
+			try {
+				const status = await electrobun.rpc!.request.getOpencodeServerStatus({});
+				if (alive) setServerStatus(status);
+			} catch {
+				if (alive) setServerStatus(null);
+			}
+		};
+		void check();
+		const id = setInterval(() => void check(), 10_000);
+		return () => {
+			alive = false;
+			clearInterval(id);
+		};
+	}, []);
+
+	// Clicking the server chip opens the active/recent session list.
+	const [showServerSessions, setShowServerSessions] = useState(false);
+
 	// Clicking the identity chip explains where the name/avatar came from rather
 	// than jumping straight to GitHub — the profile link lives inside the modal.
 	const [showIdentityModal, setShowIdentityModal] = useState(false);
+
+	// In-flight background work (concept analysis extraction). The host
+	// broadcasts tabsChanged when an extraction starts, completes, or fails, so
+	// subscribing here keeps the activity chip live without polling.
+	const [analyses, setAnalyses] = useState<AnalysisSummary[]>([]);
+	const loadAnalyses = useCallback(() => {
+		void electrobun.rpc!.request
+			.listAnalyses({})
+			.then((res) => setAnalyses(res.analyses))
+			.catch(() => {});
+	}, []);
+	useEffect(() => {
+		loadAnalyses();
+		reloadSubscribers.add(loadAnalyses);
+		return () => {
+			reloadSubscribers.delete(loadAnalyses);
+		};
+	}, [loadAnalyses]);
+
+	const pending = analyses.filter((a) => a.status === "pending");
+	const failed = analyses.filter((a) => a.status === "error");
+	const activityLabel = pending.length === 1
+		? pending[0]?.sessionTitle?.trim() || pending[0]?.sessionId.slice(0, 16)
+		: `${pending.length} sessions`;
+
+	// Failed-analysis modal: full records (with `error`) are fetched lazily when
+	// the chip is clicked, so the header only pays for the lightweight summaries
+	// on every tabsChanged refresh.
+	const [showFailures, setShowFailures] = useState(false);
+	const [failedFull, setFailedFull] = useState<ConceptAnalysis[]>([]);
+	const [retryingId, setRetryingId] = useState<string | null>(null);
+
+	const openFailures = useCallback(() => {
+		setShowFailures(true);
+		void electrobun.rpc!.request
+			.listAnalysesFull({})
+			.then((res) =>
+				setFailedFull(res.analyses.filter((a) => a.status === "error")),
+			)
+			.catch(() => {});
+	}, []);
+
+	const retryAnalysis = useCallback(async (a: ConceptAnalysis) => {
+		setRetryingId(a.id);
+		try {
+			await electrobun.rpc!.request.analyzeSession({
+				sessionId: a.sessionId,
+				title: a.sessionTitle,
+				agent: a.agent,
+				force: true,
+			});
+		} catch {
+			// The tabsChanged broadcast re-surfaces whatever failed.
+		} finally {
+			setRetryingId(null);
+		}
+	}, []);
+
+	const deleteAnalysis = useCallback((a: ConceptAnalysis) => {
+		void electrobun.rpc!.request
+			.deleteAnalysis({ analysisId: a.id })
+			.then(() =>
+				setFailedFull((prev) => prev.filter((x) => x.id !== a.id)),
+			)
+			.catch(() => {});
+	}, []);
 
 	// const DOWNLOAD_APP_URL = "https://principal-ade.com/download";
 	// const onDownload = useCallback(() => {
@@ -128,6 +229,87 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 					<RefreshCw size={16} />
 				</button>
 			)}
+			{pending.length > 0 && (
+				<span
+					role="status"
+					aria-live="polite"
+					style={{
+						display: "flex",
+						alignItems: "center",
+						gap: 6,
+						height: 32,
+						padding: "0 12px",
+						borderRadius: 16,
+						background: theme.colors.background,
+						border: `1px solid ${theme.colors.primary}`,
+						color: theme.colors.text,
+						fontSize: theme.fontSizes[1],
+						fontFamily: theme.fonts.monospace,
+						flexShrink: 0,
+						maxWidth: 260,
+					}}
+					title={
+						pending.length === 1
+							? `Extracting concepts from ${pending[0].sessionTitle ?? pending[0].sessionId}`
+							: `${pending.length} concept extractions in progress`
+					}
+				>
+					<Loader2 size={14} className="trail-viewer-spin" />
+					<span
+						style={{
+							overflow: "hidden",
+							textOverflow: "ellipsis",
+							whiteSpace: "nowrap",
+						}}
+					>
+						Analyzing {activityLabel}…
+					</span>
+				</span>
+			)}
+			{failed.length > 0 && pending.length === 0 && (
+				<span
+					role="button"
+					tabIndex={0}
+					onClick={openFailures}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault();
+							openFailures();
+						}
+					}}
+					style={{
+						display: "flex",
+						alignItems: "center",
+						gap: 6,
+						height: 32,
+						padding: "0 12px",
+						borderRadius: 16,
+						background: theme.colors.background,
+						border: `1px solid ${theme.colors.error ?? "#e5534b"}`,
+						color: theme.colors.error ?? "#e5534b",
+						fontSize: theme.fontSizes[1],
+						fontFamily: theme.fonts.monospace,
+						flexShrink: 0,
+						maxWidth: 260,
+						cursor: "pointer",
+					}}
+					title="View failed concept extractions and retry them"
+					aria-haspopup="dialog"
+				>
+					<AlertTriangle size={14} />
+					<span
+						style={{
+							overflow: "hidden",
+							textOverflow: "ellipsis",
+							whiteSpace: "nowrap",
+						}}
+					>
+						{failed.length === 1
+							? "1 analysis failed"
+							: `${failed.length} analyses failed`}
+					</span>
+				</span>
+			)}
 			<button
 				type="button"
 				onClick={() => {
@@ -153,6 +335,80 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 			>
 				<ScrollText size={14} />
 				<span>Prompt</span>
+			</button>
+			<button
+				type="button"
+				onClick={() => setShowServerSessions(true)}
+				aria-label={
+					serverStatus === null
+						? "Open active sessions. Server status unknown."
+						: serverStatus.running
+							? `Open active sessions. Server running at ${serverStatus.url}.`
+							: "Open active sessions. Server is not running."
+				}
+				title={
+					serverStatus === null
+						? "Checking the opencode server…"
+						: serverStatus.running
+							? `opencode server running at ${serverStatus.url} — click for active sessions`
+							: "opencode server is not running"
+				}
+				aria-haspopup="dialog"
+				style={{
+					display: "flex",
+					alignItems: "center",
+					gap: 7,
+					height: 32,
+					padding: "0 10px 0 12px",
+					borderRadius: 16,
+					background: theme.colors.background,
+					border: `1px solid ${
+						serverStatus === null
+							? theme.colors.border
+							: serverStatus.running
+								? theme.colors.success
+								: theme.colors.error
+					}`,
+					color: theme.colors.text,
+					fontFamily: theme.fonts.body,
+					cursor: "pointer",
+					flexShrink: 0,
+				}}
+			>
+				{/* opencode mark — recreated from @opencode-ai/ui/logo's Mark
+				    (SolidJS + CSS vars there; inline + theme colors here). */}
+				<svg viewBox="0 0 16 20" width={12} height={15} aria-hidden="true" style={{ flexShrink: 0 }}>
+					<path
+						d="M12 16H4V8H12V16Z"
+						fill={theme.colors.textMuted ?? theme.colors.textSecondary}
+					/>
+					<path d="M12 4H4V16H12V4ZM16 20H0V0H16V20Z" fill={theme.colors.text} />
+				</svg>
+				<span
+					style={{
+						fontFamily: theme.fonts.monospace,
+						fontSize: theme.fontSizes[0],
+						fontWeight: 600,
+						lineHeight: 1,
+						color: theme.colors.text,
+					}}
+				>
+					v2
+				</span>
+				<span
+					style={{
+						width: 8,
+						height: 8,
+						borderRadius: "50%",
+						flexShrink: 0,
+						background:
+							serverStatus === null
+								? theme.colors.textMuted ?? theme.colors.textSecondary
+								: serverStatus.running
+									? theme.colors.success
+									: theme.colors.error,
+					}}
+				/>
 			</button>
 			{user && user.source !== "none" && (
 				<button
@@ -232,8 +488,22 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 			</button>
 			*/}
 		</header>
+		{showServerSessions && createPortal(
+			<ServerSessionsModal onClose={() => setShowServerSessions(false)} />,
+			document.body,
+		)}
 		{showIdentityModal && user && createPortal(
 			<IdentityModal user={user} onClose={() => setShowIdentityModal(false)} onOpenProfile={onOpenProfile} />,
+			document.body,
+		)}
+		{showFailures && createPortal(
+			<FailuresModal
+				analyses={failedFull}
+				retryingId={retryingId}
+				onRetry={retryAnalysis}
+				onDelete={deleteAnalysis}
+				onClose={() => setShowFailures(false)}
+			/>,
 			document.body,
 		)}
 		</>

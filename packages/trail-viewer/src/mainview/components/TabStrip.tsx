@@ -41,7 +41,7 @@ export function TabStrip({
 				const isPermanent =
 					tab.kind === "library" ||
 					tab.kind === "agent-sessions" ||
-					tab.kind === "concepts";
+					tab.kind === "subsystems";
 				return (
 					<div
 						key={tab.id}

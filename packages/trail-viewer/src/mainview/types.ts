@@ -13,10 +13,11 @@ export type TabState =
 	| { kind: "loading" }
 	| { kind: "library" }
 	| { kind: "agent-sessions" }
-	| { kind: "concepts" }
+	| { kind: "subsystems" }
 	| { kind: "analysis"; id: string; analysisId: string }
 	| { kind: "session-events"; id: string; sessionId: string }
 	| { kind: "prompt"; id: string }
+	| { kind: "subsystem-graph"; id: string; graphId: string }
 	| { kind: "error"; message: string }
 	| {
 			kind: "ready";

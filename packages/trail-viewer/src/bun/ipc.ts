@@ -18,6 +18,7 @@ import { mkdirSync, unlinkSync, existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { createServer, createConnection, type Socket } from "node:net";
+import { stopHttpServer } from "./http-server";
 
 export const SOCKET_PATH = join(homedir(), ".principal", "trail-viewer.sock");
 
@@ -38,7 +39,12 @@ export interface ActivateTabMessage {
 	tabId: string;
 }
 
-export type IpcMessage = LoadTrailMessage | ActivateTabMessage;
+export interface LoadSubsystemGraphMessage {
+	kind: "LOAD_SUBSYSTEM_GRAPH";
+	graphId: string;
+}
+
+export type IpcMessage = LoadTrailMessage | ActivateTabMessage | LoadSubsystemGraphMessage;
 export type IpcResponse = { ok: true } | { ok: false; error: string };
 
 const CONNECT_TIMEOUT_MS = 500;
@@ -134,6 +140,7 @@ export function startIpcServer(
 
 	const cleanup = () => {
 		try {
+			stopHttpServer();
 			server.close();
 			if (existsSync(SOCKET_PATH)) unlinkSync(SOCKET_PATH);
 		} catch {

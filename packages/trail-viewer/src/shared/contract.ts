@@ -84,14 +84,150 @@ export interface ConceptCardData {
 	points: string[];
 	/** Mermaid source for the right (diagram) side of the card. */
 	mermaid: string;
-	/** Optional rich markdown prose (paragraphs, tables, blockquotes) for slide
-	 *  presentation. When absent, renderers derive a slide from `description`
-	 *  + `points`. */
+	/** Optional rich markdown prose (paragraphs, lists, tables, blockquotes)
+	 *  for slide presentation. When absent, renderers derive a slide from
+	 *  `description` + `points`. */
 	markdown?: string;
 	/** Purl file-refs (`pkg:<type>/<owner>/<name>#<repo-root-relative-path>`)
 	 *  the concept is about — click-to-open sources. Resolved by the host via
 	 *  `openFile`. Optional; extracted cards may carry 1–3 of these. */
 	files?: string[];
+	/** Arc-analysis shape: `arc` = a main thread of the session, `detour` = a
+	 *  self-contained deviation (problem → fix → back). Absent on curated
+	 *  cross-session cards. */
+	arcKind?: "arc" | "detour";
+	/** 1-based beat indices this arc/detour spans (the session's beats, as
+	 *  numbered by the host beat analyzer). Present on arc-extracted cards. */
+	keyBeats?: number[];
+}
+
+/**
+ * Subsystem snapshots — the durable, verifiable record of a concept being
+ * worked on or analyzed (see the "Subsystem artifact: facets" topic). A session
+ * may touch several subsystems, so an analysis can carry multiple snapshots.
+ *
+ * Facets: entry points (the verifiable currency), integration edges (the
+ * composable currency), files (membership), tests (how it's tested, separate
+ * from how it exists), and the per-capture sequence + component graphs.
+ */
+
+export type SubsystemEntryPointKind =
+	| "class"
+	| "function"
+	| "interface"
+	| "type"
+	| "const"
+	| "method";
+
+/** A verifiable symbol the subsystem exposes. `signature` is the verbatim
+ *  source line, captured so a verifier can re-check the artifact against the
+ *  codebase without session context. */
+export interface SubsystemEntryPoint {
+	symbol: string;
+	kind: SubsystemEntryPointKind;
+	/** Purl file-ref (`pkg:<type>/<owner>/<name>#<path>`) where it lives. */
+	file: string;
+	line?: number;
+	signature?: string;
+}
+
+export interface SubsystemFileRef {
+	/** Purl file-ref. */
+	purl: string;
+	role: "core" | "supporting";
+	/** One-line purpose so graphs/tables read without knowing every file. */
+	purpose?: string;
+}
+
+export type SubsystemIntegrationMechanism =
+	| "imports"
+	| "calls"
+	| "extends"
+	| "registers-into";
+
+export interface SubsystemIntegration {
+	/** Target component/subsystem/purl the edge points at. */
+	to: string;
+	mechanism: SubsystemIntegrationMechanism;
+	/** Concrete file/symbol refs backing the edge (the seam). */
+	refs: string[];
+}
+
+export interface SubsystemTestSuite {
+	/** Purl of the test file. */
+	file: string;
+	/** Entry-point symbols this suite exercises. */
+	exercises: string[];
+	/** What the suite pins, in words. */
+	verifies?: string;
+}
+
+export interface SubsystemSnapshot {
+	id: string;
+	/** Stable name of the concept being worked on. */
+	name: string;
+	description?: string;
+	repo?: { owner: string; name: string };
+	files: SubsystemFileRef[];
+	entryPoints: SubsystemEntryPoint[];
+	integrations: SubsystemIntegration[];
+	/** Purl file-refs of fixtures the subsystem is built against. */
+	fixtures: string[];
+	testSuites: SubsystemTestSuite[];
+	/** Per-capture execution story — the volatile, central layer. */
+	sequenceMermaid?: string;
+	/** Component graph (kind-tagged components) — the stable substrate. */
+	graphMermaid?: string;
+	/** Sessions that refined this snapshot (appended on recurrence). */
+	sessionIds: string[];
+}
+
+/** A component node in a subsystem graph. */
+export interface SubsystemGraphComponent {
+	id: string;
+	name: string;
+	kind: string;
+	file: string;
+	purl: string;
+	purpose?: string;
+	symbol?: string;
+	layer?: number;
+	capture?: "edited" | "analyzed" | "referenced";
+}
+
+/** A cross-component edge in a subsystem graph. */
+export interface SubsystemGraphEdge {
+	id: string;
+	from: string;
+	to: string;
+	mechanism: string;
+	refs?: string[];
+}
+
+/** On-disk record for a persisted subsystem graph. */
+export interface StoredSubsystemGraph {
+	id: string;
+	title: string;
+	description?: string;
+	components: SubsystemGraphComponent[];
+	edges: SubsystemGraphEdge[];
+	createdAt: string;
+	updatedAt: string;
+	source?: string;
+	repo?: { owner: string; name: string };
+}
+
+/** Lightweight listing row for the Subsystems tab (no components/edges). */
+export interface SubsystemGraphSummary {
+	id: string;
+	title: string;
+	description?: string;
+	componentCount: number;
+	edgeCount: number;
+	createdAt: string;
+	updatedAt: string;
+	source?: string;
+	repo?: { owner: string; name: string };
 }
 
 /** A concept card deliberately saved out of an analysis. Carries the full card
@@ -142,6 +278,9 @@ export interface ConceptAnalysis {
 	error?: string;
 	/** Concept cards teased out of the session. Empty until `status === "done"`. */
 	concepts: ConceptCardData[];
+	/** Subsystem snapshots teased out of the session — one per subsystem the
+	 *  session worked on or analyzed. Empty until `status === "done"`. */
+	subsystems?: SubsystemSnapshot[];
 }
 
 /** Row in the analyses index — enough to surface state + count without the cards. */
@@ -156,7 +295,7 @@ export interface AnalysisSummary {
 
 export interface TabSummary {
 	id: string;
-	kind: "library" | "trail" | "agent-sessions" | "concepts" | "analysis" | "session-events" | "prompt";
+	kind: "library" | "trail" | "agent-sessions" | "analysis" | "session-events" | "prompt" | "subsystem-graph" | "subsystems";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -166,7 +305,7 @@ export interface TabFullState {
 	ok: boolean;
 	error?: string;
 	id: string;
-	kind: "library" | "trail" | "agent-sessions" | "concepts" | "analysis" | "session-events" | "prompt";
+	kind: "library" | "trail" | "agent-sessions" | "analysis" | "session-events" | "prompt" | "subsystem-graph" | "subsystems";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -175,6 +314,8 @@ export interface TabFullState {
 	sessionId?: string;
 	/** For `analysis` tabs — the analysis id the tab renders. */
 	analysisId?: string;
+	/** For `subsystem-graph` tabs — the graph id the tab renders. */
+	graphId?: string;
 	payload?: unknown;
 	/** Repo identity resolved host-side (git origin / explicit remote).
 	 *  `owner === "local"` means no GitHub origin was found; any other owner is a
@@ -225,6 +366,38 @@ export interface UserIdentity {
 	source: "gh" | "token" | "git" | "none";
 	/** Local git config, always read even when signed in to GitHub. */
 	git?: GitConfigIdentity;
+}
+
+/** Status of the opencode v2 server, probed host-side the same way opencode's
+ *  own daemon does it: read the registration (`server.json` in the opencode
+ *  state dir) for the URL, read the `password` file for Basic auth, then GET
+ *  `/api/health`. `running: false` also covers "no registration on disk" (the
+ *  server was never started / has exited). */
+export interface OpencodeServerStatus {
+	running: boolean;
+	/** The server's URL when running, e.g. `http://127.0.0.1:4096`. */
+	url?: string;
+	/** opencode version from the registration file, when running. */
+	version?: string;
+}
+
+/** One session in the header's server-session list — active now, or active
+ *  within the recent window. `lastEvent` is the most recent event the host's
+ *  `/api/event` subscription has seen for the session (type + wall-clock time);
+ *  it keeps moving while the session works, even between list polls. */
+export interface ServerSessionRow {
+	sessionId: string;
+	/** Session title from the server's list response. */
+	title?: string;
+	/** Live state from `/api/session/status` or `session.status` events.
+	 *  Absent means idle (the server's status map deletes idle entries). */
+	status?: "busy" | "retry" | "idle";
+	/** The provider error on a `retry` status, when reported. */
+	retryMessage?: string;
+	/** Epoch ms of the session's last update (from the list response or an
+	 *  observed event). */
+	updatedAt?: number;
+	lastEvent?: { type: string; at: number };
 }
 
 /** The renderer → host request surface. Keyed by RPC name. Defined as a `type`
@@ -340,9 +513,20 @@ export type TrailViewerRequests = {
 		params: { sessionId: string; title?: string; agent?: string };
 		response: { ok: boolean; error?: string; tabId?: string };
 	};
+	openAnalysisTab: {
+		params: { analysisId: string };
+		response: { ok: boolean; error?: string; tabId?: string };
+	};
 	listAnalyses: {
 		params: Record<string, never>;
 		response: { analyses: AnalysisSummary[] };
+	};
+	/** Full analysis records (concept/arc cards included) — the renderer maps
+	 *  each session's cards onto `AgentSessionView.arcs` so the panel can expand
+	 *  arcs inline instead of only opening an analysis tab. */
+	listAnalysesFull: {
+		params: Record<string, never>;
+		response: { analyses: ConceptAnalysis[] };
 	};
 	listSavedConcepts: {
 		params: Record<string, never>;
@@ -360,6 +544,26 @@ export type TrailViewerRequests = {
 	};
 	unsaveConcept: {
 		params: { savedConceptId: string };
+		response: { ok: boolean; error?: string };
+	};
+	deleteAnalysis: {
+		params: { analysisId: string };
+		response: { ok: boolean; error?: string };
+	};
+	getSubsystemGraph: {
+		params: { graphId: string };
+		response: { ok: boolean; error?: string; graph?: StoredSubsystemGraph };
+	};
+	listSubsystemGraphs: {
+		params: Record<string, never>;
+		response: { graphs: SubsystemGraphSummary[] };
+	};
+	openSubsystemGraph: {
+		params: { graphId: string };
+		response: { ok: boolean; error?: string; tabId?: string };
+	};
+	deleteSubsystemGraph: {
+		params: { graphId: string };
 		response: { ok: boolean; error?: string };
 	};
 	openPromptTab: {
@@ -424,6 +628,27 @@ export type TrailViewerRequests = {
 		params: Record<string, never>;
 		response: UserIdentity;
 	};
+	getOpencodeServerStatus: {
+		params: Record<string, never>;
+		response: OpencodeServerStatus;
+	};
+	getServerSessions: {
+		params: Record<string, never>;
+		response: {
+			ok: boolean;
+			/** False when no opencode server registration is on disk. */
+			running: boolean;
+			error?: string;
+			sessions: ServerSessionRow[];
+		};
+	};
+	/** Start/stop the host's live `/api/event` subscription. While active, the
+	 *  host broadcasts `serverEventsChanged` with each session's latest event
+	 *  so the header's session list stays live without polling. */
+	setServerEventWatch: {
+		params: { active: boolean };
+		response: { ok: boolean };
+	};
 }
 
 /** Host → renderer notifications. Keyed by message name. */
@@ -440,6 +665,13 @@ export type TrailViewerMessages = {
 	 *  and their disk cache is now fresh. The renderer should re-fetch them. */
 	sessionsUpdated: {
 		sessionIds: string[];
+	};
+	/** Live "last event" updates for the sessions the host is watching via its
+	 *  single `/api/event` subscription. Each row carries at least `sessionId`
+	 *  plus `lastEvent` (and `status` when the last event was a status change).
+	 *  The renderer merges these by `sessionId` into its list snapshot. */
+	serverEventsChanged: {
+		sessions: ServerSessionRow[];
 	};
 }
 

@@ -34,6 +34,8 @@ import {
 import { parseTourOrThrow } from "@principal-ai/file-city-builder";
 import { readFileRemote as fetchRemoteSlice } from "./remote-files";
 import { handoffToRunning, startIpcServer, type LoadTrailMessage } from "./ipc";
+import { startHttpServer } from "./http-server";
+import { deleteSubsystemGraph, getSubsystemGraph, listSubsystemGraphs } from "./subsystem-graph-store";
 import {
 	walkLibrary,
 	walkTours,
@@ -42,10 +44,12 @@ import {
 } from "./library";
 import { analyses, newAnalysisId } from "./analyses";
 import { savedConcepts } from "./saved";
-import { runOpenCodeExtraction, writeTranscript, extractTaskTemplate, getExtractionPromptInfo } from "./extraction";
+import { runOpenCodeExtraction, writeBrief, buildBrief, getExtractionPromptInfo } from "./extraction";
+import { analyzeBeats } from "./beat-analysis";
 import type {
 	PayloadKind,
 	RepoInfo,
+	ServerSessionRow,
 	SessionEventRow,
 	SessionSummary,
 	TabFullState,
@@ -55,6 +59,11 @@ import type {
 	ViewerMode,
 } from "../shared/contract";
 import { resolveRepoRootFromAlexandria } from "./alexandria";
+import {
+	listRecentServerSessions,
+	probeOpencodeServer,
+	setServerEventWatch,
+} from "./server-sessions";
 import {
 	buildSessionIndex,
 	processSessionEvents,
@@ -210,7 +219,7 @@ function startWarmupWorker(): void {
 
 const LIBRARY_TAB_ID = "library";
 const AGENT_SESSIONS_TAB_ID = "agent-sessions";
-const CONCEPTS_TAB_ID = "concepts";
+const SUBSYSTEMS_TAB_ID = "subsystems";
 
 // ---------------------------------------------------------------------------
 // CLI args / env
@@ -247,17 +256,17 @@ function resolveRepoRoot(trailFilePath: string | null): string {
 
 // Which permanent tab the window opens on. `principal-ai agent-sessions` spawns
 // with TRAIL_VIEWER_START_TAB=agent-sessions so a bare launch lands straight on
-// the Agent Sessions overview. Bare launches default to the Concepts tab.
+// the Agent Sessions overview. Bare launches default to the Subsystems tab.
 function resolveStartTab(): string {
 	const raw = process.env["TRAIL_VIEWER_START_TAB"];
 	if (
 		raw === AGENT_SESSIONS_TAB_ID ||
 		raw === LIBRARY_TAB_ID ||
-		raw === CONCEPTS_TAB_ID
+		raw === SUBSYSTEMS_TAB_ID
 	) {
 		return raw;
 	}
-	return CONCEPTS_TAB_ID;
+	return SUBSYSTEMS_TAB_ID;
 }
 
 // Per-tab state. Trail tabs are fully self-contained views of one trail; the
@@ -293,10 +302,10 @@ interface AgentSessionsTabState {
 	title: "Agent Sessions";
 }
 
-interface ConceptsTabState {
-	id: typeof CONCEPTS_TAB_ID;
-	kind: "concepts";
-	title: "Concepts";
+interface SubsystemsTabState {
+	id: typeof SUBSYSTEMS_TAB_ID;
+	kind: "subsystems";
+	title: "Subsystems";
 }
 
 interface AnalysisTabState {
@@ -320,13 +329,21 @@ interface PromptTabState {
 	title: string;
 }
 
+interface SubsystemGraphTabState {
+	id: string;
+	kind: "subsystem-graph";
+	title: string;
+	graphId: string;
+}
+
 type TabState =
 	| LibraryTabState
 	| AgentSessionsTabState
-	| ConceptsTabState
+	| SubsystemsTabState
 	| AnalysisTabState
 	| SessionEventsTabState
 	| PromptTabState
+	| SubsystemGraphTabState
 	| TrailTabState;
 
 const tabs = new Map<string, TabState>();
@@ -335,15 +352,15 @@ tabs.set(AGENT_SESSIONS_TAB_ID, {
 	kind: "agent-sessions",
 	title: "Agent Sessions",
 });
+tabs.set(SUBSYSTEMS_TAB_ID, {
+	id: SUBSYSTEMS_TAB_ID,
+	kind: "subsystems",
+	title: "Subsystems",
+});
 tabs.set(LIBRARY_TAB_ID, {
 	id: LIBRARY_TAB_ID,
 	kind: "library",
 	title: "Trails",
-});
-tabs.set(CONCEPTS_TAB_ID, {
-	id: CONCEPTS_TAB_ID,
-	kind: "concepts",
-	title: "Concepts",
 });
 // Which tab the host suggests showing. Not authoritative — the renderer owns
 // the on-screen tab. Updated when the host creates a tab it wants visible, on
@@ -610,33 +627,6 @@ function addTabFromMessage(msg: LoadTrailMessage): string {
 }
 
 /**
- * Focus or create the tab that renders a session's concept analysis. Dedupes
- * by analysisId the way trail tabs dedupe by path — re-analyzing (or reopening
- * via the panel button) focuses the existing analysis tab instead of stacking
- * duplicates. Broadcasts so the renderer can switch the active tab.
- */
-function openAnalysisTab(analysisId: string): string {
-	for (const existing of tabs.values()) {
-		if (existing.kind === "analysis" && existing.analysisId === analysisId) {
-			suggestedTabId = existing.id;
-			console.log(`[trail-viewer] analysis tab ${existing.id} focused (already open): ${analysisId}`);
-			broadcastTabsChanged(existing.id);
-			return existing.id;
-		}
-	}
-	const analysis = analyses.get(analysisId);
-	const id = String(nextTabId++);
-	const title = analysis?.sessionTitle
-		? `Analysis — ${analysis.sessionTitle}`
-		: `Analysis — ${analysisId.slice(0, 12)}`;
-	tabs.set(id, { id, kind: "analysis", title, analysisId });
-	suggestedTabId = id;
-	console.log(`[trail-viewer] analysis tab ${id} added: ${analysisId}`);
-	broadcastTabsChanged(id);
-	return id;
-}
-
-/**
  * Focus or create the tab that renders a session's raw → normalized →
  * accumulated event feed. Dedupes by sessionId the way analysis tabs dedupe by
  * analysisId. Only opencode sessions are supported for now — callers check the
@@ -688,6 +678,65 @@ function openPromptTab(): string {
 	console.log(`[trail-viewer] prompt tab ${id} added`);
 	broadcastTabsChanged(id);
 	return id;
+}
+
+/**
+ * Focus or create the tab that renders a session's concept analysis (the custom
+ * `AnalysisView`, with concept cards + subsystem snapshots). Dedupes by
+ * analysisId. This is how an analysis surfaces in our view rather than only
+ * expanding inline in the guide panel.
+ */
+function openAnalysisTab(analysisId: string): string {
+	for (const existing of tabs.values()) {
+		if (existing.kind === "analysis" && existing.analysisId === analysisId) {
+			suggestedTabId = existing.id;
+			console.log(`[trail-viewer] analysis tab ${existing.id} focused (already open): ${analysisId}`);
+			broadcastTabsChanged(existing.id);
+			return existing.id;
+		}
+	}
+	const analysis = analyses.get(analysisId);
+	const title = analysis?.sessionTitle
+		? `Analysis — ${analysis.sessionTitle}`
+		: `Analysis — ${analysisId.slice(0, 12)}`;
+	const id = String(nextTabId++);
+	tabs.set(id, { id, kind: "analysis", title, analysisId });
+	suggestedTabId = id;
+	console.log(`[trail-viewer] analysis tab ${id} added: ${analysisId}`);
+	broadcastTabsChanged(id);
+	return id;
+}
+
+function openSubsystemGraphTab(graphId: string): string {
+	for (const existing of tabs.values()) {
+		if (existing.kind === "subsystem-graph" && existing.graphId === graphId) {
+			suggestedTabId = existing.id;
+			console.log(`[trail-viewer] subsystem-graph tab ${existing.id} focused (already open): ${graphId}`);
+			broadcastTabsChanged(existing.id);
+			return existing.id;
+		}
+	}
+	const title = `Subsystem Graph — ${graphId.slice(0, 12)}`;
+	const id = String(nextTabId++);
+	tabs.set(id, { id, kind: "subsystem-graph", title, graphId });
+	suggestedTabId = id;
+	console.log(`[trail-viewer] subsystem-graph tab ${id} added: ${graphId}`);
+	broadcastTabsChanged(id);
+	return id;
+}
+
+/** Shared by the renderer RPC and the agent HTTP route: delete a graph and
+ *  close any tab rendering it so the view can't linger on a missing record. */
+async function deleteGraphAndCloseTabs(graphId: string): Promise<{ ok: boolean; error?: string }> {
+	for (const tab of Array.from(tabs.values())) {
+		if (tab.kind === "subsystem-graph" && tab.graphId === graphId) {
+			closeTabById(tab.id);
+		}
+	}
+	const deleted = await deleteSubsystemGraph(graphId);
+	return deleted
+		? { ok: true }
+		: { ok: false, error: `unknown graph: ${graphId}` };
 }
 
 async function walkFiles(
@@ -865,17 +914,17 @@ function persistShareMutation(
 
 
 /**
- * Permanent, non-trail tabs (library, agent sessions, concepts).
+ * Permanent, non-trail tabs (library, agent sessions, subsystems).
  * They carry no trail payload and don't serve files or notes; several RPC
  * handlers use this to reject calls aimed at trail-only state.
  */
 function isStaticTab(
 	tab: TabState,
-): tab is LibraryTabState | AgentSessionsTabState | ConceptsTabState {
+): tab is LibraryTabState | AgentSessionsTabState | SubsystemsTabState {
 	return (
 		tab.kind === "library" ||
 		tab.kind === "agent-sessions" ||
-		tab.kind === "concepts"
+		tab.kind === "subsystems"
 	);
 }
 
@@ -888,6 +937,9 @@ function summarize(tab: TabState): TabSummary {
 	}
 	if (tab.kind === "prompt") {
 		return { id: tab.id, kind: "prompt", title: tab.title };
+	}
+	if (tab.kind === "subsystem-graph") {
+		return { id: tab.id, kind: "subsystem-graph", title: tab.title };
 	}
 	if (isStaticTab(tab)) {
 		return { id: tab.id, kind: tab.kind, title: tab.title };
@@ -928,6 +980,15 @@ function fullState(tab: TabState): TabFullState {
 			kind: "prompt",
 			title: tab.title,
 			payload: getExtractionPromptInfo(),
+		};
+	}
+	if (tab.kind === "subsystem-graph") {
+		return {
+			ok: true,
+			id: tab.id,
+			kind: "subsystem-graph",
+			title: tab.title,
+			graphId: tab.graphId,
 		};
 	}
 	if (isStaticTab(tab)) {
@@ -993,7 +1054,6 @@ interface ResidentSession {
  * Shared by the listSessions RPC and the warm-up worker.
  */
 
-
 const requests: RequestHandlers = {
 			listTabs: () => ({
 				tabs: Array.from(tabs.values()).map(summarize),
@@ -1025,7 +1085,7 @@ const requests: RequestHandlers = {
 			readFile: async ({ tabId, path, repo }) => {
 				const tab = getTab(tabId);
 				if (!tab) return { ok: false, error: `unknown tab: ${tabId}` };
-				if (tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
+				if (tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") {
 					return { ok: false, error: `${tab.kind} tab does not serve files` };
 				}
 				return tab.mode === "remote"
@@ -1036,7 +1096,7 @@ const requests: RequestHandlers = {
 				const walkPath = path ?? null;
 				if (!walkPath) {
 					const tab = getTab(tabId);
-					if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") return { files: [] };
+					if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") return { files: [] };
 					return tab.mode === "remote"
 						? getFileTreeRemote(tab)
 						: { files: await walkFiles(tab.repoRoot) };
@@ -1059,7 +1119,7 @@ const requests: RequestHandlers = {
 
 			createTrailNote: ({ tabId, draft }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1084,7 +1144,7 @@ const requests: RequestHandlers = {
 			},
 			updateTrailNote: ({ tabId, noteId, body }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1165,9 +1225,15 @@ const requests: RequestHandlers = {
 						  ) ?? null);
 				return resolveUserIdentity(trailTab?.repoRoot, trailTab?.ghToken);
 			},
+			getOpencodeServerStatus: async () => probeOpencodeServer(),
+			getServerSessions: async () => listRecentServerSessions(),
+			setServerEventWatch: async ({ active }) => {
+				setServerEventWatch(active, active ? broadcastServerEvents : undefined);
+				return { ok: true };
+			},
 			shareTrail: ({ tabId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1252,7 +1318,7 @@ const requests: RequestHandlers = {
 			},
 			deleteTrailNote: ({ tabId, noteId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "concepts" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1375,6 +1441,9 @@ const requests: RequestHandlers = {
 			listAnalyses: async () => {
 				return { analyses: analyses.summaries() };
 			},
+			listAnalysesFull: async () => {
+				return { analyses: analyses.list() };
+			},
 			listSavedConcepts: async () => {
 				return { concepts: savedConcepts.list() };
 			},
@@ -1409,6 +1478,50 @@ const requests: RequestHandlers = {
 				broadcastTabsChanged();
 				return { ok: true };
 			},
+			deleteAnalysis: async ({ analysisId }) => {
+				// Close any analysis tab still wired to the record, then drop the
+				// record itself. Saved concepts copied out of it are unaffected.
+				for (const tab of Array.from(tabs.values())) {
+					if (tab.kind === "analysis" && tab.analysisId === analysisId) {
+						tabs.delete(tab.id);
+						if (suggestedTabId === tab.id) {
+							const remaining = Array.from(tabs.keys());
+							suggestedTabId = remaining[remaining.length - 1] ?? LIBRARY_TAB_ID;
+						}
+					}
+				}
+				const removed = analyses.remove(analysisId);
+				broadcastTabsChanged();
+				return { ok: removed, error: removed ? undefined : `unknown analysis: ${analysisId}` };
+			},
+			getSubsystemGraph: async ({ graphId }) => {
+				const graph = await getSubsystemGraph(graphId);
+				if (!graph) return { ok: false, error: `unknown graph: ${graphId}` };
+				return { ok: true, graph };
+			},
+			listSubsystemGraphs: async () => {
+				const entries = await listSubsystemGraphs();
+				return {
+					graphs: entries.map((e) => ({
+						id: e.id,
+						title: e.title,
+						description: e.description,
+						componentCount: e.componentCount,
+						edgeCount: e.edgeCount,
+						createdAt: e.createdAt,
+						updatedAt: e.updatedAt,
+						source: e.source,
+						repo: e.repo,
+					})),
+				};
+			},
+			openSubsystemGraph: async ({ graphId }) => {
+				const graph = await getSubsystemGraph(graphId);
+				if (!graph) return { ok: false, error: `unknown graph: ${graphId}` };
+				const tabId = openSubsystemGraphTab(graphId);
+				return { ok: true, tabId };
+			},
+			deleteSubsystemGraph: async ({ graphId }) => deleteGraphAndCloseTabs(graphId),
 			openSessionEventsTab: async ({ sessionId, title, agent }) => {
 				// Only opencode sessions are supported for now — its events live
 				// in sqlite as V1 rows. Cline/pi/grok/codex use durable transcripts
@@ -1421,6 +1534,13 @@ const requests: RequestHandlers = {
 				const tabId = openSessionEventsTab(sessionId, title, agent);
 				return { ok: true, tabId };
 			},
+			openAnalysisTab: async ({ analysisId }) => {
+				if (!analyses.get(analysisId)) {
+					return { ok: false, error: `unknown analysis: ${analysisId}` };
+				}
+				const tabId = openAnalysisTab(analysisId);
+				return { ok: true, tabId };
+			},
 			openPromptTab: async () => {
 				const tabId = openPromptTab();
 				return { ok: true, tabId };
@@ -1429,9 +1549,9 @@ const requests: RequestHandlers = {
 				const existing = analyses.findBySession(sessionId);
 				if (existing && force && existing.status !== "pending") {
 					// Redo: reset the record and restart extraction in place,
-					// keeping the same analysis id so open tabs stay wired to it.
-					// A `pending` record is left alone — extraction is already
-					// running, so force just falls through to the open/focus path.
+					// keeping the same analysis id so any open tabs stay wired
+					// to it. A `pending` record is left alone — extraction is
+					// already running, so force just falls through below.
 					analyses.save({
 						...existing,
 						status: "pending",
@@ -1439,13 +1559,13 @@ const requests: RequestHandlers = {
 						model: undefined,
 						concepts: [],
 					});
-					const tabId = openAnalysisTab(existing.id);
 					analyzeSessionInBackground(existing.id, { sessionId, title, agent });
+					const tabId = openAnalysisTab(existing.id);
 					return { ok: true, analysisId: existing.id, tabId };
 				}
 				if (existing) {
-					// Idempotent: an analysis already exists for this session, so we
-					// just open (or focus) its tab and report the same analysis id.
+					// Idempotent: an analysis already exists for this session —
+					// open (or focus) its tab in our custom view.
 					const tabId = openAnalysisTab(existing.id);
 					return { ok: true, analysisId: existing.id, tabId };
 				}
@@ -1459,8 +1579,8 @@ const requests: RequestHandlers = {
 					status: "pending",
 					concepts: [],
 				});
-				const tabId = openAnalysisTab(id);
 				analyzeSessionInBackground(id, { sessionId, title, agent });
+				const tabId = openAnalysisTab(id);
 				return { ok: true, analysisId: id, tabId };
 			},
 			
@@ -1477,6 +1597,10 @@ function analyzeSessionInBackground(
 	id: string,
 	opts: { sessionId: string; title?: string; agent?: string },
 ): void {
+	// Surface the pending state to the renderer immediately (the header's
+	// activity chip and the Agent Sessions view both watch listAnalyses); the
+	// finally block below broadcasts again on completion/failure.
+	broadcastTabsChanged();
 	void (async () => {
 		try {
 			const { sessionId, title, agent } = opts;
@@ -1484,21 +1608,27 @@ function analyzeSessionInBackground(
 			if (!loaded.ok || !loaded.events) {
 				throw new Error(loaded.error ?? "Session not found or empty");
 			}
-			const transcriptPath = writeTranscript({
+			const beats = analyzeBeats(sessionId, loaded.events);
+			const sessionTitle =
+				loaded.session?.title ?? title ?? sessionId.slice(0, 12);
+			writeBrief({
 				sessionId,
-				sessionTitle:
-					loaded.session?.title ?? title ?? sessionId.slice(0, 12),
+				sessionTitle,
 				sessionSlug: loaded.session?.slug,
 				agent: loaded.session?.agent ?? agent,
 				repos: loaded.repos ?? [],
-				events: loaded.events,
+				beats,
 			});
 			const result = await runOpenCodeExtraction({
-				transcriptPath,
 				primaryRepoRoot: loaded.repoRoot,
-				task: extractTaskTemplate(
-					loaded.session?.title ?? sessionId,
-				),
+				task: buildBrief({
+					sessionId,
+					sessionTitle,
+					sessionSlug: loaded.session?.slug,
+					agent: loaded.session?.agent ?? agent,
+					repos: loaded.repos ?? [],
+					beats,
+				}),
 			});
 			if (!result.ok) throw new Error(result.error ?? "extraction failed");
 			const current = analyses.get(id);
@@ -1513,9 +1643,15 @@ function analyzeSessionInBackground(
 						new Set([sessionId, ...(c.sessionIds ?? [])]),
 					),
 				})),
+				subsystems: (result.subsystems ?? []).map((s) => ({
+					...s,
+					sessionIds: Array.from(
+						new Set([sessionId, ...(s.sessionIds ?? [])]),
+					),
+				})),
 			});
 			console.log(
-				`[trail-viewer] analysis ${id} complete (${(result.concepts ?? []).length} cards)`,
+				`[trail-viewer] analysis ${id} complete (${(result.concepts ?? []).length} cards, ${(result.subsystems ?? []).length} subsystems)`,
 			);
 		} catch (err) {
 			const current = analyses.get(id);
@@ -1557,6 +1693,19 @@ const rpc = BrowserView.defineRPC<TrailViewerRPC>({
 		messages: {},
 	},
 });
+
+/** Push live last-event updates for the watched opencode sessions to the
+ *  renderer's server-session list. The listener comes from server-sessions.ts;
+ *  this is the module-scoped sender wired in setServerEventWatch. */
+function broadcastServerEvents(sessions: ServerSessionRow[]): void {
+	try {
+		(rpc.send as unknown as Record<string, (payload: unknown) => void>)["serverEventsChanged"]({
+			sessions,
+		});
+	} catch (err) {
+		console.warn(`[trail-viewer] could not notify renderer: ${(err as Error).message}`);
+	}
+}
 
 function broadcastTabsChanged(focusTabId?: string): void {
 	try {
@@ -1635,7 +1784,7 @@ function closeTabById(id: string): { ok: boolean; error?: string } {
 	if (
 		id === LIBRARY_TAB_ID ||
 		id === AGENT_SESSIONS_TAB_ID ||
-		id === CONCEPTS_TAB_ID
+		id === SUBSYSTEMS_TAB_ID
 	) {
 		return { ok: false, error: "permanent tab cannot be closed" };
 	}
@@ -1707,6 +1856,16 @@ startIpcServer(async (msg) => {
 			}
 			return { ok: true };
 		}
+		if (msg.kind === "LOAD_SUBSYSTEM_GRAPH") {
+			const tabId = openSubsystemGraphTab(msg.graphId);
+			broadcastTabsChanged(tabId);
+			try {
+				browserWindow.focus();
+			} catch (err) {
+				console.warn(`[trail-viewer] could not focus window: ${(err as Error).message}`);
+			}
+			return { ok: true };
+		}
 		const tabId = addTabFromMessage(msg);
 		broadcastTabsChanged(tabId);
 		try {
@@ -1719,3 +1878,15 @@ startIpcServer(async (msg) => {
 		return { ok: false, error: (err as Error).message };
 	}
 });
+
+// HTTP server for agent communication (subsystem graphs, etc.)
+startHttpServer(async (graphId) => {
+	const tabId = openSubsystemGraphTab(graphId);
+	broadcastTabsChanged(tabId);
+	try {
+		browserWindow.focus();
+	} catch (err) {
+		console.warn(`[trail-viewer] could not focus window: ${(err as Error).message}`);
+	}
+	return { ok: true, tabId };
+}, async (graphId) => deleteGraphAndCloseTabs(graphId));

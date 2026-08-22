@@ -15,6 +15,7 @@
 // FileCityTrailExplorerPanel's sequence view renders — ships completely
 // unstyled.
 import xyflowStyles from "@xyflow/react/dist/style.css" with { type: "text" };
+import excalidrawStyles from "@excalidraw/excalidraw/index.css" with { type: "text" };
 import resetStyles from "./index.css" with { type: "text" };
 
 import mermaid from "mermaid";
@@ -34,17 +35,18 @@ if (typeof window !== "undefined") {
 }
 
 // electrobun drops bundled/linked .css (wrong MIME on the views:// scheme), so
-// neither our reset (index.css) nor React Flow's stylesheet reaches WebKit
-// through the normal paths. Both are imported above as text (inlined into this
-// bundle); inject them with <style> tags here — a JS-built <style> always
-// applies. The reset goes in first so React Flow's rules win any overlap.
-// Without index.css the UA `body { margin: 8px }` survives and the 100vh app
-// overflows by 16px; without the React Flow CSS the sequence-view panes, edges,
-// and controls render unstyled.
+// neither our reset (index.css) nor React Flow / Excalidraw stylesheets reach
+// WebKit through the normal paths. They are imported above as text (inlined
+// into this bundle); inject them with <style> tags here — a JS-built <style>
+// always applies. The reset goes in first so React Flow / Excalidraw win any
+// overlap. Without index.css the UA `body { margin: 8px }` survives and the
+// 100vh app overflows by 16px; without the React Flow CSS the sequence-view
+// panes render unstyled; without Excalidraw CSS the drawing overlay is blank.
 function injectStyles(): void {
 	for (const [marker, css] of [
 		["data-trail-viewer-reset", resetStyles],
 		["data-xyflow-react", xyflowStyles],
+		["data-excalidraw", excalidrawStyles],
 	] as const) {
 		const style = document.createElement("style");
 		style.setAttribute(marker, "");

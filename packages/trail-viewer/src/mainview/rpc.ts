@@ -11,6 +11,7 @@
 
 import Electrobun, { Electroview } from "electrobun/view";
 import type {
+	ServerSessionRow,
 	TrailViewerMessages,
 	TrailViewerRequests,
 } from "../shared/contract";
@@ -46,6 +47,11 @@ export function refreshLibrary(): void {
 	for (const fn of libraryRefreshers) fn();
 }
 
+// The mounted server-session popover registers here. The bun host's single
+// /api/event subscription pushes each session's latest event through
+// `serverEventsChanged`; subscribers merge the rows into their list snapshot.
+export const serverEventSubscribers = new Set<(sessions: ServerSessionRow[]) => void>();
+
 const rpc = Electroview.defineRPC<TrailViewerRPC>({
 	maxRequestTime: 30000,
 	handlers: {
@@ -58,6 +64,11 @@ const rpc = Electroview.defineRPC<TrailViewerRPC>({
 				const sessionIds = payload?.sessionIds ?? [];
 				if (sessionIds.length === 0) return;
 				for (const fn of sessionRefreshers) fn(sessionIds);
+			},
+			serverEventsChanged: (payload) => {
+				const sessions = payload?.sessions ?? [];
+				if (sessions.length === 0) return;
+				for (const fn of serverEventSubscribers) fn(sessions);
 			},
 		},
 	},

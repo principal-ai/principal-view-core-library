@@ -1,155 +1,25 @@
 /**
- * ConceptCardsView — a feed of saved concept cards.
+ * Shared concept-card feed components.
  *
- * The Concepts tab is reserved for *saved* concepts: it renders whatever the
- * user has deliberately kept out of session analyses (the on-disk saved
- * store, surfaced via the host's `listSavedConcepts`). Nothing auto-extracted
- * appears here until it's saved.
- *
- * Each card is a compact post: the concept's title, its generic change-type
- * visual (execution / derive / integration / ui), and a footer of repos +
- * sessions. Clicking a card opens the concept's specific mermaid diagram in a
- * full-view modal — keeping the feed scannable while the detail lives behind a
- * click. Cards in the feed carry a Save/Unsave toggle so they can be dropped
- * back out.
+ * These were the Concepts tab's view; the tab itself is gone. What survives is
+ * what the analysis view reuses: `FeedCard` (a compact post — title, generic
+ * change-type visual over the concept's own mermaid diagram, repos + sessions
+ * footer) and `DiagramModal` (the full-view diagram). The Save/Unsave toggle on
+ * cards still writes the saved-concepts store (`src/bun/saved.ts`).
  *
  * The diagram renders through `IndustryLazyMermaidDiagram` from themed-markdown
  * (the non-interactive renderer).
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTheme } from "@principal-ade/industry-theme";
 import { IndustryLazyMermaidDiagram } from "themed-markdown";
-import { electrobun, reloadSubscribers } from "../rpc";
+import { electrobun } from "../rpc";
 import { AgentLogo } from "./AgentSessionLoader";
 import { ChangeTypeVisual } from "../components/ChangeTypeVisual";
 import { CHANGE_TYPE_LABELS } from "../concepts";
 import type { ConceptCard } from "../concepts";
-import type { SavedConcept, SessionSummary } from "../../shared/contract";
-
-export function ConceptCardsView() {
-	const { theme } = useTheme();
-	const [concepts, setConcepts] = useState<SavedConcept[]>([]);
-	const [sessions, setSessions] = useState<Map<string, SessionSummary>>(
-		new Map(),
-	);
-	const [openId, setOpenId] = useState<string | null>(null);
-
-	const loadConcepts = useCallback(() => {
-		void electrobun.rpc!.request
-			.listSavedConcepts({})
-			.then((res) => setConcepts(res.concepts))
-			.catch(() => setConcepts([]));
-	}, []);
-
-	useEffect(() => {
-		loadConcepts();
-		// The host broadcasts tabsChanged after save/unsave — refresh the feed.
-		reloadSubscribers.add(loadConcepts);
-		return () => {
-			reloadSubscribers.delete(loadConcepts);
-		};
-	}, [loadConcepts]);
-
-	useEffect(() => {
-		let cancelled = false;
-		(async () => {
-			try {
-				const res = await electrobun.rpc!.request.listSessions({
-					days: 90,
-				});
-				if (cancelled) return;
-				const map = new Map<string, SessionSummary>();
-				for (const g of res.groups ?? []) {
-					map.set(g.parent.id, g.parent);
-					for (const c of g.children) map.set(c.id, c);
-				}
-				for (const s of res.standalone ?? []) map.set(s.id, s);
-				setSessions(map);
-			} catch {
-				// Enrichment only — cards still render with bare session ids.
-			}
-		})();
-		return () => {
-			cancelled = true;
-		};
-	}, []);
-
-	const openConcept =
-		concepts.find((c) => c.savedConceptId === openId) ?? null;
-
-	const toggleSave = useCallback((concept: SavedConcept) => {
-		void electrobun.rpc!.request
-			.unsaveConcept({ savedConceptId: concept.savedConceptId })
-			.then(() =>
-				setConcepts((prev) =>
-					prev.filter((c) => c.savedConceptId !== concept.savedConceptId),
-				),
-			)
-			.catch(() => {});
-	}, []);
-
-	return (
-		<div
-			style={{
-				flex: 1,
-				minHeight: 0,
-				display: "flex",
-				flexDirection: "column",
-				background: theme.colors.background,
-			}}
-		>
-			<div
-				style={{
-					flex: 1,
-					minHeight: 0,
-					overflowY: "auto",
-					display: "flex",
-					flexDirection: "column",
-					alignItems: "center",
-					gap: 16,
-					padding: "20px 24px 40px",
-				}}
-			>
-				{concepts.length === 0 ? (
-					<div
-						style={{
-							color: theme.colors.textMuted,
-							fontSize: theme.fontSizes[2],
-							paddingTop: 40,
-							textAlign: "center",
-						}}
-					>
-						No saved concepts yet.
-						<div style={{ fontSize: theme.fontSizes[1], marginTop: 6 }}>
-							Open a session analysis and hit "Save" on a card to keep it here.
-						</div>
-					</div>
-				) : (
-					concepts.map((concept) => (
-						<FeedCard
-							key={concept.savedConceptId}
-							concept={concept}
-							sessions={sessions}
-							theme={theme}
-							saved
-							onToggleSave={() => toggleSave(concept)}
-							onOpen={() => setOpenId(concept.savedConceptId)}
-						/>
-					))
-				)}
-			</div>
-
-			{openConcept && (
-				<DiagramModal
-					concept={openConcept}
-					theme={theme}
-					onClose={() => setOpenId(null)}
-				/>
-			)}
-		</div>
-	);
-}
+import type { SessionSummary } from "../../shared/contract";
 
 export function FeedCard({
 	concept,
