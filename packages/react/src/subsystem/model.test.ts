@@ -9,8 +9,8 @@ import {
 import type { SubsystemComponent, SubsystemComponentEdge } from './model';
 
 const comps: SubsystemComponent[] = [
-  { id: 'reader', name: 'SessionReader', kind: 'class', file: 'SessionReader.ts', package: 'agent-monitoring' },
-  { id: 'transcript', name: 'transcript', kind: 'module', file: 'transcript.ts', package: 'agent-monitoring' },
+  { id: 'reader', name: 'SessionReader', kind: 'class', file: 'SessionReader.ts', purl: 'pkg:github/principal-ai/agent-monitoring' },
+  { id: 'transcript', name: 'transcript', kind: 'module', file: 'transcript.ts', purl: 'pkg:github/principal-ai/agent-monitoring' },
 ];
 
 const edges: SubsystemComponentEdge[] = [
@@ -38,7 +38,7 @@ describe('subsystem graph model', () => {
     const { nodes, edges: gEdges } = await buildSubsystemGraph({ components: comps, edges });
     const external = nodes.find((n) => n.id === 'external:host');
     expect(external).toBeDefined();
-    expect(external!.data.component.kind).toBe('consumer');
+    expect(external!.data.component.kind).toBe('external');
     const crossEdge = gEdges.find((e) => e.target === 'external:host');
     expect(crossEdge).toBeDefined();
   });
@@ -63,11 +63,9 @@ describe('subsystem graph model', () => {
     // class/type/module/function use the symbol as-is.
     expect(deriveNameFromSymbol('SessionReader', 'class')).toBe('SessionReader');
     expect(deriveNameFromSymbol('SessionRecord', 'type')).toBe('SessionRecord');
-    // method uses the last dotted segment.
-    expect(deriveNameFromSymbol('SessionReader.normalize', 'method')).toBe('normalize');
     // falls back to existing name when no symbol.
     expect(deriveNameFromSymbol(undefined, 'class', 'SessionReader')).toBe('SessionReader');
-    expect(deriveNameFromSymbol('', 'consumer', 'trail-viewer-host')).toBe('trail-viewer-host');
+    expect(deriveNameFromSymbol('', 'external', 'trail-viewer-host')).toBe('trail-viewer-host');
   });
 
   test('deriveNameFromSymbol falls back to file basename for modules', () => {

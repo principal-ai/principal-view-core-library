@@ -1255,8 +1255,15 @@ export function SessionEventFeed({ title, rows }: SessionEventFeedProps) {
   const { collapsed, toggle, setAll } = useCollapse(seqs, true);
 
   const activePreset = PRESETS.find((p) => p.id === active) ?? PRESETS[0];
-  const isVisible = (raw: V1RawEvent | null) => activePreset.include.includes(eventCategory(raw));
-  const visibleEvents = displayItems.filter((r) => isVisible(toRaw(r.raw)));
+  // "Generic tools" surfaces the improvement backlog: tool rows whose
+  // accumulated operation is still the generic `tool` fallback (e.g. bash
+  // commands that haven't been given a listing/reading/… type yet).
+  const [unprocessedOnly, setUnprocessedOnly] = useState(false);
+  const isVisible = (r: FeedItem) =>
+    unprocessedOnly
+      ? r.accumulated?.operation === 'tool'
+      : activePreset.include.includes(eventCategory(toRaw(r.raw)));
+  const visibleEvents = displayItems.filter(isVisible);
 
   const presetCounts = useMemo(() => {
     const map = new Map<string, number>();
@@ -1265,6 +1272,11 @@ export function SessionEventFeed({ title, rows }: SessionEventFeedProps) {
     }
     return map;
   }, [displayItems]);
+
+  const unprocessedCount = useMemo(
+    () => displayItems.filter((r) => r.accumulated?.operation === 'tool').length,
+    [displayItems],
+  );
 
   const expandedCount = visibleEvents.filter((r) => !collapsed.has(r.seq)).length;
 
@@ -1304,6 +1316,11 @@ export function SessionEventFeed({ title, rows }: SessionEventFeedProps) {
         ))}
         <span style={{ flex: 1 }} />
         <FilterChip
+          label={`Generic tools (${unprocessedCount})`}
+          active={unprocessedOnly}
+          onClick={() => setUnprocessedOnly((v) => !v)}
+        />
+        <FilterChip
           label={groupTools ? 'Group tool runs: on' : 'Group tool runs: off'}
           active={groupTools}
           onClick={() => setGroupTools((v) => !v)}
@@ -1320,7 +1337,7 @@ export function SessionEventFeed({ title, rows }: SessionEventFeedProps) {
             sessionTitle={title}
             runCount={r.runCount}
             snapshotCount={r.snapshotCount}
-            visible={isVisible(toRaw(r.raw))}
+            visible={isVisible(r)}
             expanded={!collapsed.has(r.seq)}
             onToggle={() => toggle(r.seq)}
           />

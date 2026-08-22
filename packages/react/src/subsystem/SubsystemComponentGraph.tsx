@@ -32,6 +32,7 @@ import {
   applyNodeChanges,
 } from '@xyflow/react';
 import { useTheme } from '@principal-ade/industry-theme';
+import { IndustryMarkdownSlide } from 'themed-markdown';
 import {
   buildSubsystemGraph,
   KIND_COLOR,
@@ -44,6 +45,25 @@ import {
 import type { GraphifyComponentDetail } from '../graphify';
 import { SubsystemComponentNode, SubsystemEdge, SUBSYSTEM_CALLBACKS } from './nodes';
 
+const MECHANISM_DESCRIPTIONS: [SubsystemEdgeMechanism, string, boolean][] = [
+  ['imports', 'import statement (code-level dependency)', true],
+  ['imports_from', 'imported by (reverse dependency)', true],
+  ['re_exports', 're-exports symbols from', true],
+  ['defines', 'defines / declares symbol', true],
+  ['calls', 'function/method call (call graph edge)', true],
+  ['extends', 'class inheritance', true],
+  ['inherits', 'class inheritance', true],
+  ['implements', 'implements interface / protocol', true],
+  ['mixes_in', 'applies mixin', true],
+  ['uses', 'general dependency (import, call, or reference)', false],
+  ['method', 'structural: has method / member', true],
+  ['references', 'type / symbol reference (not a call)', true],
+  ['contains', 'structural: contains / encapsulates', true],
+  ['feeds', 'data flow: output feeds into input', false],
+  ['produces', 'data flow: produces / outputs', false],
+  ['registers-into', 'registration pattern', false],
+];
+
 export interface SubsystemComponentGraphProps {
   components: SubsystemComponent[];
   edges: SubsystemComponentEdge[];
@@ -55,6 +75,16 @@ export interface SubsystemComponentGraphProps {
   maxNodeWidth?: number;
   /** Show edge labels (mechanism names) on the graph. @default true */
   showEdgeLabels?: boolean;
+  /** Subsystem title displayed in the sidebar. */
+  title?: string;
+  /** Markdown description rendered in the sidebar. */
+  description?: string;
+  /** Rendered over the graph canvas only (not the title/legend sidebar). */
+  canvasOverlay?: ReactNode;
+  /** Extra controls at the top of the title/legend sidebar. */
+  sidebarExtra?: ReactNode;
+  /** Rendered in the sidebar under the description (e.g. selection inspector). */
+  sidebarAfterDescription?: ReactNode;
 }
 
 const nodeTypes: NodeTypes = {
@@ -69,9 +99,9 @@ interface InnerProps extends SubsystemComponentGraphProps {
   measured: { w: number; h: number } | null;
 }
 
-function Inner({ components, edges, onSelect, onEdgeSelect, measured, maxNodeWidth, showEdgeLabels }: InnerProps) {
+function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured, maxNodeWidth, showEdgeLabels, title, description, canvasOverlay, sidebarExtra, sidebarAfterDescription }: InnerProps) {
   const { theme } = useTheme();
-  const { fitView, getNodes } = useReactFlow();
+  const { fitView } = useReactFlow();
   const viewport = useViewport();
   const [built, setBuilt] = useState<{ nodes: Node[]; edges: Edge[] }>({
     nodes: [],
@@ -269,40 +299,120 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured, maxNodeWid
   // the actual edge path (not node-center approximations).
   const edgeLabels = useMemo(() => {
     return dispEdges.map((e) => {
-      const d = e.data as { mechanism?: string; dimmed?: boolean; labelX?: number; labelY?: number; debugPathPoints?: Array<{ x: number; y: number }> } | undefined;
+      const d = e.data as { mechanism?: string; dimmed?: boolean; labelX?: number; labelY?: number } | undefined;
       return {
         id: e.id,
         mechanism: d?.mechanism ?? 'imports',
         dimmed: d?.dimmed === true,
         midX: d?.labelX ?? 0,
         midY: d?.labelY ?? 0,
-        debugPathPoints: d?.debugPathPoints,
       };
     });
   }, [dispEdges]);
 
+  const usedMechanisms = useMemo(() => {
+    return new Set(edgeLabels.map((l) => l.mechanism));
+  }, [edgeLabels]);
 
+  const muted = theme.colors.textMuted ?? theme.colors.textSecondary;
 
   return (
-    <div style={{ visibility: layoutReady ? 'visible' : 'hidden', width: '100%', height: '100%' }}>
-      {/* Edge-label overlay — sits above the ReactFlow pane so clicks land. */}
-      {showEdgeLabels !== false && (
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          pointerEvents: 'none',
-          zIndex: 5,
-        }}
-      >
-        {edgeLabels.map((lbl) => {
-          const color = MECHANISM_COLOR[lbl.mechanism as SubsystemEdgeMechanism] ?? '#888';
-          const screenX = lbl.midX * viewport.zoom + viewport.x;
-          const screenY = lbl.midY * viewport.zoom + viewport.y;
-          return (
-            <div
-              key={lbl.id}
+    <div style={{ visibility: layoutReady ? 'visible' : 'hidden', width: '100%', height: '100%', display: 'flex', flexDirection: 'row' }}>
+      {/* Sidebar with title and description */}
+      {(title || description || usedMechanisms.size > 0 || sidebarExtra || sidebarAfterDescription) && (
+        <div
+          style={{
+            width: 280,
+            minWidth: 280,
+            borderRight: `1px solid ${theme.colors.border}`,
+            background: theme.colors.backgroundSecondary ?? theme.colors.background,
+            padding: '16px',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
+          {sidebarExtra}
+          {title && (
+            <h2
+              style={{
+                margin: 0,
+                fontSize: theme.fontSizes[2],
+                fontWeight: 600,
+                color: theme.colors.text,
+                fontFamily: theme.fonts.heading,
+              }}
+            >
+              {title}
+            </h2>
+          )}
+          {description && (
+            <div style={{ fontSize: theme.fontSizes[0], lineHeight: 1.5 }}>
+              <IndustryMarkdownSlide
+                content={description}
+                slideIdPrefix="subsystem-desc"
+                slideIndex={0}
+                isVisible={true}
+                theme={theme}
+                disableScroll={true}
+                fontSizeScale={0.9}
+                enableKeyboardScrolling={false}
+                autoFocusOnVisible={false}
+              />
+            </div>
+          )}
+          {sidebarAfterDescription}
+          {usedMechanisms.size > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: theme.fontSizes[0] * 0.8, fontFamily: theme.fonts.monospace, textTransform: 'uppercase', color: muted, fontWeight: 600 }}>
+                Edge Legend
+              </span>
+              {MECHANISM_DESCRIPTIONS.filter(([m]) => usedMechanisms.has(m)).map(([mechanism, desc, verifiable]) => (
+                <div key={mechanism} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: theme.fontSizes[0] }}>
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: verifiable ? '50%' : '30% 70% 70% 30% / 30% 30% 70% 70%',
+                      background: MECHANISM_COLOR[mechanism],
+                      border: verifiable ? 'none' : `1px dashed ${MECHANISM_COLOR[mechanism]}`,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span style={{ fontFamily: theme.fonts.monospace, color: MECHANISM_COLOR[mechanism], fontWeight: 500 }}>{mechanism}</span>
+                  <span style={{ color: muted }}>{desc}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Graph area */}
+      <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        {/* Edge-label overlay — sits above the ReactFlow pane so clicks land. */}
+        {showEdgeLabels !== false && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            overflow: 'hidden',
+            pointerEvents: 'none',
+            zIndex: 5,
+          }}
+        >
+          {edgeLabels.map((lbl) => {
+            const mechanism = lbl.mechanism as SubsystemEdgeMechanism;
+            const color = MECHANISM_COLOR[mechanism] ?? '#888';
+            const verifiable = MECHANISM_DESCRIPTIONS.find(([m]) => m === mechanism)?.[2] ?? true;
+            const screenX = lbl.midX * viewport.zoom + viewport.x;
+            const screenY = lbl.midY * viewport.zoom + viewport.y;
+            return (
+              <div
+                key={lbl.id}
               data-edge-label={lbl.id}
+              title={verifiable ? undefined : 'Not directly verifiable with graphify'}
               onClick={(e) => {
                 e.stopPropagation();
                 selectEdge(lbl.id);
@@ -316,8 +426,8 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured, maxNodeWid
                 fontWeight: 500,
                 color,
                 background: 'rgba(21,21,21,0.9)',
-                border: `0.5px solid ${color}`,
-                borderRadius: 4,
+                border: verifiable ? `0.5px solid ${color}` : `1px dashed ${color}`,
+                borderRadius: verifiable ? 4 : '10px 14px 12px 16px / 14px 10px 16px 12px',
                 padding: '1px 5px',
                 cursor: 'pointer',
                 pointerEvents: 'auto',
@@ -329,49 +439,6 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured, maxNodeWid
             </div>
           );
         })}
-      </div>
-      )}
-      {/* Debug: node boundary lines — green vertical lines at each node's left/right edges. */}
-      {showEdgeLabels !== false && (
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 6 }}>
-        {getNodes().map((n) => {
-          const w = n.measured?.width ?? n.width ?? 200;
-          const h = n.measured?.height ?? n.height ?? 80;
-          const leftX = n.position.x * viewport.zoom + viewport.x;
-          const rightX = (n.position.x + w) * viewport.zoom + viewport.x;
-          const topY = n.position.y * viewport.zoom + viewport.y;
-          return [
-            <div key={`${n.id}-left`} style={{ position: 'absolute', left: leftX, top: topY, width: 1, height: h * viewport.zoom, background: 'lime' }} />,
-            <div key={`${n.id}-right`} style={{ position: 'absolute', left: rightX, top: topY, width: 1, height: h * viewport.zoom, background: 'lime' }} />,
-          ];
-        })}
-      </div>
-      )}
-      {/* Debug: ELK path points — red crosses at each path vertex. */}
-      {showEdgeLabels !== false && (
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 6 }}>
-        {edgeLabels.map((lbl) =>
-          lbl.debugPathPoints?.map((pt, i) => {
-            const sx = pt.x * viewport.zoom + viewport.x;
-            const sy = pt.y * viewport.zoom + viewport.y;
-            return (
-              <div
-                key={`${lbl.id}-pt-${i}`}
-                style={{
-                  position: 'absolute',
-                  left: sx,
-                  top: sy,
-                  width: 8,
-                  height: 8,
-                  marginLeft: -4,
-                  marginTop: -4,
-                  background: 'red',
-                  borderRadius: '50%',
-                }}
-              />
-            );
-          }),
-        )}
       </div>
       )}
       <ReactFlow
@@ -399,8 +466,8 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured, maxNodeWid
         zoomOnPinch
         zoomOnDoubleClick={false}
         style={{
-          width: measured ? measured.w : '100%',
-          height: measured ? measured.h : '100%',
+          width: '100%',
+          height: '100%',
           flex: 1,
           minHeight: 0,
           background: theme.colors.background,
@@ -410,6 +477,8 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured, maxNodeWid
         <Controls showZoom showFitView showInteractive />
       </ReactFlow>
       {selected && <ComponentDetail component={selected} />}
+      {canvasOverlay}
+      </div>
     </div>
   );
 }
@@ -425,7 +494,7 @@ function ComponentDetail({ component }: { component: SubsystemComponent }) {
   if (component.symbol) rows.push(['Symbol', component.symbol]);
   if (component.file) rows.push(['File', component.file]);
   if (component.purpose) rows.push(['Purpose', component.purpose]);
-  rows.push(['Package', component.package]);
+  rows.push(['PURL', component.purl]);
 
   return (
     <div

@@ -22,15 +22,10 @@ import type { GraphifyComponentDetail } from '../graphify';
 
 export type SubsystemComponentKind =
   | 'class'
-  | 'module'
-  | 'script'
-  | 'registry'
-  | 'service'
-  | 'consumer'
   | 'function'
-  | 'method'
   | 'type'
-  | 'package';
+  | 'module'
+  | 'external';
 
 export type SubsystemEdgeMechanism =
   | 'imports'
@@ -57,8 +52,8 @@ export interface SubsystemComponent {
   kind: SubsystemComponentKind;
   /** Source location the component lives in (repo-root-relative path). */
   file: string;
-  /** Package the component belongs to (for subgraph grouping). */
-  package: string;
+  /** PURL identifying the repo or package this component lives in (for subgraph grouping). */
+  purl: string;
   /** One-line purpose shown on the node. */
   purpose?: string;
   /** A symbol this component exposes / is (the node's identity). */
@@ -113,10 +108,6 @@ export function deriveNameFromSymbol(
   file?: string,
 ): string {
   if (symbol && symbol.trim()) {
-    if (kind === 'method') {
-      const idx = symbol.lastIndexOf('.');
-      return idx >= 0 ? symbol.slice(idx + 1) : symbol;
-    }
     return symbol;
   }
   // Module nodes without a symbol are whole files → use the file basename.
@@ -154,8 +145,6 @@ export interface SubsystemGraphEdgeData extends Record<string, unknown> {
   /** ELK-computed label midpoint (from the actual edge path, not node centers). */
   labelX?: number;
   labelY?: number;
-  /** Raw ELK path points (debug). */
-  debugPathPoints?: Array<{ x: number; y: number }>;
   /** ELK-computed SVG edge path (overrides React Flow's default path). */
   elkPath?: string;
 }
@@ -218,15 +207,10 @@ export function packageColor(name: string): string {
 /** Color per component kind — the informative signal (rather than package). */
 export const KIND_COLOR: Record<SubsystemComponentKind, string> = {
   class: '#0893d2', // blue
-  module: '#4ec9b0', // teal
-  script: '#ff6b35', // orange
-  registry: '#b48ead', // purple
-  service: '#e3b341', // gold
-  consumer: '#5aa9e6', // light blue
-  function: '#6c5ce7', // indigo (distinct from module teal + script orange)
-  method: '#c586c0', // magenta
+  function: '#6c5ce7', // indigo
   type: '#e07a5f', // terracotta
-  package: '#2e86ab', // steel blue (an npm package container)
+  module: '#4ec9b0', // teal
+  external: '#b48ead', // purple
 };
 
 /**
@@ -245,9 +229,9 @@ export function convertSubsystemToNodes(
   // Group components by package.
   const byPkg = new Map<string, SubsystemComponent[]>();
   for (const c of doc.components) {
-    const list = byPkg.get(c.package) ?? [];
+    const list = byPkg.get(c.purl) ?? [];
     list.push(c);
-    byPkg.set(c.package, list);
+    byPkg.set(c.purl, list);
   }
 
   const nodes: SubsystemGraphNode[] = [];
@@ -265,27 +249,26 @@ export function convertSubsystemToNodes(
     comps.forEach((c, i) => {
       const col = i % COLS;
       const row = Math.floor(i / COLS);
-      const isPkg = c.kind === 'package';
       // Estimate rendered node width from the longest text line so ELK reserves
       // the right space (names can wrap, so we cap at the configurable max).
       const text = [c.symbol, c.name, c.file.split('/').pop() ?? '']
         .filter((t): t is string => !!t)
         .sort((a, b) => b.length - a.length)[0];
-      const cap = maxNodeWidth ?? (isPkg ? 320 : 300);
+      const cap = maxNodeWidth ?? 300;
       const textWidth = Math.min(cap, Math.max(60, (text?.length ?? 10) * 8));
       // Account for CSS minWidth and padding/border so ELK's port positions match
       // the actual rendered node boundaries.
-      const cssMinWidth = isPkg ? 200 : 150;
-      const cssPadding = isPkg ? 24 : 20; // horizontal padding (left + right)
+      const cssMinWidth = 150;
+      const cssPadding = 20; // horizontal padding (left + right)
       const cssBorder = 4; // 2px border each side
-      const rawWidth = Math.max(cssMinWidth, (isPkg ? Math.max(220, textWidth) : textWidth) + cssPadding + cssBorder);
+      const rawWidth = Math.max(cssMinWidth, textWidth + cssPadding + cssBorder);
       const nodeWidth = Math.max(cssMinWidth, Math.min(cap, rawWidth));
       nodes.push({
         id: c.id,
         type: 'subsystem-component',
         position: { x: PAD + col * COL_W, y: cursorY + row * ROW_H },
         width: nodeWidth,
-        height: isPkg ? 100 : 84,
+        height: 84,
         data: { component: c },
       });
     });
@@ -367,8 +350,8 @@ export async function buildSubsystemGraph(
         component: {
           id: extId,
           name: label,
-          kind: 'consumer',
-          package: 'external',
+          kind: 'external',
+          purl: 'external',
           file: '',
           purpose: 'cross-package integration target (not a member node)',
         },
@@ -394,7 +377,6 @@ export async function buildSubsystemGraph(
   // ELK auto-layout: position nodes (layered, minimized crossings).
   let placedNodes = nodes;
   let labelPositions = new Map<string, { x: number; y: number }>();
-  let elkPathPoints = new Map<string, Array<{ x: number; y: number }>>();
   let elkPathStrings = new Map<string, string>();
   if (nodes.length > 0) {
     try {
@@ -410,7 +392,6 @@ export async function buildSubsystemGraph(
       });
       placedNodes = result.nodes as SubsystemGraphNode[];
       labelPositions = result.edgeLabelPositions;
-      elkPathPoints = result.edgePathPoints;
       elkPathStrings = result.edgePaths;
     } catch (err) {
       // Fall back to the (unpositioned) grid if ELK is unavailable.
@@ -426,11 +407,6 @@ export async function buildSubsystemGraph(
       const d = (e as SubsystemGraphEdge).data as SubsystemGraphEdgeData;
       d.labelX = pos.x;
       d.labelY = pos.y;
-    }
-    const pts = elkPathPoints.get(e.id);
-    if (pts) {
-      const d = (e as SubsystemGraphEdge).data as SubsystemGraphEdgeData;
-      d.debugPathPoints = pts;
     }
     const elkP = elkPathStrings.get(e.id);
     if (elkP) {

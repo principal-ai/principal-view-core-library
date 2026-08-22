@@ -25,37 +25,11 @@ import {
 
 export const KIND_LABEL: Record<string, string> = {
   class: 'class',
-  module: 'module',
-  script: 'script',
-  registry: 'registry',
-  service: 'service',
-  consumer: 'consumer',
   function: 'function',
-  method: 'method',
   type: 'type',
-  package: 'package',
+  module: 'module',
+  external: 'external',
 };
-
-/** Owning class of a method, derived from its `Symbol.Class.method` symbol. */
-function ownerClass(symbol?: string): string | undefined {
-  if (!symbol) return undefined;
-  const idx = symbol.lastIndexOf('.');
-  return idx > 0 ? symbol.slice(0, idx) : undefined;
-}
-
-/** Package namespace (`@scope/name` → `@scope`), or undefined for unscoped. */
-function packageNamespace(pkg?: string): string | undefined {
-  if (!pkg) return undefined;
-  const idx = pkg.indexOf('/');
-  return idx > 0 && pkg.startsWith('@') ? pkg.slice(0, idx) : undefined;
-}
-
-/** Registry a package node is distributed through (npm is the default here). */
-function packageRegistry(pkg?: string): string {
-  if (!pkg) return '';
-  const idx = pkg.indexOf('/');
-  return ` · ${idx > 0 && pkg.startsWith('@') ? 'npm' : 'registry'}`;
-}
 
 /** Insert zero-width spaces at identifier word boundaries so long names wrap
  *  on naming conventions (snake_case `foo_`|`bar`, camelCase `foo`|`Bar`,
@@ -88,11 +62,9 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
   const { data, selected, width: nodeWidth, height: nodeHeight } = props;
   const c = data.component;
   const color = KIND_COLOR[c.kind] ?? '#888';
-  const muted = theme.colors.textMuted ?? theme.colors.textSecondary;
   const [hover, setHover] = useState(false);
-  const isPackage = c.kind === 'package';
   const configuredMax = SUBSYSTEM_CALLBACKS.maxNodeWidth;
-  const maxWidth = isPackage ? (configuredMax ?? 320) : (configuredMax ?? 300);
+  const maxWidth = configuredMax ?? 300;
   // `symbol` is the source of truth; `name` is derived from it consistently.
   const displayName = deriveNameFromSymbol(c.symbol, c.kind, c.name, c.file);
 
@@ -113,12 +85,12 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
         boxSizing: 'border-box',
         width: nodeWidth,
         height: nodeHeight,
-        minWidth: isPackage ? 200 : 150,
+        minWidth: 150,
         maxWidth,
-        padding: isPackage ? '10px 12px' : '6px 10px',
-        borderRadius: isPackage ? 10 : 8,
+        padding: '6px 10px',
+        borderRadius: 8,
         background: theme.colors.backgroundSecondary ?? theme.colors.background,
-        border: `2px ${isPackage ? 'dashed' : 'solid'} ${selected ? theme.colors.primary : color}`,
+        border: `2px solid ${selected ? theme.colors.primary : color}`,
         boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
         cursor: 'pointer',
         fontFamily: theme.fonts.body,
@@ -148,9 +120,7 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
           }}
         >
           {KIND_LABEL[c.kind] ?? c.kind}
-          {/* For package nodes, show the registry instead of the (already shown)
-              package name; for other kinds, show the owning package. */}
-          {c.kind === 'package' ? packageRegistry(c.package) : c.package ? ` · ${c.package}` : ''}
+          {c.purl ? ` · ${c.purl}` : ''}
           {c.capture && c.capture !== 'edited' ? ` · ${c.capture}` : ''}
         </div>
       )}
@@ -180,46 +150,6 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
         </div>
       )}
 
-      {/* Method nodes show their owning class above the method name. */}
-      {c.kind === 'method' && ownerClass(c.symbol) && (
-        <div
-          style={{
-            fontSize: theme.fontSizes[0] * 0.78,
-            fontFamily: theme.fonts.monospace,
-            color: muted,
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            maxWidth: '100%',
-            marginBottom: 1,
-          }}
-          title={ownerClass(c.symbol)}
-        >
-          {ownerClass(c.symbol)}
-        </div>
-      )}
-
-      {/* Package nodes show their namespace (@scope) above the package name. */}
-      {c.kind === 'package' && packageNamespace(c.package) && (
-        <div
-          style={{
-            fontSize: theme.fontSizes[0] * 0.78,
-            fontFamily: theme.fonts.monospace,
-            color: muted,
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            maxWidth: '100%',
-            marginBottom: 1,
-          }}
-          title={c.package}
-        >
-          {packageNamespace(c.package)}
-        </div>
-      )}
-
       <div
         style={{
           fontSize: theme.fontSizes[2],
@@ -237,10 +167,10 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
             c.kind === 'type' ? 'Georgia, "Times New Roman", serif' : theme.fonts.body,
         }}
       >
-        {c.kind === 'method' ? `.${breakWords(displayName)}` : breakWords(displayName)}
+        {breakWords(displayName)}
       </div>
 
-      {c.symbol && c.kind !== 'method' && c.kind !== 'package' && c.symbol !== displayName && (
+      {c.symbol && c.symbol !== displayName && (
         <div
           style={{
             fontSize: theme.fontSizes[0] * 0.82,
@@ -259,7 +189,7 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
         </div>
       )}
 
-      {c.file && c.kind !== 'package' && (
+      {c.file && (
         <div
           onClick={(e) => {
             e.stopPropagation();
@@ -280,7 +210,6 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}
-          title={c.file}
         >
           {c.file.split('/').pop()}
         </div>

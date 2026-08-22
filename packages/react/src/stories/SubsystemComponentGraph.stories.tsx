@@ -28,14 +28,14 @@ type Story = StoryObj<typeof meta>;
 // Build a subsystem graph from a compact spec - helpers
 // ---------------------------------------------------------------------------
 function components(
-  spec: Array<[id: string, name: string, kind: SubsystemComponent['kind'], file: string, pkg: string, purpose?: string, symbol?: string, detail?: GraphifyComponentDetail]>,
+  spec: Array<[id: string, name: string, kind: SubsystemComponent['kind'], file: string, purl: string, purpose?: string, symbol?: string, detail?: GraphifyComponentDetail]>,
 ): SubsystemComponent[] {
-  return spec.map(([id, name, kind, file, pkg, purpose, symbol, detail]) => ({
+  return spec.map(([id, name, kind, file, purl, purpose, symbol, detail]) => ({
     id,
     name,
     kind,
     file,
-    package: pkg,
+    purl,
     purpose,
     symbol,
     detail,
@@ -58,8 +58,8 @@ function edges(
 // Minimal: two nodes, one edge — the simplest possible label layout test.
 // ---------------------------------------------------------------------------
 const twoNodeComponents = components([
-  ['src', 'TranscriptParser', 'class', 'transcript.ts', 'agent-monitoring', 'parses session records'],
-  ['dst', 'SessionReader', 'class', 'SessionReader.ts', 'agent-monitoring', 'normalizes sessions into events'],
+  ['src', 'TranscriptParser', 'class', 'transcript.ts', 'pkg:github/principal-ai/agent-monitoring', 'parses session records'],
+  ['dst', 'SessionReader', 'class', 'SessionReader.ts', 'pkg:github/principal-ai/agent-monitoring', 'normalizes sessions into events'],
 ]);
 
 const twoNodeEdges = edges([
@@ -111,7 +111,7 @@ function PlaygroundDemo({ leftCount, rightCount, showEdgeLabels }: { leftCount: 
       name: `Left${i}`,
       kind: 'class',
       file: `left${i}.ts`,
-      package: 'playground',
+      purl: 'pkg:github/principal-ai/playground',
       purpose: `left layer node ${i}`,
     });
   }
@@ -121,7 +121,7 @@ function PlaygroundDemo({ leftCount, rightCount, showEdgeLabels }: { leftCount: 
       name: `Right${i}`,
       kind: 'class',
       file: `right${i}.ts`,
-      package: 'playground',
+      purl: 'pkg:github/principal-ai/playground',
       purpose: `right layer node ${i}`,
     });
   }
@@ -172,11 +172,11 @@ const readerDetail: GraphifyComponentDetail = {
 };
 
 const v2ReaderComponents = components([
-  ['capture', 'capture script', 'script', 'scripts/capture-session.ts', 'agent-monitoring', 'captures a real session for fixtures'],
-  ['transcript', 'transcript', 'module', 'transcript.ts', 'agent-monitoring', 'parses session records + type guards'],
-  ['paths', 'paths', 'module', 'paths.ts', 'agent-monitoring', 'extracts tool names + file paths'],
-  ['reader', 'SessionReader', 'class', 'SessionReader.ts', 'agent-monitoring', 'normalizes a session into universal events', 'SessionReader.normalize', readerDetail],
-  ['registry', 'supported-agents', 'registry', 'supported-agents.ts', 'agent-monitoring', 'registry of supported agents (the shared seam)', 'registerAgent'],
+  ['capture', 'capture script', 'function', 'scripts/capture-session.ts', 'pkg:github/principal-ai/agent-monitoring', 'captures a real session for fixtures'],
+  ['transcript', 'transcript', 'module', 'transcript.ts', 'pkg:github/principal-ai/agent-monitoring', 'parses session records + type guards'],
+  ['paths', 'paths', 'module', 'paths.ts', 'pkg:github/principal-ai/agent-monitoring', 'extracts tool names + file paths'],
+  ['reader', 'SessionReader', 'class', 'SessionReader.ts', 'pkg:github/principal-ai/agent-monitoring', 'normalizes a session into universal events', 'SessionReader.normalize', readerDetail],
+  ['registry', 'supported-agents', 'module', 'supported-agents.ts', 'pkg:github/principal-ai/agent-monitoring', 'registry of supported agents (the shared seam)', 'registerAgent'],
 ]);
 
 const v2ReaderEdges = edges([
@@ -221,7 +221,7 @@ export const V2ReaderSubsystem: Story = {
 // ---------------------------------------------------------------------------
 export const Empty: Story = {
   render: () => (
-    <div style={{ width: '100%', height: 360 }}>
+    <div style={{ width: '100%' }}>
       <SubsystemComponentGraph components={[]} edges={[]} />
     </div>
   ),
@@ -236,31 +236,28 @@ const investigateOnlyComponents: SubsystemComponent[] = [
     id: 'v1',
     name: 'V1EventBridgeProcessor',
     kind: 'class',
-    file: 'V1EventBridge.ts',
-    package: 'agent-monitoring',
+    file: 'src/event-processing/V1EventBridge.ts',
+    purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'normalizes V1 DB rows into universal events',
     symbol: 'V1EventBridgeProcessor',
-    layer: 1,
   },
   {
     id: 'v2',
     name: 'V2EventBridgeProcessor',
     kind: 'class',
-    file: 'V2EventBridge.ts',
-    package: 'agent-monitoring',
+    file: 'src/event-processing/V2EventBridge.ts',
+    purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'normalizes V2 durable events into universal events',
     symbol: 'V2EventBridgeProcessor',
-    layer: 1,
   },
   {
     id: 'input',
     name: 'RepoNormalizedUniversalAgentSessionEvent',
     kind: 'type',
     file: 'types/RepoNormalizedUniversalAgentSessionEvent.ts',
-    package: 'agent-monitoring',
+    purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'the subsystem\u2019s input type — a repo-normalized universal event the readers produce and the accumulator consumes',
     symbol: 'RepoNormalizedUniversalAgentSessionEvent',
-    layer: 2,
     detail: {
       kind: 'type',
       properties: [
@@ -276,21 +273,19 @@ const investigateOnlyComponents: SubsystemComponent[] = [
     id: 'acc',
     name: 'accumulateToAgentSessionEvents',
     kind: 'function',
-    file: 'accumulator.ts',
-    package: 'agent-monitoring',
+    file: 'src/event-processing/accumulator.ts',
+    purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'accumulates normalized events into agent session events',
     symbol: 'accumulateToAgentSessionEvents',
-    layer: 3,
   },
   {
     id: 'out',
     name: 'AgentSessionEvent',
     kind: 'type',
-    file: 'accumulator.ts',
-    package: 'agent-monitoring',
+    file: 'src/event-processing/accumulator.ts',
+    purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'the subsystem\u2019s output type — an accumulated agent-session event',
     symbol: 'AgentSessionEvent',
-    layer: 4,
     detail: {
       kind: 'type',
       properties: [
@@ -341,48 +336,48 @@ const namingConventionComponents: SubsystemComponent[] = [
     id: 'camel',
     name: 'accumulateToAgentSessionEvents',
     kind: 'function',
-    file: 'accumulator.ts',
-    package: 'agent-monitoring',
+    file: 'src/event-processing/accumulator.ts',
+    purl: 'pkg:github/principal-ai/agent-monitoring',
     symbol: 'accumulateToAgentSessionEvents',
   },
   {
     id: 'snake',
     name: 'repo_normalized_universal_event',
     kind: 'type',
-    file: 'repo_normalized.ts',
-    package: 'agent-monitoring',
+    file: 'src/event-processing/repo_normalized.ts',
+    purl: 'pkg:github/principal-ai/agent-monitoring',
     symbol: 'repo_normalized_universal_event',
   },
   {
     id: 'pascal',
     name: 'RepoNormalizedUniversalAgentSessionEvent',
     kind: 'class',
-    file: 'RepoNormalized.ts',
-    package: 'agent-monitoring',
+    file: 'src/event-processing/RepoNormalized.ts',
+    purl: 'pkg:github/principal-ai/agent-monitoring',
     symbol: 'RepoNormalizedUniversalAgentSessionEvent',
   },
   {
     id: 'acronym',
     name: 'ProcessSSEStreamForEventToken',
     kind: 'function',
-    file: 'sse.ts',
-    package: 'agent-monitoring',
+    file: 'src/event-processing/sse.ts',
+    purl: 'pkg:github/principal-ai/agent-monitoring',
     symbol: 'ProcessSSEStreamForEventToken',
   },
   {
     id: 'method',
     name: 'normalize',
-    kind: 'method',
-    file: 'SessionReader.ts',
-    package: 'agent-monitoring',
+    kind: 'function',
+    file: 'src/session/SessionReader.ts',
+    purl: 'pkg:github/principal-ai/agent-monitoring',
     symbol: 'SessionReader.normalize',
   },
   {
     id: 'pkg',
     name: 'trail-viewer',
-    kind: 'package',
+    kind: 'external',
     file: '',
-    package: '@principal-ai/trail-viewer',
+    purl: 'pkg:npm/@principal-ai/trail-viewer',
     symbol: '',
   },
 ];
@@ -409,8 +404,8 @@ const detailKindComponents: SubsystemComponent[] = [
     id: 'detail-class',
     name: 'SessionReader',
     kind: 'class',
-    file: 'SessionReader.ts',
-    package: 'agent-monitoring',
+    file: 'src/session/SessionReader.ts',
+    purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'class-like: owns outgoing method edges',
     symbol: '',
     detail: readerDetail,
@@ -418,9 +413,9 @@ const detailKindComponents: SubsystemComponent[] = [
   {
     id: 'detail-method',
     name: 'normalize',
-    kind: 'method',
-    file: 'SessionReader.ts',
-    package: 'agent-monitoring',
+    kind: 'function',
+    file: 'src/session/SessionReader.ts',
+    purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'a class method — the specific thing this session focused on',
     symbol: 'SessionReader.normalize',
     detail: {
@@ -435,8 +430,8 @@ const detailKindComponents: SubsystemComponent[] = [
     id: 'detail-fn',
     name: 'normalizeSession',
     kind: 'function',
-    file: 'normalize.ts',
-    package: 'agent-monitoring',
+    file: 'src/event-processing/normalize.ts',
+    purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'function-like: label ends () with no method edges',
     symbol: 'normalizeSession',
     detail: {
@@ -454,8 +449,8 @@ const detailKindComponents: SubsystemComponent[] = [
     id: 'detail-type',
     name: 'SessionRecord',
     kind: 'type',
-    file: 'transcript.ts',
-    package: 'agent-monitoring',
+    file: 'src/session/transcript.ts',
+    purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'type-like: revealed by incoming implements edges',
     symbol: 'SessionRecord',
     detail: {
@@ -472,8 +467,8 @@ const detailKindComponents: SubsystemComponent[] = [
     id: 'detail-module',
     name: 'CodexRolloutRecord',
     kind: 'type',
-    file: 'transcript.ts',
-    package: 'agent-monitoring',
+    file: 'src/session/transcript.ts',
+    purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'a type symbol that lives in the transcript module; the node is the symbol, the file is its location',
     symbol: 'CodexRolloutRecord',
     detail: {
@@ -490,14 +485,14 @@ const detailKindComponents: SubsystemComponent[] = [
     id: 'detail-external',
     // name = the package's name after the namespace; namespace shown above.
     name: 'trail-viewer',
-    kind: 'package',
+    kind: 'external',
     file: '',
-    package: '@principal-ai/trail-viewer',
+    purl: 'pkg:npm/@principal-ai/trail-viewer',
     purpose: 'an npm package consumer — the whole package as a node',
     symbol: '',
     detail: {
       kind: 'external',
-      label: '@principal-ai/trail-viewer',
+      label: 'pkg:npm/@principal-ai/trail-viewer',
     } satisfies GraphifyComponentDetail,
   },
 ];
@@ -529,10 +524,10 @@ export const DetailKinds: Story = {
 
 /** The minimal LLM-authored substrate: symbols only, no `detail`. */
 const minimalComponents = components([
-  ['reader', 'SessionReader', 'class', 'SessionReader.ts', 'agent-monitoring', 'normalizes a session into universal events', 'SessionReader'],
-  ['normalize', 'normalize', 'method', 'SessionReader.ts', 'agent-monitoring', 'maps a session into universal events', 'SessionReader.normalize'],
-  ['record', 'SessionRecord', 'type', 'transcript.ts', 'agent-monitoring', 'the parsed codex session record', 'SessionRecord'],
-  ['transcript', 'transcript', 'module', 'transcript.ts', 'agent-monitoring', 'parses session records + type guards', 'transcript'],
+  ['reader', 'SessionReader', 'class', 'SessionReader.ts', 'pkg:github/principal-ai/agent-monitoring', 'normalizes a session into universal events', 'SessionReader'],
+  ['normalize', 'normalize', 'function', 'SessionReader.ts', 'pkg:github/principal-ai/agent-monitoring', 'maps a session into universal events', 'SessionReader.normalize'],
+  ['record', 'SessionRecord', 'type', 'transcript.ts', 'pkg:github/principal-ai/agent-monitoring', 'the parsed codex session record', 'SessionRecord'],
+  ['transcript', 'transcript', 'module', 'transcript.ts', 'pkg:github/principal-ai/agent-monitoring', 'parses session records + type guards', 'transcript'],
 ]);
 
 const sharedEdges = edges([
@@ -614,7 +609,7 @@ const investigationComponents: SubsystemComponent[] = [
     name: 'OpenCodeAdapter',
     kind: 'module',
     file: 'apps/server/src/provider/Layers/OpenCodeAdapter.ts',
-    package: 't3code',
+    purl: 'pkg:github/t3code/t3code',
     purpose: 'adapts opencode session/threads + events to the t3 runtime',
     symbol: 'makeOpenCodeAdapter',
     capture: 'analyzed',
@@ -630,7 +625,7 @@ const investigationComponents: SubsystemComponent[] = [
     name: 'ProviderRuntimeIngestion',
     kind: 'module',
     file: 'apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts',
-    package: 't3code',
+    purl: 'pkg:github/t3code/t3code',
     purpose: 'ingests provider events into the runtime',
     symbol: 'ProviderRuntimeIngestion',
     capture: 'analyzed',
@@ -640,7 +635,7 @@ const investigationComponents: SubsystemComponent[] = [
     name: 'orchestration',
     kind: 'module',
     file: 'packages/contracts/src/orchestration.ts',
-    package: 't3code',
+    purl: 'pkg:github/t3code/t3code',
     purpose: 'contracts for orchestration/providers',
     symbol: 'ORCHESTRATION_WS_METHODS',
     capture: 'analyzed',
@@ -672,4 +667,95 @@ function InvestigationDemo() {
 
 export const InvestigationDerived: Story = {
   render: () => <InvestigationDemo />,
+};
+
+// ---------------------------------------------------------------------------
+// Mermaid diagram rendering pipeline (industry-themed-markdown)
+// ---------------------------------------------------------------------------
+const mermaidPurl = 'pkg:github/principal-ade/industry-themed-markdown';
+
+const mermaidComponents: SubsystemComponent[] = [
+  {
+    id: 'input',
+    name: 'MarkdownContent',
+    kind: 'type',
+    file: 'industryMarkdown/components/IndustryMarkdownSlide.tsx',
+    purl: mermaidPurl,
+    purpose: 'raw markdown string — the slide\u2019s input',
+    symbol: 'MarkdownContent',
+  },
+  {
+    id: 'slide',
+    name: 'IndustryMarkdownSlide',
+    kind: 'class',
+    file: 'industryMarkdown/components/IndustryMarkdownSlide.tsx',
+    purl: mermaidPurl,
+    purpose: 'orchestrator — parses markdown into chunks, maps mermaid chunks to diagrams',
+    symbol: 'IndustryMarkdownSlide',
+  },
+  {
+    id: 'chunk',
+    name: 'MermaidChunk',
+    kind: 'type',
+    file: 'industryMarkdown/types/customMarkdownChunks.ts',
+    purl: mermaidPurl,
+    purpose: 'parsed chunk — code string + id, the slide\u2019s output per mermaid block',
+    symbol: 'MermaidChunk',
+  },
+  {
+    id: 'lazy',
+    name: 'IndustryLazyMermaidDiagram',
+    kind: 'class',
+    file: 'industryMarkdown/components/IndustryLazyMermaidDiagram.tsx',
+    purl: mermaidPurl,
+    purpose: 'IntersectionObserver lazy-loading wrapper \u2014 defers render until scrolled into view',
+    symbol: 'IndustryLazyMermaidDiagram',
+  },
+  {
+    id: 'diagram',
+    name: 'IndustryMermaidDiagram',
+    kind: 'class',
+    file: 'industryMarkdown/components/IndustryMermaidDiagram.tsx',
+    purl: mermaidPurl,
+    purpose: 'core renderer \u2014 picks engine (beautiful-mermaid vs mermaid.js), renders themed SVG',
+    symbol: 'IndustryMermaidDiagram',
+  },
+  {
+    id: 'helpers',
+    name: 'beautifulMermaid',
+    kind: 'module',
+    file: 'industryMarkdown/utils/beautifulMermaid.ts',
+    purl: mermaidPurl,
+    purpose: 'engine detection, theme\u2192options mapping, SVG post-processing',
+    symbol: 'beautifulMermaid',
+  },
+];
+
+const mermaidEdges = edges([
+  ['input', 'slide', 'feeds'],
+  ['slide', 'chunk', 'produces'],
+  ['chunk', 'lazy', 'feeds'],
+  ['lazy', 'diagram', 'wraps'],
+  ['diagram', 'helpers', 'uses'],
+]);
+
+function MermaidDemo() {
+  const [selected, setSelected] = useState<string | null>(null);
+  return (
+    <div style={{ width: '100%', maxWidth: 1280, height: 500, display: 'flex', flexDirection: 'column' }}>
+      <SubsystemComponentGraph
+        components={mermaidComponents}
+        edges={mermaidEdges}
+        onSelect={(id) => setSelected(id)}
+      />
+      <div style={{ marginTop: 8, fontFamily: 'monospace', fontSize: 12, color: '#aaa' }}>
+        mermaid diagram rendering pipeline — lazy → render → zoom → modal
+        {selected ? ` · selected: ${selected}` : ''}
+      </div>
+    </div>
+  );
+}
+
+export const MermaidPipeline: Story = {
+  render: () => <MermaidDemo />,
 };

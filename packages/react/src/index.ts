@@ -242,3 +242,14 @@ export type {
   GraphifyComponentDetail,
   GraphifyEdgeRef,
 } from './graphify';
+
+// Subsystem component graph
+export { SubsystemComponentGraph } from './subsystem/SubsystemComponentGraph';
+export type { SubsystemComponentGraphProps } from './subsystem/SubsystemComponentGraph';
+export type {
+  SubsystemComponent,
+  SubsystemComponentEdge,
+  SubsystemGraphDocument,
+  SubsystemComponentKind,
+  SubsystemEdgeMechanism,
+} from './subsystem/model';
