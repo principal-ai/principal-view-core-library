@@ -36,7 +36,9 @@ import { createAgentSessionsCommand } from './commands/agent-sessions.js';
 import { createAgentSessionCommand } from './commands/agent-session.js';
 
 // Keep in sync with package.json "version"
-const VERSION = '0.33.0';
+declare const __CLI_VERSION__: string | undefined;
+// Injected at bundle time via esbuild `define`; falls back for tsx dev runs.
+const VERSION = typeof __CLI_VERSION__ !== "undefined" ? __CLI_VERSION__ : "0.0.0-dev";
 
 const program = new Command();
 

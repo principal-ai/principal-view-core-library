@@ -36,6 +36,11 @@ export function createAgentSessionCommand(): Command {
     )
     .option('--db-path <path>', 'Path to opencode.db (defaults to XDG data dir)')
     .option('--raw', 'Output raw universal events before repo normalization')
+    .option(
+      '--view <normalized|accumulated|both>',
+      'Which pipeline stage to return (defaults to both)',
+      'both',
+    )
     .action(
       async (
         sessionId: string,
@@ -43,6 +48,7 @@ export function createAgentSessionCommand(): Command {
           agent?: 'cline' | 'codex' | 'opencode' | 'pi' | 'grok';
           dbPath?: string;
           raw?: boolean;
+          view?: 'normalized' | 'accumulated' | 'both';
         },
       ) => {
         const { agent, events } = fetchRawEvents(sessionId, {
@@ -53,12 +59,14 @@ export function createAgentSessionCommand(): Command {
           process.stdout.write(JSON.stringify({ agent, events }, null, 2) + '\n');
           return;
         }
+        const view = options.view ?? 'both';
         const normalized = await normalizeEvents(events);
         const accumulated = accumulateEvents(normalized);
         const repos = collectRepositories(normalized);
-        process.stdout.write(
-          JSON.stringify({ agent, sessionId, repos, normalized, accumulated }, null, 2) + '\n',
-        );
+        const payload: Record<string, unknown> = { agent, sessionId, repos };
+        if (view === 'normalized' || view === 'both') payload.normalized = normalized;
+        if (view === 'accumulated' || view === 'both') payload.accumulated = accumulated;
+        process.stdout.write(JSON.stringify(payload, null, 2) + '\n');
       },
     );
 
