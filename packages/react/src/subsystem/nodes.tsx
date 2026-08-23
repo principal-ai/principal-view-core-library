@@ -67,6 +67,9 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
   const maxWidth = configuredMax ?? 300;
   // `symbol` is the source of truth; `name` is derived from it consistently.
   const displayName = deriveNameFromSymbol(c.symbol, c.kind, c.name, c.file);
+  // Set while a file is open in the drawer: true → spotlight, false → dim,
+  // absent (no file open) → neutral.
+  const fileMatch = data.fileMatch as boolean | undefined;
 
   return (
     <div
@@ -90,8 +93,12 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
         padding: '6px 10px',
         borderRadius: 8,
         background: theme.colors.backgroundSecondary ?? theme.colors.background,
-        border: `2px solid ${selected ? theme.colors.primary : color}`,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+        border: `2px solid ${selected || fileMatch ? theme.colors.primary : color}`,
+        boxShadow: fileMatch
+          ? `0 1px 4px rgba(0,0,0,0.25), 0 0 12px ${theme.colors.primary}55`
+          : '0 1px 4px rgba(0,0,0,0.25)',
+        opacity: fileMatch === false ? 0.18 : 1,
+        transition: 'opacity 150ms ease',
         cursor: 'pointer',
         fontFamily: theme.fonts.body,
       }}

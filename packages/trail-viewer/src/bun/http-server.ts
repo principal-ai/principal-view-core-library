@@ -102,6 +102,7 @@ export async function handleSubsystemGraphRequest(
 			edges: body["edges"] as SubsystemGraphDocument["edges"],
 			source: typeof body["source"] === "string" ? body["source"] : undefined,
 			repo: body["repo"] as { owner: string; name: string } | undefined,
+			repoRoot: typeof body["repoRoot"] === "string" ? body["repoRoot"] : undefined,
 		});
 		return json({ ok: true, graph: record }, 201);
 	}

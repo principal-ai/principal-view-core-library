@@ -215,6 +215,8 @@ export interface StoredSubsystemGraph {
 	updatedAt: string;
 	source?: string;
 	repo?: { owner: string; name: string };
+	/** Local root component `file` paths resolve against (sandboxed reads). */
+	repoRoot?: string;
 }
 
 /** Lightweight listing row for the Subsystems tab (no components/edges). */

@@ -132,6 +132,10 @@ export type SubsystemGraphNodeType = 'subsystem-component' | 'subsystem-group';
 
 export interface SubsystemGraphNodeData extends Record<string, unknown> {
   component: SubsystemComponent;
+  /** Set while a file is open in the drawer: true if this node's component
+   *  lives in that file (spotlighted), false otherwise (dimmed). Absent when
+   *  no file is open — render neutrally. */
+  fileMatch?: boolean;
 }
 
 export type SubsystemGraphNode = Node<SubsystemGraphNodeData, SubsystemGraphNodeType>;

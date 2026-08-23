@@ -246,6 +246,8 @@ export type {
 // Subsystem component graph
 export { SubsystemComponentGraph } from './subsystem/SubsystemComponentGraph';
 export type { SubsystemComponentGraphProps } from './subsystem/SubsystemComponentGraph';
+export { SubsystemFileTree, buildFileTree } from './subsystem/SubsystemFileTree';
+export type { SubsystemFileTreeProps } from './subsystem/SubsystemFileTree';
 export type {
   SubsystemComponent,
   SubsystemComponentEdge,

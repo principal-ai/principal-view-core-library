@@ -57,6 +57,12 @@ export interface StoredSubsystemGraph extends SubsystemGraphDocument {
 	source?: string;
 	/** Repository this graph is about. */
 	repo?: { owner: string; name: string };
+	/**
+	 * Local filesystem root component `file` paths resolve against. Opt-in:
+	 * only set it for graphs whose components reference a repo on this
+	 * machine. File reads are sandboxed to this root.
+	 */
+	repoRoot?: string;
 }
 
 /** Lightweight index entry for listing. */
@@ -187,7 +193,7 @@ export async function getSubsystemGraph(id: string): Promise<StoredSubsystemGrap
 
 /** Create a new subsystem graph. Returns the stored record with generated id + timestamps. */
 export async function createSubsystemGraph(
-	doc: SubsystemGraphDocument & { title: string; description?: string; source?: string; repo?: { owner: string; name: string } },
+	doc: SubsystemGraphDocument & { title: string; description?: string; source?: string; repo?: { owner: string; name: string }; repoRoot?: string },
 ): Promise<StoredSubsystemGraph> {
 	await ensureDir();
 	const now = new Date().toISOString();
@@ -216,7 +222,7 @@ export async function createSubsystemGraph(
 /** Update an existing subsystem graph. Returns the updated record, or null if not found. */
 export async function updateSubsystemGraph(
 	id: string,
-	patch: Partial<Pick<StoredSubsystemGraph, "title" | "description" | "components" | "edges" | "source" | "repo">>,
+	patch: Partial<Pick<StoredSubsystemGraph, "title" | "description" | "components" | "edges" | "source" | "repo" | "repoRoot">>,
 ): Promise<StoredSubsystemGraph | null> {
 	const existing = await getSubsystemGraph(id);
 	if (!existing) return null;

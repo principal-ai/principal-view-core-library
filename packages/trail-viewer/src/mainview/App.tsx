@@ -337,6 +337,20 @@ export function App() {
 		void electrobun.rpc!.request.closeTab({ id });
 	}, []);
 
+	// Cmd+1..9 switches to the Nth tab in strip order.
+	useEffect(() => {
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (!e.metaKey || e.altKey || e.shiftKey || e.ctrlKey) return;
+			if (!/^[1-9]$/.test(e.key)) return;
+			const tab = tabs[Number(e.key) - 1];
+			if (!tab) return;
+			e.preventDefault();
+			onSelect(tab.id);
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [tabs, onSelect]);
+
 	const libraryActive =
 		tabs.find((t) => t.id === activeTabId)?.kind === "library" ||
 		(tabs.length === 0 && activeTabId === "library");

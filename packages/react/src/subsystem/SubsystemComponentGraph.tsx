@@ -32,6 +32,7 @@ import {
   applyNodeChanges,
 } from '@xyflow/react';
 import { useTheme } from '@principal-ade/industry-theme';
+import { X } from 'lucide-react';
 import { IndustryMarkdownSlide } from 'themed-markdown';
 import {
   buildSubsystemGraph,
@@ -44,6 +45,7 @@ import {
 } from './model';
 import type { GraphifyComponentDetail } from '../graphify';
 import { SubsystemComponentNode, SubsystemEdge, SUBSYSTEM_CALLBACKS } from './nodes';
+import { SubsystemFileTree } from './SubsystemFileTree';
 
 const MECHANISM_DESCRIPTIONS: [SubsystemEdgeMechanism, string, boolean][] = [
   ['imports', 'import statement (code-level dependency)', true],
@@ -85,6 +87,24 @@ export interface SubsystemComponentGraphProps {
   sidebarExtra?: ReactNode;
   /** Rendered in the sidebar under the description (e.g. selection inspector). */
   sidebarAfterDescription?: ReactNode;
+  /**
+   * Host-injected reader/renderer for the bottom file drawer, keyed by
+   * repo-root-relative path. Opening happens on node click (component with a
+   * `file`) and sidebar file-tree click. Keeps this package free of fs and
+   * code-view dependencies.
+   */
+  renderFileViewer?: (file: string) => ReactNode;
+  /**
+   * Legacy component-keyed variant, kept for backward compatibility. When
+   * `renderFileViewer` is absent, drawer content resolves via the first
+   * component whose `file` matches the opened path.
+   */
+  renderFileView?: (component: SubsystemComponent) => ReactNode;
+  /**
+   * Called when a file in the sidebar file tree is clicked (repo-root-relative
+   * path). The tree is derived from the components' `file` values.
+   */
+  onFileSelect?: (file: string) => void;
 }
 
 const nodeTypes: NodeTypes = {
@@ -99,7 +119,7 @@ interface InnerProps extends SubsystemComponentGraphProps {
   measured: { w: number; h: number } | null;
 }
 
-function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured, maxNodeWidth, showEdgeLabels, title, description, canvasOverlay, sidebarExtra, sidebarAfterDescription }: InnerProps) {
+function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured, maxNodeWidth, showEdgeLabels, title, description, canvasOverlay, sidebarExtra, sidebarAfterDescription, renderFileView, renderFileViewer, onFileSelect }: InnerProps) {
   const { theme } = useTheme();
   const { fitView } = useReactFlow();
   const viewport = useViewport();
@@ -109,10 +129,15 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
   });
   const [layoutReady, setLayoutReady] = useState(false);
   const [selected, setSelected] = useState<SubsystemComponent | null>(null);
+  // File currently shown in the bottom drawer (repo-root-relative path).
+  const [openFile, setOpenFile] = useState<string | null>(null);
   // Ref mirror of `selected` so the SUBSYSTEM_CALLBACKS click handler (a
   // closure over the effect deps) can toggle without a stale value.
   const selectedRef = useRef<SubsystemComponent | null>(null);
   selectedRef.current = selected;
+  // Ref mirror of `openFile` for the tree-click toggle.
+  const openFileRef = useRef<string | null>(null);
+  openFileRef.current = openFile;
 
   // Pass 1: build with estimated widths so React Flow can measure the DOM.
   // The pane stays hidden until Pass 2 completes.
@@ -190,10 +215,12 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
         if (selectedRef.current?.id === comp.id) {
           setSelected(null);
           setSelectedEdgeId(null);
+          setOpenFile(null);
           return;
         }
         setSelected(comp);
         setSelectedEdgeId(null);
+        if (comp.file) setOpenFile(comp.file);
         onSelect?.(id);
       }
     };
@@ -209,6 +236,20 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
   const { nodes, edges: convertedEdges } = built;
   const xyflowNodesBase = nodes as Node[];
   const baseEdges = convertedEdges as Edge[];
+
+  // While a file is open in the drawer, tag each node with whether its
+  // component lives in that file — the node renderer spotlights matches and
+  // dims non-matches (mirrors the edge-dimming behavior on selection).
+  const dispNodes = useMemo(() => {
+    if (!openFile) return xyflowNodesBase;
+    return xyflowNodesBase.map((n) => {
+      const comp = (n.data as { component?: SubsystemComponent } | undefined)?.component;
+      return {
+        ...n,
+        data: { ...(n.data as object), fileMatch: comp?.file === openFile },
+      };
+    });
+  }, [xyflowNodesBase, openFile]);
 
   const baseNodesKey = useMemo(() => nodes.map((n) => n.id).sort().join(','), [nodes]);
   const baseEdgesKey = useMemo(
@@ -242,7 +283,7 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
           pendingMeasuredRef.current = true;
         }
       }
-      const result = applyNodeChanges(changes, xyflowNodesBase);
+      const result = applyNodeChanges(changes, dispNodes);
       // After applying changes, check if we should trigger pass 2.
       if (pendingMeasuredRef.current) {
         // Use microtask so the state update from applyNodeChanges commits first.
@@ -250,7 +291,7 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
       }
       return result;
     },
-    [xyflowNodesBase, triggerPass2],
+    [dispNodes, triggerPass2],
   );
   const onEdgesChange = useCallback(
     (_changes: EdgeChange[]) => dispEdges,
@@ -272,9 +313,11 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
         // Clicking the already-selected node unselects it (toggle off).
         if (selected?.id === comp.id) {
           setSelected(null);
+          setOpenFile(null);
           return;
         }
         setSelected(comp);
+        if (comp.file) setOpenFile(comp.file);
         if (comp.id) onSelect?.(comp.id);
       }
     },
@@ -292,7 +335,22 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
   const onPaneClick = useCallback(() => {
     setSelected(null);
     setSelectedEdgeId(null);
+    setOpenFile(null);
   }, []);
+
+  // Sidebar file-tree click → toggle in the bottom drawer (+ host hook only
+  // when opening, so hosts don't see close events).
+  const onTreeSelectFile = useCallback(
+    (file: string) => {
+      if (openFileRef.current === file) {
+        setOpenFile(null);
+        return;
+      }
+      setOpenFile(file);
+      onFileSelect?.(file);
+    },
+    [onFileSelect],
+  );
 
   // Edge label data for the overlay (rendered OUTSIDE ReactFlow so the pane
   // doesn't intercept pointer events). Uses ELK-computed label midpoints from
@@ -316,23 +374,54 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
 
   const muted = theme.colors.textMuted ?? theme.colors.textSecondary;
 
+  // Unique source files across components → sidebar file tree.
+  const files = useMemo(
+    () => Array.from(new Set(components.map((c) => c.file).filter(Boolean))).sort(),
+    [components],
+  );
+
+  // Drawer content renderer: prefer the path-keyed viewer; fall back to the
+  // legacy component-keyed one via a file → first-component lookup.
+  const fileViewer = useMemo(() => {
+    if (renderFileViewer) return renderFileViewer;
+    if (renderFileView) {
+      const byFile = new Map(
+        components.filter((c) => c.file).map((c) => [c.file, c] as const),
+      );
+      return (file: string) => {
+        const comp = byFile.get(file);
+        return comp ? renderFileView(comp) : null;
+      };
+    }
+    return undefined;
+  }, [renderFileViewer, renderFileView, components]);
+
   return (
     <div style={{ visibility: layoutReady ? 'visible' : 'hidden', width: '100%', height: '100%', display: 'flex', flexDirection: 'row' }}>
-      {/* Sidebar with title and description */}
-      {(title || description || usedMechanisms.size > 0 || sidebarExtra || sidebarAfterDescription) && (
+      {/* Sidebar: scrollable title/description/legend on top, file tree pinned to the bottom half */}
+      {(title || description || usedMechanisms.size > 0 || sidebarExtra || sidebarAfterDescription || files.length > 0) && (
         <div
           style={{
-            width: 280,
-            minWidth: 280,
+            width: 340,
+            minWidth: 340,
             borderRight: `1px solid ${theme.colors.border}`,
             background: theme.colors.backgroundSecondary ?? theme.colors.background,
-            padding: '16px',
-            overflowY: 'auto',
             display: 'flex',
             flexDirection: 'column',
-            gap: 12,
+            overflow: 'hidden',
           }}
         >
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+            }}
+          >
           {sidebarExtra}
           {title && (
             <h2
@@ -385,6 +474,14 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
                 </div>
               ))}
             </div>
+          )}
+          </div>
+          {files.length > 0 && (
+            <SubsystemFileTree
+              files={files}
+              selectedFile={selected?.file ?? openFile}
+              onSelectFile={onTreeSelectFile}
+            />
           )}
         </div>
       )}
@@ -443,7 +540,7 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
       )}
       <ReactFlow
         key={`${baseNodesKey}-${baseEdgesKey}`}
-        nodes={xyflowNodesBase}
+        nodes={dispNodes}
         edges={dispEdges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -477,6 +574,9 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
         <Controls showZoom showFitView showInteractive />
       </ReactFlow>
       {selected && <ComponentDetail component={selected} />}
+      <FileDrawer file={openFile} onClose={() => setOpenFile(null)}>
+        {fileViewer && openFile ? fileViewer(openFile) : null}
+      </FileDrawer>
       {canvasOverlay}
       </div>
     </div>
@@ -484,7 +584,8 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
 }
 
 /** Detail panel for the selected component — the verifiable identity + sources
- *  moved off the canvas so nodes stay minimal. */
+ *  moved off the canvas so nodes stay minimal. File content lives in the
+ *  bottom FileDrawer, not here. */
 function ComponentDetail({ component }: { component: SubsystemComponent }) {
   const { theme } = useTheme();
   const muted = theme.colors.textMuted ?? theme.colors.textSecondary;
@@ -550,6 +651,103 @@ function ComponentDetail({ component }: { component: SubsystemComponent }) {
         </div>
       ))}
       {component.detail && <GraphifyDetailSections detail={component.detail} />}
+    </div>
+  );
+}
+
+/** Bottom drawer that slides up over the graph canvas to show a file's
+ *  contents — opened by node clicks and sidebar file-tree clicks alike.
+ *  Stays mounted (translated off-screen) so open/close animates. */
+function FileDrawer({
+  file,
+  onClose,
+  children,
+}: {
+  file: string | null;
+  onClose: () => void;
+  children?: ReactNode;
+}) {
+  const { theme } = useTheme();
+  const muted = theme.colors.textMuted ?? theme.colors.textSecondary;
+  const open = file !== null;
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: '45%',
+        zIndex: 20,
+        display: 'flex',
+        flexDirection: 'column',
+        borderTop: `1px solid ${theme.colors.border}`,
+        borderRadius: '8px 8px 0 0',
+        background: theme.colors.background,
+        boxShadow: '0 -8px 24px rgba(0,0,0,0.35)',
+        transform: open ? 'translateY(0)' : 'translateY(102%)',
+        transition: 'transform 200ms ease',
+        pointerEvents: open ? 'auto' : 'none',
+        visibility: open ? 'visible' : 'hidden',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '6px 10px',
+          borderBottom: `1px solid ${theme.colors.border}`,
+          flexShrink: 0,
+        }}
+      >
+        <span
+          title={file ?? undefined}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            fontFamily: theme.fonts.monospace,
+            fontSize: theme.fontSizes[0],
+            color: muted,
+          }}
+        >
+          {file}
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close file"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 22,
+            height: 22,
+            padding: 0,
+            border: 'none',
+            borderRadius: 4,
+            background: 'transparent',
+            color: theme.colors.text,
+            cursor: 'pointer',
+          }}
+        >
+          <X size={14} />
+        </button>
+      </div>
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>{children}</div>
     </div>
   );
 }

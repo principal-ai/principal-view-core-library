@@ -30,7 +30,13 @@ import type {
 } from "../../shared/contract";
 import { electrobun, refreshLibrary, reloadSubscribers } from "../rpc";
 import { FailuresModal } from "./FailuresModal";
+import { PendingAnalysesModal } from "./PendingAnalysesModal";
 import { ServerSessionsModal } from "./ServerSessionsModal";
+
+// The opencode server status chip (v2 pill + health dot) is hidden for now —
+// flip to true to bring it back. Everything behind it (the 10s health poll,
+// the modal, the RPC) stays wired so the flag is the only change.
+const SHOW_SERVER_CHIP = false;
 
 export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 	const { theme } = useTheme();
@@ -106,6 +112,36 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 	const activityLabel = pending.length === 1
 		? pending[0]?.sessionTitle?.trim() || pending[0]?.sessionId.slice(0, 16)
 		: `${pending.length} sessions`;
+
+	// Pending-analysis modal: same lazy-full-fetch pattern as failures — the
+	// header keeps only lightweight summaries; full records (agent, createdAt)
+	// load when the chip is clicked. Discarding removes the record host-side
+	// and the tabsChanged broadcast refreshes the chip automatically.
+	const [showPending, setShowPending] = useState(false);
+	const [pendingFull, setPendingFull] = useState<ConceptAnalysis[]>([]);
+	const [discardingId, setDiscardingId] = useState<string | null>(null);
+
+	const openPending = useCallback(() => {
+		setShowPending(true);
+		void electrobun.rpc!.request
+			.listAnalysesFull({})
+			.then((res) =>
+				setPendingFull(res.analyses.filter((a) => a.status === "pending")),
+			)
+			.catch(() => {});
+	}, []);
+
+	const discardAnalysis = useCallback(async (a: ConceptAnalysis) => {
+		setDiscardingId(a.id);
+		try {
+			await electrobun.rpc!.request.deleteAnalysis({ analysisId: a.id });
+			setPendingFull((prev) => prev.filter((x) => x.id !== a.id));
+		} catch {
+			// The tabsChanged broadcast re-surfaces whatever happened.
+		} finally {
+			setDiscardingId(null);
+		}
+	}, []);
 
 	// Failed-analysis modal: full records (with `error`) are fetched lazily when
 	// the chip is clicked, so the header only pays for the lightweight summaries
@@ -231,8 +267,15 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 			)}
 			{pending.length > 0 && (
 				<span
-					role="status"
-					aria-live="polite"
+					role="button"
+					tabIndex={0}
+					onClick={openPending}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault();
+							openPending();
+						}
+					}}
 					style={{
 						display: "flex",
 						alignItems: "center",
@@ -247,12 +290,10 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 						fontFamily: theme.fonts.monospace,
 						flexShrink: 0,
 						maxWidth: 260,
+						cursor: "pointer",
 					}}
-					title={
-						pending.length === 1
-							? `Extracting concepts from ${pending[0].sessionTitle ?? pending[0].sessionId}`
-							: `${pending.length} concept extractions in progress`
-					}
+					title="View pending concept extractions"
+					aria-haspopup="dialog"
 				>
 					<Loader2 size={14} className="trail-viewer-spin" />
 					<span
@@ -336,6 +377,7 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 				<ScrollText size={14} />
 				<span>Prompt</span>
 			</button>
+			{SHOW_SERVER_CHIP && (
 			<button
 				type="button"
 				onClick={() => setShowServerSessions(true)}
@@ -410,6 +452,7 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 					}}
 				/>
 			</button>
+			)}
 			{user && user.source !== "none" && (
 				<button
 					type="button"
@@ -494,6 +537,15 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 		)}
 		{showIdentityModal && user && createPortal(
 			<IdentityModal user={user} onClose={() => setShowIdentityModal(false)} onOpenProfile={onOpenProfile} />,
+			document.body,
+		)}
+		{showPending && createPortal(
+			<PendingAnalysesModal
+				analyses={pendingFull}
+				discardingId={discardingId}
+				onDiscard={discardAnalysis}
+				onClose={() => setShowPending(false)}
+			/>,
 			document.body,
 		)}
 		{showFailures && createPortal(

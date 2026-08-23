@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { PenTool, X } from "lucide-react";
 import { useTheme } from "@principal-ade/industry-theme";
+import { PierreFileView } from "@industry-theme/file-city-panel";
 import {
 	SubsystemComponentGraph,
 	type SubsystemComponent,
@@ -21,7 +22,7 @@ import type { ExcalidrawSelectionInfo } from "../excalidraw/excalidrawToSubsyste
 import type { StoredSubsystemGraph } from "../../shared/contract";
 
 export function SubsystemGraphView({
-	tabId: _tabId,
+	tabId,
 	graphId,
 }: {
 	tabId: string;
@@ -70,6 +71,20 @@ export function SubsystemGraphView({
 				edges={graph.edges as SubsystemComponentEdge[]}
 				title={graph.title}
 				description={graph.description}
+			renderFileViewer={(file) => (
+				<PierreFileView
+					filePath={file}
+					fileName={file.split("/").pop() ?? file}
+					readFile={(path) =>
+						electrobun.rpc!.request
+							.readFile({ tabId, path })
+							.then((res) => {
+								if (res.ok && res.content != null) return res.content;
+								throw new Error(res.error ?? "Failed to read file");
+							})
+					}
+				/>
+			)}
 				sidebarAfterDescription={
 					excalidrawOpen ? <SelectionInspector selection={selection} /> : undefined
 				}

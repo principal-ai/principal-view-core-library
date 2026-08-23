@@ -1085,7 +1085,22 @@ const requests: RequestHandlers = {
 			readFile: async ({ tabId, path, repo }) => {
 				const tab = getTab(tabId);
 				if (!tab) return { ok: false, error: `unknown tab: ${tabId}` };
-				if (tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") {
+				if (tab.kind === "subsystem-graph") {
+					// Graph components carry repo-relative paths; reads are
+					// sandboxed to the graph's recorded repoRoot (opt-in — graphs
+					// posted without one don't serve files).
+					const graph = await getSubsystemGraph(tab.graphId);
+					const root = graph?.repoRoot;
+					if (!root) return { ok: false, error: "graph has no repoRoot" };
+					try {
+						const absolute = resolveSandboxed(root, path);
+						const content = await fs.readFile(absolute, "utf8");
+						return { ok: true, content };
+					} catch (err) {
+						return { ok: false, error: (err as Error).message };
+					}
+				}
+				if (tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
 					return { ok: false, error: `${tab.kind} tab does not serve files` };
 				}
 				return tab.mode === "remote"

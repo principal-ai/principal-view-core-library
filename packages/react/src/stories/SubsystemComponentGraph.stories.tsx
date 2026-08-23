@@ -9,7 +9,7 @@ const meta = {
   title: 'Subsystem/Component Graph',
   component: SubsystemComponentGraph,
   parameters: {
-    layout: 'padded',
+    layout: 'fullscreen',
   },
   tags: ['autodocs'],
   decorators: [
@@ -70,7 +70,7 @@ function TwoNodeDemo({ showEdgeLabels = true }: { showEdgeLabels?: boolean }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<SubsystemComponentEdge | null>(null);
   return (
-    <div style={{ width: '100%', maxWidth: 640, height: 360, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SubsystemComponentGraph
         components={twoNodeComponents}
         edges={twoNodeEdges}
@@ -134,7 +134,7 @@ function PlaygroundDemo({ leftCount, rightCount, showEdgeLabels }: { leftCount: 
   }
 
   return (
-    <div style={{ width: '100%', height: 400 }}>
+    <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SubsystemComponentGraph components={comps} edges={edgeList} showEdgeLabels={showEdgeLabels} />
     </div>
   );
@@ -194,7 +194,7 @@ function V2ReaderDemo() {
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<SubsystemComponentEdge | null>(null);
   return (
-    <div style={{ width: '100%', maxWidth: 1280, height: 560, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SubsystemComponentGraph
         components={v2ReaderComponents}
         edges={v2ReaderEdges}
@@ -221,7 +221,7 @@ export const V2ReaderSubsystem: Story = {
 // ---------------------------------------------------------------------------
 export const Empty: Story = {
   render: () => (
-    <div style={{ width: '100%' }}>
+    <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SubsystemComponentGraph components={[]} edges={[]} />
     </div>
   ),
@@ -309,7 +309,7 @@ const investigateOnlyEdges = edges([
 
 export const InvestigateOnly: Story = {
   render: () => (
-    <div style={{ width: '100%', height: 400 }}>
+    <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SubsystemComponentGraph components={investigateOnlyComponents} edges={investigateOnlyEdges} />
     </div>
   ),
@@ -318,7 +318,7 @@ export const InvestigateOnly: Story = {
 /** Same pipeline with a narrower `maxNodeWidth` (140) — long names wrap. */
 export const NarrowMaxWidth: Story = {
   render: () => (
-    <div style={{ width: '100%', height: 400 }}>
+    <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SubsystemComponentGraph
         components={investigateOnlyComponents}
         edges={investigateOnlyEdges}
@@ -386,7 +386,7 @@ const namingConventionComponents: SubsystemComponent[] = [
  *  at their word boundaries (camelCase, snake_case, PascalCase, acronyms). */
 export const NamingConventions: Story = {
   render: () => (
-    <div style={{ width: '100%', height: 460 }}>
+    <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SubsystemComponentGraph
         components={namingConventionComponents}
         edges={[]}
@@ -500,7 +500,7 @@ const detailKindComponents: SubsystemComponent[] = [
 function DetailKindsDemo() {
   const [selected, setSelected] = useState<string | null>(null);
   return (
-    <div style={{ width: '100%', maxWidth: 1280, height: 420, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SubsystemComponentGraph
         components={detailKindComponents}
         edges={[]}
@@ -575,7 +575,7 @@ const resolvedComponents: SubsystemComponent[] = [
 function MinimalVsResolvedDemo({ resolved }: { resolved: boolean }) {
   const [selected, setSelected] = useState<string | null>(null);
   return (
-    <div style={{ width: '100%', maxWidth: 1280, height: 380, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SubsystemComponentGraph
         components={resolved ? resolvedComponents : minimalComponents}
         edges={sharedEdges}
@@ -651,7 +651,7 @@ const investigationEdges = edges([
 function InvestigationDemo() {
   const [selected, setSelected] = useState<string | null>(null);
   return (
-    <div style={{ width: '100%', maxWidth: 1280, height: 360, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SubsystemComponentGraph
         components={investigationComponents}
         edges={investigationEdges}
@@ -742,7 +742,7 @@ const mermaidEdges = edges([
 function MermaidDemo() {
   const [selected, setSelected] = useState<string | null>(null);
   return (
-    <div style={{ width: '100%', maxWidth: 1280, height: 500, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SubsystemComponentGraph
         components={mermaidComponents}
         edges={mermaidEdges}

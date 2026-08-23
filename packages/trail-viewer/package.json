@@ -29,7 +29,7 @@
 	},
 	"devDependencies": {
 		"@excalidraw/excalidraw": "^0.18.0",
-		"@industry-theme/file-city-panel": "^0.9.102",
+		"@industry-theme/file-city-panel": "^0.9.103",
 		"@principal-ade/dynamic-file-tree": "^0.2.45",
 		"@principal-ade/industry-theme": "^0.1.24",
 		"@principal-ade/panel-framework-core": "^0.5.1",
@@ -40,7 +40,7 @@
 		"@principal-ai/file-city-react": "^0.5.91",
 		"@principal-ai/logo-component": "^0.1.23",
 		"@principal-ai/principal-view-core": "^0.28.12",
-		"@principal-ai/principal-view-react": "^0.16.31",
+		"@principal-ai/principal-view-react": "^0.16.32",
 		"@principal-ai/repository-abstraction": "^0.5.7",
 		"@types/bun": "latest",
 		"@types/react": "^19.2.17",
