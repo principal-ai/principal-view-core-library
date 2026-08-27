@@ -3,16 +3,32 @@
  *
  * Runs alongside the Unix socket IPC server on a configurable port
  * (default 3045, override via `TRAIL_VIEWER_HTTP_PORT`). Provides a
- * REST API for subsystem graphs so agents can POST diagrams, list
- * stored graphs, and request them to be opened in tabs.
+ * REST API for subsystem graphs and graphify knowledge graphs so agents
+ * can POST diagrams, ensure code graphs, list stored graphs, and open tabs.
  *
  * Uses Bun.serve — zero new dependencies.
  */
 
+import { existsSync, readFileSync } from "node:fs";
+import {
+	getGraphifyStatus,
+	installGraphify,
+	isGraphifyNotInstalledError,
+	loadGraphifyGraph,
+} from "./graphify-runner";
+import {
+	ensureGraphifyGraph,
+	listGraphifyGraphs,
+	listGraphifyRepos,
+} from "./graphify-store";
 import {
 	createSubsystemGraph,
+	findComponentKindProblems,
+	findDetailProvenanceProblems,
+	findEdgeMechanismProblems,
 	getSubsystemGraph,
 	listSubsystemGraphs,
+	normalizeDetailProvenance,
 	updateSubsystemGraph,
 	type SubsystemGraphDocument,
 } from "./subsystem-graph-store";
@@ -35,8 +51,8 @@ function json(data: unknown, status = 200): Response {
 	});
 }
 
-function error(message: string, status = 400): Response {
-	return json({ ok: false, error: message }, status);
+function error(message: string, status = 400, extra?: Record<string, unknown>): Response {
+	return json({ ok: false, error: message, ...extra }, status);
 }
 
 async function parseBody(req: Request): Promise<unknown> {
@@ -45,6 +61,134 @@ async function parseBody(req: Request): Promise<unknown> {
 	} catch {
 		return null;
 	}
+}
+
+/** Guard for the per-repo local-root map: all keys/values must be strings. */
+function isRepoRoots(v: unknown): v is Record<string, string> {
+	if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+	return Object.values(v).every((root) => typeof root === "string");
+}
+
+function ensureFailResponse(result: { error: string; durationMs: number }): Response {
+	const notInstalled = isGraphifyNotInstalledError(result.error);
+	return error(
+		result.error,
+		notInstalled ? 503 : 400,
+		{
+			code: notInstalled ? "graphify_not_installed" : "ensure_failed",
+			installCommand: notInstalled ? getGraphifyStatus().installCommand : undefined,
+			durationMs: result.durationMs,
+		},
+	);
+}
+
+async function handleGraphifyRequest(req: Request, url: URL, method: string): Promise<Response | null> {
+	const path = url.pathname;
+
+	if (path === "/api/graphify/status" && method === "GET") {
+		const detailed = url.searchParams.get("detailed") === "1";
+		const status = detailed
+			? await (await import("./graphify-runner")).getGraphifyStatusDetailed()
+			: getGraphifyStatus();
+		return json({ ok: true, ...status });
+	}
+
+	if (path === "/api/graphify/install" && method === "POST") {
+		const result = await installGraphify();
+		if (!result.ok) {
+			return error(result.error ?? "install failed", 500, {
+				code: "install_failed",
+				stdout: result.stdout,
+				stderr: result.stderr,
+			});
+		}
+		return json({ ok: true, bin: result.bin, ...getGraphifyStatus() });
+	}
+
+	if (path === "/api/graphify-graph" && method === "GET") {
+		const graphs = await listGraphifyGraphs();
+		return json({ ok: true, graphs });
+	}
+
+	if (path === "/api/graphify/repos" && method === "GET") {
+		const repos = await listGraphifyRepos();
+		return json({ ok: true, repos, graphify: getGraphifyStatus() });
+	}
+
+	if (path === "/api/graphify-graph/ensure" && method === "POST") {
+		const body = (await parseBody(req)) as Record<string, unknown> | null;
+		if (!body) return error("Invalid JSON body");
+		if (typeof body["purl"] !== "string" || !body["purl"].trim()) {
+			return error("purl is required");
+		}
+		const result = await ensureGraphifyGraph({
+			purl: body["purl"],
+			repoRoot: typeof body["repoRoot"] === "string" ? body["repoRoot"] : undefined,
+			force: body["force"] === true,
+			bin: typeof body["bin"] === "string" ? body["bin"] : undefined,
+		});
+		if (!result.ok) return ensureFailResponse(result);
+		return json({
+			ok: true,
+			status: result.status,
+			purl: result.purl,
+			headSha: result.headSha,
+			dirtyHash: result.dirtyHash,
+			slotKey: result.slotKey,
+			repoRoot: result.repoRoot,
+			graphJsonPath: result.graphJsonPath,
+			nodeCount: result.nodeCount,
+			edgeCount: result.edgeCount,
+			durationMs: result.durationMs,
+			meta: result.meta,
+		});
+	}
+
+	// Ensure (if needed) then return raw graph.json for the current purl identity.
+	if (path === "/api/graphify-graph/raw" && method === "GET") {
+		const purl = url.searchParams.get("purl")?.trim();
+		if (!purl) return error("purl query param is required");
+		const repoRoot = url.searchParams.get("repoRoot")?.trim() || undefined;
+		const cacheOnly = url.searchParams.get("cacheOnly") === "1";
+		const force = url.searchParams.get("force") === "1";
+
+		if (cacheOnly) {
+			const listed = await listGraphifyGraphs();
+			const key = purl.split("#")[0]?.trim() ?? purl;
+			const hit = listed.find((g) => g.purlKey === key || g.purl === key);
+			if (!hit || !existsSync(hit.graphJsonPath)) {
+				return error("no cached graph for purl", 404, { code: "cache_miss" });
+			}
+			const body = readFileSync(hit.graphJsonPath);
+			return new Response(body, {
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+					"Access-Control-Allow-Origin": "*",
+					"X-Graphify-Path": hit.graphJsonPath,
+					"X-Graphify-Slot": hit.slotKey,
+				},
+			});
+		}
+
+		const result = await ensureGraphifyGraph({ purl, repoRoot, force });
+		if (!result.ok) return ensureFailResponse(result);
+		const body = readFileSync(result.graphJsonPath);
+		return new Response(body, {
+			status: 200,
+			headers: {
+				"Content-Type": "application/json",
+				"Access-Control-Allow-Origin": "*",
+				"X-Graphify-Status": result.status,
+				"X-Graphify-Path": result.graphJsonPath,
+				"X-Graphify-Slot": result.slotKey,
+				"X-Graphify-Head": result.headSha,
+				...(result.dirtyHash ? { "X-Graphify-Dirty": result.dirtyHash } : {}),
+			},
+		});
+	}
+
+	return null;
 }
 
 /**
@@ -76,8 +220,11 @@ export async function handleSubsystemGraphRequest(
 
 	// Health check
 	if (path === "/health" && method === "GET") {
-		return json({ status: "ok" });
+		return json({ status: "ok", graphify: getGraphifyStatus() });
 	}
+
+	const graphify = await handleGraphifyRequest(req, url, method);
+	if (graphify) return graphify;
 
 	// --- Subsystem graphs ---
 
@@ -94,6 +241,13 @@ export async function handleSubsystemGraphRequest(
 		if (!body["title"] || typeof body["title"] !== "string") return error("title is required");
 		if (!Array.isArray(body["components"])) return error("components array is required");
 		if (!Array.isArray(body["edges"])) return error("edges array is required");
+		const problems = [
+			...findComponentKindProblems(body["components"]),
+			...findDetailProvenanceProblems(body["components"]),
+			...findEdgeMechanismProblems(body["edges"]),
+		];
+		if (problems.length > 0) return error(`invalid graph: ${problems.join("; ")}`);
+		normalizeDetailProvenance(body["components"]);
 
 		const record = await createSubsystemGraph({
 			title: body["title"] as string,
@@ -103,6 +257,7 @@ export async function handleSubsystemGraphRequest(
 			source: typeof body["source"] === "string" ? body["source"] : undefined,
 			repo: body["repo"] as { owner: string; name: string } | undefined,
 			repoRoot: typeof body["repoRoot"] === "string" ? body["repoRoot"] : undefined,
+			repoRoots: isRepoRoots(body["repoRoots"]) ? body["repoRoots"] : undefined,
 		});
 		return json({ ok: true, graph: record }, 201);
 	}
@@ -121,6 +276,13 @@ export async function handleSubsystemGraphRequest(
 		if (method === "PUT") {
 			const body = (await parseBody(req)) as Record<string, unknown> | null;
 			if (!body) return error("Invalid JSON body");
+			const problems = [
+				...(body["components"] !== undefined ? findComponentKindProblems(body["components"]) : []),
+				...(body["components"] !== undefined ? findDetailProvenanceProblems(body["components"]) : []),
+				...(body["edges"] !== undefined ? findEdgeMechanismProblems(body["edges"]) : []),
+			];
+			if (problems.length > 0) return error(`invalid graph: ${problems.join("; ")}`);
+			if (body["components"] !== undefined) normalizeDetailProvenance(body["components"]);
 			const updated = await updateSubsystemGraph(id, body as Parameters<typeof updateSubsystemGraph>[1]);
 			if (!updated) return error("Graph not found", 404);
 			return json({ ok: true, graph: updated });
@@ -164,4 +326,9 @@ export function startHttpServer(onOpenTab: OpenGraphTabHandler, onDeleteGraph: D
 export function stopHttpServer(): void {
 	server?.stop();
 	server = null;
+}
+
+/** Exported for tests — parse a graphify graph.json from disk. */
+export function readGraphifyGraphFile(path: string) {
+	return loadGraphifyGraph(path);
 }

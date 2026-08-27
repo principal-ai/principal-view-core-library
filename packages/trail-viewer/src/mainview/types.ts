@@ -14,6 +14,7 @@ export type TabState =
 	| { kind: "library" }
 	| { kind: "agent-sessions" }
 	| { kind: "subsystems" }
+	| { kind: "graphify" }
 	| { kind: "analysis"; id: string; analysisId: string }
 	| { kind: "session-events"; id: string; sessionId: string }
 	| { kind: "prompt"; id: string }

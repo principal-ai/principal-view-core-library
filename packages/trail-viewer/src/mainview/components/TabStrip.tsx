@@ -41,7 +41,8 @@ export function TabStrip({
 				const isPermanent =
 					tab.kind === "library" ||
 					tab.kind === "agent-sessions" ||
-					tab.kind === "subsystems";
+					tab.kind === "subsystems" ||
+					tab.kind === "graphify";
 				return (
 					<div
 						key={tab.id}
@@ -62,7 +63,10 @@ export function TabStrip({
 							cursor: "pointer",
 							fontSize: theme.fontSizes[1],
 							fontFamily: theme.fonts.body,
-							maxWidth: 240,
+							// Natural width while the strip has room; when tabs
+							// collectively overflow, flex-shrink squeezes them and
+							// the label ellipsizes (minWidth: 0 unlocks the floor,
+							// the span's overflow/ellipsis does the clipping).
 							minWidth: 0,
 							userSelect: "none",
 							marginBottom: -1,

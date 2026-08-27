@@ -35,7 +35,17 @@ import { parseTourOrThrow } from "@principal-ai/file-city-builder";
 import { readFileRemote as fetchRemoteSlice } from "./remote-files";
 import { handoffToRunning, startIpcServer, type LoadTrailMessage } from "./ipc";
 import { startHttpServer } from "./http-server";
-import { deleteSubsystemGraph, getSubsystemGraph, listSubsystemGraphs } from "./subsystem-graph-store";
+import { deleteSubsystemGraph, getSubsystemGraph, listSubsystemGraphs, resolveRepoRootForComponent } from "./subsystem-graph-store";
+import {
+	getGraphifyStatus,
+	getGraphifyStatusDetailed,
+	installGraphify,
+	isGraphifyNotInstalledError,
+	resolveGraphifyBin,
+	uninstallGraphify,
+	updateGraphify,
+} from "./graphify-runner";
+import { ensureGraphifyGraph, listGraphifyGraphs, listGraphifyRepos } from "./graphify-store";
 import {
 	walkLibrary,
 	walkTours,
@@ -47,6 +57,7 @@ import { savedConcepts } from "./saved";
 import { runOpenCodeExtraction, writeBrief, buildBrief, getExtractionPromptInfo } from "./extraction";
 import { analyzeBeats } from "./beat-analysis";
 import type {
+	GraphifyCliStatus,
 	PayloadKind,
 	RepoInfo,
 	ServerSessionRow,
@@ -220,6 +231,7 @@ function startWarmupWorker(): void {
 const LIBRARY_TAB_ID = "library";
 const AGENT_SESSIONS_TAB_ID = "agent-sessions";
 const SUBSYSTEMS_TAB_ID = "subsystems";
+const GRAPHIFY_TAB_ID = "graphify";
 
 // ---------------------------------------------------------------------------
 // CLI args / env
@@ -262,7 +274,8 @@ function resolveStartTab(): string {
 	if (
 		raw === AGENT_SESSIONS_TAB_ID ||
 		raw === LIBRARY_TAB_ID ||
-		raw === SUBSYSTEMS_TAB_ID
+		raw === SUBSYSTEMS_TAB_ID ||
+		raw === GRAPHIFY_TAB_ID
 	) {
 		return raw;
 	}
@@ -308,6 +321,12 @@ interface SubsystemsTabState {
 	title: "Subsystems";
 }
 
+interface GraphifyTabState {
+	id: typeof GRAPHIFY_TAB_ID;
+	kind: "graphify";
+	title: "Graphify";
+}
+
 interface AnalysisTabState {
 	id: string;
 	kind: "analysis";
@@ -340,6 +359,7 @@ type TabState =
 	| LibraryTabState
 	| AgentSessionsTabState
 	| SubsystemsTabState
+	| GraphifyTabState
 	| AnalysisTabState
 	| SessionEventsTabState
 	| PromptTabState
@@ -356,6 +376,11 @@ tabs.set(SUBSYSTEMS_TAB_ID, {
 	id: SUBSYSTEMS_TAB_ID,
 	kind: "subsystems",
 	title: "Subsystems",
+});
+tabs.set(GRAPHIFY_TAB_ID, {
+	id: GRAPHIFY_TAB_ID,
+	kind: "graphify",
+	title: "Graphify",
 });
 tabs.set(LIBRARY_TAB_ID, {
 	id: LIBRARY_TAB_ID,
@@ -630,7 +655,7 @@ function addTabFromMessage(msg: LoadTrailMessage): string {
  * Focus or create the tab that renders a session's raw → normalized →
  * accumulated event feed. Dedupes by sessionId the way analysis tabs dedupe by
  * analysisId. Only opencode sessions are supported for now — callers check the
- * agent before invoking (the renderer disables the button otherwise).
+ * agent before invoking (the renderer disables the button for unsupported agents).
  */
 function openSessionEventsTab(
 	sessionId: string,
@@ -707,16 +732,19 @@ function openAnalysisTab(analysisId: string): string {
 	return id;
 }
 
-function openSubsystemGraphTab(graphId: string): string {
+async function openSubsystemGraphTab(graphId: string): Promise<string> {
+	const graph = await getSubsystemGraph(graphId);
+	const title = graph?.title || `Subsystem Graph — ${graphId.slice(0, 12)}`;
 	for (const existing of tabs.values()) {
 		if (existing.kind === "subsystem-graph" && existing.graphId === graphId) {
+			// Keep the label current if the graph was renamed since it opened.
+			if (existing.title !== title) existing.title = title;
 			suggestedTabId = existing.id;
 			console.log(`[trail-viewer] subsystem-graph tab ${existing.id} focused (already open): ${graphId}`);
 			broadcastTabsChanged(existing.id);
 			return existing.id;
 		}
 	}
-	const title = `Subsystem Graph — ${graphId.slice(0, 12)}`;
 	const id = String(nextTabId++);
 	tabs.set(id, { id, kind: "subsystem-graph", title, graphId });
 	suggestedTabId = id;
@@ -920,11 +948,12 @@ function persistShareMutation(
  */
 function isStaticTab(
 	tab: TabState,
-): tab is LibraryTabState | AgentSessionsTabState | SubsystemsTabState {
+): tab is LibraryTabState | AgentSessionsTabState | SubsystemsTabState | GraphifyTabState {
 	return (
 		tab.kind === "library" ||
 		tab.kind === "agent-sessions" ||
-		tab.kind === "subsystems"
+		tab.kind === "subsystems" ||
+		tab.kind === "graphify"
 	);
 }
 
@@ -1087,11 +1116,16 @@ const requests: RequestHandlers = {
 				if (!tab) return { ok: false, error: `unknown tab: ${tabId}` };
 				if (tab.kind === "subsystem-graph") {
 					// Graph components carry repo-relative paths; reads are
-					// sandboxed to the graph's recorded repoRoot (opt-in — graphs
-					// posted without one don't serve files).
+					// sandboxed to the repo's recorded local root (opt-in —
+					// graphs posted without roots don't serve files). Multi-repo
+					// graphs resolve each file against the root of the
+					// component's own purl before falling back to `repoRoot`.
 					const graph = await getSubsystemGraph(tab.graphId);
-					const root = graph?.repoRoot;
-					if (!root) return { ok: false, error: "graph has no repoRoot" };
+					const component = graph?.components.find((c) => c.file === path);
+					const root = graph && component
+						? resolveRepoRootForComponent(graph, component.purl)
+						: graph?.repoRoot;
+					if (!root) return { ok: false, error: "graph has no local root for this file" };
 					try {
 						const absolute = resolveSandboxed(root, path);
 						const content = await fs.readFile(absolute, "utf8");
@@ -1100,7 +1134,7 @@ const requests: RequestHandlers = {
 						return { ok: false, error: (err as Error).message };
 					}
 				}
-				if (tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
+				if (tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "graphify" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt") {
 					return { ok: false, error: `${tab.kind} tab does not serve files` };
 				}
 				return tab.mode === "remote"
@@ -1111,7 +1145,7 @@ const requests: RequestHandlers = {
 				const walkPath = path ?? null;
 				if (!walkPath) {
 					const tab = getTab(tabId);
-					if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") return { files: [] };
+					if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "graphify" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") return { files: [] };
 					return tab.mode === "remote"
 						? getFileTreeRemote(tab)
 						: { files: await walkFiles(tab.repoRoot) };
@@ -1134,7 +1168,7 @@ const requests: RequestHandlers = {
 
 			createTrailNote: ({ tabId, draft }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "graphify" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1159,7 +1193,7 @@ const requests: RequestHandlers = {
 			},
 			updateTrailNote: ({ tabId, noteId, body }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "graphify" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1248,7 +1282,7 @@ const requests: RequestHandlers = {
 			},
 			shareTrail: ({ tabId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "graphify" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1333,7 +1367,7 @@ const requests: RequestHandlers = {
 			},
 			deleteTrailNote: ({ tabId, noteId }) => {
 				const tab = getTab(tabId);
-				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") {
+				if (!tab || tab.kind === "library" || tab.kind === "agent-sessions" || tab.kind === "subsystems" || tab.kind === "graphify" || tab.kind === "analysis" || tab.kind === "session-events" || tab.kind === "prompt" || tab.kind === "subsystem-graph") {
 					return { ok: false, error: `unknown trail tab: ${tabId}` };
 				}
 				if (tab.payloadKind === "tour") {
@@ -1533,17 +1567,171 @@ const requests: RequestHandlers = {
 			openSubsystemGraph: async ({ graphId }) => {
 				const graph = await getSubsystemGraph(graphId);
 				if (!graph) return { ok: false, error: `unknown graph: ${graphId}` };
-				const tabId = openSubsystemGraphTab(graphId);
+				const tabId = await openSubsystemGraphTab(graphId);
 				return { ok: true, tabId };
 			},
 			deleteSubsystemGraph: async ({ graphId }) => deleteGraphAndCloseTabs(graphId),
+			getGraphifyStatus: async ({ detailed }) => {
+				const base = withGraphifyCliBusy(
+					cachedDetailedGraphifyStatus ?? getGraphifyStatus(),
+				);
+				if (detailed) {
+					refreshGraphifyStatusDetailed();
+				}
+				return base;
+			},
+			listGraphifyGraphs: async () => {
+				const entries = await listGraphifyGraphs();
+				return {
+					graphs: entries.map((e) => ({
+						purl: e.purl,
+						purlKey: e.purlKey,
+						headSha: e.headSha,
+						dirtyHash: e.dirtyHash,
+						slotKey: e.slotKey,
+						repoRoot: e.repoRoot,
+						builtAt: e.builtAt,
+						nodeCount: e.nodeCount,
+						edgeCount: e.edgeCount,
+						graphJsonPath: e.graphJsonPath,
+					})),
+				};
+			},
+			listGraphifyRepos: async () => ({
+				repos: await listGraphifyRepos(undefined, graphifyBuildingPurls),
+				graphify: withGraphifyCliBusy(
+					cachedDetailedGraphifyStatus ?? getGraphifyStatus(),
+				),
+			}),
+			ensureGraphifyGraph: async ({ purl, repoRoot, force }) => {
+				if (!resolveGraphifyBin()) {
+					const st = getGraphifyStatus();
+					return {
+						ok: false,
+						error: "graphify CLI not found",
+						code: "graphify_not_installed",
+						installCommand: st.installCommand,
+					};
+				}
+				const key = purl.trim();
+				if (graphifyBuildingPurls.has(key)) {
+					return { ok: true, status: "building", purl: key };
+				}
+
+				graphifyBuildingPurls.add(key);
+				broadcastGraphifyChanged({ kind: "repos" });
+
+				const work = ensureGraphifyGraph({ purl: key, repoRoot, force });
+				const raced = await Promise.race([
+					work.then((r) => ({ done: true as const, r })),
+					sleepMs(250).then(() => ({ done: false as const })),
+				]);
+
+				if (raced.done) {
+					graphifyBuildingPurls.delete(key);
+					const result = raced.r;
+					if (!result.ok) {
+						const notInstalled = isGraphifyNotInstalledError(result.error);
+						broadcastGraphifyChanged({
+							kind: "ensure",
+							purl: key,
+							ensure: {
+								ok: false,
+								error: result.error,
+								code: notInstalled ? "graphify_not_installed" : "ensure_failed",
+								durationMs: result.durationMs,
+							},
+						});
+						return {
+							ok: false,
+							error: result.error,
+							code: notInstalled ? "graphify_not_installed" : "ensure_failed",
+							installCommand: notInstalled
+								? getGraphifyStatus().installCommand
+								: undefined,
+							durationMs: result.durationMs,
+						};
+					}
+					broadcastGraphifyChanged({
+						kind: "ensure",
+						purl: key,
+						ensure: {
+							ok: true,
+							status: result.status,
+							nodeCount: result.nodeCount,
+							edgeCount: result.edgeCount,
+							durationMs: result.durationMs,
+						},
+					});
+					return {
+						ok: true,
+						status: result.status,
+						purl: result.purl,
+						headSha: result.headSha,
+						dirtyHash: result.dirtyHash,
+						slotKey: result.slotKey,
+						repoRoot: result.repoRoot,
+						graphJsonPath: result.graphJsonPath,
+						nodeCount: result.nodeCount,
+						edgeCount: result.edgeCount,
+						durationMs: result.durationMs,
+					};
+				}
+
+				// Extract outlives the RPC window — finish in background.
+				void work
+					.then((result) => {
+						graphifyBuildingPurls.delete(key);
+						if (!result.ok) {
+							const notInstalled = isGraphifyNotInstalledError(result.error);
+							broadcastGraphifyChanged({
+								kind: "ensure",
+								purl: key,
+								ensure: {
+									ok: false,
+									error: result.error,
+									code: notInstalled
+										? "graphify_not_installed"
+										: "ensure_failed",
+									durationMs: result.durationMs,
+								},
+							});
+							return;
+						}
+						broadcastGraphifyChanged({
+							kind: "ensure",
+							purl: key,
+							ensure: {
+								ok: true,
+								status: result.status,
+								nodeCount: result.nodeCount,
+								edgeCount: result.edgeCount,
+								durationMs: result.durationMs,
+							},
+						});
+					})
+					.catch((err) => {
+						graphifyBuildingPurls.delete(key);
+						broadcastGraphifyChanged({
+							kind: "ensure",
+							purl: key,
+							ensure: {
+								ok: false,
+								error: err instanceof Error ? err.message : String(err),
+								code: "ensure_failed",
+							},
+						});
+					});
+
+				return { ok: true, status: "building", purl: key };
+			},
+			installGraphify: async () => startGraphifyCliJob("install"),
+			updateGraphify: async () => startGraphifyCliJob("update"),
+			uninstallGraphify: async () => startGraphifyCliJob("uninstall"),
 			openSessionEventsTab: async ({ sessionId, title, agent }) => {
-				// Only opencode sessions are supported for now — its events live
-				// in sqlite as V1 rows. Cline/pi/grok/codex use durable transcripts
-				// with different shapes; the panel disables the button, but guard
-				// here too so the RPC can't be driven blind.
 				const agentName = (agent ?? "").toLowerCase();
-				if (agentName && agentName !== "opencode") {
+				const rawFeedAgents = new Set(["opencode", "cursor"]);
+				if (agentName && !rawFeedAgents.has(agentName)) {
 					return { ok: false, error: "agent not supported" };
 				}
 				const tabId = openSessionEventsTab(sessionId, title, agent);
@@ -1600,6 +1788,134 @@ const requests: RequestHandlers = {
 			},
 			
 		};
+
+/**
+ * Graphify work (extract / uv install) outlives the Electrobun RPC window
+ * (host maxRequestTime is 5s). Same pattern as analyzeSession: return quickly,
+ * finish in the background, push `graphifyChanged`.
+ */
+const graphifyBuildingPurls = new Set<string>();
+let graphifyCliBusy: "install" | "update" | "uninstall" | null = null;
+let cachedDetailedGraphifyStatus: GraphifyCliStatus | null = null;
+let detailedRefreshInflight: Promise<void> | null = null;
+
+function sleepMs(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function withGraphifyCliBusy(status: GraphifyCliStatus): GraphifyCliStatus {
+	return { ...status, cliBusy: graphifyCliBusy };
+}
+
+function broadcastGraphifyChanged(
+	payload: TrailViewerMessages["graphifyChanged"],
+): void {
+	try {
+		(rpc.send as unknown as Record<string, (p: unknown) => void>)[
+			"graphifyChanged"
+		](payload);
+	} catch (err) {
+		console.warn(
+			`[trail-viewer] could not notify renderer (graphifyChanged): ${(err as Error).message}`,
+		);
+	}
+}
+
+function refreshGraphifyStatusDetailed(): void {
+	if (detailedRefreshInflight) return;
+	detailedRefreshInflight = (async () => {
+		try {
+			const status = withGraphifyCliBusy(await getGraphifyStatusDetailed());
+			cachedDetailedGraphifyStatus = status;
+			broadcastGraphifyChanged({ kind: "cli", status });
+		} catch (err) {
+			console.warn(
+				`[trail-viewer] graphify PyPI check failed: ${(err as Error).message}`,
+			);
+			// Still push local status so the modal stops spinning.
+			const status = withGraphifyCliBusy(getGraphifyStatus());
+			broadcastGraphifyChanged({ kind: "cli", status });
+		} finally {
+			detailedRefreshInflight = null;
+		}
+	})();
+}
+
+async function startGraphifyCliJob(
+	action: "install" | "update" | "uninstall",
+): Promise<{
+	ok: boolean;
+	error?: string;
+	bin?: string;
+	started?: boolean;
+	status?: GraphifyCliStatus;
+}> {
+	if (graphifyCliBusy) {
+		return {
+			ok: true,
+			started: true,
+			status: withGraphifyCliBusy(
+				cachedDetailedGraphifyStatus ?? getGraphifyStatus(),
+			),
+		};
+	}
+
+	// Already installed: install is a sync no-op.
+	if (action === "install" && resolveGraphifyBin()) {
+		const status = withGraphifyCliBusy(
+			cachedDetailedGraphifyStatus ?? getGraphifyStatus(),
+		);
+		refreshGraphifyStatusDetailed();
+		return { ok: true, bin: status.bin ?? undefined, status };
+	}
+
+	graphifyCliBusy = action;
+	const busyStatus = withGraphifyCliBusy(getGraphifyStatus());
+	broadcastGraphifyChanged({ kind: "cli", status: busyStatus });
+
+	void (async () => {
+		try {
+			const result =
+				action === "install"
+					? await installGraphify()
+					: action === "update"
+						? await updateGraphify()
+						: await uninstallGraphify();
+			graphifyCliBusy = null;
+			const status = withGraphifyCliBusy(
+				result.status ?? (await getGraphifyStatusDetailed()),
+			);
+			cachedDetailedGraphifyStatus = status;
+			if (!result.ok) {
+				broadcastGraphifyChanged({
+					kind: "cli",
+					status,
+					error: result.error ?? `${action} failed`,
+				});
+				console.error(
+					`[trail-viewer] graphify ${action} failed: ${result.error}`,
+				);
+				return;
+			}
+			broadcastGraphifyChanged({ kind: "cli", status });
+			broadcastGraphifyChanged({ kind: "repos" });
+		} catch (err) {
+			graphifyCliBusy = null;
+			const status = withGraphifyCliBusy(getGraphifyStatus());
+			cachedDetailedGraphifyStatus = status;
+			broadcastGraphifyChanged({
+				kind: "cli",
+				status,
+				error: err instanceof Error ? err.message : String(err),
+			});
+			console.error(
+				`[trail-viewer] graphify ${action} failed: ${(err as Error).message}`,
+			);
+		}
+	})();
+
+	return { ok: true, started: true, status: busyStatus };
+}
 
 /**
  * Fire-and-forget concept extraction for one analysis. The opencode run
@@ -1799,7 +2115,8 @@ function closeTabById(id: string): { ok: boolean; error?: string } {
 	if (
 		id === LIBRARY_TAB_ID ||
 		id === AGENT_SESSIONS_TAB_ID ||
-		id === SUBSYSTEMS_TAB_ID
+		id === SUBSYSTEMS_TAB_ID ||
+		id === GRAPHIFY_TAB_ID
 	) {
 		return { ok: false, error: "permanent tab cannot be closed" };
 	}
@@ -1816,10 +2133,8 @@ function closeTabById(id: string): { ok: boolean; error?: string } {
 }
 
 // Application menu — without one macOS has no Cmd+Q binding and no way to
-// surface Cmd+W to close the active tab. We register a minimal menu rather
-// than a full standard set to keep the viewer chrome lean; expand if the
-// trail panel grows text-editing affordances that need the Edit menu's
-// native roles.
+// surface Cmd+W to close the active tab. We keep the viewer chrome lean; the
+// Edit menu's native roles are what wire Cmd+C/V into the webviews' clipboard.
 ApplicationMenu.setApplicationMenu([
 	{
 		submenu: [
@@ -1830,6 +2145,18 @@ ApplicationMenu.setApplicationMenu([
 			{ role: "showAll" },
 			{ type: "separator" },
 			{ role: "quit", accelerator: "CommandOrControl+Q" },
+		],
+	},
+	{
+		label: "Edit",
+		submenu: [
+			{ role: "undo" },
+			{ role: "redo" },
+			{ type: "separator" },
+			{ role: "cut" },
+			{ role: "copy" },
+			{ role: "paste" },
+			{ role: "selectAll" },
 		],
 	},
 	{
@@ -1859,7 +2186,12 @@ startIpcServer(async (msg) => {
 			// Bring a running viewer to a permanent tab (e.g. the CLI's
 			// `principal-ai agent-sessions`). The host suggests the focus; the
 			// renderer applies it to its own active-tab state.
-			if (msg.tabId !== LIBRARY_TAB_ID && msg.tabId !== AGENT_SESSIONS_TAB_ID) {
+			if (
+				msg.tabId !== LIBRARY_TAB_ID &&
+				msg.tabId !== AGENT_SESSIONS_TAB_ID &&
+				msg.tabId !== SUBSYSTEMS_TAB_ID &&
+				msg.tabId !== GRAPHIFY_TAB_ID
+			) {
 				return { ok: false, error: `unknown permanent tab: ${msg.tabId}` };
 			}
 			suggestedTabId = msg.tabId;
@@ -1872,7 +2204,7 @@ startIpcServer(async (msg) => {
 			return { ok: true };
 		}
 		if (msg.kind === "LOAD_SUBSYSTEM_GRAPH") {
-			const tabId = openSubsystemGraphTab(msg.graphId);
+			const tabId = await openSubsystemGraphTab(msg.graphId);
 			broadcastTabsChanged(tabId);
 			try {
 				browserWindow.focus();
@@ -1896,7 +2228,7 @@ startIpcServer(async (msg) => {
 
 // HTTP server for agent communication (subsystem graphs, etc.)
 startHttpServer(async (graphId) => {
-	const tabId = openSubsystemGraphTab(graphId);
+	const tabId = await openSubsystemGraphTab(graphId);
 	broadcastTabsChanged(tabId);
 	try {
 		browserWindow.focus();

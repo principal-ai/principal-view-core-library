@@ -13,6 +13,14 @@
  */
 
 import type { AgentSessionEvent } from "@principal-ai/agent-monitoring";
+import type {
+	SubsystemComponent,
+	SubsystemComponentEdge,
+	SubsystemGraphDocument,
+} from "@principal-ai/principal-view-react";
+
+/** Canonical subsystem-graph model types, re-shared with both processes. */
+export type { SubsystemComponent, SubsystemComponentEdge, SubsystemGraphDocument };
 
 export type ViewerMode = "local" | "remote";
 export type PayloadKind = "trail" | "tour";
@@ -182,35 +190,13 @@ export interface SubsystemSnapshot {
 	sessionIds: string[];
 }
 
-/** A component node in a subsystem graph. */
-export interface SubsystemGraphComponent {
-	id: string;
-	name: string;
-	kind: string;
-	file: string;
-	purl: string;
-	purpose?: string;
-	symbol?: string;
-	layer?: number;
-	capture?: "edited" | "analyzed" | "referenced";
-}
-
-/** A cross-component edge in a subsystem graph. */
-export interface SubsystemGraphEdge {
-	id: string;
-	from: string;
-	to: string;
-	mechanism: string;
-	refs?: string[];
-}
-
 /** On-disk record for a persisted subsystem graph. */
 export interface StoredSubsystemGraph {
 	id: string;
 	title: string;
 	description?: string;
-	components: SubsystemGraphComponent[];
-	edges: SubsystemGraphEdge[];
+	components: SubsystemComponent[];
+	edges: SubsystemComponentEdge[];
 	createdAt: string;
 	updatedAt: string;
 	source?: string;
@@ -230,6 +216,53 @@ export interface SubsystemGraphSummary {
 	updatedAt: string;
 	source?: string;
 	repo?: { owner: string; name: string };
+}
+
+/** Cached graphify knowledge-graph slot under ~/.principal/graphify-graphs. */
+export interface GraphifyGraphSummary {
+	purl: string;
+	purlKey: string;
+	headSha: string;
+	dirtyHash: string | null;
+	slotKey: string;
+	repoRoot: string;
+	builtAt: string;
+	nodeCount: number;
+	edgeCount: number;
+	graphJsonPath: string;
+}
+
+export interface GraphifyCliStatus {
+	installed: boolean;
+	bin: string | null;
+	conventionalBin: string;
+	installCommand: string;
+	installedVersion: string | null;
+	latestVersion: string | null;
+	updateAvailable: boolean | null;
+	/** Host is running install/update/uninstall in the background. */
+	cliBusy?: "install" | "update" | "uninstall" | null;
+}
+
+/** Alexandria repo crossed with graphify cache status for the Graphify tab. */
+export interface GraphifyRepoEntry {
+	path: string;
+	owner: string;
+	name: string;
+	purl: string;
+	headSha: string;
+	dirtyHash: string | null;
+	slotKey: string;
+	/** ready = cache matches HEAD(+dirty); building = ensure in flight; missing = needs a run. */
+	status: "ready" | "missing" | "building";
+	cached: {
+		slotKey: string;
+		nodeCount: number;
+		edgeCount: number;
+		builtAt: string;
+		graphJsonPath: string;
+		matchesCurrent: boolean;
+	} | null;
 }
 
 /** A concept card deliberately saved out of an analysis. Carries the full card
@@ -297,7 +330,7 @@ export interface AnalysisSummary {
 
 export interface TabSummary {
 	id: string;
-	kind: "library" | "trail" | "agent-sessions" | "analysis" | "session-events" | "prompt" | "subsystem-graph" | "subsystems";
+	kind: "library" | "trail" | "agent-sessions" | "analysis" | "session-events" | "prompt" | "subsystem-graph" | "subsystems" | "graphify";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -307,7 +340,7 @@ export interface TabFullState {
 	ok: boolean;
 	error?: string;
 	id: string;
-	kind: "library" | "trail" | "agent-sessions" | "analysis" | "session-events" | "prompt" | "subsystem-graph" | "subsystems";
+	kind: "library" | "trail" | "agent-sessions" | "analysis" | "session-events" | "prompt" | "subsystem-graph" | "subsystems" | "graphify";
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
@@ -568,6 +601,76 @@ export type TrailViewerRequests = {
 		params: { graphId: string };
 		response: { ok: boolean; error?: string };
 	};
+	getGraphifyStatus: {
+		params: { detailed?: boolean };
+		response: GraphifyCliStatus;
+	};
+	listGraphifyGraphs: {
+		params: Record<string, never>;
+		response: { graphs: GraphifyGraphSummary[] };
+	};
+	listGraphifyRepos: {
+		params: Record<string, never>;
+		response: { repos: GraphifyRepoEntry[]; graphify: GraphifyCliStatus };
+	};
+	/**
+	 * Ensure a graphify graph for a repo. Cache hits may return immediately;
+	 * extracts run in the background and return `status: "building"`. Completion
+	 * is pushed via `graphifyChanged` (host RPC is capped at a few seconds).
+	 */
+	ensureGraphifyGraph: {
+		params: { purl: string; repoRoot?: string; force?: boolean };
+		response: {
+			ok: boolean;
+			error?: string;
+			code?: string;
+			installCommand?: string;
+			status?: "hit" | "built" | "building";
+			purl?: string;
+			headSha?: string;
+			dirtyHash?: string | null;
+			slotKey?: string;
+			repoRoot?: string;
+			graphJsonPath?: string;
+			nodeCount?: number;
+			edgeCount?: number;
+			durationMs?: number;
+		};
+	};
+	/**
+	 * Install / update / uninstall start in the background when they would
+	 * exceed the RPC window. `started: true` means listen for `graphifyChanged`.
+	 */
+	installGraphify: {
+		params: Record<string, never>;
+		response: {
+			ok: boolean;
+			error?: string;
+			bin?: string;
+			started?: boolean;
+			status?: GraphifyCliStatus;
+		};
+	};
+	updateGraphify: {
+		params: Record<string, never>;
+		response: {
+			ok: boolean;
+			error?: string;
+			bin?: string;
+			started?: boolean;
+			status?: GraphifyCliStatus;
+		};
+	};
+	uninstallGraphify: {
+		params: Record<string, never>;
+		response: {
+			ok: boolean;
+			error?: string;
+			bin?: string;
+			started?: boolean;
+			status?: GraphifyCliStatus;
+		};
+	};
 	openPromptTab: {
 		params: Record<string, never>;
 		response: { ok: boolean; error?: string; tabId?: string };
@@ -674,6 +777,27 @@ export type TrailViewerMessages = {
 	 *  The renderer merges these by `sessionId` into its list snapshot. */
 	serverEventsChanged: {
 		sessions: ServerSessionRow[];
+	};
+	/**
+	 * Graphify background work finished or CLI status refreshed (PyPI check,
+	 * install/update/uninstall, ensure extract). Renderer should refresh the
+	 * Graphify tab / CLI modal from this instead of awaiting long RPCs.
+	 */
+	graphifyChanged: {
+		kind: "cli" | "ensure" | "repos";
+		status?: GraphifyCliStatus;
+		/** Set when a background CLI action or ensure failed. */
+		error?: string;
+		purl?: string;
+		ensure?: {
+			ok: boolean;
+			error?: string;
+			code?: string;
+			status?: "hit" | "built" | "building";
+			nodeCount?: number;
+			edgeCount?: number;
+			durationMs?: number;
+		};
 	};
 }
 

@@ -27,6 +27,7 @@ import { TabStrip } from "./components/TabStrip";
 import { AgentSessionsOverviewView } from "./views/AgentSessions";
 import { LibraryView } from "./views/LibraryView";
 import { SubsystemGraphsView } from "./views/SubsystemGraphsView";
+import { GraphifyReposView } from "./views/GraphifyReposView";
 import { AnalysisView } from "./views/AnalysisView";
 import { SessionEventsView } from "./views/SessionEventsView";
 import { PromptView } from "./views/PromptView";
@@ -80,7 +81,7 @@ class ErrorBoundary extends Component<
 // while inactive), so heavy views like the library don't reload every time you
 // switch back to them. Trail tabs are excluded — each one mounts a full 3D
 // city, so only the active trail is mounted at a time.
-const STATIC_TAB_IDS = new Set(["library", "agent-sessions", "subsystems"]);
+const STATIC_TAB_IDS = new Set(["library", "agent-sessions", "subsystems", "graphify"]);
 
 // Permanent tabs carry no host payload — their resolved state is known from the
 // tab id alone, so they mount without a getTab round-trip. The static views
@@ -90,6 +91,7 @@ function staticTabState(tabId: string): TabState | null {
 	if (tabId === "library") return { kind: "library" };
 	if (tabId === "agent-sessions") return { kind: "agent-sessions" };
 	if (tabId === "subsystems") return { kind: "subsystems" };
+	if (tabId === "graphify") return { kind: "graphify" };
 	return null;
 }
 
@@ -99,6 +101,7 @@ function renderStaticView(state: TabState): ReactNode | null {
 	if (state.kind === "library") return <LibraryView />;
 	if (state.kind === "agent-sessions") return <AgentSessionsOverviewView />;
 	if (state.kind === "subsystems") return <SubsystemGraphsView />;
+	if (state.kind === "graphify") return <GraphifyReposView />;
 	return null;
 }
 

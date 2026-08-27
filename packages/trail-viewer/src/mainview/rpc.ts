@@ -49,8 +49,13 @@ export function refreshLibrary(): void {
 
 // The mounted server-session popover registers here. The bun host's single
 // /api/event subscription pushes each session's latest event through
-// `serverEventsChanged`; subscribers merge the rows into their list snapshot.
+// `serverEventsChanged`; subscribers merge the rows into its list snapshot.
 export const serverEventSubscribers = new Set<(sessions: ServerSessionRow[]) => void>();
+
+/** Graphify background jobs (ensure / CLI install) push `graphifyChanged`. */
+export const graphifyChangeSubscribers = new Set<
+	(payload: TrailViewerMessages["graphifyChanged"]) => void
+>();
 
 const rpc = Electroview.defineRPC<TrailViewerRPC>({
 	maxRequestTime: 30000,
@@ -69,6 +74,9 @@ const rpc = Electroview.defineRPC<TrailViewerRPC>({
 				const sessions = payload?.sessions ?? [];
 				if (sessions.length === 0) return;
 				for (const fn of serverEventSubscribers) fn(sessions);
+			},
+			graphifyChanged: (payload) => {
+				for (const fn of graphifyChangeSubscribers) fn(payload);
 			},
 		},
 	},
