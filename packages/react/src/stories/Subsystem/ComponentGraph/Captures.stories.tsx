@@ -175,7 +175,7 @@ const investigationComponents: SubsystemComponent[] = [
   {
     id: 'adapter',
     name: 'OpenCodeAdapter',
-    kind: 'module',
+    construct: 'module',
     file: 'apps/server/src/provider/Layers/OpenCodeAdapter.ts',
     purl: 'pkg:github/t3code/t3code',
     purpose: 'adapts opencode session/threads + events to the t3 runtime',
@@ -191,7 +191,7 @@ const investigationComponents: SubsystemComponent[] = [
   {
     id: 'ingestion',
     name: 'ProviderRuntimeIngestion',
-    kind: 'module',
+    construct: 'module',
     file: 'apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts',
     purl: 'pkg:github/t3code/t3code',
     purpose: 'ingests provider events into the runtime',
@@ -201,7 +201,7 @@ const investigationComponents: SubsystemComponent[] = [
   {
     id: 'contracts',
     name: 'orchestration',
-    kind: 'module',
+    construct: 'module',
     file: 'packages/contracts/src/orchestration.ts',
     purl: 'pkg:github/t3code/t3code',
     purpose: 'contracts for orchestration/providers',

@@ -104,11 +104,17 @@ export function inferGraphifyKind(
 	return { kind: 'unknown', evidence };
 }
 
-/** Strict claimed-vs-inferred check (no class≈function alias). */
+/** Type-family constructs all infer as the coarse 'type' — graph structure
+ *  (implements/references edges) cannot sub-classify interface vs alias vs
+ *  enum vs variable; only the source declaration can. */
+const TYPE_FAMILY: ReadonlySet<string> = new Set(['interface', 'type_alias', 'enum']);
+
+/** Strict claimed-vs-inferred check, with type-family compatibility. */
 export function kindsMatch(
 	claimed: string | undefined,
 	inferred: InferredGraphifyKind,
 ): boolean {
 	if (!claimed || claimed === 'external') return true;
+	if (TYPE_FAMILY.has(claimed)) return inferred === 'type';
 	return claimed === inferred;
 }

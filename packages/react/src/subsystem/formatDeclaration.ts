@@ -7,12 +7,22 @@
  * handles all formatting.
  */
 
-import type { SubsystemComponent } from './model';
+import type { SubsystemComponent, SubsystemComponentConstruct } from './model';
 import type { GraphifyComponentDetail } from '../graphify';
+
+const TYPE_FAMILY_CONSTRUCTS: ReadonlySet<string> = new Set([
+  'interface',
+  'type_alias',
+  'enum',
+]);
 
 export function generateDeclarationString(component: SubsystemComponent): string {
   const detail = component.detail;
-  const construct = detail?.kind ?? component.construct;
+  // Type-family constructs own their rendering even when the detail payload
+  // is the shared `type` shape — the construct says which keyword is honest.
+  const construct = TYPE_FAMILY_CONSTRUCTS.has(component.construct)
+    ? component.construct
+    : detail?.kind ?? component.construct;
   const rawName = component.symbol || component.name || 'untitled';
   // Strip class/object prefix from dotted symbols (e.g. "SessionReader.normalize" → "normalize").
   const name = rawName.includes('.') ? rawName.split('.').pop()! : rawName;
@@ -24,8 +34,10 @@ export function generateDeclarationString(component: SubsystemComponent): string
       return generateFunction(name, detail);
     case 'method':
       return generateMethod(name, detail);
-    case 'type':
-      return generateType(name, detail);
+    case 'interface':
+    case 'type_alias':
+    case 'enum':
+      return generateType(name, component.construct, detail);
     case 'module':
       return generateModule(detail);
     case 'store':
@@ -100,16 +112,31 @@ function generateMethod(name: string, detail?: GraphifyComponentDetail): string 
   return `class ${hostClass} {\n  ${name}(${params})${ret};\n}`;
 }
 
-function generateType(name: string, detail?: GraphifyComponentDetail): string {
+function generateType(
+  name: string,
+  construct: SubsystemComponentConstruct,
+  detail?: GraphifyComponentDetail,
+): string {
+  // The type-family constructs render their declaration keyword honestly —
+  // the construct itself says interface / type (alias) / enum / variable.
   const tpe = detail?.kind === 'type' ? detail : undefined;
   const props = (tpe?.properties ?? [])
     .map((p) => `  ${p.name}${p.type ? `: ${p.type}` : ''};`)
     .join('\n');
 
-  if (props) {
-    return `interface ${name} {\n${props}\n}`;
+  switch (construct) {
+    case 'enum':
+      return `enum ${name} { ${(tpe?.properties ?? []).map((p) => p.name).join(', ')} }`;
+    case 'type_alias':
+      return props
+        ? `type ${name} = {\n${props}\n};`
+        : `type ${name} = unknown;`;
+    default:
+      if (props) {
+        return `interface ${name} {\n${props}\n}`;
+      }
+      return `interface ${name} {}`;
   }
-  return `interface ${name} {}`;
 }
 
 function generateModule(detail?: GraphifyComponentDetail): string {

@@ -74,7 +74,7 @@ export const investigateOnlyComponents: SubsystemComponent[] = [
   {
     id: 'input',
     name: 'RepoNormalizedUniversalAgentSessionEvent',
-    construct: 'type',
+    construct: 'interface',
     file: 'types/RepoNormalizedUniversalAgentSessionEvent.ts',
     purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'the subsystem\u2019s input type — a repo-normalized universal event the readers produce and the accumulator consumes',
@@ -102,7 +102,7 @@ export const investigateOnlyComponents: SubsystemComponent[] = [
   {
     id: 'out',
     name: 'AgentSessionEvent',
-    construct: 'type',
+    construct: 'interface',
     file: 'src/event-processing/accumulator.ts',
     purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'the subsystem\u2019s output type — an accumulated agent-session event',

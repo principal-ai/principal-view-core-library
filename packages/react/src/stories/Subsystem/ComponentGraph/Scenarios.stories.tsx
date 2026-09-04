@@ -39,7 +39,7 @@ const mermaidComponents: SubsystemComponent[] = [
   {
     id: 'input',
     name: 'MarkdownContent',
-    construct: 'type',
+    construct: 'type_alias',
     file: 'industryMarkdown/components/IndustryMarkdownSlide.tsx',
     purl: mermaidPurl,
     purpose: 'raw markdown string — the slide\u2019s input',
@@ -57,7 +57,7 @@ const mermaidComponents: SubsystemComponent[] = [
   {
     id: 'chunk',
     name: 'MermaidChunk',
-    construct: 'type',
+    construct: 'type_alias',
     file: 'industryMarkdown/types/customMarkdownChunks.ts',
     purl: mermaidPurl,
     purpose: 'parsed chunk — code string + id, the slide\u2019s output per mermaid block',
@@ -286,7 +286,7 @@ const accessSurfaceComponents: SubsystemComponent[] = [
   {
     id: 'ipc-entry',
     name: 'TrailViewerMessages',
-    construct: 'type',
+    construct: 'interface',
     file: 'packages/trail-viewer/src/shared/contract.ts',
     purl: coreLibPurl2,
     symbol: 'TrailViewerMessages',

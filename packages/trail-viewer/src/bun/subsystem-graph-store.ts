@@ -279,7 +279,10 @@ export const SUBSYSTEM_COMPONENT_CONSTRUCTS = [
 	"class",
 	"function",
 	"method",
-	"type",
+	"interface",
+	"type_alias",
+	"enum",
+	"store",
 	"external",
 ] as const;
 

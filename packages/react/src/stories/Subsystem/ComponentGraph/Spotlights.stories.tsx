@@ -146,16 +146,55 @@ const corePurl = 'pkg:github/principal-ai/principal-view-core-library';
 
 const nodeSpotlights: Array<{ label: string; component: SubsystemComponent; note: string }> = [
   {
+    label: 'construct: type_alias — a type alias',
+    note: 'the `type` keyword form: `type X = { … }` or a union — anything `=`-assigned',
+    component: {
+      id: 'alias-status',
+      name: 'AnalysisStatus',
+      construct: 'type_alias',
+      file: 'packages/trail-viewer/src/bun/analysis.ts',
+      purl: corePurl,
+      symbol: 'AnalysisStatus',
+      detail: {
+        kind: 'type',
+        properties: [
+          { name: 'state', type: "'idle' | 'running' | 'done'" },
+          { name: 'startedAt', type: 'number' },
+        ],
+        usedBy: [],
+        implementors: [],
+      } satisfies GraphifyComponentDetail,
+    },
+  },
+  {
     label: 'role: entry on construct: type — contract as entry',
     note: 'same role, different inherited anatomy — entries are topology, not shape',
     component: {
-      id: 'ipc-entry',
+        id: 'ipc-entry',
       name: 'TrailViewerMessages',
-      construct: 'type',
+      construct: 'interface',
       file: 'packages/trail-viewer/src/shared/contract.ts',
       purl: corePurl,
       symbol: 'TrailViewerMessages',
       role: 'entry',
+    },
+  },
+  {
+    label: 'construct: enum — runtime values + a type',
+    note: 'the one type-family form that exists at runtime; members render in the drill-down',
+    component: {
+      id: 'enum-phase',
+      name: 'VerificationPhase',
+      construct: 'enum',
+      file: 'packages/trail-viewer/src/bun/verify.ts',
+      purl: corePurl,
+      symbol: 'VerificationPhase',
+      detail: {
+        kind: 'type',
+        properties: [{ name: 'idle' }, { name: 'checking' }, { name: 'done' }],
+        usedBy: [],
+        implementors: [],
+      } satisfies GraphifyComponentDetail,
     },
   },
   {
@@ -479,9 +518,9 @@ const anatomyComponents: Array<{ label: string; component: SubsystemComponent; n
     label: 'type detail → interface fields',
     note: 'the IPC contract as an entry: anatomy inherited from the type',
     component: {
-      id: 'ipc-entry',
+        id: 'ipc-entry',
       name: 'TrailViewerMessages',
-      construct: 'type',
+      construct: 'interface',
       file: 'packages/trail-viewer/src/shared/contract.ts',
       purl: corePurl,
       symbol: 'TrailViewerMessages',
@@ -512,6 +551,42 @@ const anatomyComponents: Array<{ label: string; component: SubsystemComponent; n
         hostClass: 'SessionCache',
         parameters: [{ name: 'record', type: 'SessionRecord' }],
         returnType: 'void',
+      },
+    },
+  },
+  {
+    label: 'type_alias detail → braced alias',
+    note: 'the alias renders as `type X = { … }` — the honest keyword form',
+    component: {
+      id: 'anatomy-alias',
+      name: 'AnalysisStatus',
+      construct: 'type_alias',
+      file: 'packages/trail-viewer/src/bun/analysis.ts',
+      purl: corePurl,
+      symbol: 'AnalysisStatus',
+      detail: {
+        kind: 'type',
+        properties: [{ name: 'state', type: "'idle' | 'running'" }],
+        usedBy: [],
+        implementors: [],
+      },
+    },
+  },
+  {
+    label: 'enum detail → enum declaration',
+    note: 'members render inline — the runtime type',
+    component: {
+      id: 'anatomy-enum',
+      name: 'VerificationPhase',
+      construct: 'enum',
+      file: 'packages/trail-viewer/src/bun/verify.ts',
+      purl: corePurl,
+      symbol: 'VerificationPhase',
+      detail: {
+        kind: 'type',
+        properties: [{ name: 'idle' }, { name: 'checking' }, { name: 'done' }],
+        usedBy: [],
+        implementors: [],
       },
     },
   },

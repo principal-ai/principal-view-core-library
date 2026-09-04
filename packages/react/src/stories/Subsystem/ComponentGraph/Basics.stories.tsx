@@ -80,7 +80,7 @@ function PlaygroundDemo({ leftCount, rightCount, showEdgeLabels }: { leftCount: 
     comps.push({
       id: `l${i}`,
       name: `Left${i}`,
-      kind: 'class',
+      construct: 'class',
       file: `left${i}.ts`,
       purl: 'pkg:github/principal-ai/playground',
       purpose: `left layer node ${i}`,
@@ -90,7 +90,7 @@ function PlaygroundDemo({ leftCount, rightCount, showEdgeLabels }: { leftCount: 
     comps.push({
       id: `r${i}`,
       name: `Right${i}`,
-      kind: 'class',
+      construct: 'class',
       file: `right${i}.ts`,
       purl: 'pkg:github/principal-ai/playground',
       purpose: `right layer node ${i}`,

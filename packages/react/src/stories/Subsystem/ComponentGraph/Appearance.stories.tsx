@@ -46,7 +46,7 @@ const namingConventionComponents: SubsystemComponent[] = [
   {
     id: 'camel',
     name: 'accumulateToAgentSessionEvents',
-    kind: 'function',
+    construct: 'function',
     file: 'src/event-processing/accumulator.ts',
     purl: 'pkg:github/principal-ai/agent-monitoring',
     symbol: 'accumulateToAgentSessionEvents',
@@ -54,7 +54,7 @@ const namingConventionComponents: SubsystemComponent[] = [
   {
     id: 'snake',
     name: 'repo_normalized_universal_event',
-    kind: 'type',
+    construct: 'interface',
     file: 'src/event-processing/repo_normalized.ts',
     purl: 'pkg:github/principal-ai/agent-monitoring',
     symbol: 'repo_normalized_universal_event',
@@ -62,7 +62,7 @@ const namingConventionComponents: SubsystemComponent[] = [
   {
     id: 'pascal',
     name: 'RepoNormalizedUniversalAgentSessionEvent',
-    kind: 'class',
+    construct: 'class',
     file: 'src/event-processing/RepoNormalized.ts',
     purl: 'pkg:github/principal-ai/agent-monitoring',
     symbol: 'RepoNormalizedUniversalAgentSessionEvent',
@@ -70,7 +70,7 @@ const namingConventionComponents: SubsystemComponent[] = [
   {
     id: 'acronym',
     name: 'ProcessSSEStreamForEventToken',
-    kind: 'function',
+    construct: 'function',
     file: 'src/event-processing/sse.ts',
     purl: 'pkg:github/principal-ai/agent-monitoring',
     symbol: 'ProcessSSEStreamForEventToken',
@@ -78,7 +78,7 @@ const namingConventionComponents: SubsystemComponent[] = [
   {
     id: 'method',
     name: 'normalize',
-    kind: 'function',
+    construct: 'function',
     file: 'src/session/SessionReader.ts',
     purl: 'pkg:github/principal-ai/agent-monitoring',
     symbol: 'SessionReader.normalize',
@@ -86,7 +86,7 @@ const namingConventionComponents: SubsystemComponent[] = [
   {
     id: 'pkg',
     name: 'trail-viewer',
-    kind: 'external',
+    construct: 'external',
     file: '',
     purl: 'pkg:npm/@principal-ai/trail-viewer',
     symbol: '',
@@ -121,7 +121,7 @@ const kindVariationComponents: SubsystemComponent[] = [
   {
     id: 'cls-bare',
     name: 'SessionStore',
-    kind: 'class',
+    construct: 'class',
     file: 'src/session/SessionStore.ts',
     purl: variationPurl,
     purpose: 'no drill-down — renders a plain `class SessionStore`',
@@ -131,7 +131,7 @@ const kindVariationComponents: SubsystemComponent[] = [
   {
     id: 'cls-members',
     name: 'Transcoder',
-    kind: 'class',
+    construct: 'class',
     file: 'src/session/Transcoder.ts',
     purl: variationPurl,
     purpose: 'members only — methods with typed params + returns, a typed field',
@@ -154,7 +154,7 @@ const kindVariationComponents: SubsystemComponent[] = [
   {
     id: 'cls-relations',
     name: 'HttpTransport',
-    kind: 'class',
+    construct: 'class',
     file: 'src/transport/HttpTransport.ts',
     purl: variationPurl,
     purpose: 'relationships only — extends + implements, constructed-by comment; empty body elides the braces',
@@ -175,7 +175,7 @@ const kindVariationComponents: SubsystemComponent[] = [
   {
     id: 'fn-bare',
     name: 'bootstrap',
-    kind: 'function',
+    construct: 'function',
     file: 'src/bootstrap.ts',
     purl: variationPurl,
     purpose: 'no drill-down — renders a plain `function bootstrap()`',
@@ -185,7 +185,7 @@ const kindVariationComponents: SubsystemComponent[] = [
   {
     id: 'fn-signature',
     name: 'normalizeSession',
-    kind: 'function',
+    construct: 'function',
     file: 'src/event-processing/normalize.ts',
     purl: variationPurl,
     purpose: 'signature only — named + positional (type-only) params, array return; no callers/callees comments',
@@ -205,7 +205,7 @@ const kindVariationComponents: SubsystemComponent[] = [
   {
     id: 'fn-calls',
     name: 'mergeSessions',
-    kind: 'function',
+    construct: 'function',
     file: 'src/session/merge.ts',
     purl: variationPurl,
     purpose: 'signature + call relationships — union-typed param, generic return, called-by / calls trailing comments',
@@ -227,7 +227,7 @@ const kindVariationComponents: SubsystemComponent[] = [
   {
     id: 'ty-bare',
     name: 'RawFrame',
-    kind: 'type',
+    construct: 'interface',
     file: 'src/session/RawFrame.ts',
     purl: variationPurl,
     purpose: 'no drill-down — renders a plain `interface RawFrame`',
@@ -237,7 +237,7 @@ const kindVariationComponents: SubsystemComponent[] = [
   {
     id: 'ty-fields',
     name: 'SessionRecord',
-    kind: 'type',
+    construct: 'interface',
     file: 'src/session/transcript.ts',
     purl: variationPurl,
     purpose: 'fields only — typed interface body, nothing else',
@@ -256,7 +256,7 @@ const kindVariationComponents: SubsystemComponent[] = [
   {
     id: 'ty-full',
     name: 'Transport',
-    kind: 'type',
+    construct: 'interface',
     file: 'src/transport/Transport.ts',
     purl: variationPurl,
     purpose: 'full — fields + implemented-by (clicks through to HttpTransport) + used-by comments',
@@ -274,7 +274,7 @@ const kindVariationComponents: SubsystemComponent[] = [
   {
     id: 'mod-bare',
     name: 'transcript',
-    kind: 'module',
+    construct: 'module',
     file: 'src/session/transcript.ts',
     purl: variationPurl,
     purpose: 'no drill-down — symbol-less module named from its file basename',
@@ -284,7 +284,7 @@ const kindVariationComponents: SubsystemComponent[] = [
   {
     id: 'mod-exports',
     name: 'paths',
-    kind: 'module',
+    construct: 'module',
     file: 'src/session/paths.ts',
     purl: variationPurl,
     purpose: 'exports only — export statement + defines comment',
@@ -300,7 +300,7 @@ const kindVariationComponents: SubsystemComponent[] = [
   {
     id: 'mod-full',
     name: 'index',
-    kind: 'module',
+    construct: 'module',
     file: 'src/index.ts',
     purl: variationPurl,
     purpose: 'full — import statements + re-export statement + defines comment',
@@ -318,7 +318,7 @@ const kindVariationComponents: SubsystemComponent[] = [
   {
     id: 'ext-bare',
     name: 'left-pad',
-    kind: 'external',
+    construct: 'external',
     file: '',
     purl: 'pkg:npm/left-pad',
     purpose: 'no drill-down — renders a plain `external left-pad`',
@@ -328,7 +328,7 @@ const kindVariationComponents: SubsystemComponent[] = [
   {
     id: 'ext-label',
     name: 'trail-viewer',
-    kind: 'external',
+    construct: 'external',
     file: '',
     purl: 'pkg:npm/@principal-ai/trail-viewer',
     purpose: 'labeled — the full purl as a quoted string literal',

@@ -308,7 +308,10 @@ describe("findComponentConstructProblems", () => {
 			"class",
 			"function",
 			"method",
-			"type",
+			"interface",
+			"type_alias",
+			"enum",
+			"store",
 			"external",
 		]);
 	});

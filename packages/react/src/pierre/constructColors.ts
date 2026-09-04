@@ -74,15 +74,19 @@ export function constructColorsFromPierreTheme(
 
   const classColor = pick('entity.name.class');
   const functionColor = pick('entity.name.function');
+  const typeColor = pick('support.type');
   const moduleColor = pick('entity.name.namespace');
 
   return {
     class: classColor,
-    // class and type share a TextMate scope; shade type so the node taxonomy
-    // stays distinguishable
-    type: towardBackground(classColor, 0.18),
+    // interface/type are the type-name scope, shaded to separate them from
+    // class (whose declaration name shares the same hue in syntax themes)
+    interface: towardBackground(typeColor, 0.14),
+    type_alias: towardBackground(typeColor, 0.28),
     function: functionColor,
     method: towardBackground(functionColor, 0.14),
+    // enum members are constants — the generic constant hue
+    enum: pick('constant'),
     // module and store share the constant hue — the module holds the store,
     // and the store IS the retained value, so the store keeps the pure
     // `variable.other.constant` color and the module takes the shade

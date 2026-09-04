@@ -434,6 +434,18 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
     [onFileSelect],
   );
 
+  // Filename-badge clicks on nodes open the drawer through the same path as
+  // the declaration panel's file link (toggle + tree sync, no start line).
+  useEffect(() => {
+    SUBSYSTEM_CALLBACKS.onOpenFile = (componentId: string) => {
+      const comp = components.find((c) => c.id === componentId);
+      if (comp?.file) onOpenDeclarationFile(comp.file);
+    };
+    return () => {
+      SUBSYSTEM_CALLBACKS.onOpenFile = undefined;
+    };
+  }, [components, onOpenDeclarationFile]);
+
   // Detail-panel links: related-name clicks select the matching component —
   // resolved by id, name, or symbol (call labels may carry a trailing `()`).
   const resolveRelatedComponent = useCallback(

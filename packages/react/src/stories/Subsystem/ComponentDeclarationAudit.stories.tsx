@@ -39,7 +39,7 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     component: {
       id: 'fn-void',
       name: 'flush',
-      kind: 'function',
+      construct: 'function',
       file: 'src/event-processing/sink.ts',
       purl: 'pkg:github/principal-ai/agent-monitoring',
       symbol: 'flush',
@@ -54,7 +54,7 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     component: {
       id: 'fn-one',
       name: 'normalize',
-      kind: 'function',
+      construct: 'function',
       file: 'src/session/SessionReader.ts',
       purl: 'pkg:github/principal-ai/agent-monitoring',
       symbol: 'SessionReader.normalize',
@@ -70,7 +70,7 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     component: {
       id: 'fn-two',
       name: 'normalizeSession',
-      kind: 'function',
+      construct: 'function',
       file: 'src/event-processing/normalize.ts',
       purl: 'pkg:github/principal-ai/agent-monitoring',
       symbol: 'normalizeSession',
@@ -89,7 +89,7 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     component: {
       id: 'fn-rich',
       name: 'mergeSessions',
-      kind: 'function',
+      construct: 'function',
       file: 'src/session/merge.ts',
       purl: 'pkg:github/principal-ai/agent-monitoring',
       symbol: 'mergeSessions',
@@ -110,7 +110,7 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     component: {
       id: 'class-empty',
       name: 'EmptyClass',
-      kind: 'class',
+      construct: 'class',
       file: 'src/empty.ts',
       purl: 'pkg:github/principal-ai/agent-monitoring',
       symbol: 'EmptyClass',
@@ -124,7 +124,7 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     component: {
       id: 'class-props',
       name: 'Config',
-      kind: 'class',
+      construct: 'class',
       file: 'src/config.ts',
       purl: 'pkg:github/principal-ai/agent-monitoring',
       symbol: 'Config',
@@ -143,7 +143,7 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     component: {
       id: 'class-rich',
       name: 'EventProcessor',
-      kind: 'class',
+      construct: 'class',
       file: 'src/event-processing/EventProcessor.ts',
       purl: 'pkg:github/principal-ai/agent-monitoring',
       symbol: 'EventProcessor',
@@ -170,7 +170,7 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     component: {
       id: 'type-props',
       name: 'SessionRecord',
-      kind: 'type',
+      construct: 'interface',
       file: 'src/session/transcript.ts',
       purl: 'pkg:github/principal-ai/agent-monitoring',
       symbol: 'SessionRecord',
@@ -188,7 +188,7 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     component: {
       id: 'type-empty',
       name: 'BrandedId',
-      kind: 'type',
+      construct: 'interface',
       file: 'src/types.ts',
       purl: 'pkg:github/principal-ai/agent-monitoring',
       symbol: 'BrandedId',
@@ -202,7 +202,7 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     component: {
       id: 'mod-full',
       name: 'index',
-      kind: 'module',
+      construct: 'module',
       file: 'src/index.ts',
       purl: 'pkg:github/principal-ai/agent-monitoring',
       symbol: 'index',
@@ -222,7 +222,7 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     component: {
       id: 'mod-plain',
       name: 'utils',
-      kind: 'module',
+      construct: 'module',
       file: 'src/utils.ts',
       purl: 'pkg:github/principal-ai/agent-monitoring',
       symbol: 'utils',
@@ -233,7 +233,7 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     component: {
       id: 'ext',
       name: 'trail-viewer',
-      kind: 'external',
+      construct: 'external',
       file: '',
       purl: 'pkg:npm/@principal-ai/trail-viewer',
       symbol: '',
@@ -248,7 +248,7 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     component: {
       id: 'fn-no-symbol',
       name: 'anonymousHelper',
-      kind: 'function',
+      construct: 'function',
       file: 'src/helpers.ts',
       purl: 'pkg:github/principal-ai/agent-monitoring',
       detail: {
@@ -263,7 +263,7 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     component: {
       id: 'method-normalize',
       name: 'normalize',
-      kind: 'method',
+      construct: 'method',
       file: 'src/session/SessionReader.ts',
       purl: 'pkg:github/principal-ai/agent-monitoring',
       symbol: 'SessionReader.normalize',
@@ -280,7 +280,7 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     component: {
       id: 'method-dispose',
       name: 'dispose',
-      kind: 'method',
+      construct: 'method',
       file: 'src/event-processing/EventProcessor.ts',
       purl: 'pkg:github/principal-ai/agent-monitoring',
       symbol: 'EventProcessor.dispose',

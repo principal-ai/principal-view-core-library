@@ -25,7 +25,9 @@ export type SubsystemComponentConstruct =
   | 'class'
   | 'function'
   | 'method'
-  | 'type'
+  | 'interface'
+  | 'type_alias'
+  | 'enum'
   | 'module'
   | 'store'
   | 'external';
@@ -89,10 +91,13 @@ export interface SubsystemComponent {
   id: string;
   name: string;
   /**
-   * The node's construct — what it IS as a thing (class, function, type,
-   * store, external), driving node anatomy, color, and the verification
-   * strategy. Ontology: construct = what it is, role = where it sits,
-   * process = where it runs.
+   * The node's construct — what it IS as a declaration (class, function,
+   * method, interface, type alias, enum, store, external), driving node
+   * anatomy, color, badge, and the verification strategy. Every construct
+   * anchors to a definition; runtime occurrences (variables, activations,
+   * instances) are NOT constructs — they belong to a future execution-mode
+   * graph whose occurrence nodes reference these definitions. Ontology:
+   * construct = what it is, role = where it sits, process = where it runs.
    */
   construct: SubsystemComponentConstruct;
   /** Source location the component lives in (repo-root-relative path). */
@@ -199,11 +204,21 @@ export function deriveNameFromSymbol(
   }
   if (!name) name = existingName ?? 'untitled';
 
-  // Executable constructs wear `()` on the node — the visual signal that
-  // they can be called. Functions and methods (dotted symbol included);
-  // data-shaped constructs (type, store, module) render bare.
+  // Decoration = what the drill-down shows. Executable constructs wear `()`
+  // (a signature you can call); brace-bodied constructs wear ` {}` (a member
+  // body — fields for types/interfaces/enums, fields+methods for classes).
+  // Everything else (store, variable, module, external) renders bare.
   if ((construct === 'function' || construct === 'method') && !name.endsWith('()')) {
     name = `${name}()`;
+  }
+  if (
+    (construct === 'class' ||
+      construct === 'interface' ||
+      construct === 'type_alias' ||
+      construct === 'enum') &&
+    !name.endsWith('{}')
+  ) {
+    name = `${name} {}`;
   }
   return name;
 }
@@ -327,10 +342,11 @@ export function packageColor(name: string): string {
   return palette[h % palette.length];
 }
 
-/** Color per semantic role. Intentionally NOT applied to node color for now —
- *  construct owns node color; these are reserved for a future role
- *  glyph/accent experiment. (Note: `service` currently equals the class hex;
- *  pick a distinct value before ever applying it.) */
+/** Color per semantic role — applied ONLY to the role badge (top-right tab on
+ *  nodes that carry a role). The node border stays construct-colored. Note:
+ *  `service` currently equals the old class hex; harmless while role badges
+ *  are the only surface using it, but pick a distinct value if roles ever
+ *  take over node borders. */
 export const ROLE_COLOR: Record<SubsystemComponentRole, string> = {
   entry: '#ff6b35', // orange — boundary element
   service: '#0893d2', // blue — external system

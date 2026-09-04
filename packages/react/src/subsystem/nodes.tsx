@@ -18,6 +18,7 @@ import { useTheme } from '@principal-ade/industry-theme';
 import {
   MECHANISM_COLOR,
   MECHANISM_STYLE,
+  ROLE_COLOR,
   ROLE_LABEL,
   deriveNameFromSymbol,
   type SubsystemGraphNode,
@@ -30,7 +31,9 @@ export const CONSTRUCT_LABEL: Record<string, string> = {
   class: 'class',
   function: 'function',
   method: 'method',
-  type: 'type',
+  interface: 'interface',
+  type_alias: 'type alias',
+  enum: 'enum',
   module: 'module',
   store: 'store',
   external: 'external',
@@ -53,6 +56,9 @@ function breakWords(s: string): string {
 export interface SubsystemGraphCallbacks {
   /** Click a component — open its file/entry point. */
   onSelect?: (componentId: string) => void;
+  /** Click the filename badge — open that component's file in the drawer
+   *  (same path as clicking the file link in the declaration panel). */
+  onOpenFile?: (componentId: string) => void;
   /** Click an edge (or its label) — select the relationship. */
   onEdgeSelect?: (edgeId: string) => void;
   /** Hover a component (null on leave) — associates it with the file tree. */
@@ -126,36 +132,90 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
         fontFamily: theme.fonts.body,
       }}
     >
-      {/* Kind + package tooltip, shown at the top on hover */}
-      {hover && (
+      {/* Construct badge — a small tab riding the top-right border, in the
+          construct color. Persistent (no hover needed); pointer-events none so
+          clicks pass through to the node. */}
+      <div
+        style={{
+          position: 'absolute',
+          top: -9,
+          left: 10,
+          zIndex: 1,
+          fontFamily: theme.fonts.monospace,
+          fontSize: theme.fontSizes[0] * 1.1,
+          letterSpacing: 0.5,
+          textTransform: 'uppercase',
+          lineHeight: '17px',
+          color,
+          background: theme.colors.backgroundSecondary ?? theme.colors.background,
+          border: `1px solid ${color}`,
+          borderRadius: 4,
+          padding: '0 5px',
+        }}
+      >
+        {CONSTRUCT_LABEL[c.construct] ?? c.construct}
+      </div>
+
+      {/* Role badge — top-right, only when the node carries a topology role.
+          Role color (entry orange / service blue) on the badge; the node
+          border stays construct-colored. */}
+      {c.role != null && (
         <div
           style={{
             position: 'absolute',
-            top: -26,
-            left: 0,
-            zIndex: 1000,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            whiteSpace: 'nowrap',
-            fontSize: theme.fontSizes[0] * 0.8,
+            top: -9,
+            right: 10,
+            zIndex: 1,
             fontFamily: theme.fonts.monospace,
+            fontSize: theme.fontSizes[0] * 1.1,
             letterSpacing: 0.5,
-            color,
-            background: theme.colors.background,
-            border: `1px solid ${theme.colors.border}`,
+            textTransform: 'uppercase',
+            lineHeight: '17px',
+            color: ROLE_COLOR[c.role],
+            background: theme.colors.backgroundSecondary ?? theme.colors.background,
+            border: `1px solid ${ROLE_COLOR[c.role]}`,
             borderRadius: 4,
-            padding: '1px 6px',
+            padding: '0 5px',
           }}
         >
-          <span style={{ textTransform: 'uppercase' }}>
-            {c.role ? `${ROLE_LABEL[c.role]} · ` : ''}
-            {CONSTRUCT_LABEL[c.construct] ?? c.construct}
-          </span>
-          {c.file ? ` · ${c.file.split('/').pop()}` : ''}
-          {c.capture && c.capture !== 'edited' ? ` · ${c.capture}` : ''}
+          {ROLE_LABEL[c.role]}
         </div>
       )}
+
+      {/* Filename badge — a strip across the bottom border, shown on hover
+          and pinned while this node's file is open in the drawer (fileMatch).
+          Mirrors the construct/role tab badges; hidden for fileless nodes. */}
+      {(hover || fileMatch === true) && c.file ? (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: -13,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1,
+            fontFamily: theme.fonts.monospace,
+            fontSize: theme.fontSizes[0] * 1.1,
+            letterSpacing: 0.5,
+            lineHeight: '17px',
+            whiteSpace: 'nowrap',
+            // filename stays neutral — the construct color belongs to the
+            // borders and badges, not the file name
+            color: theme.colors.text ?? theme.colors.textSecondary,
+            background: theme.colors.backgroundSecondary ?? theme.colors.background,
+            border: `1px solid ${color}`,
+            borderRadius: 4,
+            padding: '0 5px',
+            cursor: 'pointer',
+          }}
+          onClick={(e) => {
+            // Open the file directly; don't also toggle node selection.
+            e.stopPropagation();
+            SUBSYSTEM_CALLBACKS.onOpenFile?.(c.id);
+          }}
+        >
+          {c.file.split('/').pop()}
+        </div>
+      ) : null}
 
       {/* Purpose is no longer shown as a hover tooltip below the node — it
           lives in the declaration panel and the graphify detail payload. */}
@@ -178,10 +238,11 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
         {breakWords(displayName)}
       </div>
 
-      {/* Hide the identity line when the symbol is just the title without the
-          executable `()` decoration — only show it when it adds information
+      {/* Hide the identity line when the symbol is just the title without its
+          decoration (`()` or ` {}`) — only show it when it adds information
           (e.g. the dotted host on methods, or a different code identity). */}
-      {c.symbol && c.symbol !== displayName && `${c.symbol}()` !== displayName && (
+      {c.symbol &&
+        c.symbol !== displayName.replace(/ ?\{\}$/, '').replace(/\(\)$/, '') && (
         <div
           style={{
             fontSize: theme.fontSizes[0] * 0.82,

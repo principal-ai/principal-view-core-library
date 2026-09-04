@@ -37,7 +37,7 @@ const detailKindComponents: SubsystemComponent[] = [
   {
     id: 'detail-class',
     name: 'SessionReader',
-    kind: 'class',
+    construct: 'class',
     file: 'src/session/SessionReader.ts',
     purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'class-like: owns outgoing method edges',
@@ -47,7 +47,7 @@ const detailKindComponents: SubsystemComponent[] = [
   {
     id: 'detail-method',
     name: 'normalize',
-    kind: 'function',
+    construct: 'function',
     file: 'src/session/SessionReader.ts',
     purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'a class method — the specific thing this session focused on',
@@ -63,7 +63,7 @@ const detailKindComponents: SubsystemComponent[] = [
   {
     id: 'detail-fn',
     name: 'normalizeSession',
-    kind: 'function',
+    construct: 'function',
     file: 'src/event-processing/normalize.ts',
     purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'function-like: label ends () with no method edges',
@@ -82,7 +82,7 @@ const detailKindComponents: SubsystemComponent[] = [
   {
     id: 'detail-fn-rich',
     name: 'mergeSessions',
-    kind: 'function',
+    construct: 'function',
     file: 'src/session/merge.ts',
     purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'multi-param signature — named, positional (graphify captures types only), union types, generic return',
@@ -106,7 +106,7 @@ const detailKindComponents: SubsystemComponent[] = [
   {
     id: 'detail-fn-void',
     name: 'flush',
-    kind: 'function',
+    construct: 'function',
     file: 'src/event-processing/sink.ts',
     purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'no parameters, no return type — the barest function signature',
@@ -121,7 +121,7 @@ const detailKindComponents: SubsystemComponent[] = [
   {
     id: 'detail-class-rich',
     name: 'EventProcessor',
-    kind: 'class',
+    construct: 'class',
     file: 'src/event-processing/EventProcessor.ts',
     purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'class with fully-typed members — method params + returns, field types, extends + implements',
@@ -151,7 +151,7 @@ const detailKindComponents: SubsystemComponent[] = [
   {
     id: 'detail-type',
     name: 'SessionRecord',
-    kind: 'type',
+    construct: 'interface',
     file: 'src/session/transcript.ts',
     purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'type-like: revealed by incoming implements edges',
@@ -169,7 +169,7 @@ const detailKindComponents: SubsystemComponent[] = [
   {
     id: 'detail-module',
     name: 'CodexRolloutRecord',
-    kind: 'type',
+    construct: 'interface',
     file: 'src/session/transcript.ts',
     purl: 'pkg:github/principal-ai/agent-monitoring',
     purpose: 'a type symbol that lives in the transcript module; the node is the symbol, the file is its location',
@@ -188,7 +188,7 @@ const detailKindComponents: SubsystemComponent[] = [
     id: 'detail-external',
     // name = the package's name after the namespace; namespace shown above.
     name: 'trail-viewer',
-    kind: 'external',
+    construct: 'external',
     file: '',
     purl: 'pkg:npm/@principal-ai/trail-viewer',
     purpose: 'an npm package consumer — the whole package as a node',
@@ -235,7 +235,7 @@ const declarationOpenComponents: SubsystemComponent[] = [
   {
     id: 'detail',
     name: 'ComponentDeclaration',
-    kind: 'module',
+    construct: 'module',
     file: 'packages/react/src/subsystem/ComponentDeclaration.tsx',
     purl: 'pkg:github/principal-ai/principal-view-core-library',
     purpose: 'declaration panel — click file or L251 to open the drawer at the export line',
@@ -250,7 +250,7 @@ const declarationOpenComponents: SubsystemComponent[] = [
   {
     id: 'resolver',
     name: 'resolve.ts',
-    kind: 'module',
+    construct: 'module',
     file: 'packages/react/src/graphify/resolve.ts',
     purl: 'pkg:github/principal-ai/principal-view-core-library',
     purpose: 'graphify type-ref resolver (second file for tree navigation)',

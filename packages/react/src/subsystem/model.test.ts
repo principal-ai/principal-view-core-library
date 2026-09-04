@@ -81,11 +81,12 @@ describe('subsystem graph model', () => {
   });
 
   test('deriveNameFromSymbol is consistent per kind', () => {
-    // class/type/module use the symbol as-is.
-    expect(deriveNameFromSymbol('SessionReader', 'class')).toBe('SessionReader');
-    expect(deriveNameFromSymbol('SessionRecord', 'type')).toBe('SessionRecord');
-    // falls back to existing name when no symbol.
-    expect(deriveNameFromSymbol(undefined, 'class', 'SessionReader')).toBe('SessionReader');
+    // brace-bodied constructs wear {}; module uses the symbol as-is.
+    expect(deriveNameFromSymbol('SessionReader', 'class')).toBe('SessionReader {}');
+    expect(deriveNameFromSymbol('SessionRecord', 'type_alias')).toBe('SessionRecord {}');
+    expect(deriveNameFromSymbol('transcript', 'module')).toBe('transcript');
+    // falls back to existing name when no symbol (still brace-decorated).
+    expect(deriveNameFromSymbol(undefined, 'class', 'SessionReader')).toBe('SessionReader {}');
     expect(deriveNameFromSymbol('', 'external', 'trail-viewer-host')).toBe('trail-viewer-host');
   });
 
@@ -97,6 +98,8 @@ describe('subsystem graph model', () => {
     expect(deriveNameFromSymbol('run()', 'function')).toBe('run()');
     // data-shaped constructs stay bare
     expect(deriveNameFromSymbol('ROOT', 'store')).toBe('ROOT');
+    // brace bodies don't double up
+    expect(deriveNameFromSymbol('Foo {}', 'class')).toBe('Foo {}');
   });
 
   test('deriveNameFromSymbol falls back to file basename for modules', () => {
