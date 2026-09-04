@@ -35,7 +35,8 @@ import { parseTourOrThrow } from "@principal-ai/file-city-builder";
 import { readFileRemote as fetchRemoteSlice } from "./remote-files";
 import { handoffToRunning, startIpcServer, type LoadTrailMessage } from "./ipc";
 import { startHttpServer } from "./http-server";
-import { deleteSubsystemGraph, getSubsystemGraph, listSubsystemGraphs, resolveRepoRootForComponent } from "./subsystem-graph-store";
+import { deleteSubsystemGraph, getSubsystemGraph, listSubsystemGraphs, resolveRepoRootForComponent, setSubsystemGraphChangeListener, startSubsystemGraphDirWatcher, subsystemGraphFilePath } from "./subsystem-graph-store";
+import { verifySubsystemComponent } from "./verify-subsystem-component";
 import {
 	getGraphifyStatus,
 	getGraphifyStatusDetailed,
@@ -45,7 +46,7 @@ import {
 	uninstallGraphify,
 	updateGraphify,
 } from "./graphify-runner";
-import { ensureGraphifyGraph, listGraphifyGraphs, listGraphifyRepos } from "./graphify-store";
+import { ensureGraphifyGraph, listGraphifyGraphs, listGraphifyRepos, assessSubsystemGraphifyReadiness } from "./graphify-store";
 import {
 	walkLibrary,
 	walkTours,
@@ -1550,19 +1551,28 @@ const requests: RequestHandlers = {
 			},
 			listSubsystemGraphs: async () => {
 				const entries = await listSubsystemGraphs();
-				return {
-					graphs: entries.map((e) => ({
-						id: e.id,
-						title: e.title,
-						description: e.description,
-						componentCount: e.componentCount,
-						edgeCount: e.edgeCount,
-						createdAt: e.createdAt,
-						updatedAt: e.updatedAt,
-						source: e.source,
-						repo: e.repo,
-					})),
-				};
+				const graphs = await Promise.all(
+					entries.map(async (e) => {
+						const full = await getSubsystemGraph(e.id);
+						const graphify = full
+							? assessSubsystemGraphifyReadiness(full, graphifyBuildingPurls)
+							: undefined;
+						return {
+							id: e.id,
+							title: e.title,
+							description: e.description,
+							componentCount: e.componentCount,
+							edgeCount: e.edgeCount,
+							createdAt: e.createdAt,
+							updatedAt: e.updatedAt,
+							source: e.source,
+							repo: e.repo,
+							path: subsystemGraphFilePath(e.id),
+							graphify,
+						};
+					}),
+				);
+				return { graphs };
 			},
 			openSubsystemGraph: async ({ graphId }) => {
 				const graph = await getSubsystemGraph(graphId);
@@ -1571,6 +1581,8 @@ const requests: RequestHandlers = {
 				return { ok: true, tabId };
 			},
 			deleteSubsystemGraph: async ({ graphId }) => deleteGraphAndCloseTabs(graphId),
+			verifySubsystemComponent: async ({ graphId, componentId }) =>
+				verifySubsystemComponent(graphId, componentId),
 			getGraphifyStatus: async ({ detailed }) => {
 				const base = withGraphifyCliBusy(
 					cachedDetailedGraphifyStatus ?? getGraphifyStatus(),
@@ -1817,6 +1829,20 @@ function broadcastGraphifyChanged(
 	} catch (err) {
 		console.warn(
 			`[trail-viewer] could not notify renderer (graphifyChanged): ${(err as Error).message}`,
+		);
+	}
+}
+
+function broadcastSubsystemGraphChanged(
+	payload: TrailViewerMessages["subsystemGraphChanged"],
+): void {
+	try {
+		(rpc.send as unknown as Record<string, (p: unknown) => void>)[
+			"subsystemGraphChanged"
+		](payload);
+	} catch (err) {
+		console.warn(
+			`[trail-viewer] could not notify renderer (subsystemGraphChanged): ${(err as Error).message}`,
 		);
 	}
 }
@@ -2227,6 +2253,10 @@ startIpcServer(async (msg) => {
 });
 
 // HTTP server for agent communication (subsystem graphs, etc.)
+setSubsystemGraphChangeListener(broadcastSubsystemGraphChanged);
+void startSubsystemGraphDirWatcher().then(() => {
+	console.log("[trail-viewer] watching ~/.principal/subsystem-graphs for changes");
+});
 startHttpServer(async (graphId) => {
 	const tabId = await openSubsystemGraphTab(graphId);
 	broadcastTabsChanged(tabId);

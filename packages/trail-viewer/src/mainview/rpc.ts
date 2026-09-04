@@ -57,6 +57,11 @@ export const graphifyChangeSubscribers = new Set<
 	(payload: TrailViewerMessages["graphifyChanged"]) => void
 >();
 
+/** Subsystem graph store writes + disk watch push `subsystemGraphChanged`. */
+export const subsystemGraphChangeSubscribers = new Set<
+	(payload: TrailViewerMessages["subsystemGraphChanged"]) => void
+>();
+
 const rpc = Electroview.defineRPC<TrailViewerRPC>({
 	maxRequestTime: 30000,
 	handlers: {
@@ -77,6 +82,9 @@ const rpc = Electroview.defineRPC<TrailViewerRPC>({
 			},
 			graphifyChanged: (payload) => {
 				for (const fn of graphifyChangeSubscribers) fn(payload);
+			},
+			subsystemGraphChanged: (payload) => {
+				for (const fn of subsystemGraphChangeSubscribers) fn(payload);
 			},
 		},
 	},

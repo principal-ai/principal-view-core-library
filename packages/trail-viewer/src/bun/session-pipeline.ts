@@ -25,6 +25,7 @@ import {
 	PiSessionReader,
 	GrokSessionReader,
 	CodexSessionReader,
+	CursorSessionReader,
 } from "@principal-ai/agent-monitoring";
 import type {
 	AgentSessionEvent,
@@ -66,6 +67,10 @@ function openCodeDBPath(): string {
 const INCLUDE_RAW_EVENT_PAYLOADS =
 	((process.env as Record<string, string | undefined>)["TRAIL_INCLUDE_RAW"] ?? "") === "1";
 
+function wantRawPayloads(requestIncludeRaw: boolean): boolean {
+	return INCLUDE_RAW_EVENT_PAYLOADS || requestIncludeRaw;
+}
+
 /**
  * Host-side cache of fully-built session event rows, keyed by
  * `${sessionId}:${includeRaw}`. The opencode pipeline (normalize + accumulate)
@@ -106,6 +111,13 @@ const codexReader = new CodexSessionReader();
 
 function isCodexSession(sessionId: string): boolean {
 	return codexReader.readSession(sessionId) !== null;
+}
+
+// Cursor IDE stores durable agent chats under ~/.cursor/chats.
+const cursorReader = new CursorSessionReader();
+
+function isCursorSession(sessionId: string): boolean {
+	return cursorReader.readSession(sessionId) !== null;
 }
 
 // Shared Cline pipeline: reader → normalizePathsBatch → eventOp loop.
@@ -542,8 +554,118 @@ async function runCodexPipeline(sessionId: string): Promise<ClinePipelineResult 
 	return { rawEvents, normalizedEvents, accState, events, repos, repoRoot, sessionTitle, sessionSlug };
 }
 
+// Cursor IDE uses the same durable-reader → normalize → accumulate path as Codex.
+async function runCursorPipeline(
+	sessionId: string,
+	includeRaw = false,
+): Promise<ClinePipelineResult | null> {
+	const record = cursorReader.readSession(sessionId);
+	if (!record) return null;
 
-// Durable-transcript branches (cline/pi/grok/codex) all share one response
+	const promptText = record.firstPrompt.trim();
+	const sessionTitle =
+		record.title ||
+		(promptText
+			? promptText.length > 80
+				? `${promptText.slice(0, 80)}…`
+				: promptText
+			: "Cursor session");
+	const sessionSlug = "";
+
+	const rawEvents = cursorReader.toUniversalEvents(sessionId);
+	if (rawEvents.length === 0) return null;
+
+	const alexandriaRepos = loadAlexandriaRepos();
+	const knownRoots = new Map<string, RepositoryInfo>();
+	for (const [path, repo] of alexandriaRepos) {
+		knownRoots.set(path, {
+			root: repo.root,
+			remoteUrl: repo.remoteUrl,
+			owner: repo.owner,
+			repo: repo.repo,
+		});
+	}
+	const adapter = new BunNormalizationAdapter(knownRoots);
+	const normalizationService = new PathNormalizationService(adapter);
+	const normalizedEvents = await normalizationService.normalizePathsBatch(
+		rawEvents,
+		record.cwd || "",
+	);
+
+	for (const discovered of adapter.newlyDiscovered) {
+		registerProjectInAlexandria(discovered.root, discovered.remoteUrl);
+	}
+
+	const accState = createAccumulatedState(sessionTitle);
+	const events: SessionEventRow[] = [];
+	const repoSet = new Map<string, { root: string; fileCount: number }>();
+	const includeRawPayload = wantRawPayloads(includeRaw);
+	for (let i = 0; i < normalizedEvents.length; i++) {
+		const normalizedEvent = normalizedEvents[i];
+		const accResult = eventOp(accState, normalizedEvent);
+		events.push({
+			seq: i,
+			type: normalizedEvent.eventType,
+			raw: includeRawPayload ? normalizedEvent.raw : undefined,
+			normalized: includeRawPayload
+				? (normalizedEvent as unknown as Record<string, unknown>)
+				: { timestamp: normalizedEvent.timestamp },
+			accumulated: accResult,
+		});
+		for (const file of normalizedEvent.files ?? []) {
+			const root = file.repository?.gitRoot;
+			if (!root) continue;
+			const entry = repoSet.get(root) ?? { root, fileCount: 0 };
+			entry.fileCount++;
+			repoSet.set(root, entry);
+		}
+	}
+
+	const lastEvent = events[events.length - 1];
+	if (lastEvent) {
+		const lastTimestamp =
+			((lastEvent.normalized as Record<string, unknown>)["timestamp"] as number | undefined) ?? 0;
+		events.push({
+			seq: lastEvent.seq + 1,
+			type: "finished",
+			raw: null,
+			normalized: { timestamp: lastTimestamp },
+			accumulated: {
+				id: "",
+				timestamp: lastTimestamp,
+				sessionId: sessionId,
+				sessionName: accState.sessionName,
+				sessionColor: accState.sessionColor,
+				operation: "finished",
+				files: [],
+				dependencies: [],
+				description: `${accState.sessionName} finished`,
+				layers: [],
+				contextTokens: accState.contextTokens,
+			},
+		});
+	}
+
+	const repos = Array.from(repoSet.values())
+		.sort((a, b) => b.fileCount - a.fileCount)
+		.map((repo) => {
+			const parts = repo.root.replace(/\/+$/, "").split("/");
+			const known = knownRoots.get(repo.root);
+			return {
+				root: repo.root,
+				fileCount: repo.fileCount,
+				owner: known?.owner ?? null,
+				name: parts[parts.length - 1] ?? null,
+				editing: false,
+			};
+		});
+	const repoRoot = repos.length > 0 ? repos[0].root : record.cwd || undefined;
+
+	return { rawEvents, normalizedEvents, accState, events, repos, repoRoot, sessionTitle, sessionSlug };
+}
+
+
+// Durable-transcript branches (cline/pi/grok/codex/cursor) all share one response
 // assembly: persist the processed result to the disk cache, then return the
 // same `ok: true` shape each branch currently builds inline.
 function respondWithCachedPipeline(
@@ -957,6 +1079,25 @@ export async function buildSessionIndex({ days }: { days?: number }): Promise<{
 				agent: "codex",
 			});
 		}
+		// Append Cursor IDE agent chats (under ~/.cursor/chats).
+		for (const cursorSession of cursorReader.listSessions()) {
+			const createdAtStr = cursorSession.createdAt || new Date(cursorSession.lastActivity).toISOString();
+			const durationMs = Math.max(
+				0,
+				cursorSession.lastActivity - new Date(createdAtStr || 0).getTime(),
+			);
+			standalone.push({
+				id: cursorSession.sessionId,
+				title: cursorSession.title || "Cursor session",
+				slug: "",
+				createdAt: createdAtStr,
+				lastEventAt: new Date(cursorSession.lastActivity).toISOString(),
+				durationMs,
+				eventCount: cursorSession.messageCount,
+				isFinished: false,
+				agent: "cursor",
+			});
+		}
 		result = { groups, standalone, hasMore: hasOlder };
 	} catch (err) {
 		console.warn(`[trail-viewer] listSessions failed: ${(err as Error).message}`);
@@ -1108,6 +1249,16 @@ export async function processSessionEvents(
 			const result = await runCodexPipeline(sessionId);
 			if (!result) return { ok: false, error: "Codex session not found or empty" };
 			return respondWithCachedPipeline(sessionId, "codex", result);
+		} catch (err) {
+			return { ok: false, error: (err as Error).message };
+		}
+	}
+	// Cursor IDE chats are durable store.db transcripts, not opencode SQLite rows.
+	if (isCursorSession(sessionId)) {
+		try {
+			const result = await runCursorPipeline(sessionId, includeRaw);
+			if (!result) return { ok: false, error: "Cursor session not found or empty" };
+			return respondWithCachedPipeline(sessionId, "cursor", result);
 		} catch (err) {
 			return { ok: false, error: (err as Error).message };
 		}

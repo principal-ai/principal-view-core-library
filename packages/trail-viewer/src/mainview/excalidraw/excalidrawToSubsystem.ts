@@ -47,7 +47,7 @@ function componentFromMeta(meta: Record<string, unknown>): SubsystemComponent {
 	return {
 		id: asString(meta["id"]),
 		name: asString(meta["name"], asString(meta["id"])),
-		kind: (asString(meta["kind"], "module") as SubsystemComponent["kind"]),
+		construct: (asString(meta["construct"], "module") as SubsystemComponent["construct"]),
 		file: asString(meta["file"]),
 		purl: asString(meta["purl"]),
 		symbol: typeof meta["symbol"] === "string" ? meta["symbol"] : undefined,

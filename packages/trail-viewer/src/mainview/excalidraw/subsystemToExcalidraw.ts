@@ -6,11 +6,16 @@
  * arrows so the user can drag boxes and keep the connections.
  */
 
-import { computeElkLayout } from "@principal-ai/principal-view-react";
+import {
+	computeElkLayout,
+	CONSTRUCT_COLOR,
+	MECHANISM_COLOR,
+	MECHANISM_STYLE,
+} from "@principal-ai/principal-view-react";
 import type {
 	SubsystemComponent,
 	SubsystemComponentEdge,
-	SubsystemComponentKind,
+	SubsystemComponentConstruct,
 	SubsystemEdgeMechanism,
 } from "@principal-ai/principal-view-react";
 import type { Edge, Node } from "@xyflow/react";
@@ -45,61 +50,17 @@ export function centerExcalidrawElements<
 	return elements.map((e) => (e.isDeleted ? e : { ...e, x: e.x - cx, y: e.y - cy }));
 }
 
-const KIND_COLOR: Record<SubsystemComponentKind, string> = {
-	class: "#0893d2",
-	function: "#6c5ce7",
-	type: "#e07a5f",
-	module: "#4ec9b0",
-	external: "#b48ead",
-};
-
-const MECHANISM_COLOR: Record<SubsystemEdgeMechanism, string> = {
-	imports: "#0893d2",
-	imports_from: "#5aa9e6",
-	re_exports: "#3aa5c9",
-	defines: "#2e86ab",
-	calls: "#4ec9b0",
-	extends: "#b48ead",
-	inherits: "#9b6fd0",
-	implements: "#c586c0",
-	mixes_in: "#d474a8",
-	uses: "#e3b341",
-	method: "#c586c0",
-	references: "#e07a5f",
-	contains: "#6c5ce7",
-	feeds: "#22c55e",
-	produces: "#e07a5f",
-	"registers-into": "#ff6b35",
-};
-
-const MECHANISM_STYLE: Record<SubsystemEdgeMechanism, "solid" | "dashed" | "dotted"> = {
-	imports: "solid",
-	imports_from: "solid",
-	re_exports: "solid",
-	defines: "solid",
-	calls: "solid",
-	extends: "dashed",
-	inherits: "dashed",
-	implements: "dashed",
-	mixes_in: "dashed",
-	uses: "solid",
-	method: "solid",
-	references: "dotted",
-	contains: "solid",
-	feeds: "solid",
-	produces: "solid",
-	"registers-into": "dashed",
-};
-
-function asKind(kind: string): SubsystemComponentKind {
+function asConstruct(construct: string): SubsystemComponentConstruct {
 	if (
-		kind === "class" ||
-		kind === "function" ||
-		kind === "type" ||
-		kind === "module" ||
-		kind === "external"
+		construct === "class" ||
+		construct === "function" ||
+		construct === "method" ||
+		construct === "type" ||
+		construct === "module" ||
+		construct === "store" ||
+		construct === "external"
 	) {
-		return kind;
+		return construct;
 	}
 	return "module";
 }
@@ -111,7 +72,7 @@ function asMechanism(mechanism: string): SubsystemEdgeMechanism {
 
 function displayName(c: SubsystemComponent): string {
 	if (c.symbol && c.symbol.trim()) return c.symbol;
-	if (c.kind === "module" && c.file) {
+	if (c.construct === "module" && c.file) {
 		const base = c.file.split("/").pop() ?? "";
 		const clean = base.replace(/\.[^.]+$/, "");
 		if (clean) return clean;
@@ -157,7 +118,7 @@ export type PrincipalComponentMeta = {
 	type: "subsystem-component";
 	id: string;
 	name: string;
-	kind: SubsystemComponentKind;
+	construct: SubsystemComponentConstruct;
 	file: string;
 	purl: string;
 	symbol?: string;
@@ -190,7 +151,7 @@ export function principalMetaForComponent(c: SubsystemComponent): PrincipalCompo
 		type: "subsystem-component",
 		id: c.id,
 		name: c.name,
-		kind: asKind(c.kind),
+		construct: asConstruct(c.construct),
 		file: c.file,
 		purl: c.purl,
 		symbol: c.symbol,
@@ -261,7 +222,7 @@ export async function layoutSubsystemForExcalidraw(
 				component: {
 					id: extId,
 					name: label,
-					kind: "external",
+					construct: "external",
 					purl: "external",
 					file: "",
 					purpose: "cross-package integration target",
@@ -342,7 +303,7 @@ export async function subsystemGraphToExcalidrawScene(
 	const labelColor = "#1e1e1e";
 
 	for (const n of laid.nodes) {
-		const kind = asKind(n.component.kind);
+		const construct = asConstruct(n.component.construct);
 		skeletons.push({
 			id: n.id,
 			type: "rectangle",
@@ -350,7 +311,7 @@ export async function subsystemGraphToExcalidrawScene(
 			y: n.y,
 			width: n.width,
 			height: n.height,
-			strokeColor: KIND_COLOR[kind],
+			strokeColor: CONSTRUCT_COLOR[construct],
 			backgroundColor: "transparent",
 			fillStyle: "solid",
 			strokeWidth: 2,

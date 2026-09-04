@@ -1,13 +1,14 @@
 /**
  * SessionEventFeed — a three-column diagnostic feed over one agent session's
- * events, showing the raw V1 event → repo-normalized → accumulated (UI) pipeline
+ * events, showing the raw → repo-normalized → accumulated (UI) pipeline
  * for every row.
  *
  * Input rows match the trail-viewer's `SessionEventRow` wire shape:
  *   { seq, type, raw, normalized, accumulated }
- * `raw` is the raw V1 event payload, `normalized` its repo-normalized form, and
- * `accumulated` the AgentSessionEvent the File City UI actually renders (null
- * when the accumulator drops the event).
+ * `raw` is the agent-specific payload (opencode V1 sqlite rows, or durable
+ * reader blobs such as Cursor store.db messages), `normalized` its
+ * repo-normalized form, and `accumulated` the AgentSessionEvent the File City
+ * UI actually renders (null when the accumulator drops the event).
  *
  * Dark diagnostic palette — intentionally self-contained rather than themed.
  */
@@ -100,6 +101,81 @@ function partOf(e: V1RawEvent | null): AnyRecord | undefined {
   return dataOf(e).part as AnyRecord | undefined;
 }
 
+/** True when the payload looks like an opencode V1 sqlite event row. */
+function isV1RawEvent(e: V1RawEvent | null): boolean {
+  return typeof e?.type === 'string' && e.type.length > 0;
+}
+
+/**
+ * Cursor store.db blobs (and other durable readers) put the whole message in
+ * `raw` — no `type` / `data` envelope. Pull a presentable kind + summary from
+ * the common shapes CursorSessionReader emits:
+ *   - chat message: `{ role, content, id? }`
+ *   - tool wrapper: `{ message, block }` where block is tool-call / tool-result
+ *   - session meta: `{ title?, cwd?, schemaVersion? }`
+ */
+function durableRawKind(e: AnyRecord): string {
+  const block = e.block as AnyRecord | undefined;
+  if (block && typeof block === 'object') {
+    const toolName = (block.toolName ?? block.name) as string | undefined;
+    const blockType = block.type as string | undefined;
+    if (blockType === 'tool-call' || blockType === 'tool_use') {
+      return toolName ? `tool-call:${toolName}` : 'tool-call';
+    }
+    if (blockType === 'tool-result' || blockType === 'tool_result') {
+      return toolName ? `tool-result:${toolName}` : 'tool-result';
+    }
+    if (typeof blockType === 'string') return blockType;
+  }
+  if (typeof e.role === 'string') return e.role;
+  if (typeof e.title === 'string' || typeof e.cwd === 'string' || typeof e.schemaVersion === 'number') {
+    return 'session-meta';
+  }
+  return 'durable-raw';
+}
+
+function durableRawDescribe(e: AnyRecord): string {
+  const block = e.block as AnyRecord | undefined;
+  if (block && typeof block === 'object') {
+    const toolName = (block.toolName ?? block.name) as string | undefined;
+    const blockType = block.type as string | undefined;
+    if (blockType === 'tool-call' || blockType === 'tool_use') {
+      const args = block.args ?? block.input;
+      const summary = toolSummary(args);
+      return [toolName, summary].filter(Boolean).join(' · ') || 'tool call';
+    }
+    if (blockType === 'tool-result' || blockType === 'tool_result') {
+      const result = block.result;
+      const text =
+        typeof result === 'string'
+          ? result.slice(0, 120)
+          : result !== undefined
+            ? JSON.stringify(result).slice(0, 120)
+            : '';
+      return [toolName, text].filter(Boolean).join(' · ') || 'tool result';
+    }
+  }
+  if (typeof e.role === 'string') {
+    const content = e.content;
+    if (typeof content === 'string') {
+      const tagged = content.match(/<user_query>\s*([\s\S]*?)\s*<\/user_query>/i);
+      const text = (tagged?.[1] ?? content).trim().replace(/\s+/g, ' ');
+      return text.slice(0, 120) || e.role;
+    }
+    if (Array.isArray(content)) {
+      const texts = content
+        .filter((c): c is AnyRecord => !!c && typeof c === 'object')
+        .map((c) => (typeof c.text === 'string' ? c.text : c.toolName ?? c.name ?? c.type))
+        .filter(Boolean);
+      return texts.join(' · ').slice(0, 120) || e.role;
+    }
+    return e.role;
+  }
+  if (typeof e.title === 'string') return e.title;
+  if (typeof e.cwd === 'string') return e.cwd;
+  return 'durable raw event';
+}
+
 function eventTimestamp(e: V1RawEvent | null): number {
   if (!e) return 0;
   const d = dataOf(e);
@@ -133,6 +209,14 @@ const ALL_CATEGORIES: EventCategory[] = [
 
 function eventCategory(e: V1RawEvent | null): EventCategory {
   if (!e) return 'session';
+  if (!isV1RawEvent(e)) {
+    const kind = durableRawKind(e as unknown as AnyRecord);
+    if (kind.startsWith('tool-call') || kind.startsWith('tool-result') || kind.startsWith('tool')) {
+      return 'tool';
+    }
+    if (kind === 'session-meta') return 'session';
+    return 'conversation';
+  }
   switch (e.type) {
     case 'session.created.1':
     case 'session.updated.1':
@@ -174,14 +258,18 @@ const PRESETS: Array<{ id: string; label: string; include: EventCategory[] }> = 
 /** Granular key for a card (raw event type, or part type for parts). */
 function eventKind(e: V1RawEvent | null): string {
   if (!e) return 'no-raw';
+  if (!isV1RawEvent(e)) return durableRawKind(e as unknown as AnyRecord);
   if (e.type === 'message.part.updated.1') {
     return `part:${partOf(e)?.type ?? 'unknown'}`;
   }
   return e.type;
 }
 
-function kindLabel(kind: string): string {
+function kindLabel(kind: string | undefined | null): string {
+  if (!kind) return 'unknown';
   if (kind.startsWith('part:')) return `part · ${kind.slice(5)}`;
+  if (kind.startsWith('tool-call:')) return `call · ${kind.slice('tool-call:'.length)}`;
+  if (kind.startsWith('tool-result:')) return `result · ${kind.slice('tool-result:'.length)}`;
   return kind;
 }
 
@@ -206,6 +294,7 @@ function kindColor(kind: string): string {
 
 function describe(e: V1RawEvent | null): string {
   if (!e) return 'finished';
+  if (!isV1RawEvent(e)) return durableRawDescribe(e as unknown as AnyRecord);
   const d = dataOf(e);
   const info = d.info as AnyRecord | undefined;
   const part = partOf(e);
@@ -440,7 +529,9 @@ function RawEventCard({
             }
           }
       default:
-        return <JsonView value={d} />;
+        // Durable-agent raw blobs (Cursor store.db, etc.) have no V1 `data`
+        // envelope — dump the whole payload so the expanded card isn't empty.
+        return <JsonView value={isV1RawEvent(event) ? d : event} />;
       }
     })();
 

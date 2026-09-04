@@ -1,6 +1,7 @@
 import {
   ClineSessionReader,
   CodexSessionReader,
+  CursorSessionReader,
   GrokSessionReader,
   PiSessionReader,
   type UniversalAgentSessionEvent,
@@ -36,6 +37,7 @@ export {
 export type SupportedSessionAgent =
   | "cline"
   | "codex"
+  | "cursor"
   | "opencode"
   | "pi"
   | "grok"
@@ -62,6 +64,7 @@ const clineReader = new ClineSessionReader();
 const piReader = new PiSessionReader();
 const grokReader = new GrokSessionReader();
 const codexReader = new CodexSessionReader();
+const cursorReader = new CursorSessionReader();
 
 function isClineSession(sessionId: string): boolean {
   return clineReader.readSession(sessionId) !== null;
@@ -77,6 +80,10 @@ function isGrokSession(sessionId: string): boolean {
 
 function isCodexSession(sessionId: string): boolean {
   return codexReader.readSession(sessionId) !== null;
+}
+
+function isCursorSession(sessionId: string): boolean {
+  return cursorReader.readSession(sessionId) !== null;
 }
 
 /** List Cline CLI sessions from the durable on-disk transcript. */
@@ -154,6 +161,18 @@ function listCodexSessions(): AgentSessionSummary[] {
   }));
 }
 
+/** List Cursor IDE agent chats from ~/.cursor/chats. */
+function listCursorSessions(): AgentSessionSummary[] {
+  return cursorReader.listSessions().map((record) => ({
+    agent: "cursor" as const,
+    sessionId: record.sessionId,
+    title: record.title || "Cursor session",
+    createdAt: record.createdAt || new Date(record.lastActivity).toISOString(),
+    eventCount: record.messageCount,
+    isFinished: false,
+  }));
+}
+
 /**
  * List opencode sessions, top-level only by default. Delegates to the store's
  * grouped `listSessionsWithSummaries()` which excludes subagent (child) sessions.
@@ -220,6 +239,11 @@ export function listAgentSessions(
   } catch (err) {
     if (!firstError) firstError = err as Error;
   }
+  try {
+    all.push(...listCursorSessions());
+  } catch (err) {
+    if (!firstError) firstError = err as Error;
+  }
   if (all.length === 0 && firstError) {
     throw firstError;
   }
@@ -229,11 +253,12 @@ export function listAgentSessions(
 /** Detect which agent a session id belongs to. */
 export function detectAgent(
   sessionId: string,
-): "cline" | "opencode" | "pi" | "grok" | "codex" {
+): "cline" | "opencode" | "pi" | "grok" | "codex" | "cursor" {
   if (isClineSession(sessionId)) return "cline";
   if (isPiSession(sessionId)) return "pi";
   if (isGrokSession(sessionId)) return "grok";
   if (isCodexSession(sessionId)) return "codex";
+  if (isCursorSession(sessionId)) return "cursor";
   return "opencode";
 }
 
@@ -243,11 +268,11 @@ export function detectAgent(
 export function fetchRawEvents(
   sessionId: string,
   options: {
-    agent?: "cline" | "codex" | "opencode" | "pi" | "grok";
+    agent?: "cline" | "codex" | "cursor" | "opencode" | "pi" | "grok";
     dbPath?: string;
   } = {},
 ): {
-  agent: "cline" | "codex" | "opencode" | "pi" | "grok";
+  agent: "cline" | "codex" | "cursor" | "opencode" | "pi" | "grok";
   events: UniversalAgentSessionEvent[];
   sessionMeta: AgentSessionMeta;
 } {
@@ -310,6 +335,23 @@ export function fetchRawEvents(
           typeof record?.meta.timestamp === "string"
             ? record.meta.timestamp
             : undefined,
+      },
+    };
+  }
+  if (agent === "cursor") {
+    const record = cursorReader.readSession(sessionId);
+    const promptText = (record?.firstPrompt ?? "").trim();
+    return {
+      agent,
+      events: cursorReader.toUniversalEvents(sessionId),
+      sessionMeta: {
+        sessionName: "cursor",
+        sessionTask:
+          record?.title ||
+          (promptText.length > 80 ? `${promptText.slice(0, 80)}…` : promptText) ||
+          "Cursor session",
+        workingDirectory: record?.cwd ?? "",
+        createdAt: record?.createdAt,
       },
     };
   }

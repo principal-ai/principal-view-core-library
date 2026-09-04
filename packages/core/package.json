@@ -56,11 +56,11 @@
     "zod": "3.22.0"
   },
   "peerDependencies": {
-    "@principal-ai/agent-monitoring": "^0.3.31",
+    "@principal-ai/agent-monitoring": "^0.3.43",
     "@principal-ai/codebase-composition": "^0.2.43"
   },
   "devDependencies": {
-    "@principal-ai/agent-monitoring": "^0.3.35",
+    "@principal-ai/agent-monitoring": "^0.3.43",
     "@principal-ai/codebase-composition": "^0.2.43",
     "@principal-ai/principal-view-core": "0.24.10",
     "@types/better-sqlite3": "^7.6.13",

@@ -4,7 +4,9 @@ import {
   convertSubsystemToEdges,
   buildSubsystemGraph,
   deriveNameFromSymbol,
+  formatPurl,
   packageColor,
+  subsystemGraphLayoutKey,
 } from './model';
 import type { SubsystemComponent, SubsystemComponentEdge } from './model';
 
@@ -34,11 +36,30 @@ describe('subsystem graph model', () => {
     expect(converted[0].target).toBe('reader');
   });
 
+  test('buildSubsystemGraph tolerates external components with no file', async () => {
+    const withExternal: SubsystemComponent[] = [
+      ...comps,
+      {
+        id: "proposed-watcher",
+        name: "watchDir",
+        kind: "external",
+        // Intentionally omit file/purl — agents often leave these off for externals.
+        file: undefined as unknown as string,
+        purl: undefined as unknown as string,
+      },
+    ];
+    const { nodes } = await buildSubsystemGraph({
+      components: withExternal,
+      edges: [{ id: 'e3', from: 'reader', to: 'proposed-watcher', mechanism: 'feeds' }],
+    });
+    expect(nodes.find((n) => n.id === 'proposed-watcher')).toBeDefined();
+  });
+
   test('buildSubsystemGraph creates external stub nodes for non-component targets', async () => {
     const { nodes, edges: gEdges } = await buildSubsystemGraph({ components: comps, edges });
     const external = nodes.find((n) => n.id === 'external:host');
     expect(external).toBeDefined();
-    expect(external!.data.component.kind).toBe('external');
+    expect(external!.data.component.construct).toBe('external');
     const crossEdge = gEdges.find((e) => e.target === 'external:host');
     expect(crossEdge).toBeDefined();
   });
@@ -60,12 +81,22 @@ describe('subsystem graph model', () => {
   });
 
   test('deriveNameFromSymbol is consistent per kind', () => {
-    // class/type/module/function use the symbol as-is.
+    // class/type/module use the symbol as-is.
     expect(deriveNameFromSymbol('SessionReader', 'class')).toBe('SessionReader');
     expect(deriveNameFromSymbol('SessionRecord', 'type')).toBe('SessionRecord');
     // falls back to existing name when no symbol.
     expect(deriveNameFromSymbol(undefined, 'class', 'SessionReader')).toBe('SessionReader');
     expect(deriveNameFromSymbol('', 'external', 'trail-viewer-host')).toBe('trail-viewer-host');
+  });
+
+  test('executable constructs wear () on the node', () => {
+    expect(deriveNameFromSymbol('createSubsystemGraph', 'function')).toBe('createSubsystemGraph()');
+    // methods keep the dotted ownership symbol and wear the parens
+    expect(deriveNameFromSymbol('SessionCache.put', 'method')).toBe('SessionCache.put()');
+    // already-parenthesized labels don't double up
+    expect(deriveNameFromSymbol('run()', 'function')).toBe('run()');
+    // data-shaped constructs stay bare
+    expect(deriveNameFromSymbol('ROOT', 'store')).toBe('ROOT');
   });
 
   test('deriveNameFromSymbol falls back to file basename for modules', () => {
@@ -75,5 +106,36 @@ describe('subsystem graph model', () => {
     expect(deriveNameFromSymbol('CodexRolloutRecord', 'module', undefined, 'transcript.ts')).toBe('CodexRolloutRecord');
     // File basename wins over a supplied name for modules (derivation precedence).
     expect(deriveNameFromSymbol(undefined, 'module', 'MyModule', 'x.ts')).toBe('x');
+  });
+
+  test('formatPurl renders the human identity', () => {
+    expect(formatPurl('pkg:npm/@principal-ai/core')).toBe('@principal-ai/core');
+    expect(formatPurl('pkg:github/principal-ai/agent-monitoring')).toBe('principal-ai/agent-monitoring');
+    expect(formatPurl('pkg:npm/left-pad@1.3.0')).toBe('left-pad');
+    expect(formatPurl('pkg:gitlab/group/proj?arch=amd64')).toBe('group/proj');
+    expect(formatPurl('pkg:generic/local--Users-me-my-app')).toBe('Users-me-my-app (local)');
+    // Malformed purls pass through untouched.
+    expect(formatPurl('not-a-purl')).toBe('not-a-purl');
+  });
+
+  test('subsystemGraphLayoutKey ignores declarationRef-only changes', () => {
+    const base = { components: comps, edges };
+    const withRef = {
+      components: comps.map((c, i) =>
+        i === 0
+          ? {
+              ...c,
+              declarationRef: {
+                file: c.file,
+                startLine: 42,
+                lineHash: 'abc',
+                capturedAt: new Date(0).toISOString(),
+              },
+            }
+          : c,
+      ),
+      edges,
+    };
+    expect(subsystemGraphLayoutKey(base)).toBe(subsystemGraphLayoutKey(withRef));
   });
 });

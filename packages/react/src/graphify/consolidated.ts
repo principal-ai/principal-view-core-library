@@ -55,10 +55,12 @@ export interface GraphifyMethodInfo {
   nodeId: string;
   /** Display name from the label (`.get()` → `get`). */
   name: string;
-  /** Parameter types from `references` edges with context `parameter_type`. */
-  parameters?: string[];
+  /** Typed parameters from `references` edges with context `parameter_type`. */
+  parameters?: GraphifyParamInfo[];
   /** Return type from a `references` edge with context `return_type`. */
   returnType?: string;
+  /** Backing edge target for `returnType`, when the graph had one. */
+  returnTypeRef?: GraphifyReferenceInfo;
 }
 
 /** A property/field on a class- or type-like node. */
@@ -67,16 +69,26 @@ export interface GraphifyPropertyInfo {
   name: string;
   /** Field type from a `references` edge with context `field`. */
   type?: string;
+  /** Backing edge target for `type`, when the graph had one. */
+  typeRef?: GraphifyReferenceInfo;
   /** The field's own node id when it exists (e.g. C++ `defines` nodes). */
   nodeId?: string;
 }
 
-/** A single typed parameter of a function (`references` context `parameter_type`). */
+/**
+ * A single typed parameter of a function (`references` context `parameter_type`).
+ *
+ * `ref.nodeId` is the resolvable half: it targets the type's definition node
+ * when graphify resolved the reference, or a sourceless stub node when the
+ * name was ambiguous / external (see `resolveGraphifyTypeRef`).
+ */
 export interface GraphifyParamInfo {
   /** Parameter name — not captured by graphify; left undefined. */
   name?: string;
   /** Parameter type. */
   type: string;
+  /** Backing `references[parameter_type|generic_arg]` edge target. */
+  ref?: GraphifyReferenceInfo;
 }
 
 /** One call relationship, in either direction. */
@@ -141,6 +153,8 @@ export interface GraphifyFunctionDetail {
   parameters: GraphifyParamInfo[];
   /** Return type from `references` context `return_type`. */
   returnType?: string;
+  /** Backing edge target for `returnType`, when the graph had one. */
+  returnTypeRef?: GraphifyReferenceInfo;
   /** Incoming `calls` edges. */
   callers: GraphifyCallInfo[];
   /** Outgoing `calls` edges. */
@@ -177,18 +191,48 @@ export interface GraphifyExternalDetail {
 }
 
 /**
+ * A retained-state node (`kind: 'store'`): state and its contract, no
+ * behavior. `kind` is the node's verifiable anchor — a store anchors to a
+ * *state location* (module consts, a file or db), not to a declaration.
+ * When a class manages the store's access, that is a SEPARATE node
+ * (`kind: 'class'`, methods = the access mechanism) joined by
+ * `writes`/`reads` — never merged into one hybrid node. This payload
+ * renders as state declarations (`declare const …`), never as a class
+ * stub.
+ */
+export interface GraphifyStoreDetail {
+  kind: 'store';
+  /** The retained state members (module-level consts or class fields). */
+  properties: GraphifyPropertyInfo[];
+}
+
+/** A standalone method selected from its owning class. */
+export interface GraphifyMethodDetail {
+  kind: 'method';
+  /** The class that owns this method. */
+  hostClass: string;
+  /** Parameter types from `references` context `parameter_type`. */
+  parameters?: GraphifyParamInfo[];
+  /** Return type from `references` context `return_type`. */
+  returnType?: string;
+}
+
+/**
  * The drill-down payload for a subsystem component.
  *
  * The discriminant is derived from graph structure, not read off the node:
  * method edges → class; `()` label + no method edges → function; incoming
  * `implements` → type; else module. `external` covers consumer stubs.
+ * `method` covers standalone method components selected from a class.
  */
 export type GraphifyComponentDetail =
   | GraphifyClassDetail
   | GraphifyFunctionDetail
+  | GraphifyMethodDetail
   | GraphifyTypeDetail
   | GraphifyModuleDetail
-  | GraphifyExternalDetail;
+  | GraphifyExternalDetail
+  | GraphifyStoreDetail;
 
 /** A raw graphify edge backing a facet claim (verification + provenance). */
 export interface GraphifyEdgeRef {

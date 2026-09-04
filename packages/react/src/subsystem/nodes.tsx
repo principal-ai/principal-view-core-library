@@ -2,8 +2,8 @@
  * Subsystem component/group node + edge renderers.
  *
  * Lightweight, purpose-built for the subsystem component graph: a component
- * renders its name (kind-tagged, colored by package) plus its symbol/purpose
- * and a click-to-open file chip. Groups render as package containers. Clicking
+ * renders its name (kind-tagged, colored by package) plus its symbol/purpose.
+ * Groups render as package containers. Clicking
  * a component calls `onSelect` (to open the entry point / file).
  */
 
@@ -16,18 +16,23 @@ import {
 } from '@xyflow/react';
 import { useTheme } from '@principal-ade/industry-theme';
 import {
-  KIND_COLOR,
   MECHANISM_COLOR,
+  MECHANISM_STYLE,
+  ROLE_LABEL,
   deriveNameFromSymbol,
   type SubsystemGraphNode,
   type SubsystemGraphEdge,
 } from './model';
+import { constructColorsFromPierreTheme } from '../pierre/constructColors';
+import { resolvePierreSyntaxThemeName } from '../pierre/pierreSyntaxTheme';
 
-export const KIND_LABEL: Record<string, string> = {
+export const CONSTRUCT_LABEL: Record<string, string> = {
   class: 'class',
   function: 'function',
+  method: 'method',
   type: 'type',
   module: 'module',
+  store: 'store',
   external: 'external',
 };
 
@@ -50,6 +55,8 @@ export interface SubsystemGraphCallbacks {
   onSelect?: (componentId: string) => void;
   /** Click an edge (or its label) — select the relationship. */
   onEdgeSelect?: (edgeId: string) => void;
+  /** Hover a component (null on leave) — associates it with the file tree. */
+  onHover?: (componentId: string | null) => void;
   /** Upper bound for node width; nodes grow with content up to this, then wrap. */
   maxNodeWidth?: number;
 }
@@ -58,23 +65,36 @@ export interface SubsystemGraphCallbacks {
 export const SUBSYSTEM_CALLBACKS: SubsystemGraphCallbacks = {};
 
 export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
-  const { theme } = useTheme();
+  const { theme, mode } = useTheme();
   const { data, selected, width: nodeWidth, height: nodeHeight } = props;
   const c = data.component;
-  const color = KIND_COLOR[c.kind] ?? '#888';
+  // Construct owns node color, derived from the active Pierre syntax theme —
+  // the same palette the declaration panel and file drawer render with. Role
+  // shows as the hover badge, not as color — for now; a role glyph/accent may
+  // come later.
+  const color = constructColorsFromPierreTheme(resolvePierreSyntaxThemeName(mode))[c.construct];
   const [hover, setHover] = useState(false);
   const configuredMax = SUBSYSTEM_CALLBACKS.maxNodeWidth;
   const maxWidth = configuredMax ?? 300;
   // `symbol` is the source of truth; `name` is derived from it consistently.
-  const displayName = deriveNameFromSymbol(c.symbol, c.kind, c.name, c.file);
+  const displayName = deriveNameFromSymbol(c.symbol, c.construct, c.name, c.file);
   // Set while a file is open in the drawer: true → spotlight, false → dim,
   // absent (no file open) → neutral.
   const fileMatch = data.fileMatch as boolean | undefined;
+  // Selection is stamped into data by the graph component — React Flow's own
+  // `selected` never updates because the node stops click propagation.
+  const isSelected = selected || (data.isSelected as boolean | undefined) === true;
 
   return (
     <div
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+      onMouseEnter={() => {
+        setHover(true);
+        SUBSYSTEM_CALLBACKS.onHover?.(c.id);
+      }}
+      onMouseLeave={() => {
+        setHover(false);
+        SUBSYSTEM_CALLBACKS.onHover?.(null);
+      }}
       onClick={(e) => {
         e.stopPropagation();
         SUBSYSTEM_CALLBACKS.onSelect?.(c.id);
@@ -93,7 +113,10 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
         padding: '6px 10px',
         borderRadius: 8,
         background: theme.colors.backgroundSecondary ?? theme.colors.background,
-        border: `2px solid ${selected || fileMatch ? theme.colors.primary : color}`,
+        // Selected / file-matched nodes get a thicker border; kind colors are
+        // kept for selection (thickness only). The file-open spotlight keeps
+        // its primary tint.
+        border: `${isSelected || fileMatch ? 4 : 2}px solid ${fileMatch ? theme.colors.primary : color}`,
         boxShadow: fileMatch
           ? `0 1px 4px rgba(0,0,0,0.25), 0 0 12px ${theme.colors.primary}55`
           : '0 1px 4px rgba(0,0,0,0.25)',
@@ -117,7 +140,6 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
             whiteSpace: 'nowrap',
             fontSize: theme.fontSizes[0] * 0.8,
             fontFamily: theme.fonts.monospace,
-            textTransform: 'uppercase',
             letterSpacing: 0.5,
             color,
             background: theme.colors.background,
@@ -126,36 +148,17 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
             padding: '1px 6px',
           }}
         >
-          {KIND_LABEL[c.kind] ?? c.kind}
-          {c.purl ? ` · ${c.purl}` : ''}
+          <span style={{ textTransform: 'uppercase' }}>
+            {c.role ? `${ROLE_LABEL[c.role]} · ` : ''}
+            {CONSTRUCT_LABEL[c.construct] ?? c.construct}
+          </span>
+          {c.file ? ` · ${c.file.split('/').pop()}` : ''}
           {c.capture && c.capture !== 'edited' ? ` · ${c.capture}` : ''}
         </div>
       )}
 
-      {/* Purpose tooltip, shown below the node on hover */}
-      {hover && c.purpose && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            marginTop: 4,
-            zIndex: 1000,
-            maxWidth: 260,
-            fontSize: theme.fontSizes[0] * 0.85,
-            fontFamily: theme.fonts.body,
-            color: theme.colors.text,
-            background: theme.colors.background,
-            border: `1px solid ${theme.colors.border}`,
-            borderRadius: 4,
-            padding: '4px 8px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-            lineHeight: 1.4,
-          }}
-        >
-          {c.purpose}
-        </div>
-      )}
+      {/* Purpose is no longer shown as a hover tooltip below the node — it
+          lives in the declaration panel and the graphify detail payload. */}
 
       <div
         style={{
@@ -169,15 +172,16 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
           whiteSpace: 'normal',
           overflowWrap: 'anywhere',
           maxWidth: '100%',
-          // Types get a serif name to distinguish them from runtime units.
-          fontFamily:
-            c.kind === 'type' ? 'Georgia, "Times New Roman", serif' : theme.fonts.body,
+          fontFamily: theme.fonts.body,
         }}
       >
         {breakWords(displayName)}
       </div>
 
-      {c.symbol && c.symbol !== displayName && (
+      {/* Hide the identity line when the symbol is just the title without the
+          executable `()` decoration — only show it when it adds information
+          (e.g. the dotted host on methods, or a different code identity). */}
+      {c.symbol && c.symbol !== displayName && `${c.symbol}()` !== displayName && (
         <div
           style={{
             fontSize: theme.fontSizes[0] * 0.82,
@@ -193,32 +197,6 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
           title={c.symbol}
         >
           {c.symbol}
-        </div>
-      )}
-
-      {c.file && (
-        <div
-          onClick={(e) => {
-            e.stopPropagation();
-            SUBSYSTEM_CALLBACKS.onSelect?.(c.id);
-          }}
-          style={{
-            alignSelf: 'center',
-            marginTop: 3,
-            fontSize: theme.fontSizes[0] * 0.78,
-            fontFamily: theme.fonts.monospace,
-            color: theme.colors.primary,
-            border: `1px solid ${theme.colors.border}`,
-            borderRadius: 4,
-            padding: '1px 5px',
-            cursor: 'pointer',
-            maxWidth: '100%',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {c.file.split('/').pop()}
         </div>
       )}
 
@@ -239,7 +217,9 @@ export function SubsystemEdge({
   const path = data?.elkPath ?? '';
   const mechanism = data?.mechanism ?? 'imports';
   const color = MECHANISM_COLOR[mechanism] ?? '#888';
-  const isDashed = mechanism === 'registers-into';
+  // Dash style comes from the mechanism table (dashed = inverted-control or
+  // observational relationships: hierarchy, registration, watches).
+  const isDashed = MECHANISM_STYLE[mechanism] === 'dashed';
   const dimmed = data?.dimmed === true;
   const opacity = dimmed ? 0.15 : 1;
 

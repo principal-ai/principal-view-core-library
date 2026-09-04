@@ -5,7 +5,7 @@
  *
  * Usage:
  *   bun scripts/graphify-ensure-smoke.ts <purl> [--repo-root PATH] [--force] [--bin PATH]
- *                                            [--store-root PATH]
+ *                                            [--store-root PATH] [--same-file-refs] [--inline-params]
  */
 
 import { resolve } from "node:path";
@@ -20,6 +20,8 @@ Options:
   --store-root PATH  Cache root (default ~/.principal/graphify-graphs)
   --force            Rebuild even on cache hit
   --bin PATH         Explicit graphify binary
+  --same-file-refs   Pass --same-file-refs to graphify extract
+  --inline-params    Pass --inline-params (anonymous-object param markers)
   --help
 `);
 	process.exit(2);
@@ -31,12 +33,22 @@ function parseArgs(argv: string[]) {
 	let storeRoot: string | undefined;
 	let bin: string | undefined;
 	let force = false;
+	let sameFileRefs = false;
+	let inlineParams = false;
 
 	for (let i = 0; i < argv.length; i++) {
 		const a = argv[i]!;
 		if (a === "--help" || a === "-h") usage();
 		if (a === "--force") {
 			force = true;
+			continue;
+		}
+		if (a === "--same-file-refs") {
+			sameFileRefs = true;
+			continue;
+		}
+		if (a === "--inline-params") {
+			inlineParams = true;
 			continue;
 		}
 		if (a === "--repo-root" && argv[i + 1]) {
@@ -59,7 +71,7 @@ function parseArgs(argv: string[]) {
 		else usage();
 	}
 	if (!purl) usage();
-	return { purl, repoRoot, storeRoot, bin, force };
+	return { purl, repoRoot, storeRoot, bin, force, sameFileRefs, inlineParams };
 }
 
 const opts = parseArgs(process.argv.slice(2));
@@ -73,11 +85,17 @@ console.log(
 			storeRoot: opts.storeRoot ?? "~/.principal/graphify-graphs",
 			bin: resolveGraphifyBin(opts.bin) ?? "(not found)",
 			force: opts.force,
+			sameFileRefs: opts.sameFileRefs,
+			inlineParams: opts.inlineParams,
 		},
 		null,
 		2,
 	),
 );
+
+const extraArgs: string[] = [];
+	if (opts.sameFileRefs) extraArgs.push("--same-file-refs");
+	if (opts.inlineParams) extraArgs.push("--inline-params");
 
 const result = await ensureGraphifyGraph({
 	purl: opts.purl,
@@ -85,6 +103,7 @@ const result = await ensureGraphifyGraph({
 	storeRoot: opts.storeRoot,
 	bin: opts.bin,
 	force: opts.force,
+	extraArgs: extraArgs.length ? extraArgs : undefined,
 });
 
 if (!result.ok) {

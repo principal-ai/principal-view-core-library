@@ -2,7 +2,7 @@
  * Subsystem component-graph data model + converters.
  *
  * A subsystem snapshot (see the "Subsystem artifact: facets" topic) is captured
- * as component nodes (kind-tagged source units), file refs, integration edges,
+ * as component nodes (construct-tagged source units), file refs, integration edges,
  * and entry points. This module defines the minimal document shape for the
  * *graph* facet and converts it to React Flow nodes/edges — packages render as
  * subgraphs, only cross-package edges leave the box, and shared seams
@@ -19,13 +19,49 @@ import {
 } from '@xyflow/react';
 import { computeElkLayout } from '../utils/elkLayout';
 import type { GraphifyComponentDetail } from '../graphify';
+import type { SubsystemDeclarationRef } from './declarationRef';
 
-export type SubsystemComponentKind =
+export type SubsystemComponentConstruct =
   | 'class'
   | 'function'
+  | 'method'
   | 'type'
   | 'module'
+  | 'store'
   | 'external';
+
+/**
+ * Semantic role — where the node sits in the topology, orthogonal to
+ * `construct` (what it is). Roles have *inherited* anatomy: an entry renders
+ * as its real code shape (function dispatcher, type contract); a service has
+ * no source at all (`construct: 'external'` + purl identity). Contrast with
+ * `construct: 'store'`, which introduces its own anatomy (the state block) —
+ * that is why store is a construct and not a role. Role nodes must stay anchored to real code: an
+ * `entry` is a boundary element (route dispatcher, message contract) carrying
+ * the wire address as identity; a `service` is an external system the process
+ * calls out to (identity via purl, no `process` — it belongs to no region).
+ */
+export type SubsystemComponentRole = 'entry' | 'service';
+
+// ---------------------------------------------------------------------------
+// Declaration tokens — structured source representation
+// ---------------------------------------------------------------------------
+
+export type SubsystemDeclTokenKind =
+  | 'keyword'
+  | 'name'
+  | 'member'
+  | 'type'
+  | 'punctuation'
+  | 'string'
+  | 'newline';
+
+export interface SubsystemDeclToken {
+  text: string;
+  kind: SubsystemDeclTokenKind;
+  /** Shiki/Pierre foreground when tokenized client-side; omitted on legacy wire tokens. */
+  color?: string;
+}
 
 export type SubsystemEdgeMechanism =
   | 'imports'
@@ -43,19 +79,45 @@ export type SubsystemEdgeMechanism =
   | 'contains'
   | 'feeds'
   | 'produces'
+  | 'writes'
+  | 'reads'
+  | 'watches'
   | 'registers-into';
 
-/** A component node — the named unit, kind-tagged; `file` is its location. */
+/** A component node — the named unit, construct-tagged; `file` is its location. */
 export interface SubsystemComponent {
   id: string;
   name: string;
-  kind: SubsystemComponentKind;
+  /**
+   * The node's construct — what it IS as a thing (class, function, type,
+   * store, external), driving node anatomy, color, and the verification
+   * strategy. Ontology: construct = what it is, role = where it sits,
+   * process = where it runs.
+   */
+  construct: SubsystemComponentConstruct;
   /** Source location the component lives in (repo-root-relative path). */
   file: string;
   /** PURL identifying the repo or package this component lives in (for subgraph grouping). */
   purl: string;
   /** One-line purpose shown on the node. */
   purpose?: string;
+  /**
+   * Semantic role — where the node sits in the topology (boundary element,
+   * external system), orthogonal to `construct` (what it is). Drives the
+   * glyph and the edge-pairing rules: boundary-crossing edges must terminate
+   * at an entry or a service. Retained state is NOT a role — it is
+   * `construct: 'store'` (state-block anatomy, `writes`/`reads`/`watches`
+   * inbound, `produces` outbound).
+   */
+  role?: SubsystemComponentRole;
+  /**
+   * Runtime process membership — which deployment unit this node is a
+   * member of (e.g. `trail-viewer/host`, `trail-viewer/renderer`). Nodes
+   * sharing a `process` are drawn inside one boundary region (grouping is
+   * `process ?? purl`); nodes without one sit outside every boundary
+   * (external actors, services, libraries).
+   */
+  process?: string;
   /** A symbol this component exposes / is (the node's identity). */
   symbol?: string;
   /**
@@ -74,10 +136,30 @@ export interface SubsystemComponent {
   capture?: 'edited' | 'analyzed' | 'referenced';
   /**
    * Graphify drill-down detail for this component, when the facet is anchored
-   * to a graphify node. Discriminated by kind (class/function/type/module/
+   * to a graphify node. Discriminated by kind (class/function/type/module/store/
    * external); rendered in the detail panel on click.
    */
   detail?: GraphifyComponentDetail;
+  /**
+   * Where the drill-down `detail` came from. `verified` = extracted from
+   * source by tooling (graphify AST, signature extraction) — may be trusted
+   * as matching the code. `authored` = written by the authoring agent/human
+   * to highlight specific inputs/outputs — informative, not checked against
+   * source. Detail without provenance is treated as `authored`; only tooling
+   * may claim `verified`.
+   */
+  detailProvenance?: 'verified' | 'authored';
+  /**
+   * Pre-tokenized declaration for the detail panel. When present, the
+   * renderer skips client-side tokenization. Tokens are language-agnostic;
+   * a different language just needs a different tokenizer and text joiner.
+   */
+  tokens?: SubsystemDeclToken[];
+  /**
+   * Anchored declaration location: graphify start line + hash of that line's
+   * content at capture time. Populated by verify when an exact anchor resolves.
+   */
+  declarationRef?: SubsystemDeclarationRef;
 }
 
 /** A cross-component edge in the subsystem graph. */
@@ -91,10 +173,10 @@ export interface SubsystemComponentEdge {
 }
 
 /**
- * Derive a consistent display `name` from a code `symbol` + kind.
+ * Derive a consistent display `name` from a code `symbol` + construct.
  *
- * `symbol` is the source of truth (fully-qualified code identity). For most
- * kinds the name is the symbol itself or its last dotted segment:
+ * `symbol` is the source of truth (fully-qualified code identity). The name
+ * is the symbol itself:
  *  - class/type/module/function/script/...  symbol → symbol (e.g. `SessionReader`)
  *  - method                               `Owner.method` → last segment (e.g. `SessionReader.normalize` → `normalize`)
  *  - module, no symbol → basename of `file` (e.g. `transcript.ts` → `transcript`) —
@@ -103,20 +185,51 @@ export interface SubsystemComponentEdge {
  */
 export function deriveNameFromSymbol(
   symbol: string | undefined,
-  kind: SubsystemComponentKind,
+  construct: SubsystemComponentConstruct,
   existingName?: string,
   file?: string,
 ): string {
+  let name: string | undefined;
   if (symbol && symbol.trim()) {
-    return symbol;
-  }
-  // Module nodes without a symbol are whole files → use the file basename.
-  if (kind === 'module' && file) {
+    name = symbol;
+  } else if (construct === 'module' && file) {
     const base = file.split('/').pop() ?? '';
     const clean = base.replace(/\.[^.]+$/, ''); // strip extension
-    if (clean) return clean;
+    if (clean) name = clean;
   }
-  return existingName ?? 'untitled';
+  if (!name) name = existingName ?? 'untitled';
+
+  // Executable constructs wear `()` on the node — the visual signal that
+  // they can be called. Functions and methods (dotted symbol included);
+  // data-shaped constructs (type, store, module) render bare.
+  if ((construct === 'function' || construct === 'method') && !name.endsWith('()')) {
+    name = `${name}()`;
+  }
+  return name;
+}
+
+/**
+ * Human-readable purl identity — drops the `pkg:<type>/` scheme wrapper and
+ * trailing version, keeping the package / owner-repo identity:
+ *
+ *   pkg:npm/@principal-ai/core         → `@principal-ai/core`
+ *   pkg:github/principal-ai/my-repo    → `principal-ai/my-repo`
+ *   pkg:npm/left-pad@1.3.0             → `left-pad`
+ *   pkg:generic/local--Users-me-my-app → `Users-me-my-app (local)`
+ *
+ * Local purls encode the absolute path with dashes for slashes, which is not
+ * losslessly decodable — shown as-is with a `(local)` marker.
+ */
+export function formatPurl(purl: string): string {
+  const match = /^pkg:[^/#?]+\/(.+)$/.exec(purl);
+  if (!match) return purl;
+  let identity = match[1].split(/[?#]/)[0];
+  const at = identity.indexOf('@');
+  if (at > 0) identity = identity.slice(0, at); // trailing @version
+  if (identity.startsWith('local--')) {
+    return `${identity.slice('local--'.length)} (local)`;
+  }
+  return identity;
 }
 
 export interface SubsystemGraphDocument {
@@ -171,10 +284,13 @@ export const MECHANISM_COLOR: Record<SubsystemEdgeMechanism, string> = {
   contains: '#6c5ce7', // indigo
   feeds: '#22c55e', // green — data-flow into a processor
   produces: '#e07a5f', // terracotta — emits an output type
+  writes: '#2f9e44', // deep green — mutates retained state
+  reads: '#0ea5e9', // sky — pulls from retained state
+  watches: '#9ca3af', // gray — observes, owns nothing
   'registers-into': '#ff6b35', // orange
 };
 
-const MECHANISM_STYLE: Record<SubsystemEdgeMechanism, 'solid' | 'dashed' | 'dotted'> = {
+export const MECHANISM_STYLE: Record<SubsystemEdgeMechanism, 'solid' | 'dashed' | 'dotted'> = {
   imports: 'solid',
   imports_from: 'solid',
   re_exports: 'solid',
@@ -190,6 +306,9 @@ const MECHANISM_STYLE: Record<SubsystemEdgeMechanism, 'solid' | 'dashed' | 'dott
   contains: 'solid',
   feeds: 'solid',
   produces: 'solid',
+  writes: 'solid',
+  reads: 'solid',
+  watches: 'dashed',
   'registers-into': 'dashed',
 };
 
@@ -208,13 +327,18 @@ export function packageColor(name: string): string {
   return palette[h % palette.length];
 }
 
-/** Color per component kind — the informative signal (rather than package). */
-export const KIND_COLOR: Record<SubsystemComponentKind, string> = {
-  class: '#0893d2', // blue
-  function: '#6c5ce7', // indigo
-  type: '#e07a5f', // terracotta
-  module: '#4ec9b0', // teal
-  external: '#b48ead', // purple
+/** Color per semantic role. Intentionally NOT applied to node color for now —
+ *  construct owns node color; these are reserved for a future role
+ *  glyph/accent experiment. (Note: `service` currently equals the class hex;
+ *  pick a distinct value before ever applying it.) */
+export const ROLE_COLOR: Record<SubsystemComponentRole, string> = {
+  entry: '#ff6b35', // orange — boundary element
+  service: '#0893d2', // blue — external system
+};
+
+export const ROLE_LABEL: Record<SubsystemComponentRole, string> = {
+  entry: 'entry',
+  service: 'service',
 };
 
 /**
@@ -230,12 +354,16 @@ export function convertSubsystemToNodes(
   opts: { maxNodeWidth?: number } = {},
 ): SubsystemGraphNode[] {
   const { maxNodeWidth } = opts;
-  // Group components by package.
+  // Group components into boundary regions by process when authored, else by
+  // package. Process is runtime membership (drawn as one boundary region);
+  // purl is code identity — nodes without a process (external actors,
+  // services, libraries) fall back to purl and sit outside every boundary.
   const byPkg = new Map<string, SubsystemComponent[]>();
   for (const c of doc.components) {
-    const list = byPkg.get(c.purl) ?? [];
+    const regionKey = c.process ?? c.purl;
+    const list = byPkg.get(regionKey) ?? [];
     list.push(c);
-    byPkg.set(c.purl, list);
+    byPkg.set(regionKey, list);
   }
 
   const nodes: SubsystemGraphNode[] = [];
@@ -255,7 +383,7 @@ export function convertSubsystemToNodes(
       const row = Math.floor(i / COLS);
       // Estimate rendered node width from the longest text line so ELK reserves
       // the right space (names can wrap, so we cap at the configurable max).
-      const text = [c.symbol, c.name, c.file.split('/').pop() ?? '']
+      const text = [c.symbol, c.name, c.file?.split('/').pop() ?? '']
         .filter((t): t is string => !!t)
         .sort((a, b) => b.length - a.length)[0];
       const cap = maxNodeWidth ?? 300;
@@ -315,6 +443,22 @@ export function convertSubsystemToEdges(doc: SubsystemGraphDocument): SubsystemG
   return edges;
 }
 
+/** Stable key for layout-affecting graph fields (ignores declarationRef, etc.). */
+export function subsystemGraphLayoutKey(
+  doc: Pick<SubsystemGraphDocument, 'components' | 'edges'>,
+): string {
+  const components = doc.components
+    .map(({ id, purl, name, symbol, construct, file, purpose, process }) =>
+      [id, purl, name, symbol ?? '', construct, file, purpose ?? '', process ?? ''].join('\0'))
+    .sort()
+    .join('\n');
+  const edgeKey = doc.edges
+    .map(({ id, from, to, mechanism }) => [id, from, to, mechanism].join('\0'))
+    .sort()
+    .join('\n');
+  return `${components}|${edgeKey}`;
+}
+
 /**
  * Build the full React Flow graph (nodes + edges) using **ELK auto-layout** to
  * position every node (including external stub targets), so the graph is
@@ -354,7 +498,7 @@ export async function buildSubsystemGraph(
         component: {
           id: extId,
           name: label,
-          kind: 'external',
+          construct: 'external',
           purl: 'external',
           file: '',
           purpose: 'cross-package integration target (not a member node)',

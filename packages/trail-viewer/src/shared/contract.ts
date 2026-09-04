@@ -16,6 +16,7 @@ import type { AgentSessionEvent } from "@principal-ai/agent-monitoring";
 import type {
 	SubsystemComponent,
 	SubsystemComponentEdge,
+	SubsystemDeclarationRef,
 	SubsystemGraphDocument,
 } from "@principal-ai/principal-view-react";
 
@@ -203,6 +204,39 @@ export interface StoredSubsystemGraph {
 	repo?: { owner: string; name: string };
 	/** Local root component `file` paths resolve against (sandboxed reads). */
 	repoRoot?: string;
+	/**
+	 * Per-repo local roots for multi-repo graphs, keyed by purl repo key
+	 * (`pkg:github/owner/name`, fragment stripped).
+	 */
+	repoRoots?: Record<string, string>;
+}
+
+/**
+ * Whether a subsystem's component purls have *any* cached graphify graph —
+ * cache presence for verification, not an exact HEAD/dirty match.
+ */
+export type SubsystemGraphifyAggregateStatus =
+	| "possible"
+	| "partial"
+	| "not_ready"
+	| "running"
+	| "unavailable";
+
+export type SubsystemGraphifyPurlStatus =
+	| "ready"
+	| "missing"
+	| "building"
+	| "unavailable";
+
+export interface SubsystemGraphifyPurlReadiness {
+	purl: string;
+	status: SubsystemGraphifyPurlStatus;
+	repoRoot?: string;
+}
+
+export interface SubsystemGraphifyReadiness {
+	status: SubsystemGraphifyAggregateStatus;
+	purls: SubsystemGraphifyPurlReadiness[];
 }
 
 /** Lightweight listing row for the Subsystems tab (no components/edges). */
@@ -216,6 +250,81 @@ export interface SubsystemGraphSummary {
 	updatedAt: string;
 	source?: string;
 	repo?: { owner: string; name: string };
+	/** Absolute path to the persisted JSON (`~/.principal/subsystem-graphs/<id>.json`). */
+	path: string;
+	/** Graphify cache readiness for this graph's component purls. */
+	graphify?: SubsystemGraphifyReadiness;
+}
+
+/** Result of verifying one subsystem component (declaration-panel Verify). */
+export interface SubsystemComponentVerificationResult {
+	ok: boolean;
+	error?: string;
+	/** Stable failure code for agents (`construct_mismatch` | `construct_unknown` | `signature_mismatch`). */
+	code?: "construct_mismatch" | "construct_unknown" | "signature_mismatch" | string;
+	componentId?: string;
+	/** Filesystem check against the local checkout. */
+	file?: {
+		exists: boolean;
+		symbolDeclared?: boolean | null;
+		repoRoot?: string;
+	};
+	/** Graphify cache status for the component's purl. */
+	cache?: {
+		status: "ready" | "missing" | "unavailable";
+		purl: string;
+		repoRoot?: string;
+	};
+	/** Anchor into graph.json when cache is ready. */
+	anchor?: {
+		resolution: "exact" | "file-only" | "ambiguous" | "missing";
+		nodeId?: string;
+		label?: string;
+		source_file?: string;
+		source_location?: string;
+		candidates?: Array<{
+			nodeId: string;
+			label: string;
+			source_file?: string;
+			source_location?: string;
+		}>;
+	};
+	/**
+	 * Kind check after an exact anchor (skipped for `external` / non-exact).
+	 * Hard-fail: `ok: false` when inferred ≠ claimed or inferred is `unknown`.
+	 */
+	construct?: {
+		claimed: string;
+		inferred: "class" | "function" | "method" | "type" | "module" | "unknown";
+		match: boolean;
+		evidence?: string[];
+	};
+	/**
+	 * Signature / params check for function|method after kind ok.
+	 * Compares named type bags from authored detail vs graphify
+	 * `parameter_type` / `return_type` edges. Skipped when graphify has no
+	 * signature edges (common for many TS functions today).
+	 */
+	signature?: {
+		match: boolean;
+		skipped: boolean;
+		reason?: string;
+		/** Granular skip classification (no_claimed_types | generic_arg_only | partially_generic_arg | unresolved_claimed_types). */
+		skipCode?: string;
+		claimed: { parameterTypes: string[]; returnTypes: string[] };
+		inferred: {
+			parameterTypes: string[];
+			returnTypes: string[];
+			/** Graphify `inline_parameter` marker count (anonymous eager args). */
+			inlineParameters?: number;
+		};
+	};
+	/** Declaration start-line anchor + freshness (exact anchor + readable file). */
+	declaration?: {
+		freshness: "valid" | "stale" | "missing" | "unanchored" | "unchecked";
+		ref?: SubsystemDeclarationRef;
+		liveLineHash?: string;
+	};
 }
 
 /** Cached graphify knowledge-graph slot under ~/.principal/graphify-graphs. */
@@ -601,6 +710,14 @@ export type TrailViewerRequests = {
 		params: { graphId: string };
 		response: { ok: boolean; error?: string };
 	};
+	/**
+	 * Verify one subsystem component against filesystem + graphify cache
+	 * (anchor resolve). Does not run extract — cache must already be ready.
+	 */
+	verifySubsystemComponent: {
+		params: { graphId: string; componentId: string };
+		response: SubsystemComponentVerificationResult;
+	};
 	getGraphifyStatus: {
 		params: { detailed?: boolean };
 		response: GraphifyCliStatus;
@@ -798,6 +915,16 @@ export type TrailViewerMessages = {
 			edgeCount?: number;
 			durationMs?: number;
 		};
+	};
+	/**
+	 * A subsystem graph was created/updated/deleted via the store API, or its
+	 * on-disk file changed under ~/.principal/subsystem-graphs (external edit).
+	 * List tab should re-fetch; an open graph tab should reload when `graphId`
+	 * matches.
+	 */
+	subsystemGraphChanged: {
+		graphId: string;
+		reason: "created" | "updated" | "deleted" | "external";
 	};
 }
 

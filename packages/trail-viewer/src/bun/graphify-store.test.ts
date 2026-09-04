@@ -8,8 +8,10 @@ import {
 	cacheSlotKey,
 	cachedGraphJsonPath,
 	dirtyFingerprint,
+	findAnyCachedGraphifyGraph,
 	getCachedGraphifyGraph,
 	sanitizePurlDirName,
+	assessSubsystemGraphifyReadiness,
 } from "./graphify-store";
 
 describe("sanitizePurlDirName", () => {
@@ -103,6 +105,7 @@ describe("getCachedGraphifyGraph", () => {
 			headSha: "deadbeef",
 			dirtyHash: null,
 			storeRoot: root,
+			anySlot: false,
 		});
 		expect(hit).toBeNull();
 	});
@@ -140,5 +143,144 @@ describe("getCachedGraphifyGraph", () => {
 		expect(hit?.meta.nodeCount).toBe(1);
 		expect(hit?.meta.dirtyHash).toBe(dirty);
 		expect(hit?.path).toBe(join(slot, "graph.json"));
+	});
+
+	test("falls back to any slot when exact dirty miss", async () => {
+		const root = mkdtempSync(join(tmpdir(), "gf-store-"));
+		const purl = "pkg:github/a/b";
+		const head = "abc123def";
+		const dirty = "d4f8e1a2b3c4d5e6";
+		const slot = cacheSlotDir(purl, head, dirty, root);
+		mkdirSync(slot, { recursive: true });
+		writeFileSync(
+			join(slot, "graph.json"),
+			JSON.stringify({ nodes: [{ id: "1" }], links: [] }),
+		);
+		writeFileSync(
+			join(slot, "meta.json"),
+			JSON.stringify({
+				purl,
+				purlKey: purl,
+				headSha: head,
+				dirtyHash: dirty,
+				slotKey: cacheSlotKey(head, dirty),
+				repoRoot: "/repo",
+				builtAt: "2026-01-01T00:00:00.000Z",
+				nodeCount: 1,
+				edgeCount: 0,
+			}),
+		);
+		const hit = await getCachedGraphifyGraph(purl, {
+			headSha: head,
+			dirtyHash: "ffffffffffff",
+			storeRoot: root,
+		});
+		expect(hit?.meta.dirtyHash).toBe(dirty);
+		expect(hit?.meta.nodeCount).toBe(1);
+
+		const exactOnly = await getCachedGraphifyGraph(purl, {
+			headSha: head,
+			dirtyHash: "ffffffffffff",
+			storeRoot: root,
+			anySlot: false,
+		});
+		expect(exactOnly).toBeNull();
+	});
+});
+
+describe("findAnyCachedGraphifyGraph", () => {
+	test("picks newest builtAt among slots", () => {
+		const root = mkdtempSync(join(tmpdir(), "gf-store-"));
+		const purl = "pkg:github/a/b";
+		for (const [head, builtAt, nodes] of [
+			["aaa", "2026-01-01T00:00:00.000Z", 1],
+			["bbb", "2026-06-01T00:00:00.000Z", 9],
+		] as const) {
+			const slot = cacheSlotDir(purl, head, null, root);
+			mkdirSync(slot, { recursive: true });
+			writeFileSync(
+				join(slot, "graph.json"),
+				JSON.stringify({ nodes: Array.from({ length: nodes }, (_, i) => ({ id: String(i) })), links: [] }),
+			);
+			writeFileSync(
+				join(slot, "meta.json"),
+				JSON.stringify({
+					purl,
+					purlKey: purl,
+					headSha: head,
+					dirtyHash: null,
+					slotKey: head,
+					repoRoot: "/repo",
+					builtAt,
+					nodeCount: nodes,
+					edgeCount: 0,
+				}),
+			);
+		}
+		const hit = findAnyCachedGraphifyGraph(purl, root);
+		expect(hit?.meta.headSha).toBe("bbb");
+		expect(hit?.meta.nodeCount).toBe(9);
+	});
+});
+
+describe("assessSubsystemGraphifyReadiness", () => {
+	test("empty components → unavailable", () => {
+		const r = assessSubsystemGraphifyReadiness({ components: [] });
+		expect(r.status).toBe("unavailable");
+		expect(r.purls).toEqual([]);
+	});
+
+	test("building set marks running", () => {
+		const purl = "pkg:github/acme/widget";
+		const r = assessSubsystemGraphifyReadiness(
+			{ components: [{ purl }], repoRoot: "/no/such/root" },
+			new Set([purl]),
+		);
+		expect(r.status).toBe("running");
+		expect(r.purls[0]?.status).toBe("building");
+	});
+
+	test("missing local root and no cache → unavailable", () => {
+		const purl = "pkg:github/acme/does-not-exist-xyz";
+		const root = mkdtempSync(join(tmpdir(), "gf-store-"));
+		const r = assessSubsystemGraphifyReadiness(
+			{ components: [{ purl }] },
+			undefined,
+			root,
+		);
+		expect(r.status).toBe("unavailable");
+		expect(r.purls[0]?.status).toBe("unavailable");
+	});
+
+	test("any cached slot → ready without matching dirty", () => {
+		const root = mkdtempSync(join(tmpdir(), "gf-store-"));
+		const purl = "pkg:github/acme/cached-only";
+		const slot = cacheSlotDir(purl, "oldhead", "olddirty", root);
+		mkdirSync(slot, { recursive: true });
+		writeFileSync(
+			join(slot, "graph.json"),
+			JSON.stringify({ nodes: [], links: [] }),
+		);
+		writeFileSync(
+			join(slot, "meta.json"),
+			JSON.stringify({
+				purl,
+				purlKey: purl,
+				headSha: "oldhead",
+				dirtyHash: "olddirty",
+				slotKey: "oldhead+olddirty",
+				repoRoot: "/somewhere",
+				builtAt: "2026-01-01T00:00:00.000Z",
+				nodeCount: 0,
+				edgeCount: 0,
+			}),
+		);
+		const r = assessSubsystemGraphifyReadiness(
+			{ components: [{ purl }] },
+			undefined,
+			root,
+		);
+		expect(r.status).toBe("possible");
+		expect(r.purls[0]?.status).toBe("ready");
 	});
 });

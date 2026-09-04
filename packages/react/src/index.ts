@@ -242,16 +242,87 @@ export type {
   GraphifyComponentDetail,
   GraphifyEdgeRef,
 } from './graphify';
+export type {
+  GraphifyTypeRefStatus,
+  GraphifyTypeRefResolution,
+} from './graphify';
+export {
+  normalizeGraphifyLabel,
+  createGraphifyTypeResolver,
+  resolveGraphifyTypeRef,
+  normalizeGraphifyId,
+  makeGraphifyId,
+  graphifyFileStem,
+  normalizeSourcePath,
+  resolveComponentAnchor,
+  symbolLabelVariants,
+  inferGraphifyKind,
+  kindsMatch,
+  extractNamedTypes,
+  extractGraphifySignature,
+  compareSignatures,
+} from './graphify';
+export type {
+  ComponentAnchorInput,
+  ComponentAnchorResult,
+  InferredGraphifyKind,
+  InferGraphifyKindResult,
+  GraphifyInferredSignature,
+  ClaimedSignature,
+  SignatureCompareResult,
+} from './graphify';
 
 // Subsystem component graph
 export { SubsystemComponentGraph } from './subsystem/SubsystemComponentGraph';
 export type { SubsystemComponentGraphProps } from './subsystem/SubsystemComponentGraph';
-export { SubsystemFileTree, buildFileTree } from './subsystem/SubsystemFileTree';
+export type {
+  ComponentVerificationState,
+  ComponentVerificationPhase,
+  ComponentDeclarationProps,
+} from './subsystem/ComponentDeclaration';
+export { ComponentDeclaration } from './subsystem/ComponentDeclaration';
+export { MECHANISM_COLOR, MECHANISM_STYLE } from './subsystem/model';
+export { CONSTRUCT_COLOR, constructColorsFromPierreTheme } from './pierre/constructColors';
+export {
+  purlRepoKey,
+  purlOwnerName,
+  buildTreePathMapping,
+  buildRepoGroups,
+  repoAvatarUrl,
+} from './subsystem/paths';
+export type {
+  TreeEntry,
+  TreePathMapping,
+  RepoGroup,
+} from './subsystem/paths';
+export { SubsystemFileTree } from './subsystem/SubsystemFileTree';
 export type { SubsystemFileTreeProps } from './subsystem/SubsystemFileTree';
+export { GraphLayoutCover } from './subsystem/GraphLayoutCover';
+export type { GraphLayoutCoverProps } from './subsystem/GraphLayoutCover';
 export type {
   SubsystemComponent,
   SubsystemComponentEdge,
   SubsystemGraphDocument,
-  SubsystemComponentKind,
+  SubsystemComponentConstruct,
   SubsystemEdgeMechanism,
 } from './subsystem/model';
+export type {
+  SubsystemDeclarationRef,
+  SubsystemOpenFileOptions,
+  DeclarationFreshness,
+} from './subsystem/declarationRef';
+export {
+  parseSourceLocation,
+  normalizeDeclarationLine,
+  extractDeclarationLine,
+  DECLARATION_HASH_ALGO,
+} from './subsystem/declarationRef';
+
+// Pierre code views (@pierre/diffs wrappers)
+export { PierreFileView, PierreSnippetView, sliceSnippetWindow, resolvePierreSyntaxThemeName } from './pierre';
+export type {
+  PierreFileViewProps,
+  PierreSnippetViewProps,
+  SnippetSlice,
+  PierreSyntaxThemeName,
+} from './pierre';

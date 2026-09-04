@@ -23,12 +23,13 @@ import {
 } from "./graphify-store";
 import {
 	createSubsystemGraph,
-	findComponentKindProblems,
+	findComponentConstructProblems,
 	findDetailProvenanceProblems,
 	findEdgeMechanismProblems,
 	getSubsystemGraph,
 	listSubsystemGraphs,
 	normalizeDetailProvenance,
+	subsystemGraphFilePath,
 	updateSubsystemGraph,
 	type SubsystemGraphDocument,
 } from "./subsystem-graph-store";
@@ -102,7 +103,7 @@ async function handleGraphifyRequest(req: Request, url: URL, method: string): Pr
 				stderr: result.stderr,
 			});
 		}
-		return json({ ok: true, bin: result.bin, ...getGraphifyStatus() });
+		return json({ ok: true, ...getGraphifyStatus(), bin: result.bin });
 	}
 
 	if (path === "/api/graphify-graph" && method === "GET") {
@@ -231,7 +232,13 @@ export async function handleSubsystemGraphRequest(
 	// List all graphs
 	if (path === "/api/subsystem-graph" && method === "GET") {
 		const graphs = await listSubsystemGraphs();
-		return json({ ok: true, graphs });
+		return json({
+			ok: true,
+			graphs: graphs.map((g) => ({
+				...g,
+				path: subsystemGraphFilePath(g.id),
+			})),
+		});
 	}
 
 	// Create a new graph
@@ -242,7 +249,7 @@ export async function handleSubsystemGraphRequest(
 		if (!Array.isArray(body["components"])) return error("components array is required");
 		if (!Array.isArray(body["edges"])) return error("edges array is required");
 		const problems = [
-			...findComponentKindProblems(body["components"]),
+			...findComponentConstructProblems(body["components"]),
 			...findDetailProvenanceProblems(body["components"]),
 			...findEdgeMechanismProblems(body["edges"]),
 		];
@@ -262,6 +269,28 @@ export async function handleSubsystemGraphRequest(
 		return json({ ok: true, graph: record }, 201);
 	}
 
+	// Verify all components of a graph (host-side verify machinery)
+	const graphVerifyMatch = path.match(/^\/api\/subsystem-graph\/([^/]+)\/verify$/);
+	if (graphVerifyMatch && method === "GET") {
+		const id = graphVerifyMatch[1];
+		const { verifySubsystemGraph } = await import("./verify-subsystem-component");
+		const result = await verifySubsystemGraph(id);
+		if (!result.ok) return error(result.error, 404);
+		return json({ ok: true, ...result.data });
+	}
+
+	// Verify a single component of a graph
+	const componentVerifyMatch = path.match(
+		/^\/api\/subsystem-graph\/([^/]+)\/verify\/([^/]+)$/,
+	);
+	if (componentVerifyMatch && method === "GET") {
+		const id = componentVerifyMatch[1];
+		const componentId = componentVerifyMatch[2];
+		const { verifySubsystemComponent } = await import("./verify-subsystem-component");
+		const result = await verifySubsystemComponent(id, componentId);
+		return json(result);
+	}
+
 	// Get / Open / Update / Delete by id
 	const graphMatch = path.match(/^\/api\/subsystem-graph\/([^/]+)$/);
 	if (graphMatch) {
@@ -277,7 +306,7 @@ export async function handleSubsystemGraphRequest(
 			const body = (await parseBody(req)) as Record<string, unknown> | null;
 			if (!body) return error("Invalid JSON body");
 			const problems = [
-				...(body["components"] !== undefined ? findComponentKindProblems(body["components"]) : []),
+				...(body["components"] !== undefined ? findComponentConstructProblems(body["components"]) : []),
 				...(body["components"] !== undefined ? findDetailProvenanceProblems(body["components"]) : []),
 				...(body["edges"] !== undefined ? findEdgeMechanismProblems(body["edges"]) : []),
 			];

@@ -12,7 +12,7 @@
  * injection, onNodeClick) adapted to the subsystem model — read-only.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import {
   ReactFlow,
@@ -32,39 +32,25 @@ import {
   applyNodeChanges,
 } from '@xyflow/react';
 import { useTheme } from '@principal-ade/industry-theme';
-import { X } from 'lucide-react';
+import { Map as MapIcon } from 'lucide-react';
 import { IndustryMarkdownSlide } from 'themed-markdown';
 import {
   buildSubsystemGraph,
-  KIND_COLOR,
   MECHANISM_COLOR,
-  deriveNameFromSymbol,
+  subsystemGraphLayoutKey,
   type SubsystemComponentEdge,
   type SubsystemComponent,
   type SubsystemEdgeMechanism,
 } from './model';
-import type { GraphifyComponentDetail } from '../graphify';
+import type { SubsystemOpenFileOptions } from './declarationRef';
 import { SubsystemComponentNode, SubsystemEdge, SUBSYSTEM_CALLBACKS } from './nodes';
 import { SubsystemFileTree } from './SubsystemFileTree';
-
-const MECHANISM_DESCRIPTIONS: [SubsystemEdgeMechanism, string, boolean][] = [
-  ['imports', 'import statement (code-level dependency)', true],
-  ['imports_from', 'imported by (reverse dependency)', true],
-  ['re_exports', 're-exports symbols from', true],
-  ['defines', 'defines / declares symbol', true],
-  ['calls', 'function/method call (call graph edge)', true],
-  ['extends', 'class inheritance', true],
-  ['inherits', 'class inheritance', true],
-  ['implements', 'implements interface / protocol', true],
-  ['mixes_in', 'applies mixin', true],
-  ['uses', 'general dependency (import, call, or reference)', false],
-  ['method', 'structural: has method / member', true],
-  ['references', 'type / symbol reference (not a call)', true],
-  ['contains', 'structural: contains / encapsulates', true],
-  ['feeds', 'data flow: output feeds into input', false],
-  ['produces', 'data flow: produces / outputs', false],
-  ['registers-into', 'registration pattern', false],
-];
+import { GraphLayoutCover } from './GraphLayoutCover';
+import { ComponentDeclaration } from './ComponentDeclaration';
+import type { ComponentVerificationState } from './ComponentDeclaration';
+import { FileDrawer } from './FileDrawer';
+import { EdgeLegendModal, MECHANISM_DESCRIPTIONS } from './EdgeLegendModal';
+import { buildRepoGroups, repoAvatarUrl, type RepoGroup } from './paths';
 
 export interface SubsystemComponentGraphProps {
   components: SubsystemComponent[];
@@ -93,7 +79,7 @@ export interface SubsystemComponentGraphProps {
    * `file`) and sidebar file-tree click. Keeps this package free of fs and
    * code-view dependencies.
    */
-  renderFileViewer?: (file: string) => ReactNode;
+  renderFileViewer?: (file: string, opts?: SubsystemOpenFileOptions) => ReactNode;
   /**
    * Legacy component-keyed variant, kept for backward compatibility. When
    * `renderFileViewer` is absent, drawer content resolves via the first
@@ -105,6 +91,10 @@ export interface SubsystemComponentGraphProps {
    * path). The tree is derived from the components' `file` values.
    */
   onFileSelect?: (file: string) => void;
+  /** Verify the selected component against graphify (declaration panel). */
+  onVerifyComponent?: (componentId: string) => void;
+  /** Live verification status for the selected component. */
+  componentVerification?: ComponentVerificationState | null;
 }
 
 const nodeTypes: NodeTypes = {
@@ -115,11 +105,28 @@ const edgeTypes: EdgeTypes = {
   'subsystem-edge': SubsystemEdge,
 };
 
+// Memoized drawer body: only rebuilds children when the open file changes.
+// Inner re-renders on every viewport pan/zoom and hover; recreating host
+// elements then would churn their readFile closures and flash the file
+// viewer's loading state on each render.
+const DrawerContent = memo(function DrawerContent({
+  render,
+  file,
+  startLine,
+}: {
+  render: (file: string, opts?: SubsystemOpenFileOptions) => ReactNode;
+  file: string | null;
+  startLine?: number;
+}) {
+  if (!file) return null;
+  return <>{render(file, startLine != null ? { startLine } : undefined)}</>;
+});
+
 interface InnerProps extends SubsystemComponentGraphProps {
   measured: { w: number; h: number } | null;
 }
 
-function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured, maxNodeWidth, showEdgeLabels, title, description, canvasOverlay, sidebarExtra, sidebarAfterDescription, renderFileView, renderFileViewer, onFileSelect }: InnerProps) {
+function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured, maxNodeWidth, showEdgeLabels, title, description, canvasOverlay, sidebarExtra, sidebarAfterDescription, renderFileView, renderFileViewer, onFileSelect, onVerifyComponent, componentVerification }: InnerProps) {
   const { theme } = useTheme();
   const { fitView } = useReactFlow();
   const viewport = useViewport();
@@ -129,30 +136,66 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
   });
   const [layoutReady, setLayoutReady] = useState(false);
   const [selected, setSelected] = useState<SubsystemComponent | null>(null);
-  // File currently shown in the bottom drawer (repo-root-relative path).
-  const [openFile, setOpenFile] = useState<string | null>(null);
+  /** File shown in the bottom drawer + optional declaration scroll target. */
+  const [openFileTarget, setOpenFileTarget] = useState<{
+    file: string;
+    startLine?: number;
+  } | null>(null);
+  const openFile = openFileTarget?.file ?? null;
+  const openFileStartLine = openFileTarget?.startLine;
+  // Edge-legend modal visibility (opened from the canvas's top-left button).
+  const [legendOpen, setLegendOpen] = useState(false);
+  // Component the pointer is over (null on leave) → transient tree highlight.
+  const [hoveredComponentId, setHoveredComponentId] = useState<string | null>(null);
   // Ref mirror of `selected` so the SUBSYSTEM_CALLBACKS click handler (a
   // closure over the effect deps) can toggle without a stale value.
   const selectedRef = useRef<SubsystemComponent | null>(null);
   selectedRef.current = selected;
   // Ref mirror of `openFile` for the tree-click toggle.
-  const openFileRef = useRef<string | null>(null);
-  openFileRef.current = openFile;
+  const openFileRef = useRef<{ file: string; startLine?: number } | null>(null);
+  openFileRef.current = openFileTarget;
+
+  // Refresh selected component when the components list updates (e.g. verify
+  // writes back declarationRef).
+  useEffect(() => {
+    if (!selected) return;
+    const fresh = components.find((c) => c.id === selected.id);
+    if (fresh && fresh !== selected) setSelected(fresh);
+  }, [components, selected]);
 
   // Pass 1: build with estimated widths so React Flow can measure the DOM.
-  // The pane stays hidden until Pass 2 completes.
+  // The pane stays hidden until Pass 2 completes. Key off layout-affecting
+  // fields only — declarationRef updates after verify must not re-run ELK.
+  const layoutKey = useMemo(
+    () => subsystemGraphLayoutKey({ components, edges }),
+    [components, edges],
+  );
+  const componentsRef = useRef(components);
+  const edgesRef = useRef(edges);
+  componentsRef.current = components;
+  edgesRef.current = edges;
+
   useEffect(() => {
     let alive = true;
     pass2DoneRef.current = false;
     measuredDimsRef.current = new Map();
     prevMeasuredSigRef.current = '';
-    void buildSubsystemGraph({ components, edges }, { maxNodeWidth, showEdgeLabels }).then(({ nodes, edges: e }) => {
-      if (!alive) return;
-      setBuilt({ nodes, edges: e as Edge[] });
-      setLayoutReady(false);
-    });
+    const doc = { components: componentsRef.current, edges: edgesRef.current };
+    void buildSubsystemGraph(doc, { maxNodeWidth, showEdgeLabels })
+      .then(({ nodes, edges: e }) => {
+        if (!alive) return;
+        setBuilt({ nodes, edges: e as Edge[] });
+        setLayoutReady(false);
+      })
+      .catch((err) => {
+        console.warn('[subsystem-graph] initial layout failed:', err);
+        if (!alive) return;
+        // Reveal the cover even on failure so the UI is not stuck forever.
+        setBuilt({ nodes: [], edges: [] });
+        setLayoutReady(true);
+      });
     return () => { alive = false; };
-  }, [components, edges]);
+  }, [layoutKey, maxNodeWidth, showEdgeLabels]);
 
   // Track measured dimensions from React Flow's dimension changes.
   // These arrive as { type: 'dimensions', id, dimensions } in onNodesChange.
@@ -212,24 +255,25 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
       const comp = components.find((c) => c.id === id);
       if (comp) {
         // Clicking the already-selected node unselects it (toggle off).
+        // Selection is independent of the file drawer — nodes never open it.
         if (selectedRef.current?.id === comp.id) {
           setSelected(null);
           setSelectedEdgeId(null);
-          setOpenFile(null);
           return;
         }
         setSelected(comp);
         setSelectedEdgeId(null);
-        if (comp.file) setOpenFile(comp.file);
         onSelect?.(id);
       }
     };
     SUBSYSTEM_CALLBACKS.onEdgeSelect = selectEdge;
     SUBSYSTEM_CALLBACKS.maxNodeWidth = maxNodeWidth;
+    SUBSYSTEM_CALLBACKS.onHover = setHoveredComponentId;
     return () => {
       SUBSYSTEM_CALLBACKS.onSelect = undefined;
       SUBSYSTEM_CALLBACKS.onEdgeSelect = undefined;
       SUBSYSTEM_CALLBACKS.maxNodeWidth = undefined;
+      SUBSYSTEM_CALLBACKS.onHover = undefined;
     };
   }, [components, onSelect, maxNodeWidth, selectEdge]);
 
@@ -240,16 +284,23 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
   // While a file is open in the drawer, tag each node with whether its
   // component lives in that file — the node renderer spotlights matches and
   // dims non-matches (mirrors the edge-dimming behavior on selection).
+  // `isSelected` rides in data because the node's stopPropagation() keeps
+  // React Flow's own selection state from ever updating.
   const dispNodes = useMemo(() => {
-    if (!openFile) return xyflowNodesBase;
     return xyflowNodesBase.map((n) => {
       const comp = (n.data as { component?: SubsystemComponent } | undefined)?.component;
+      const fileMatch = openFile ? comp?.file === openFile : undefined;
+      const isSelected = selected?.id !== undefined && comp?.id === selected.id;
+      if (fileMatch === undefined && !isSelected) {
+        const { fileMatch: _f, isSelected: _s, ...rest } = n.data as Record<string, unknown>;
+        return { ...n, data: rest };
+      }
       return {
         ...n,
-        data: { ...(n.data as object), fileMatch: comp?.file === openFile },
+        data: { ...(n.data as object), ...(fileMatch !== undefined && { fileMatch }), ...(isSelected && { isSelected }) },
       };
     });
-  }, [xyflowNodesBase, openFile]);
+  }, [xyflowNodesBase, openFile, selected]);
 
   const baseNodesKey = useMemo(() => nodes.map((n) => n.id).sort().join(','), [nodes]);
   const baseEdgesKey = useMemo(
@@ -305,19 +356,21 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
     return () => clearTimeout(t);
   }, [baseNodesKey, baseEdgesKey, fitView]);
 
+  // When the file drawer opens or closes the canvas is resized but the
+  // camera stays put — no refit/zoom. Spotlight + dimming already convey
+  // which nodes belong to the open file.
   const onNodeClick: NodeMouseHandler = useCallback(
     (_e, node: Node) => {
       const comp = (node.data as { component?: SubsystemComponent } | undefined)?.component;
       setSelectedEdgeId(null);
       if (node.type === 'subsystem-component' && comp) {
         // Clicking the already-selected node unselects it (toggle off).
+        // Selection is independent of the file drawer — nodes never open it.
         if (selected?.id === comp.id) {
           setSelected(null);
-          setOpenFile(null);
           return;
         }
         setSelected(comp);
-        if (comp.file) setOpenFile(comp.file);
         if (comp.id) onSelect?.(comp.id);
       }
     },
@@ -335,21 +388,70 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
   const onPaneClick = useCallback(() => {
     setSelected(null);
     setSelectedEdgeId(null);
-    setOpenFile(null);
   }, []);
 
-  // Sidebar file-tree click → toggle in the bottom drawer (+ host hook only
-  // when opening, so hosts don't see close events).
+  // Sidebar file trees — one per repo on multi-repo graphs, each under its
+  // own owner-avatar header. Clicking a header collapses that repo's tree.
+  const repoGroups = useMemo(() => buildRepoGroups(components), [components]);
+  const [collapsedRepos, setCollapsedRepos] = useState<Set<string>>(new Set());
+  const toggleRepoCollapsed = useCallback((key: string) => {
+    setCollapsedRepos((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+  const treeFiles = useMemo(
+    () => repoGroups.groups.flatMap((g) => g.entries.map((e) => e.file)),
+    [repoGroups],
+  );
   const onTreeSelectFile = useCallback(
     (file: string) => {
-      if (openFileRef.current === file) {
-        setOpenFile(null);
+      if (openFileRef.current?.file === file && openFileRef.current.startLine == null) {
+        setOpenFileTarget(null);
         return;
       }
-      setOpenFile(file);
+      setOpenFileTarget({ file });
       onFileSelect?.(file);
     },
     [onFileSelect],
+  );
+
+  const onOpenDeclarationFile = useCallback(
+    (file: string, opts?: SubsystemOpenFileOptions) => {
+      const startLine = opts?.startLine;
+      if (
+        openFileRef.current?.file === file &&
+        openFileRef.current.startLine === startLine
+      ) {
+        setOpenFileTarget(null);
+        return;
+      }
+      setOpenFileTarget({ file, startLine });
+      onFileSelect?.(file);
+    },
+    [onFileSelect],
+  );
+
+  // Detail-panel links: related-name clicks select the matching component —
+  // resolved by id, name, or symbol (call labels may carry a trailing `()`).
+  const resolveRelatedComponent = useCallback(
+    (ref: string) => {
+      const clean = ref.replace(/\(\)$/, '');
+      const comp = components.find(
+        (c) =>
+          c.id === clean ||
+          c.name === clean ||
+          c.symbol === clean ||
+          c.symbol?.replace(/\(\)$/, '') === clean,
+      );
+      if (!comp || comp.id === selectedRef.current?.id) return;
+      setSelected(comp);
+      setSelectedEdgeId(null);
+      onSelect?.(comp.id);
+    },
+    [components, onSelect],
   );
 
   // Edge label data for the overlay (rendered OUTSIDE ReactFlow so the pane
@@ -372,13 +474,14 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
     return new Set(edgeLabels.map((l) => l.mechanism));
   }, [edgeLabels]);
 
-  const muted = theme.colors.textMuted ?? theme.colors.textSecondary;
+  // Unique source files across components → sidebar file trees.
+  const treeFilePaths = treeFiles;
 
-  // Unique source files across components → sidebar file tree.
-  const files = useMemo(
-    () => Array.from(new Set(components.map((c) => c.file).filter(Boolean))).sort(),
-    [components],
-  );
+  // The hovered node's file (null when not hovering / file-less component).
+  const hoveredFile = useMemo(() => {
+    if (!hoveredComponentId) return null;
+    return components.find((c) => c.id === hoveredComponentId)?.file ?? null;
+  }, [components, hoveredComponentId]);
 
   // Drawer content renderer: prefer the path-keyed viewer; fall back to the
   // legacy component-keyed one via a file → first-component lookup.
@@ -388,18 +491,26 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
       const byFile = new Map(
         components.filter((c) => c.file).map((c) => [c.file, c] as const),
       );
-      return (file: string) => {
+      return (file: string, _opts?: SubsystemOpenFileOptions) => {
         const comp = byFile.get(file);
         return comp ? renderFileView(comp) : null;
       };
     }
-    return undefined;
+    return renderFileViewer;
   }, [renderFileViewer, renderFileView, components]);
 
+  const fileViewerRef = useRef(fileViewer);
+  fileViewerRef.current = fileViewer;
+  const renderDrawerContent = useCallback(
+    (file: string, opts?: SubsystemOpenFileOptions) =>
+      fileViewerRef.current?.(file, opts) ?? null,
+    [],
+  );
+
   return (
-    <div style={{ visibility: layoutReady ? 'visible' : 'hidden', width: '100%', height: '100%', display: 'flex', flexDirection: 'row' }}>
-      {/* Sidebar: scrollable title/description/legend on top, file tree pinned to the bottom half */}
-      {(title || description || usedMechanisms.size > 0 || sidebarExtra || sidebarAfterDescription || files.length > 0) && (
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'row' }}>
+      {/* Sidebar: scrollable title/description on top, file tree pinned to the bottom half */}
+      {(title || description || sidebarExtra || sidebarAfterDescription || treeFilePaths.length > 0) && (
         <div
           style={{
             width: 340,
@@ -452,42 +563,62 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
             </div>
           )}
           {sidebarAfterDescription}
-          {usedMechanisms.size > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ fontSize: theme.fontSizes[0] * 0.8, fontFamily: theme.fonts.monospace, textTransform: 'uppercase', color: muted, fontWeight: 600 }}>
-                Edge Legend
-              </span>
-              {MECHANISM_DESCRIPTIONS.filter(([m]) => usedMechanisms.has(m)).map(([mechanism, desc, verifiable]) => (
-                <div key={mechanism} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: theme.fontSizes[0] }}>
-                  <span
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: verifiable ? '50%' : '30% 70% 70% 30% / 30% 30% 70% 70%',
-                      background: MECHANISM_COLOR[mechanism],
-                      border: verifiable ? 'none' : `1px dashed ${MECHANISM_COLOR[mechanism]}`,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span style={{ fontFamily: theme.fonts.monospace, color: MECHANISM_COLOR[mechanism], fontWeight: 500 }}>{mechanism}</span>
-                  <span style={{ color: muted }}>{desc}</span>
-                </div>
-              ))}
-            </div>
-          )}
           </div>
-          {files.length > 0 && (
-            <SubsystemFileTree
-              files={files}
-              selectedFile={selected?.file ?? openFile}
-              onSelectFile={onTreeSelectFile}
-            />
+          {treeFilePaths.length > 0 && (
+            <div
+              style={{
+                height: '50%',
+                minHeight: 160,
+                flexShrink: 0,
+                borderTop: `1px solid ${theme.colors.border}`,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+              }}
+            >
+              {repoGroups.groups.map((group, i) => {
+                const groupKey = group.repoKey ?? '__no-repo__';
+                const collapsed = collapsedRepos.has(groupKey);
+                return (
+                  <div
+                    key={groupKey}
+                    style={{
+                      flex: collapsed ? '0 0 auto' : 1,
+                      minHeight: collapsed ? 0 : undefined,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      borderTop: i > 0 ? `1px solid ${theme.colors.border}` : undefined,
+                    }}
+                  >
+                    {repoGroups.multiRepo && (
+                      <RepoGroupHeader
+                        group={group}
+                        collapsed={collapsed}
+                        onToggle={() => toggleRepoCollapsed(groupKey)}
+                      />
+                    )}
+                    {!collapsed && (
+                      <SubsystemFileTree
+                        files={group.entries.map((e) => e.displayPath)}
+                        selectedFile={selected?.file ?? openFile}
+                        hoveredFile={hoveredFile}
+                        onSelectFile={onTreeSelectFile}
+                        headerless={repoGroups.multiRepo}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
       
       {/* Graph area */}
       <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        {/* Canvas box — the edge-label overlay and legend anchor here, so
+            overlays shift with the canvas, not the labels. */}
+        <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {/* Edge-label overlay — sits above the ReactFlow pane so clicks land. */}
         {showEdgeLabels !== false && (
         <div
@@ -573,285 +704,160 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         <Controls showZoom showFitView showInteractive />
       </ReactFlow>
-      {selected && <ComponentDetail component={selected} />}
-      <FileDrawer file={openFile} onClose={() => setOpenFile(null)}>
-        {fileViewer && openFile ? fileViewer(openFile) : null}
+      {/* Legend button — top-left overlay on the canvas; opens the modal. */}
+      {usedMechanisms.size > 0 && (
+        <button
+          type="button"
+          onClick={() => setLegendOpen(true)}
+          style={{
+            position: 'absolute',
+            top: 10,
+            left: 10,
+            zIndex: 7,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '4px 10px',
+            fontSize: theme.fontSizes[0],
+            fontFamily: theme.fonts.body,
+            color: theme.colors.text,
+            background: theme.colors.backgroundSecondary ?? theme.colors.background,
+            border: `1px solid ${theme.colors.border}`,
+            borderRadius: 6,
+            cursor: 'pointer',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+          }}
+        >
+          <MapIcon size={13} />
+          Legend
+        </button>
+      )}
+        {/* Selected-component declaration — floating card over the canvas
+            (top-right, clear of the top-left legend button). The graph never
+            moves for it. */}
+        {selected && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 10,
+              right: 10,
+              zIndex: 8,
+              width: 'min(560px, 70%)',
+              maxHeight: '46%',
+              overflowY: 'auto',
+              background: theme.colors.background,
+              border: `1px solid ${theme.colors.border}`,
+              borderRadius: 8,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+            }}
+          >
+            <ComponentDeclaration
+              component={selected}
+              onOpenFile={onOpenDeclarationFile}
+              onRelatedSelect={resolveRelatedComponent}
+              onVerify={onVerifyComponent}
+              verification={componentVerification}
+            />
+          </div>
+        )}
+        </div>
+        <EdgeLegendModal
+          open={legendOpen}
+          mechanisms={usedMechanisms}
+          onClose={() => setLegendOpen(false)}
+        />
+      <FileDrawer file={openFile} onClose={() => setOpenFileTarget(null)}>
+        <DrawerContent
+          render={renderDrawerContent}
+          file={openFile}
+          startLine={openFileStartLine}
+        />
       </FileDrawer>
+      {/* Startup cover — hides measurement, layout swap, and camera settle. */}
+      <GraphLayoutCover revealed={layoutReady} />
       {canvasOverlay}
       </div>
     </div>
   );
 }
 
-/** Detail panel for the selected component — the verifiable identity + sources
- *  moved off the canvas so nodes stay minimal. File content lives in the
- *  bottom FileDrawer, not here. */
-function ComponentDetail({ component }: { component: SubsystemComponent }) {
-  const { theme } = useTheme();
-  const muted = theme.colors.textMuted ?? theme.colors.textSecondary;
-  const color = KIND_COLOR[component.kind] ?? '#888';
-  const displayName = deriveNameFromSymbol(component.symbol, component.kind, component.name, component.file);
-  const rows: Array<[string, string]> = [];
-  if (component.symbol) rows.push(['Symbol', component.symbol]);
-  if (component.file) rows.push(['File', component.file]);
-  if (component.purpose) rows.push(['Purpose', component.purpose]);
-  rows.push(['PURL', component.purl]);
-
-  return (
-    <div
-      style={{
-        borderTop: `1px solid ${theme.colors.border}`,
-        background: theme.colors.background,
-        padding: '10px 12px',
-        fontFamily: theme.fonts.body,
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontSize: theme.fontSizes[1],
-          fontWeight: 600,
-          marginBottom: 6,
-        }}
-      >
-        <span style={{ color }}>{displayName}</span>
-        <span
-          style={{
-            fontSize: theme.fontSizes[0] * 0.8,
-            fontFamily: theme.fonts.monospace,
-            textTransform: 'uppercase',
-            color,
-          }}
-        >
-          {component.kind}
-        </span>
-      </div>
-      {rows.map(([k, v]) => (
-        <div
-          key={k}
-          style={{ display: 'flex', gap: 8, fontSize: theme.fontSizes[0], lineHeight: 1.5 }}
-        >
-          <span
-            style={{
-              width: 64,
-              flexShrink: 0,
-              color: muted,
-              fontFamily: theme.fonts.monospace,
-              textTransform: 'uppercase',
-              fontSize: theme.fontSizes[0] * 0.8,
-            }}
-          >
-            {k}
-          </span>
-          <span style={{ color: theme.colors.text, fontFamily: theme.fonts.monospace }}>
-            {v}
-          </span>
-        </div>
-      ))}
-      {component.detail && <GraphifyDetailSections detail={component.detail} />}
-    </div>
-  );
-}
-
-/** Bottom drawer that slides up over the graph canvas to show a file's
- *  contents — opened by node clicks and sidebar file-tree clicks alike.
- *  Stays mounted (translated off-screen) so open/close animates. */
-function FileDrawer({
-  file,
-  onClose,
-  children,
+/** Sidebar header for one repo's tree: owner avatar + repo name + file count.
+ *  Clicking toggles the tree's visibility. */
+function RepoGroupHeader({
+  group,
+  collapsed,
+  onToggle,
 }: {
-  file: string | null;
-  onClose: () => void;
-  children?: ReactNode;
+  group: RepoGroup;
+  collapsed: boolean;
+  onToggle: () => void;
 }) {
   const { theme } = useTheme();
-  const muted = theme.colors.textMuted ?? theme.colors.textSecondary;
-  const open = file !== null;
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
-
+  const avatar = repoAvatarUrl(group.repoKey);
+  const label = group.repo ?? 'No repo';
   return (
     <div
+      role="button"
+      aria-expanded={!collapsed}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      title={collapsed ? 'Show files' : 'Hide files'}
       style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        height: '45%',
-        zIndex: 20,
         display: 'flex',
-        flexDirection: 'column',
-        borderTop: `1px solid ${theme.colors.border}`,
-        borderRadius: '8px 8px 0 0',
-        background: theme.colors.background,
-        boxShadow: '0 -8px 24px rgba(0,0,0,0.35)',
-        transform: open ? 'translateY(0)' : 'translateY(102%)',
-        transition: 'transform 200ms ease',
-        pointerEvents: open ? 'auto' : 'none',
-        visibility: open ? 'visible' : 'hidden',
+        alignItems: 'center',
+        gap: 8,
+        padding: '10px 16px 4px',
+        flexShrink: 0,
+        cursor: 'pointer',
+        userSelect: 'none',
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '6px 10px',
-          borderBottom: `1px solid ${theme.colors.border}`,
-          flexShrink: 0,
-        }}
-      >
+      {avatar ? (
+        <img
+          src={avatar}
+          alt=""
+          width={16}
+          height={16}
+          loading="lazy"
+          style={{ borderRadius: 4, flexShrink: 0, background: theme.colors.border }}
+        />
+      ) : group.owner ? (
         <span
-          title={file ?? undefined}
           style={{
-            flex: 1,
-            minWidth: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            fontFamily: theme.fonts.monospace,
-            fontSize: theme.fontSizes[0],
-            color: muted,
-          }}
-        >
-          {file}
-        </span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close file"
-          style={{
+            width: 16,
+            height: 16,
+            borderRadius: 4,
+            flexShrink: 0,
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            width: 22,
-            height: 22,
-            padding: 0,
-            border: 'none',
-            borderRadius: 4,
-            background: 'transparent',
+            fontSize: 9,
+            fontWeight: 700,
+            fontFamily: theme.fonts.monospace,
             color: theme.colors.text,
-            cursor: 'pointer',
+            background: theme.colors.border,
           }}
         >
-          <X size={14} />
-        </button>
-      </div>
-      <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>{children}</div>
+          {group.owner.charAt(0).toUpperCase()}
+        </span>
+      ) : null}
+      <span
+        style={{
+          fontSize: theme.fontSizes[1],
+          fontFamily: theme.fonts.monospace,
+          color: theme.colors.text,
+          fontWeight: 600,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {label}
+      </span>
     </div>
   );
-}
-
-/** Renders the graphify drill-down payload for a component. */
-function GraphifyDetailSections({ detail }: { detail: GraphifyComponentDetail }) {
-  const { theme } = useTheme();
-  const muted = theme.colors.textMuted ?? theme.colors.textSecondary;
-
-  const label = (k: string) => (
-    <span
-      style={{
-        width: 64,
-        flexShrink: 0,
-        color: muted,
-        fontFamily: theme.fonts.monospace,
-        textTransform: 'uppercase',
-        fontSize: theme.fontSizes[0] * 0.8,
-      }}
-    >
-      {k}
-    </span>
-  );
-  const chip = (name: string, meta?: string, key?: string | number) => (
-    <span
-      key={key}
-      style={{
-        fontFamily: theme.fonts.monospace,
-        fontSize: theme.fontSizes[0],
-        color: theme.colors.text,
-        border: `1px solid ${theme.colors.border}`,
-        borderRadius: 4,
-        padding: '1px 6px',
-        marginRight: 6,
-        marginBottom: 4,
-        display: 'inline-block',
-      }}
-    >
-      {name}
-      {meta ? <span style={{ color: muted }}> {meta}</span> : ''}
-    </span>
-  );
-  const row = (k: string, children: ReactNode) => (
-    <div
-      style={{ display: 'flex', gap: 8, fontSize: theme.fontSizes[0], lineHeight: 1.5, marginBottom: 4 }}
-    >
-      {label(k)}
-      <div style={{ minWidth: 0 }}>{children}</div>
-    </div>
-  );
-
-  switch (detail.kind) {
-    case 'class':
-      return (
-        <>
-          {detail.methods.length > 0 &&
-            row('methods', detail.methods.map((m, i) => chip(m.name, m.returnType, i)))}
-          {detail.properties.length > 0 &&
-            row('props', detail.properties.map((p, i) => chip(p.name, p.type, i)))}
-          {detail.extends.length > 0 && row('extends', detail.extends.map((e, i) => chip(e, undefined, i)))}
-          {detail.implements.length > 0 && row('impl', detail.implements.map((e, i) => chip(e, undefined, i)))}
-          {detail.instantiations.length > 0 &&
-            row('insts', detail.instantiations.map((i, idx) => chip(i.name, undefined, idx)))}
-          {detail.references.length > 0 &&
-            row('refs', detail.references.map((r, idx) => chip(r.name, undefined, idx)))}
-        </>
-      );
-    case 'function':
-      return (
-        <>
-          {detail.parameters.length > 0 &&
-            row('params', detail.parameters.map((p, i) => chip(p.type, undefined, i)))}
-          {detail.returnType && row('return', <span>{detail.returnType}</span>)}
-          {detail.callers.length > 0 &&
-            row('callers', detail.callers.map((c, i) => chip(c.name, undefined, i)))}
-          {detail.callees.length > 0 &&
-            row('callees', detail.callees.map((c, i) => chip(c.name, undefined, i)))}
-        </>
-      );
-    case 'type':
-      return (
-        <>
-          {detail.properties.length > 0 &&
-            row('props', detail.properties.map((p, i) => chip(p.name, p.type, i)))}
-          {detail.usedBy.length > 0 &&
-            row('used by', detail.usedBy.map((u, i) => chip(u.name, undefined, i)))}
-          {detail.implementors.length > 0 &&
-            row('impl', detail.implementors.map((e, i) => chip(e, undefined, i)))}
-        </>
-      );
-    case 'module':
-      return (
-        <>
-          {detail.exports.length > 0 &&
-            row('exports', detail.exports.map((e, i) => chip(e, undefined, i)))}
-          {detail.imports.length > 0 &&
-            row('imports', detail.imports.map((i, idx) => chip(i.name, undefined, idx)))}
-          {detail.symbols.length > 0 &&
-            row('symbols', detail.symbols.map((s, i) => chip(s, undefined, i)))}
-        </>
-      );
-    case 'external':
-      return row('source', <span>{detail.label}</span>);
-  }
 }
 
 export function SubsystemComponentGraph(props: SubsystemComponentGraphProps) {
