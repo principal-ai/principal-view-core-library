@@ -1,0 +1,41 @@
+nav {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #e2e2e2;
+}
+
+nav a {
+  font-weight: 500;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+}
+
+main h1 {
+  margin-bottom: 1rem;
+}
+
+main p {
+  line-height: 1.6;
+}
+
+code {
+  background: #f1f1f1;
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+@media (prefers-color-scheme: dark) {
+  nav {
+    border-bottom-color: #333;
+  }
+
+  code {
+    background: #2a2a2a;
+  }
+}
