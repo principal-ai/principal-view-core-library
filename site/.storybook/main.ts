@@ -3,15 +3,14 @@ import type { StorybookConfig } from '@storybook/react-vite';
 /**
  * Showcase Storybook — public gallery of Subsystem View use cases.
  *
- * Deliberately separate from the internal component-development storybook
- * (.storybook): it only picks up stories from `showcase/`, so internal
- * Subsystem stories never appear in the deployed gallery.
+ * Depends on the *published* @principal-ai packages (not workspace source), so
+ * the gallery always demonstrates what consumers actually get from npm.
  *
  * Deployed to GitHub Pages at /<repo>/examples/ via .github/workflows/pages.yml.
  * STORYBOOK_BASE_PATH is set in CI; unset it locally for `storybook dev`.
  */
 const config: StorybookConfig = {
-  stories: ['../showcase/**/*.mdx', '../showcase/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
+  stories: ['../stories/**/*.mdx', '../stories/**/*.stories.@(js|jsx|mjs|ts|tsx)'],
   addons: ['@storybook/addon-links', '@storybook/addon-docs'],
   framework: {
     name: '@storybook/react-vite',

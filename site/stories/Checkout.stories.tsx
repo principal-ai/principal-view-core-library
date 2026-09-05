@@ -1,8 +1,8 @@
 import '@xyflow/react/dist/style.css';
 import type { Meta, StoryObj } from '@storybook/react';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
-import { SubsystemComponentGraph } from '../src/subsystem/SubsystemComponentGraph';
-import type { SubsystemComponent, SubsystemComponentEdge } from '../src/subsystem/model';
+import { SubsystemComponentGraph } from '@principal-ai/principal-view-react';
+import type { SubsystemComponent, SubsystemComponentEdge } from '@principal-ai/principal-view-react';
 
 const components: SubsystemComponent[] = [
   {

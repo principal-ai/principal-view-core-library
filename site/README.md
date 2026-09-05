@@ -25,6 +25,24 @@ This typechecks, bundles to `dist/`, and copies `dist/index.html` to
 `dist/404.html` so client-side routes survive refreshes and deep links
 on GitHub Pages.
 
+## Showcase (Storybook)
+
+The Examples gallery is a Storybook that lives in this same package
+(`.storybook/`, `stories/`) and renders Subsystem Views with the
+**published** `@principal-ai/principal-view-react` package — never
+workspace source — so it shows what npm consumers actually get.
+
+```bash
+bun run showcase        # dev server on :6007
+bun run build:showcase  # static build to storybook-static/
+```
+
+Deploys to `/examples/` next to the landing page: the workflow runs
+`build:showcase` with `STORYBOOK_BASE_PATH=/principal-view-core-library/examples/`
+and copies the output into `dist/examples/`. Storybook routes via query
+params (`?path=/story/...`), so deep links work on Pages without the
+404 fallback.
+
 ## Deploy
 
 Deploys happen automatically via `.github/workflows/pages.yml` on pushes

@@ -6,7 +6,6 @@ package-lock.json
 dist/
 build/
 storybook-static/
-packages/react/showcase-dist/
 *.tsbuildinfo
 *.tgz
 
