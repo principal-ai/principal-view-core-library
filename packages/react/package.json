@@ -11,7 +11,9 @@
     "test": "bun test",
     "test:watch": "bun test --watch",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "showcase": "storybook dev -p 6007 -c .storybook-showcase",
+    "build:showcase": "storybook build -c .storybook-showcase -o showcase-dist"
   },
   "dependencies": {
     "@pierre/theme": "^2.0.0",

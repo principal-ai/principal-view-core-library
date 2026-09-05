@@ -20,6 +20,7 @@ function Home() {
       </section>
 
       <footer className="site-footer">
+        <a href={`${import.meta.env.BASE_URL}examples/`}>Examples</a>
         <a href="https://github.com/principal-ai/principal-view" target="_blank" rel="noreferrer">
           GitHub
         </a>
