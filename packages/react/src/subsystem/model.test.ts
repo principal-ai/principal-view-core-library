@@ -2,6 +2,9 @@ import { describe, expect, test } from 'bun:test';
 import {
   convertSubsystemToNodes,
   convertSubsystemToEdges,
+  convertSubsystemToGroups,
+  getSubsystemRegions,
+  processGroupNodeId,
   buildSubsystemGraph,
   deriveNameFromSymbol,
   formatPurl,
@@ -119,6 +122,59 @@ describe('subsystem graph model', () => {
     expect(formatPurl('pkg:generic/local--Users-me-my-app')).toBe('Users-me-my-app (local)');
     // Malformed purls pass through untouched.
     expect(formatPurl('not-a-purl')).toBe('not-a-purl');
+  });
+
+  test('getSubsystemRegions groups by process, skipping process-less nodes', () => {
+    const regions = getSubsystemRegions({
+      components: [
+        { id: 'a', name: 'a', construct: 'function', file: 'a.ts', purl: 'pkg:github/acme/app', process: 'app/host' },
+        { id: 'b', name: 'b', construct: 'function', file: 'b.ts', purl: 'pkg:github/acme/app', process: 'app/host' },
+        { id: 'c', name: 'c', construct: 'function', file: 'c.ts', purl: 'pkg:github/acme/app', process: 'app/renderer' },
+        { id: 'd', name: 'd', construct: 'function', file: 'd.ts', purl: 'pkg:github/acme/app' },
+      ],
+    });
+    expect(regions.map((r) => r.key)).toEqual(['app/host', 'app/renderer']);
+    expect(regions[0]!.memberIds).toEqual(['a', 'b']);
+  });
+
+  test('convertSubsystemToNodes stamps parentId for process members only', () => {
+    const nodes = convertSubsystemToNodes({
+      components: [
+        { id: 'a', name: 'a', construct: 'function', file: 'a.ts', purl: 'pkg:github/acme/app', process: 'app/host' },
+        { id: 'd', name: 'd', construct: 'function', file: 'd.ts', purl: 'pkg:github/acme/app' },
+      ],
+      edges: [],
+    });
+    expect((nodes.find((n) => n.id === 'a') as { parentId?: string }).parentId).toBe(
+      processGroupNodeId('app/host'),
+    );
+    expect((nodes.find((n) => n.id === 'd') as { parentId?: string }).parentId).toBeUndefined();
+  });
+
+  test('convertSubsystemToGroups emits one parent per process', () => {
+    const groups = convertSubsystemToGroups({
+      components: [
+        { id: 'a', name: 'a', construct: 'function', file: 'a.ts', purl: 'pkg:github/acme/app', process: 'app/host' },
+        { id: 'b', name: 'b', construct: 'function', file: 'b.ts', purl: 'pkg:github/acme/app', process: 'app/host' },
+      ],
+    });
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.id).toBe(processGroupNodeId('app/host'));
+    expect(groups[0]!.type).toBe('subsystem-group');
+  });
+
+  test('buildSubsystemGraph drops singleton process frames (no parentId, no group)', async () => {
+    const { nodes, regions } = await buildSubsystemGraph({
+      components: [
+        { id: 'a', name: 'a', construct: 'function', file: 'a.ts', purl: 'pkg:github/acme/app', process: 'app/host' },
+        { id: 'b', name: 'b', construct: 'function', file: 'b.ts', purl: 'pkg:github/acme/app', process: 'app/host' },
+        { id: 'solo', name: 'solo', construct: 'function', file: 's.ts', purl: 'pkg:github/acme/app', process: 'app/lonely' },
+      ],
+      edges: [{ id: 'e1', from: 'a', to: 'b', mechanism: 'calls' }],
+    });
+    expect(regions.map((r) => r.key)).toEqual(['app/host']);
+    expect((nodes.find((n) => n.id === 'solo') as { parentId?: string }).parentId).toBeUndefined();
+    expect(nodes.find((n) => n.id === processGroupNodeId('app/lonely'))).toBeUndefined();
   });
 
   test('subsystemGraphLayoutKey ignores declarationRef-only changes', () => {

@@ -11,6 +11,7 @@ import { useState } from 'react';
 import {
   Handle,
   Position,
+  type Node,
   type NodeProps,
   type EdgeProps,
 } from '@xyflow/react';
@@ -21,7 +22,9 @@ import {
   ROLE_COLOR,
   ROLE_LABEL,
   deriveNameFromSymbol,
-  type SubsystemGraphNode,
+  packageColor,
+  type SubsystemGraphNodeData,
+  type SubsystemGroupNodeData,
   type SubsystemGraphEdge,
 } from './model';
 import { constructColorsFromPierreTheme } from '../pierre/constructColors';
@@ -70,7 +73,7 @@ export interface SubsystemGraphCallbacks {
 /** Root callbacks carried through node data (injected by the graph component). */
 export const SUBSYSTEM_CALLBACKS: SubsystemGraphCallbacks = {};
 
-export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
+export function SubsystemComponentNode(props: NodeProps<Node<SubsystemGraphNodeData, 'subsystem-component'>>) {
   const { theme, mode } = useTheme();
   const { data, selected, width: nodeWidth, height: nodeHeight } = props;
   const c = data.component;
@@ -263,6 +266,65 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
 
       <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
+    </div>
+  );
+}
+
+/**
+ * Process boundary frame — a React Flow parent node. Members render inside
+ * via `parentId`; this draws the labeled container only (no handles, no
+ * selection). The border color derives deterministically from the process key
+ * so each deployment unit reads as its own region.
+ */
+export function SubsystemGroupNode(props: NodeProps<Node<SubsystemGroupNodeData, 'subsystem-group'>>) {
+  const { theme } = useTheme();
+  const { data, width, height, selected } = props as unknown as {
+    data: SubsystemGroupNodeData;
+    width?: number;
+    height?: number;
+    selected?: boolean;
+  };
+  const region = data.region;
+  const color = packageColor(region?.key ?? 'process');
+  const dimmed = data.dimmed === true;
+  const hidden = (data as { hidden?: boolean }).hidden === true;
+
+  if (!region) return null;
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        width: width ?? 400,
+        height: height ?? 300,
+        boxSizing: 'border-box',
+        borderRadius: 12,
+        border: `2px ${selected ? 'solid' : 'dashed'} ${color}`,
+        background: `${color}14`,
+        opacity: hidden ? 0 : dimmed ? 0.35 : 1,
+        transition: 'opacity 150ms ease',
+        pointerEvents: 'none',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: -13,
+          left: 12,
+          fontFamily: theme.fonts.monospace,
+          fontSize: theme.fontSizes[0],
+          fontWeight: 700,
+          letterSpacing: 0.6,
+          color,
+          background: theme.colors.backgroundSecondary ?? theme.colors.background,
+          border: `1px solid ${color}`,
+          borderRadius: 4,
+          padding: '1px 7px',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {`process: ${region.label}`}
+      </div>
     </div>
   );
 }

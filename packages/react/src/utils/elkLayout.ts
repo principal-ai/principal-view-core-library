@@ -71,6 +71,14 @@ export interface ElkLayoutOptions {
    * @default 'RIGHT'
    */
   direction?: 'RIGHT' | 'LEFT' | 'DOWN' | 'UP';
+
+  /**
+   * Compound groups — each becomes a nested ELK parent whose `memberIds`
+   * are laid out inside it. Members reference the group via React Flow
+   * `parentId`; ELK returns parent-relative child positions which this
+   * module flattens back to absolute flow coordinates.
+   */
+  groups?: Array<{ id: string; memberIds: string[] }>;
 }
 
 /** Result of ELK layout computation */
@@ -83,6 +91,8 @@ export interface ElkLayoutResult {
   edgeLabelPositions: Map<string, { x: number; y: number }>;
   /** Raw ELK path points per edge (for debugging). */
   edgePathPoints: Map<string, Point[]>;
+  /** Compound parent bounds from ELK (absolute flow coords), keyed by group id. */
+  groupBounds: Map<string, { x: number; y: number; width: number; height: number }>;
 }
 
 /** Point in 2D space */
@@ -102,6 +112,8 @@ interface ElkEdgeSection {
 /** Extended ELK edge with sections */
 interface ElkEdgeWithSections extends ElkExtendedEdge {
   sections?: ElkEdgeSection[];
+  /** Id of the compound node whose coordinate frame sections/labels use. */
+  container?: string;
 }
 
 // Create ELK instance lazily to avoid issues in test environments
@@ -488,22 +500,103 @@ export async function computeElkLayout(
     return elkEdge;
   });
 
+  // Partition leaf nodes into compound parents when groups are given.
+  // Group shells themselves are NOT part of `nodes` — they are reconstructed
+  // by the caller from `groupBounds`. Only leaf ids in `memberIds` nest.
+  const groupDefs = (options.groups ?? []).filter((g) => g.memberIds.length > 0);
+  const memberToGroup = new Map<string, string>();
+  const groupedLeafIds = new Set<string>();
+  for (const g of groupDefs) {
+    for (const mid of g.memberIds) {
+      if (!memberToGroup.has(mid)) {
+        memberToGroup.set(mid, g.id);
+        groupedLeafIds.add(mid);
+      }
+    }
+  }
+  const elkById = new Map(elkNodes.map((n) => [n.id, n]));
+  const ungroupedElkNodes: ElkNode[] = [];
+  for (const n of elkNodes) {
+    if (!groupedLeafIds.has(n.id)) ungroupedElkNodes.push(n);
+  }
+  const elkParents: ElkNode[] = [];
+  for (const g of groupDefs) {
+    const children = g.memberIds
+      .map((mid) => elkById.get(mid))
+      .filter((n): n is ElkNode => !!n);
+    // Skip groups with <2 real members — a single-child frame adds noise;
+    // the caller drops the shell and leaves the node top-level.
+    if (children.length < 2) {
+      for (const c of children) ungroupedElkNodes.push(c);
+      memberToGroup.delete(g.memberIds[0]);
+      groupedLeafIds.delete(g.memberIds[0]);
+      continue;
+    }
+    elkParents.push({
+      id: g.id,
+      children,
+      layoutOptions: {
+        'elk.algorithm': 'layered',
+        'elk.direction': direction,
+        'elk.padding': '[top=48,left=24,bottom=24,right=24]',
+        'elk.spacing.nodeNode': '40',
+      },
+    });
+  }
+
   // Create ELK graph
+  const rootOptions = getElkOptions(options);
+  if (elkParents.length > 0) {
+    rootOptions['elk.hierarchyHandling'] = 'INCLUDE_CHILDREN';
+  }
   const elkGraph: ElkNode = {
     id: 'root',
-    layoutOptions: getElkOptions(options),
-    children: elkNodes,
+    layoutOptions: rootOptions,
+    children: [...ungroupedElkNodes, ...elkParents],
     edges: elkEdges,
   };
 
   // Run ELK layout
   const layoutedGraph = await getElkInstance().layout(elkGraph);
 
-  // Build a map of ELK-computed node positions
+  // Build maps of ELK-computed positions. Nested children report
+  // parent-relative coords — flatten to absolute for edges, and keep the
+  // relative form for React Flow children (whose position is parent-relative).
+  // Absolute offset of every ELK node (parents included), accumulated down
+  // the ancestor chain — edge sections/labels are relative to their
+  // `container`, so each edge needs its container's absolute offset.
+  const elkAbsOffsets = new Map<string, { x: number; y: number }>();
   const elkPositions = new Map<string, { x: number; y: number }>();
+  const elkRelativePositions = new Map<string, { x: number; y: number }>();
+  const groupBounds = new Map<string, { x: number; y: number; width: number; height: number }>();
+  const walkElk = (n: ElkNode, ox: number, oy: number) => {
+    const ax = ox + (n.x ?? 0);
+    const ay = oy + (n.y ?? 0);
+    elkAbsOffsets.set(n.id, { x: ax, y: ay });
+    for (const c of n.children ?? []) walkElk(c, ax, ay);
+  };
+  walkElk(layoutedGraph, 0, 0);
   if (layoutedGraph.children) {
     for (const child of layoutedGraph.children) {
-      elkPositions.set(child.id, { x: child.x ?? 0, y: child.y ?? 0 });
+      if (child.children && child.children.length > 0 && groupDefs.some((g) => g.id === child.id)) {
+        const gx = child.x ?? 0;
+        const gy = child.y ?? 0;
+        groupBounds.set(child.id, {
+          x: gx,
+          y: gy,
+          width: child.width ?? 0,
+          height: child.height ?? 0,
+        });
+        for (const grand of child.children) {
+          const rx = grand.x ?? 0;
+          const ry = grand.y ?? 0;
+          elkRelativePositions.set(grand.id, { x: rx, y: ry });
+          elkPositions.set(grand.id, { x: gx + rx, y: gy + ry });
+        }
+      } else {
+        elkPositions.set(child.id, { x: child.x ?? 0, y: child.y ?? 0 });
+        elkRelativePositions.set(child.id, { x: child.x ?? 0, y: child.y ?? 0 });
+      }
     }
   }
 
@@ -527,7 +620,10 @@ export async function computeElkLayout(
         const targetOriginal = targetId ? originalPositions.get(targetId) : null;
         const targetElk = targetId ? elkPositions.get(targetId) : null;
 
-        // Collect all points from sections
+        // Collect all points from sections. Sections (and labels) are
+        // relative to the edge's `container` — intra-group edges live in
+        // the parent's frame, so translate to root-absolute flow coords.
+        const containerOffset = elkAbsOffsets.get(edge.container ?? 'root') ?? { x: 0, y: 0 };
         const allPoints: Point[] = [];
 
         for (const section of edge.sections) {
@@ -536,6 +632,12 @@ export async function computeElkLayout(
             allPoints.push(...section.bendPoints);
           }
           allPoints.push(section.endPoint);
+        }
+        if (containerOffset.x !== 0 || containerOffset.y !== 0) {
+          for (const p of allPoints) {
+            p.x += containerOffset.x;
+            p.y += containerOffset.y;
+          }
         }
 
         // If preserving positions, we need to offset the edge points
@@ -572,8 +674,8 @@ export async function computeElkLayout(
           const elkLabel = edge.labels[0];
           // ELK reports the label's top-left; convert to center so screen-space
           // overlays can anchor with translate(-50%, -50%) at any zoom.
-          let lx = (elkLabel.x ?? 0) + (elkLabel.width ?? 0) / 2;
-          let ly = (elkLabel.y ?? 0) + (elkLabel.height ?? 0) / 2;
+          let lx = (elkLabel.x ?? 0) + (elkLabel.width ?? 0) / 2 + containerOffset.x;
+          let ly = (elkLabel.y ?? 0) + (elkLabel.height ?? 0) / 2 + containerOffset.y;
           if (preserveNodePositions && sourceOriginal && sourceElk && targetOriginal && targetElk) {
             const sourceOffset = {
               x: sourceOriginal.x - sourceElk.x,
@@ -644,15 +746,17 @@ export async function computeElkLayout(
     }
   }
 
-  // Process nodes (update positions if not preserving)
+  // Process nodes (update positions if not preserving). Grouped children use
+  // parent-relative coords (React Flow child semantics); everything else uses
+  // absolute coords.
   const resultNodes = preserveNodePositions
     ? nodes
     : nodes.map((node) => {
-        const elkNode = layoutedGraph.children?.find((n: ElkNode) => n.id === node.id);
-        if (elkNode && elkNode.x !== undefined && elkNode.y !== undefined) {
+        const rel = elkRelativePositions.get(node.id);
+        if (rel) {
           return {
             ...node,
-            position: { x: elkNode.x, y: elkNode.y },
+            position: { x: rel.x, y: rel.y },
           };
         }
         return node;
@@ -663,6 +767,7 @@ export async function computeElkLayout(
     edgePaths,
     edgeLabelPositions,
     edgePathPoints,
+    groupBounds,
   };
 }
 

@@ -292,6 +292,46 @@ export interface SubsystemGraphDocument {
 
 export type SubsystemGraphNodeType = 'subsystem-component' | 'subsystem-group';
 
+/**
+ * One process boundary region — all components sharing a `process` value.
+ * Nodes without a `process` sit outside every boundary (no region).
+ */
+export interface SubsystemProcessRegion {
+  /** The `process` value (e.g. `trail-viewer/host`). */
+  key: string;
+  /** Display label for the boundary frame. */
+  label: string;
+  /** Component ids that are members of this region. */
+  memberIds: string[];
+}
+
+/** React Flow id for a process boundary group node. */
+export function processGroupNodeId(processKey: string): string {
+  return `process:${processKey}`;
+}
+
+/**
+ * Derive boundary regions from a document — one per distinct non-empty
+ * `process` value, in first-appearance order.
+ */
+export function getSubsystemRegions(
+  doc: Pick<SubsystemGraphDocument, 'components'>,
+): SubsystemProcessRegion[] {
+  const byProcess = new Map<string, string[]>();
+  for (const c of doc.components) {
+    const p = c.process?.trim();
+    if (!p) continue;
+    const list = byProcess.get(p) ?? [];
+    list.push(c.id);
+    byProcess.set(p, list);
+  }
+  return [...byProcess.entries()].map(([key, memberIds]) => ({
+    key,
+    label: key,
+    memberIds,
+  }));
+}
+
 export interface SubsystemGraphNodeData extends Record<string, unknown> {
   component: SubsystemComponent;
   /** Set while a file is open in the drawer: true if this node's component
@@ -302,7 +342,15 @@ export interface SubsystemGraphNodeData extends Record<string, unknown> {
   dimmed?: boolean;
 }
 
-export type SubsystemGraphNode = Node<SubsystemGraphNodeData, SubsystemGraphNodeType>;
+export interface SubsystemGroupNodeData extends Record<string, unknown> {
+  region: SubsystemProcessRegion;
+  /** True while the region's members are dimmed by flow focus. */
+  dimmed?: boolean;
+}
+
+export type SubsystemGraphNode =
+  | Node<SubsystemGraphNodeData, 'subsystem-component'>
+  | Node<SubsystemGroupNodeData, 'subsystem-group'>;
 
 export interface SubsystemGraphEdgeData extends Record<string, unknown> {
   mechanism: SubsystemEdgeMechanism;
@@ -396,12 +444,11 @@ export const ROLE_LABEL: Record<SubsystemComponentRole, string> = {
 };
 
 /**
- * Convert a subsystem graph document into React Flow nodes. We render **flat**
- * (no React Flow parent/group nodes) for robustness: package regions are laid
- * out in a grid and each component carries its package + a `pkgBounds`
- * rectangle on its node data so the group wrapper (drawn by the graph
- * component) can frame it. Only components' real positions matter to React
- * Flow; the package boundary is a visual region, not a sub-flow node.
+ * Convert a subsystem graph document into React Flow nodes. Components that
+ * carry a `process` get a `parentId` pointing at their boundary group node
+ * (`process:<process>`); nodes without one stay top-level (outside every
+ * boundary). The initial grid groups by `process ?? purl` so the pre-ELK
+ * positions are already clustered; ELK then refines with compound layout.
  */
 export function convertSubsystemToNodes(
   doc: SubsystemGraphDocument,
@@ -449,9 +496,11 @@ export function convertSubsystemToNodes(
       const cssBorder = 4; // 2px border each side
       const rawWidth = Math.max(cssMinWidth, textWidth + cssPadding + cssBorder);
       const nodeWidth = Math.max(cssMinWidth, Math.min(cap, rawWidth));
+      const processKey = c.process?.trim();
       nodes.push({
         id: c.id,
         type: 'subsystem-component',
+        ...(processKey ? { parentId: processGroupNodeId(processKey) } : {}),
         position: { x: PAD + col * COL_W, y: cursorY + row * ROW_H },
         width: nodeWidth,
         height: 84,
@@ -461,6 +510,24 @@ export function convertSubsystemToNodes(
     cursorY += heightPx + PAD * 2 + GROUP_GAP;
   }
   return nodes;
+}
+
+/**
+ * Convert boundary regions into React Flow parent (group) nodes. One per
+ * distinct `process` value; member components point at these via `parentId`.
+ * Positions/sizes are placeholders — ELK compound layout overwrites them.
+ */
+export function convertSubsystemToGroups(
+  doc: Pick<SubsystemGraphDocument, 'components'>,
+): SubsystemGraphNode[] {
+  return getSubsystemRegions(doc).map((region) => ({
+    id: processGroupNodeId(region.key),
+    type: 'subsystem-group',
+    position: { x: 0, y: 0 },
+    width: 400,
+    height: 300,
+    data: { region },
+  }));
 }
 
 /**
@@ -524,10 +591,23 @@ export async function buildSubsystemGraph(
 ): Promise<{
   nodes: SubsystemGraphNode[];
   edges: SubsystemGraphEdge[];
+  regions: SubsystemProcessRegion[];
 }> {
   const { maxNodeWidth, showEdgeLabels, measuredWidths, measuredHeights } = opts;
   const nodes = convertSubsystemToNodes(doc, { maxNodeWidth });
   const edges = convertSubsystemToEdges(doc);
+  // Boundary regions: one per multi-member process. Singletons get no frame —
+  // strip the parentId convertSubsystemToNodes stamped so React Flow never
+  // points at a non-existent parent.
+  const regions = getSubsystemRegions(doc).filter((r) => r.memberIds.length >= 2);
+  const regionKeys = new Set(regions.map((r) => r.key));
+  for (const n of nodes) {
+    if (n.type !== 'subsystem-component') continue;
+    const proc = (n.data as SubsystemGraphNodeData).component?.process?.trim();
+    if (proc && !regionKeys.has(proc)) {
+      delete (n as { parentId?: string }).parentId;
+    }
+  }
 
   // External edge targets that aren't real components → create stub nodes so
   // cross-package edges have something to land on.
@@ -576,7 +656,8 @@ export async function buildSubsystemGraph(
     }
   }
 
-  // ELK auto-layout: position nodes (layered, minimized crossings).
+  // ELK auto-layout: position nodes (layered, minimized crossings) with
+  // process partitions as compound parents so boundaries shape the layout.
   let placedNodes = nodes;
   let labelPositions = new Map<string, { x: number; y: number }>();
   let elkPathStrings = new Map<string, string>();
@@ -592,8 +673,26 @@ export async function buildSubsystemGraph(
         interLayerSpacing: 120,
         preserveNodePositions: false,
         edgeLabels: showEdgeLabels === false ? { enabled: false } : { enabled: true, placement: 'CENTER' },
+        groups: regions.map((r) => ({
+          id: processGroupNodeId(r.key),
+          memberIds: r.memberIds,
+        })),
       });
-      placedNodes = result.nodes as SubsystemGraphNode[];
+      const groupNodes: SubsystemGraphNode[] = regions.flatMap((region) => {
+        const bounds = result.groupBounds.get(processGroupNodeId(region.key));
+        if (!bounds) return [];
+        const group: SubsystemGraphNode = {
+          id: processGroupNodeId(region.key),
+          type: 'subsystem-group',
+          position: { x: bounds.x, y: bounds.y },
+          width: Math.max(200, bounds.width),
+          height: Math.max(160, bounds.height),
+          data: { region },
+        };
+        return [group];
+      });
+      // Parents first — React Flow resolves children via parentId.
+      placedNodes = [...groupNodes, ...(result.nodes as SubsystemGraphNode[])];
       labelPositions = result.edgeLabelPositions;
       elkPathStrings = result.edgePaths;
       elkPathPoints = result.edgePathPoints;
@@ -624,5 +723,5 @@ export async function buildSubsystemGraph(
     }
   }
 
-  return { nodes: placedNodes, edges };
+  return { nodes: placedNodes, edges, regions };
 }

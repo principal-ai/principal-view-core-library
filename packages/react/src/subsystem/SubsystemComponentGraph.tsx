@@ -2,10 +2,10 @@
  * SubsystemComponentGraph — a clickable, read-only React Flow component graph
  * for a subsystem snapshot.
  *
- * Nodes are positioned with ELK auto-layout (layered, minimized crossings) and
- * colored by package. Only cross-package edges leave a package region. Clicking
- * a component invokes `onSelect`. (Package frames are deferred — nodes are
- * color-coded by package for now.)
+ * Nodes are positioned with ELK auto-layout (layered, minimized crossings,
+ * process-aware compound groups). Components sharing a `process` render
+ * inside one labeled boundary frame; nodes without one sit outside every
+ * boundary. Clicking a component invokes `onSelect`.
  *
  * This is a focused fork of the package's `GraphRenderer` pipeline (same ELK
  * edge routing, delayed fitView, Background/Controls/MiniMap, node/edge type
@@ -44,7 +44,7 @@ import {
   type SubsystemThroughline,
 } from './model';
 import type { SubsystemOpenFileOptions } from './declarationRef';
-import { SubsystemComponentNode, SubsystemEdge, SUBSYSTEM_CALLBACKS, hexWithAlpha, EDGE_DIM_ALPHA, fileMatchForNode, flowElementVisibility } from './nodes';
+import { SubsystemComponentNode, SubsystemGroupNode, SubsystemEdge, SUBSYSTEM_CALLBACKS, hexWithAlpha, EDGE_DIM_ALPHA, fileMatchForNode, flowElementVisibility } from './nodes';
 import { SubsystemFileTree } from './SubsystemFileTree';
 import { GraphLayoutCover } from './GraphLayoutCover';
 import { ComponentDeclaration } from './ComponentDeclaration';
@@ -115,6 +115,7 @@ export interface SubsystemComponentGraphProps {
 
 const nodeTypes: NodeTypes = {
   'subsystem-component': SubsystemComponentNode,
+  'subsystem-group': SubsystemGroupNode,
 };
 
 const edgeTypes: EdgeTypes = {
@@ -230,22 +231,25 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
   const measuredDimsRef = useRef(new Map<string, { width: number; height: number }>());
   const pendingMeasuredRef = useRef(false);
 
-  // Pass 2: once every node has a measured dimension, re-run ELK.
+  // Pass 2: once every leaf node has a measured dimension, re-run ELK.
+  // Group parents are sized by ELK, not measured — exclude them or pass 2
+  // would wait forever for dimensions that never arrive.
   const prevMeasuredSigRef = useRef('');
   const pass2DoneRef = useRef(false);
   const triggerPass2 = useCallback(() => {
     if (pass2DoneRef.current) return;
     const dims = measuredDimsRef.current;
-    if (dims.size < built.nodes.length) return;
-    const sig = built.nodes.map((n) => `${n.id}:${dims.get(n.id)?.width ?? '?'}`).join(',');
+    const leafNodes = built.nodes.filter((n) => n.type !== 'subsystem-group');
+    if (dims.size < leafNodes.length) return;
+    const sig = leafNodes.map((n) => `${n.id}:${dims.get(n.id)?.width ?? '?'}`).join(',');
     if (sig.includes('?:')) return;
     if (sig === prevMeasuredSigRef.current) return;
     prevMeasuredSigRef.current = sig;
     pendingMeasuredRef.current = false;
     pass2DoneRef.current = true;
 
-    const measuredWidths = new Map(built.nodes.map((n) => [n.id, dims.get(n.id)!.width]));
-    const measuredHeights = new Map(built.nodes.map((n) => [n.id, dims.get(n.id)!.height]));
+    const measuredWidths = new Map(leafNodes.map((n) => [n.id, dims.get(n.id)!.width]));
+    const measuredHeights = new Map(leafNodes.map((n) => [n.id, dims.get(n.id)!.height]));
     let alive = true;
     void buildSubsystemGraph(
       { components, edges },
@@ -403,6 +407,26 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
   // React Flow's own selection state from updating.
   const dispNodes = useMemo(() => {
     return xyflowNodesBase.map((n) => {
+      // Boundary frames follow their members: hidden when no member is
+      // visible, dimmed when members are dimmed. Never selectable.
+      if (n.type === 'subsystem-group') {
+        const memberIds = ((n.data as { region?: { memberIds?: string[] } } | undefined)?.region?.memberIds) ?? [];
+        const vis = flowElementVisibility({
+          inOpened: memberIds.some((id) => openedNodeIds?.has(id) === true),
+          inSelected: memberIds.some((id) => brightNodeIds?.has(id) === true),
+          anyOpened: openedNodeIds != null,
+          anySelected: brightNodeIds != null,
+        });
+        return {
+          ...n,
+          hidden: vis.hidden,
+          selectable: false,
+          data: {
+            ...(n.data as object),
+            ...(vis.dimmed && { dimmed: true }),
+          },
+        };
+      }
       const comp = (n.data as { component?: SubsystemComponent } | undefined)?.component;
       const fileMatch = fileMatchForNode(comp?.file, openFile, focusNodeIds?.has(n.id) === true);
       const isSelected = selected?.id !== undefined && comp?.id === selected.id;
@@ -466,8 +490,12 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
       // Capture dimension changes (React Flow's measurement callback).
+      // Group parents are ELK-sized — ignore their measurements.
+      const groupIds = new Set(
+        dispNodes.filter((n) => n.type === 'subsystem-group').map((n) => n.id),
+      );
       for (const ch of changes) {
-        if (ch.type === 'dimensions' && ch.dimensions) {
+        if (ch.type === 'dimensions' && ch.dimensions && !groupIds.has(ch.id)) {
           measuredDimsRef.current.set(ch.id, ch.dimensions);
           pendingMeasuredRef.current = true;
         }
