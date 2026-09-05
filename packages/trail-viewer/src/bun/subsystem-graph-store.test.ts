@@ -7,6 +7,7 @@ import {
 	findComponentConstructProblems,
 	findDetailProvenanceProblems,
 	findEdgeMechanismProblems,
+	findThroughlineProblems,
 	graphIdFromWatchFilename,
 	normalizeDetailProvenance,
 	purlRepoKey,
@@ -16,6 +17,8 @@ import {
 	SUBSYSTEM_EDGE_MECHANISMS,
 	subsystemGraphFilePath,
 	verifyGraphFiles,
+	type SubsystemComponent,
+	type SubsystemComponentEdge,
 } from "./subsystem-graph-store";
 
 let tmp: string;
@@ -340,7 +343,7 @@ describe("findComponentConstructProblems", () => {
 	test("rejects off-vocabulary conceptual kinds", () => {
 		const problems = findComponentConstructProblems([
 			{ id: "s1", construct: "service", file: "src/s.ts", purl: "pkg:github/a/b" },
-			{ id: "s2", construct: "store", file: "src/s2.ts", purl: "pkg:github/a/b" },
+			{ id: "s2", construct: "variable", file: "src/s2.ts", purl: "pkg:github/a/b" },
 		]);
 		expect(problems).toHaveLength(2);
 	});
@@ -350,5 +353,99 @@ describe("findComponentConstructProblems", () => {
 		expect(findComponentConstructProblems([{ id: "n2" }])).toHaveLength(1);
 		expect(findComponentConstructProblems([])).toEqual([]);
 		expect(findComponentConstructProblems(undefined)).toEqual([]);
+	});
+});
+
+describe("findThroughlineProblems", () => {
+	const edges = [
+		{ id: "e1", from: "a", to: "b", mechanism: "calls" },
+		{ id: "e2", from: "b", to: "store", mechanism: "writes" },
+	];
+
+	test("tolerates absent throughlines", () => {
+		expect(findThroughlineProblems(edges, undefined)).toEqual([]);
+	});
+
+	test("accepts a well-formed throughline whose steps reference existing edges", () => {
+		const problems = findThroughlineProblems(edges, [
+			{ id: "tl", title: "save", steps: [{ edgeId: "e1", file: "src/a.ts", line: 3 }] },
+		]);
+		expect(problems).toEqual([]);
+	});
+
+	test("rejects non-array throughlines", () => {
+		expect(findThroughlineProblems(edges, {})[0]).toContain("must be an array");
+	});
+
+	test("rejects missing id / title / steps and unknown edge references", () => {
+		const missingId = findThroughlineProblems(edges, [
+			{ id: "", title: "t", steps: [{ edgeId: "e1", file: "a.ts", line: 3 }] },
+		]);
+		expect(missingId.join("; ")).toContain("id is required");
+
+		const missingTitle = findThroughlineProblems(edges, [
+			{ id: "tl", title: "", steps: [{ edgeId: "e1", file: "a.ts", line: 3 }] },
+		]);
+		expect(missingTitle.join("; ")).toContain("title is required");
+
+		const badEdge = findThroughlineProblems(edges, [
+			{ id: "tl", title: "t", steps: [{ edgeId: "nope", file: "a.ts", line: 3 }] },
+		]);
+		expect(badEdge.join("; ")).toContain('"nope"');
+	});
+
+	test("rejects non-positive or non-integer line", () => {
+		const problems = findThroughlineProblems(edges, [
+			{ id: "tl", title: "t", steps: [{ edgeId: "e1", file: "a.ts", line: 0 }] },
+		]);
+		expect(problems.join("; ")).toContain("positive 1-based integer");
+	});
+});
+
+describe("throughline verify pass", () => {
+	test("resolves steps to real site lines and flags stuck/blank/misfit sites", async () => {
+		const local = mkdtempSync(join(tmpdir(), "tl-verify-"));
+		try {
+			mkdirSync(join(local, "src"), { recursive: true });
+			writeFileSync(
+				join(local, "src", "seam.ts"),
+				["function a() {}", "const store = createStore();", "writer(store, a());", ""].join("\n"),
+				"utf8",
+			);
+			const components: SubsystemComponent[] = [
+				{ id: "a", name: "a", construct: "function", symbol: "a", file: "src/seam.ts", purl: "pkg:github/a/repo-a" },
+				{ id: "store", name: "store", construct: "store", file: "src/seam.ts", purl: "pkg:github/a/repo-a" },
+			];
+			const edges: SubsystemComponentEdge[] = [
+				{ id: "e1", from: "a", to: "store", mechanism: "calls", refs: ["writer", "createStore"] },
+			];
+			const result = await verifyGraphFiles({
+				components,
+				edges,
+				throughlines: [
+					{
+						id: "tl",
+						title: "save",
+						steps: [
+							{ edgeId: "e1", file: "src/seam.ts", line: 3 }, // "writer(store, a());" — affinity via 'writer'
+							{ edgeId: "e1", file: "src/seam.ts", line: 999 }, // out of range
+							{ edgeId: "missing", file: "src/seam.ts", line: 1 }, // unknown edge
+							{ edgeId: "e1", file: "src/nope.ts", line: 1 }, // missing file
+							{ edgeId: "e1", file: "src/seam.ts", line: 4 }, // blank line
+						],
+					},
+				],
+				repoRoots: { "pkg:github/a/repo-a": local },
+			});
+
+			expect(result.throughlinesChecked).toBe(1); // only the line-3 step resolves
+			const reasons = result.throughlinesFailed.map((f) => f.reason);
+			expect(reasons.some((r) => r.includes("out of range"))).toBe(true);
+			expect(reasons.some((r) => r.includes("is not in the graph"))).toBe(true);
+			expect(reasons.some((r) => r.includes("not found"))).toBe(true);
+			expect(reasons.some((r) => r.includes("blank"))).toBe(true);
+		} finally {
+			rmSync(local, { recursive: true, force: true });
+		}
 	});
 });

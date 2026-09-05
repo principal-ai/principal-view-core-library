@@ -7,14 +7,24 @@
     "types": ["vite/client"],
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
 
     /* Bundler mode */
     "moduleResolution": "bundler",
+    "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    "paths": {
+      "@schemas/*": ["../packages/core/schemas/*"],
+      "@stoplight/json-schema-viewer": [
+        "./node_modules/@stoplight/json-schema-viewer/index.d.ts"
+      ],
+      "@stoplight/mosaic": ["./node_modules/@stoplight/mosaic/index.d.ts"]
+    },
 
     /* Linting */
     "noUnusedLocals": true,

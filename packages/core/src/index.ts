@@ -55,10 +55,30 @@ export type {
   JsonObject,
   ProjectArea,
   AuxiliaryManifest,
+  SubsystemConstruct,
+  SubsystemComponentRole,
+  SubsystemEdgeMechanism,
+  SubsystemCapture,
+  SubsystemDeclarationProvenance,
+  SubsystemDeclTokenKind,
+  SubsystemDeclToken,
+  SubsystemDeclarationRef,
+  SubsystemConstructDeclaration,
+  SubsystemComponent,
+  SubsystemComponentEdge,
+  SubsystemThroughlineStep,
+  SubsystemThroughline,
+  SubsystemRepoRef,
+  SubsystemGraphDocument,
+  SubsystemGraphHostBinding,
+  SubsystemGraphHydrated,
 } from './types';
 
 // Auxiliary manifest type guard (browser-safe runtime helper)
 export { isAuxiliaryManifest } from './types/auxiliary';
+
+// Subsystem graph type guard (browser-safe runtime helper)
+export { isSubsystemGraphDocument } from './types/subsystem-graph';
 
 // Export path-based configuration types (browser-safe)
 export type { PathBasedGraphConfiguration } from './types/path-based-config';

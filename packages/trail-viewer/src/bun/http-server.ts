@@ -26,11 +26,13 @@ import {
 	findComponentConstructProblems,
 	findDetailProvenanceProblems,
 	findEdgeMechanismProblems,
+	findThroughlineProblems,
 	getSubsystemGraph,
 	listSubsystemGraphs,
 	normalizeDetailProvenance,
 	subsystemGraphFilePath,
 	updateSubsystemGraph,
+	type StoredSubsystemGraph,
 	type SubsystemGraphDocument,
 } from "./subsystem-graph-store";
 
@@ -252,6 +254,7 @@ export async function handleSubsystemGraphRequest(
 			...findComponentConstructProblems(body["components"]),
 			...findDetailProvenanceProblems(body["components"]),
 			...findEdgeMechanismProblems(body["edges"]),
+			...findThroughlineProblems(body["edges"], body["throughlines"]),
 		];
 		if (problems.length > 0) return error(`invalid graph: ${problems.join("; ")}`);
 		normalizeDetailProvenance(body["components"]);
@@ -261,6 +264,7 @@ export async function handleSubsystemGraphRequest(
 			description: typeof body["description"] === "string" ? body["description"] : undefined,
 			components: body["components"] as SubsystemGraphDocument["components"],
 			edges: body["edges"] as SubsystemGraphDocument["edges"],
+			throughlines: body["throughlines"] as StoredSubsystemGraph["throughlines"],
 			source: typeof body["source"] === "string" ? body["source"] : undefined,
 			repo: body["repo"] as { owner: string; name: string } | undefined,
 			repoRoot: typeof body["repoRoot"] === "string" ? body["repoRoot"] : undefined,
@@ -309,6 +313,7 @@ export async function handleSubsystemGraphRequest(
 				...(body["components"] !== undefined ? findComponentConstructProblems(body["components"]) : []),
 				...(body["components"] !== undefined ? findDetailProvenanceProblems(body["components"]) : []),
 				...(body["edges"] !== undefined ? findEdgeMechanismProblems(body["edges"]) : []),
+				...(body["throughlines"] !== undefined ? findThroughlineProblems(body["edges"], body["throughlines"]) : []),
 			];
 			if (problems.length > 0) return error(`invalid graph: ${problems.join("; ")}`);
 			if (body["components"] !== undefined) normalizeDetailProvenance(body["components"]);

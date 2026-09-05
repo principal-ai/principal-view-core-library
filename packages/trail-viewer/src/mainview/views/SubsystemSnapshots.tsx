@@ -67,7 +67,6 @@ export function SubsystemSnapshots({
 
 function SubsystemCard({ subsystem: s }: { subsystem: SubsystemSnapshot }) {
 	const { theme } = useTheme();
-	const [showSequence, setShowSequence] = useState(false);
 	const [showDetails, setShowDetails] = useState(false);
 	const muted = theme.colors.textMuted ?? theme.colors.textSecondary;
 
@@ -170,19 +169,15 @@ function SubsystemCard({ subsystem: s }: { subsystem: SubsystemSnapshot }) {
 			>
 				{(() => {
 					const toggles: { key: string; label: string }[] = [];
-					if (s.sequenceMermaid) toggles.push({ key: "sequence", label: "Sequence story" });
 					toggles.push({ key: "details", label: "Types · files · tests" });
 					return toggles;
 				})().map((t) => {
-					const active = t.key === "sequence" ? showSequence : showDetails;
+					const active = showDetails;
 					return (
 						<button
 							key={t.key}
 							type="button"
-							onClick={() => {
-								if (t.key === "sequence") setShowSequence((v) => !v);
-								else setShowDetails((v) => !v);
-							}}
+							onClick={() => setShowDetails((v) => !v)}
 							style={{
 								padding: "3px 10px",
 								borderRadius: 6,
@@ -212,29 +207,6 @@ function SubsystemCard({ subsystem: s }: { subsystem: SubsystemSnapshot }) {
 					{s.integrations.length} edges
 				</span>
 			</div>
-
-			{/* Sequence story (per-capture, behind a toggle) */}
-			{s.sequenceMermaid && showSequence && (
-				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-						minHeight: 240,
-						padding: "12px 20px",
-						borderBottom: `1px solid ${theme.colors.border ?? "#333"}`,
-						background: theme.colors.background,
-					}}
-				>
-					<IndustryLazyMermaidDiagram
-						code={s.sequenceMermaid}
-						id={`subsystem-${s.id}-sequence`}
-						theme={theme}
-						maxHeight="calc(100vh - 480px)"
-						showChrome={false}
-					/>
-				</div>
-			)}
 
 			{/* Details */}
 			{showDetails && (

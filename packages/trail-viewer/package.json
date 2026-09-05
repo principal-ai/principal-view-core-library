@@ -43,7 +43,7 @@
 		"@principal-ai/file-city-react": "^0.5.91",
 		"@principal-ai/logo-component": "^0.1.23",
 		"@principal-ai/principal-view-core": "^0.28.12",
-		"@principal-ai/principal-view-react": "0.16.56",
+		"@principal-ai/principal-view-react": "0.16.58",
 		"@principal-ai/repository-abstraction": "^0.5.7",
 		"@types/bun": "latest",
 		"@types/react": "^19.2.17",

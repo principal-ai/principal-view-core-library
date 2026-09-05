@@ -23,6 +23,36 @@ import type {
 /** Canonical subsystem-graph model types, re-shared with both processes. */
 export type { SubsystemComponent, SubsystemComponentEdge, SubsystemGraphDocument };
 
+/**
+ * A single site on an existing edge — the exact `file:line` where that
+ * edge's seam manifests for a given flow. The edge stays the abstract
+ * contract (`from`, `to`, `mechanism`); a throughline step picks the concrete
+ * manifestation. One edge can appear in many steps (e.g. a `calls` edge whose
+ * `readFile` and `writeFile` sites serve different flows).
+ */
+export interface SubsystemThroughlineStep {
+	/** Id of the existing edge this hop traverses. */
+	edgeId: string;
+	/** Repo-root-relative path of the file where the edge fires. */
+	file: string;
+	/** 1-based line of the site within `file`. */
+	line: number;
+	/** Frame name for this hop (function/method/symbol). Optional. */
+	symbol?: string;
+}
+
+/**
+ * An ordered execution story over a graph's edges — the structured successor
+ * to a free-form sequence story. Each step references an existing edge and the
+ * exact site where that relationship fires for this flow; ordering is the
+ * array. One throughline per flow (save flow, load flow, …).
+ */
+export interface SubsystemThroughline {
+	id: string;
+	title: string;
+	steps: SubsystemThroughlineStep[];
+}
+
 export type ViewerMode = "local" | "remote";
 export type PayloadKind = "trail" | "tour";
 
@@ -183,8 +213,6 @@ export interface SubsystemSnapshot {
 	/** Purl file-refs of fixtures the subsystem is built against. */
 	fixtures: string[];
 	testSuites: SubsystemTestSuite[];
-	/** Per-capture execution story — the volatile, central layer. */
-	sequenceMermaid?: string;
 	/** Component graph (kind-tagged components) — the stable substrate. */
 	graphMermaid?: string;
 	/** Sessions that refined this snapshot (appended on recurrence). */
@@ -198,6 +226,8 @@ export interface StoredSubsystemGraph {
 	description?: string;
 	components: SubsystemComponent[];
 	edges: SubsystemComponentEdge[];
+	/** Ordered execution stories over the graph's edges (one per flow). */
+	throughlines?: SubsystemThroughline[];
 	createdAt: string;
 	updatedAt: string;
 	source?: string;

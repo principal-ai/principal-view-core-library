@@ -166,13 +166,12 @@ export function buildBrief(src: BriefSource): string {
 	lines.push('  "integrations": [{ "to": "<other subsystem or pkg:...#symbol>", "mechanism": "imports | calls | extends | registers-into", "refs": ["pkg:...#src/foo.ts"] }],');
 	lines.push('  "fixtures": ["pkg:github/owner/name#test-data/fixture.jsonl"],');
 	lines.push('  "testSuites": [{ "file": "pkg:...#V2RealSession.test.ts", "exercises": ["FooBar.normalize"], "verifies": "maps the prompt lifecycle" }],');
-	lines.push('  "sequenceMermaid": "sequenceDiagram\\n    ...",');
 	lines.push('  "graphMermaid": "flowchart LR\\n    ...",');
 	lines.push('  "sessionIds": ["<the session id from the brief header>"]');
 	lines.push('}\n```');
 	lines.push("");
 	lines.push(
-		"Rules: emit an empty `subsystems: []` when the session was purely exploratory with no file cluster. `entryPoints[].symbol` and `signature` must be **verbatim from the code** (read the file; `line` is 1-based). `sequenceMermaid` is the session's story for that subsystem (the per-capture, central layer); `graphMermaid` is the component graph — nodes are kind-tagged components, packages render as subgraphs, only cross-package edges leave the box, and shared seams (registries/barrels/facades) are edge targets, never member nodes. `testSuites`/`fixtures` capture how it is tested, separate from how it exists.",
+		"Rules: emit an empty `subsystems: []` when the session was purely exploratory with no file cluster. `entryPoints[].symbol` and `signature` must be **verbatim from the code** (read the file; `line` is 1-based). `graphMermaid` is the component graph — nodes are kind-tagged components, packages render as subgraphs, only cross-package edges leave the box, and shared seams (registries/barrels/facades) are edge targets, never member nodes. `testSuites`/`fixtures` capture how it is tested, separate from how it exists.",
 	);
 	lines.push("");
 	lines.push(
@@ -668,7 +667,6 @@ function validateSubsystem(raw: unknown, idx: number): SubsystemSnapshot | null 
 		integrations,
 		fixtures,
 		testSuites,
-		sequenceMermaid: str(r, "sequenceMermaid"),
 		graphMermaid: str(r, "graphMermaid"),
 		sessionIds,
 	};

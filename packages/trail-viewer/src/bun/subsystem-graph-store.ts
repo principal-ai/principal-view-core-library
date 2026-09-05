@@ -14,6 +14,8 @@ import type {
 	SubsystemComponent,
 	SubsystemComponentEdge,
 	SubsystemGraphDocument,
+	SubsystemThroughline,
+	SubsystemThroughlineStep,
 	TrailViewerMessages,
 } from "../shared/contract";
 
@@ -21,7 +23,13 @@ import type {
 // Types
 // ---------------------------------------------------------------------------
 
-export type { SubsystemComponent, SubsystemComponentEdge, SubsystemGraphDocument };
+export type {
+	SubsystemComponent,
+	SubsystemComponentEdge,
+	SubsystemGraphDocument,
+	SubsystemThroughline,
+	SubsystemThroughlineStep,
+};
 
 const ROOT = join(homedir(), ".principal", "subsystem-graphs");
 const INDEX_PATH = join(ROOT, "_index.json");
@@ -136,6 +144,11 @@ export interface StoredSubsystemGraph extends SubsystemGraphDocument {
 	id: string;
 	title: string;
 	description?: string;
+	/** Ordered execution stories over the graph's edges (one per flow). Mirrors
+	 *  the wire `StoredSubsystemGraph` in ../shared/contract; duplicated here
+	 *  until the react package (this type's `SubsystemGraphDocument` origin)
+	 *  carries `throughlines`. */
+	throughlines?: SubsystemThroughline[];
 	createdAt: string;
 	updatedAt: string;
 	/** Where this graph came from (agent session, manual creation, etc.). */
@@ -190,6 +203,26 @@ export interface SubsystemGraphVerification {
 	detailsVerified: number;
 	/** Components carrying hand-authored drill-down details. */
 	detailsAuthored: number;
+	/**
+	 * Throughline step sites that fully resolved (edge exists, file + line
+	 * resolve against a local root, and the line text has affinity with the
+	 * edge). Steps whose edge endpoints have no local root are skipped, not
+	 * failed — absence of a machine is not an error.
+	 */
+	throughlinesChecked: number;
+	/**
+	 * Throughline steps that could not be taken as claimed: unknown edge,
+	 * missing file, line out of range, or a site line with no affinity to the
+	 * edge (a step can't point at a random line and claim it is the seam).
+	 */
+	throughlinesFailed: Array<{
+		throughlineId: string;
+		step: number;
+		edgeId: string;
+		file: string;
+		line: number;
+		reason: string;
+	}>;
 }
 
 /** Lightweight index entry for listing. */
@@ -264,6 +297,54 @@ export function findEdgeMechanismProblems(edges: unknown): string[] {
 	return problems;
 }
 
+/**
+ * Human-readable problems with a graph's throughlines (empty = valid).
+ * A throughline is a promise to walk *existing* edges in an order, so a step
+ * that names an edge not in the graph, or a site that can't be a code
+ * location, would render as a broken story — reject before persist.
+ */
+export function findThroughlineProblems(edges: unknown, throughlines: unknown): string[] {
+	if (throughlines === undefined) return [];
+	if (!Array.isArray(throughlines)) return ["throughlines must be an array"];
+	const edgeIds = new Set(
+		(Array.isArray(edges) ? edges : [])
+			.map((e) => (e as Partial<SubsystemComponentEdge> | null)?.id)
+			.filter((id): id is string => typeof id === "string"),
+	);
+	const problems: string[] = [];
+	for (const tl of throughlines) {
+		const t = tl as Partial<SubsystemThroughline> | null;
+		const label = JSON.stringify(t?.id ?? "<no id>");
+		if (typeof t?.id !== "string" || !t.id.trim()) {
+			problems.push(`throughline ${label}: id is required`);
+			continue;
+		}
+		if (typeof t?.title !== "string" || !t.title.trim()) {
+			problems.push(`throughline ${label}: title is required`);
+		}
+		if (!Array.isArray(t.steps)) {
+			problems.push(`throughline ${label}: steps array is required`);
+			continue;
+		}
+		t.steps.forEach((step, i) => {
+			const s = step as Partial<SubsystemThroughlineStep> | null;
+			if (typeof s?.edgeId !== "string" || !edgeIds.has(s.edgeId)) {
+				problems.push(
+					`throughline ${label}: step ${i} edgeId ${JSON.stringify(s?.edgeId ?? "<missing>")} does not match any edge in the graph`,
+				);
+			}
+			if (typeof s?.file !== "string" || !s.file.trim()) {
+				problems.push(`throughline ${label}: step ${i} file is required (edgeId ${JSON.stringify(s?.edgeId ?? "<missing>")})`);
+			} else if (typeof s?.line !== "number" || !Number.isInteger(s.line) || s.line < 1) {
+				problems.push(
+					`throughline ${label}: step ${i} line must be a positive 1-based integer (edgeId ${JSON.stringify(s?.edgeId ?? "<missing>")}, file ${JSON.stringify(s?.file)})`,
+				);
+			}
+		});
+	}
+	return problems;
+}
+
 // ---------------------------------------------------------------------------
 // Component-kind validation
 // ---------------------------------------------------------------------------
@@ -295,7 +376,7 @@ export function findComponentConstructProblems(components: unknown): string[] {
 	for (const component of components) {
 		const c = component as Partial<SubsystemComponent> | null;
 		if (
-			typeof c?.kind === "string" &&
+			typeof c?.construct === "string" &&
 			(SUBSYSTEM_COMPONENT_CONSTRUCTS as readonly string[]).includes(c.construct)
 		) {
 			continue;
@@ -429,13 +510,64 @@ export function fileDeclaresSymbol(content: string, symbol: string): boolean {
 }
 
 /**
+ * Candidate affinity tokens for a throughline step's site line: identifier
+ * words (>= 4 chars) drawn from the edge's endpoint symbols/names and every
+ * entry in the edge's `refs`. A site line that mentions none of these is not
+ * plausibly the seam the edge claims — "readFile" from a ref, "openDrawing"
+ * from a symbol, "DRAWING_EVENTS" from an event ref, etc.
+ */
+export function throughlineStepTokens(
+	edge: SubsystemComponentEdge,
+	from: SubsystemComponent | undefined,
+	to: SubsystemComponent | undefined,
+): string[] {
+	const tokens = new Set<string>();
+	const add = (s: string | undefined) => {
+		if (!s) return;
+		for (const word of s.split(/[^A-Za-z_]+/)) {
+			if (word.length >= 4) tokens.add(word.toLowerCase());
+		}
+	};
+	for (const c of [from, to]) {
+		if (!c) continue;
+		add(c.symbol);
+		add(c.name);
+	}
+	for (const ref of edge.refs ?? []) add(ref);
+	return [...tokens];
+}
+
+/**
+ * True when the site line text mentions any affinity token for the edge —
+ * the derived check that backs "a step can't point at a random line and claim
+ * it is the seam." Lenient by design: a match on one endpoint or one ref
+ * token counts.
+ */
+export function throughlineStepHasAffinity(
+	lineText: string,
+	edge: SubsystemComponentEdge,
+	from: SubsystemComponent | undefined,
+	to: SubsystemComponent | undefined,
+): boolean {
+	const hay = lineText.toLowerCase();
+	return throughlineStepTokens(edge, from, to).some((t) => hay.includes(t));
+}
+
+/**
  * Check every component's `file` against its repo's local root, and each
- * declared `symbol` against its file's contents. Purely informational — never
+ * declared `symbol` against its file's contents. When the graph carries
+ * `throughlines`, each step's site (`file:line` on an existing edge) is also
+ * resolved: edge must exist, file must exist, line must be in range, and the
+ * site line must have affinity with the edge. Purely informational — never
  * blocks create/update — but gives agents a self-correction signal and the UI
  * an honesty marker.
  */
 export async function verifyGraphFiles(
-	doc: SubsystemGraphDocument & { repoRoot?: string; repoRoots?: Record<string, string> },
+	doc: SubsystemGraphDocument & {
+		repoRoot?: string;
+		repoRoots?: Record<string, string>;
+		throughlines?: SubsystemThroughline[];
+	},
 ): Promise<SubsystemGraphVerification> {
 	const missing: Array<{ componentId: string; file: string }> = [];
 	const symbolsMissing: Array<{ componentId: string; symbol: string; file: string }> = [];
@@ -476,6 +608,64 @@ export async function verifyGraphFiles(
 			}
 		}
 	}
+	// Throughline step sites — alias-backed, so resolution reuses the same
+	// repo-root logic as components.
+	let throughlinesChecked = 0;
+	const throughlinesFailed: SubsystemGraphVerification["throughlinesFailed"] = [];
+	if (Array.isArray(doc.throughlines)) {
+		const edgeById = new Map<string, SubsystemComponentEdge>();
+		for (const e of doc.edges) edgeById.set(e.id, e);
+		const componentById = new Map<string, SubsystemComponent>();
+		for (const c of doc.components) componentById.set(c.id, c);
+		for (const tl of doc.throughlines) {
+			if (!Array.isArray(tl.steps)) continue;
+			for (let i = 0; i < tl.steps.length; i++) {
+				const step = tl.steps[i];
+				const fail = (reason: string) =>
+					throughlinesFailed.push({
+						throughlineId: tl.id,
+						step: i,
+						edgeId: step.edgeId,
+						file: step.file,
+						line: step.line,
+						reason,
+					});
+				const edge = edgeById.get(step.edgeId);
+				if (!edge) {
+					fail(`edge ${JSON.stringify(step.edgeId)} is not in the graph`);
+					continue;
+				}
+				const from = componentById.get(edge.from);
+				const to = componentById.get(edge.to);
+				const root =
+					resolveRepoRootForComponent(doc, from?.purl) ??
+					resolveRepoRootForComponent(doc, to?.purl);
+				if (!root) continue; // unresolved — no local root for either endpoint (skip)
+				const abs = join(root, step.file);
+				try {
+					const lines = (await fs.readFile(abs, "utf8")).split("\n");
+					if (step.line < 1 || step.line > lines.length) {
+						fail(`line ${step.line} out of range (${step.file} has ${lines.length} lines)`);
+						continue;
+					}
+					const lineText = lines[step.line - 1] ?? "";
+					if (!lineText.trim()) {
+						fail(`line ${step.line} in ${step.file} is blank`);
+						continue;
+					}
+					if (!throughlineStepHasAffinity(lineText, edge, from, to)) {
+						fail(
+							`site line ${step.file}:${step.line} has no affinity with edge ${JSON.stringify(edge.id)} (expected one of: ${throughlineStepTokens(edge, from, to).join(" | ")})`,
+						);
+						continue;
+					}
+					throughlinesChecked++;
+				} catch {
+					fail(`file ${JSON.stringify(step.file)} not found under ${root}`);
+				}
+			}
+		}
+	}
 	return {
 		checkedAt: new Date().toISOString(),
 		verifiedCount,
@@ -486,6 +676,8 @@ export async function verifyGraphFiles(
 		symbolsMissing,
 		detailsVerified,
 		detailsAuthored,
+		throughlinesChecked,
+		throughlinesFailed,
 	};
 }
 
@@ -606,6 +798,7 @@ export async function createSubsystemGraph(
 		repo?: { owner: string; name: string };
 		repoRoot?: string;
 		repoRoots?: Record<string, string>;
+		throughlines?: SubsystemThroughline[];
 	},
 ): Promise<StoredSubsystemGraph> {
 	await ensureDir();
@@ -645,6 +838,7 @@ export async function updateSubsystemGraph(
 			| "description"
 			| "components"
 			| "edges"
+			| "throughlines"
 			| "source"
 			| "repo"
 			| "repoRoot"

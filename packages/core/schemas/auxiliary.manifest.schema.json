@@ -1,10 +1,12 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://principal-ai.dev/schemas/auxiliary.manifest.schema.json",
   "title": "Auxiliary Manifest",
   "description": "Catalogs project regions outside the OTEL telemetry surface (docs, .github, etc.). Lives at .principal-views/auxiliary.manifest.json.",
   "type": "object",
-  "required": ["areas"],
+  "required": [
+    "areas"
+  ],
   "additionalProperties": false,
   "properties": {
     "$schema": {
@@ -14,13 +16,19 @@
     "areas": {
       "type": "array",
       "description": "Project areas — folders or files that support the project but don't emit OTEL telemetry.",
-      "items": { "$ref": "#/definitions/projectArea" }
+      "items": {
+        "$ref": "#/$defs/projectArea"
+      }
     }
   },
-  "definitions": {
+  "$defs": {
     "projectArea": {
       "type": "object",
-      "required": ["name", "paths", "description"],
+      "required": [
+        "name",
+        "paths",
+        "description"
+      ],
       "additionalProperties": false,
       "properties": {
         "name": {

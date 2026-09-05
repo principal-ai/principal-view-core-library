@@ -244,6 +244,7 @@ export function SubsystemGraphView({
 			<SubsystemComponentGraph
 				components={graph.components}
 				edges={graph.edges}
+				throughlines={graph.throughlines}
 				title={graph.title}
 				description={graph.description}
 				renderFileViewer={renderFileViewer}

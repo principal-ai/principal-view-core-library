@@ -1,17 +1,95 @@
 # Principal View
 
-**Visual architecture documentation that stays in sync with your code.**
+**Verifiable System Diagrams.**
 
-Principal View helps you create and maintain visual system architecture diagrams using the [JSON Canvas](https://jsoncanvas.org/) format. Define your architecture visually in `.canvas` files, then use the CLI to validate that your diagrams match your actual codebase structure.
+A **Subsystem View** is a JSON definition of a subsystem: named components (each tagged with what it is — class, function, store — and anchored to a real source file), typed edges between them, and the end-to-end flows the subsystem must support. Principal View renders it as a diagram, then verification anchors every component to its real declaration — so the view can't silently drift from the code.
+
+## How it works
+
+One Subsystem View, three jobs:
+
+**1. Define** — components, typed edges, and the files behind them:
+
+```json
+{
+  "title": "Checkout",
+  "components": [
+    {
+      "id": "checkout-api",
+      "construct": "function",
+      "symbol": "checkoutApi",
+      "file": "src/checkout/api.ts",
+      "purl": "pkg:github/you/your-app",
+      "purpose": "Handles cart requests.",
+      "role": "entry"
+    },
+    {
+      "id": "cart-store",
+      "construct": "store",
+      "symbol": "cartStore",
+      "file": "src/checkout/cartStore.ts",
+      "purl": "pkg:github/you/your-app",
+      "purpose": "Retained cart state."
+    },
+    {
+      "id": "stripe",
+      "construct": "external",
+      "name": "Stripe",
+      "role": "service",
+      "purl": "external"
+    }
+  ],
+  "edges": [
+    { "id": "e1", "from": "checkout-api", "to": "cart-store", "mechanism": "writes" },
+    { "id": "e2", "from": "checkout-api", "to": "stripe", "mechanism": "calls" }
+  ]
+}
+```
+
+**2. Render** — `SubsystemComponentGraph` from `@principal-ai/principal-view-react` lays the document out as a clickable graph: components grouped by process, construct-colored nodes, mechanism-labeled edges — and every node opens its source file.
+
+**3. Verify** — verification anchors each component to its declaration (file + symbol + declaration freshness), checks kinds and signatures, and walks every throughline. The report is written back onto the document:
+
+```json
+"verification": {
+  "checkedAt": "2026-09-04T19:04:58.596Z",
+  "verifiedCount": 7,
+  "missingCount": 0,
+  "throughlinesChecked": 17,
+  "throughlinesFailed": 0
+}
+```
 
 ## Why Principal View?
 
-- **90%+ Cost Reduction**: Event-based telemetry replaces expensive traditional logging ([see cost analysis](./docs/TELEMETRY_COST_OPTIMIZATION.md))
-- **Visual-First**: Create architecture diagrams using any JSON Canvas compatible tool (Obsidian, etc.)
-- **Always Up-to-Date**: CLI validates that your diagrams match your actual code structure
-- **Configuration-Driven**: Define components, connections, and validation rules in `.canvas` files
-- **Developer-Friendly**: Integrates with your workflow via CLI, git hooks, and CI/CD
-- **Framework-Agnostic**: Works with any codebase - Node.js, TypeScript, Python, Go, etc.
+- **Plain JSON** — no proprietary format or tooling; commit it next to your code
+- **Typed edges** — 19 mechanisms from `imports` to `writes`/`reads`, each backed by concrete refs
+- **Construct-tagged components** — what it is (class, function, store), where it sits (entry, service), where it runs (process)
+- **Verified, not decorative** — missing symbols, renamed declarations, and broken throughlines fail verification
+- **Framework-agnostic** — works with any codebase, any language with files
+
+## Render a Subsystem View
+
+```bash
+npm install @principal-ai/principal-view-react
+```
+
+```tsx
+import { SubsystemComponentGraph } from '@principal-ai/principal-view-react';
+import checkout from './checkout.graph.json';
+
+<SubsystemComponentGraph
+  components={checkout.components}
+  edges={checkout.edges}
+  title={checkout.title}
+/>
+```
+
+See the [React package README](./packages/react/README.md) for the full API.
+
+## Architecture Canvas CLI
+
+Principal View started as architecture-canvas validation on [JSON Canvas](https://jsoncanvas.org/) — that tooling still ships here: draw architecture views in `.canvas` files, edit them in Obsidian or any JSON Canvas tool, and validate them against your codebase from the terminal, git hooks, or CI.
 
 ## Quick Start
 
@@ -58,7 +136,8 @@ Edit your `.canvas` file in any JSON Canvas compatible editor (like Obsidian) or
       "height": 100,
       "pv": {
         "nodeType": "service",
-        "shape": "hexagon"
+        "shape": "hexagon",
+        "references": ["src/**/*.ts"]
       }
     }
   ],
@@ -498,17 +577,3 @@ Apache-2.0
 - **Issues**: [GitHub Issues](https://github.com/principal-ai/principal-view/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/principal-ai/principal-view/discussions)
 - **Documentation**: [Full Docs](./docs/README.md)
-
-
-
-// Test change at 1769900091
-// Test change 2 at 1769900571
-// Test change 3 at 1769901672
-// Test change 4 at 1769902025
-// Test change 5 at 1769902219
-// Test change 6 at 1769902634
-// Test change 7 at 1769905503
-// Test change 8 at 1769906295
-// Test change 9 at 1769906892
-// Test change 10 at 1769907185
-// Test change 11 at 1769907482
