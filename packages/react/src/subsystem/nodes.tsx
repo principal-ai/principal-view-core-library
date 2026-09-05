@@ -126,7 +126,7 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
         boxShadow: fileMatch
           ? `0 1px 4px rgba(0,0,0,0.25), 0 0 12px ${theme.colors.primary}55`
           : '0 1px 4px rgba(0,0,0,0.25)',
-        opacity: fileMatch === false ? 0.18 : 1,
+        opacity: fileMatch === false || data.dimmed === true ? 0.18 : 1,
         transition: 'opacity 150ms ease',
         cursor: 'pointer',
         fontFamily: theme.fonts.body,
@@ -267,6 +267,58 @@ export function SubsystemComponentNode(props: NodeProps<SubsystemGraphNode>) {
   );
 }
 
+/** `#rrggbb` + alpha → `#rrggbbaa`. Used to dim a stroke/marker by color so
+ *  each opacity gets its own SVG marker id — path `opacity` leaks across every
+ *  edge that shares a `url(#marker)` (the focused edge's arrowhead dims). */
+export function hexWithAlpha(hex: string, alpha: number): string {
+  const raw = hex.replace('#', '');
+  const full = raw.length === 3 ? [...raw].map((c) => c + c).join('') : raw;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return hex;
+  const a = Math.round(Math.min(1, Math.max(0, alpha)) * 255)
+    .toString(16)
+    .padStart(2, '0');
+  return `#${full}${a}`;
+}
+
+/**
+ * File-open spotlight flag for a node. `true` = lives in the open file,
+ * `false` = dim, `undefined` = render neutrally.
+ *
+ * Focused-edge endpoints stay neutral when they don't live in the open file
+ * (the target of a focused edge must not dim with the rest).
+ */
+export function fileMatchForNode(
+  nodeFile: string | undefined,
+  openFile: string | null,
+  isFocusEndpoint: boolean,
+): boolean | undefined {
+  if (!openFile) return undefined;
+  if (nodeFile === openFile) return true;
+  if (isFocusEndpoint) return undefined;
+  return false;
+}
+
+/**
+ * Hide / dim a node or edge while flows are open.
+ * - not in any opened flow → hidden
+ * - in an opened flow, but not the selected flow/step → dimmed
+ * - in the selected flow or step (or opened with nothing selected) → full
+ */
+export function flowElementVisibility(opts: {
+  inOpened: boolean;
+  inSelected: boolean;
+  anyOpened: boolean;
+  anySelected: boolean;
+}): { hidden: boolean; dimmed: boolean } {
+  const { inOpened, inSelected, anyOpened, anySelected } = opts;
+  if (!anyOpened && !anySelected) return { hidden: false, dimmed: false };
+  if (!inOpened && !inSelected) return { hidden: true, dimmed: false };
+  if (anySelected && !inSelected) return { hidden: false, dimmed: true };
+  return { hidden: false, dimmed: false };
+}
+
+export const EDGE_DIM_ALPHA = 0.15;
+
 /** Subsystem edge — SVG path only. The mechanism label is rendered as an
  *  absolutely-positioned HTML overlay OUTSIDE the ReactFlow tree (by the
  *  parent Inner component) so it sits above the pane and receives pointer
@@ -282,7 +334,10 @@ export function SubsystemEdge({
   // observational relationships: hierarchy, registration, watches).
   const isDashed = MECHANISM_STYLE[mechanism] === 'dashed';
   const dimmed = data?.dimmed === true;
-  const opacity = dimmed ? 0.15 : 1;
+  // Dim the stroke by color, never via path `opacity`. SVG markers are shared
+  // by id; opacity on the referencing path paints every arrowhead that uses
+  // the same marker — including the focused edge's target.
+  const stroke = dimmed ? hexWithAlpha(color, EDGE_DIM_ALPHA) : color;
 
   return (
     <>
@@ -301,10 +356,9 @@ export function SubsystemEdge({
       <path
         d={path}
         fill="none"
-        stroke={color}
+        stroke={stroke}
         strokeWidth={1.5}
         strokeDasharray={isDashed ? '6 4' : undefined}
-        opacity={opacity}
         markerEnd={markerEnd}
         style={{ pointerEvents: 'none' }}
       />

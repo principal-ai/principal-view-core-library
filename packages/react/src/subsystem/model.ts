@@ -17,7 +17,7 @@ import {
   type Edge,
   type Node,
 } from '@xyflow/react';
-import { computeElkLayout } from '../utils/elkLayout';
+import { computeElkLayout, calculatePathLength } from '../utils/elkLayout';
 import type { GraphifyComponentDetail } from '../graphify';
 import type { SubsystemDeclarationRef } from './declarationRef';
 
@@ -178,6 +178,38 @@ export interface SubsystemComponentEdge {
 }
 
 /**
+ * A single site on an existing edge — the exact `file:line` where that edge's
+ * seam manifests for a given flow. The edge stays the abstract contract
+ * (`from`, `to`, `mechanism`); a throughline step picks the concrete
+ * manifestation. One edge can appear in many steps.
+ */
+export interface SubsystemThroughlineStep {
+  /** Id of the existing edge this hop traverses. */
+  edgeId: string;
+  /** Repo-root-relative path of the file where the edge fires. */
+  file: string;
+  /** 1-based line of the site within `file`. */
+  line: number;
+  /**
+   * Frame name for this hop — the function/method/symbol on the stack at
+   * this site. Optional so existing throughlines keep working; when set the
+   * flows list shows it instead of mechanism + filename.
+   */
+  symbol?: string;
+}
+
+/**
+ * An ordered execution story over a graph's edges — each step references an
+ * existing edge and the exact site where that relationship fires for a flow;
+ * ordering is the array. One throughline per flow (save flow, load flow, …).
+ */
+export interface SubsystemThroughline {
+  id: string;
+  title: string;
+  steps: SubsystemThroughlineStep[];
+}
+
+/**
  * Derive a consistent display `name` from a code `symbol` + construct.
  *
  * `symbol` is the source of truth (fully-qualified code identity). The name
@@ -250,6 +282,8 @@ export function formatPurl(purl: string): string {
 export interface SubsystemGraphDocument {
   components: SubsystemComponent[];
   edges: SubsystemComponentEdge[];
+  /** Ordered execution stories over the graph's edges (one per flow). */
+  throughlines?: SubsystemThroughline[];
 }
 
 // ---------------------------------------------------------------------------
@@ -264,6 +298,8 @@ export interface SubsystemGraphNodeData extends Record<string, unknown> {
    *  lives in that file (spotlighted), false otherwise (dimmed). Absent when
    *  no file is open — render neutrally. */
   fileMatch?: boolean;
+  /** True while this node is on an opened-but-unselected flow. */
+  dimmed?: boolean;
 }
 
 export type SubsystemGraphNode = Node<SubsystemGraphNodeData, SubsystemGraphNodeType>;
@@ -277,6 +313,8 @@ export interface SubsystemGraphEdgeData extends Record<string, unknown> {
   /** ELK-computed label midpoint (from the actual edge path, not node centers). */
   labelX?: number;
   labelY?: number;
+  /** Polyline length in flow-space units (for capping screen-space label size). */
+  pathLength?: number;
   /** ELK-computed SVG edge path (overrides React Flow's default path). */
   elkPath?: string;
 }
@@ -447,7 +485,7 @@ export function convertSubsystemToEdges(doc: SubsystemGraphDocument): SubsystemG
       target: targetId,
       data: { mechanism: e.mechanism, refs: e.refs },
       type: 'subsystem-edge',
-      markerEnd: { type: MarkerType.ArrowClosed, color, width: 16, height: 16 },
+      markerEnd: { type: MarkerType.ArrowClosed, color, width: 32, height: 32 },
       style: { color, stroke: color, strokeDasharray: style === 'dashed' ? '6 4' : undefined },
       // `label` feeds ELK's label-space reservation only; the visible label is
       // rendered by the custom SubsystemEdge as an HTML overlay.
@@ -542,6 +580,7 @@ export async function buildSubsystemGraph(
   let placedNodes = nodes;
   let labelPositions = new Map<string, { x: number; y: number }>();
   let elkPathStrings = new Map<string, string>();
+  let elkPathPoints = new Map<string, { x: number; y: number }[]>();
   if (nodes.length > 0) {
     try {
       const result = await computeElkLayout(nodes, edges, {
@@ -557,6 +596,7 @@ export async function buildSubsystemGraph(
       placedNodes = result.nodes as SubsystemGraphNode[];
       labelPositions = result.edgeLabelPositions;
       elkPathStrings = result.edgePaths;
+      elkPathPoints = result.edgePathPoints;
     } catch (err) {
       // Fall back to the (unpositioned) grid if ELK is unavailable.
       console.warn('[subsystem-graph] ELK layout failed, using manual positions:', err);
@@ -576,6 +616,11 @@ export async function buildSubsystemGraph(
     if (elkP) {
       const d = (e as SubsystemGraphEdge).data as SubsystemGraphEdgeData;
       d.elkPath = elkP;
+    }
+    const pts = elkPathPoints.get(e.id);
+    if (pts && pts.length > 1) {
+      const d = (e as SubsystemGraphEdge).data as SubsystemGraphEdgeData;
+      d.pathLength = calculatePathLength(pts);
     }
   }
 

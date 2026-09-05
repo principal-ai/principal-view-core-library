@@ -32,7 +32,7 @@ import {
   applyNodeChanges,
 } from '@xyflow/react';
 import { useTheme } from '@principal-ade/industry-theme';
-import { Map as MapIcon } from 'lucide-react';
+import { Map as MapIcon, X } from 'lucide-react';
 import { IndustryMarkdownSlide } from 'themed-markdown';
 import {
   buildSubsystemGraph,
@@ -41,9 +41,10 @@ import {
   type SubsystemComponentEdge,
   type SubsystemComponent,
   type SubsystemEdgeMechanism,
+  type SubsystemThroughline,
 } from './model';
 import type { SubsystemOpenFileOptions } from './declarationRef';
-import { SubsystemComponentNode, SubsystemEdge, SUBSYSTEM_CALLBACKS } from './nodes';
+import { SubsystemComponentNode, SubsystemEdge, SUBSYSTEM_CALLBACKS, hexWithAlpha, EDGE_DIM_ALPHA, fileMatchForNode, flowElementVisibility } from './nodes';
 import { SubsystemFileTree } from './SubsystemFileTree';
 import { GraphLayoutCover } from './GraphLayoutCover';
 import { ComponentDeclaration } from './ComponentDeclaration';
@@ -52,9 +53,24 @@ import { FileDrawer } from './FileDrawer';
 import { EdgeLegendModal, MECHANISM_DESCRIPTIONS } from './EdgeLegendModal';
 import { buildRepoGroups, repoAvatarUrl, type RepoGroup } from './paths';
 
+/** Cap screen-space edge labels to this fraction of the edge's on-screen length. */
+const EDGE_LABEL_MAX_EDGE_FRACTION = 0.55;
+/** Rough monospace width at fontSize 10 + horizontal padding/border. */
+const EDGE_LABEL_CHAR_PX = 6.2;
+const EDGE_LABEL_PAD_PX = 18;
+
 export interface SubsystemComponentGraphProps {
   components: SubsystemComponent[];
   edges: SubsystemComponentEdge[];
+  /**
+   * Ordered execution stories over the graph's edges — one throughline per
+   * flow. When present the sidebar's bottom half offers a Files/Flows toggle:
+   * the flows panel lists each throughline's steps (`symbol` or `file:line`);
+   * clicking a flow row toggles its steps; clicking a step focuses that
+   * step's edge. Opened flows stay on the canvas (unselected ones dimmed);
+   * everything else is hidden.
+   */
+  throughlines?: SubsystemThroughline[];
   onSelect?: (componentId: string) => void;
   /** Called when an edge is clicked (relationship / mechanism + refs seam). */
   onEdgeSelect?: (edge: SubsystemComponentEdge) => void;
@@ -126,7 +142,7 @@ interface InnerProps extends SubsystemComponentGraphProps {
   measured: { w: number; h: number } | null;
 }
 
-function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured, maxNodeWidth, showEdgeLabels, title, description, canvasOverlay, sidebarExtra, sidebarAfterDescription, renderFileView, renderFileViewer, onFileSelect, onVerifyComponent, componentVerification }: InnerProps) {
+function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measured: _measured, maxNodeWidth, showEdgeLabels, title, description, canvasOverlay, sidebarExtra, sidebarAfterDescription, renderFileView, renderFileViewer, onFileSelect, onVerifyComponent, componentVerification }: InnerProps) {
   const { theme } = useTheme();
   const { fitView } = useReactFlow();
   const viewport = useViewport();
@@ -147,6 +163,18 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
   const [legendOpen, setLegendOpen] = useState(false);
   // Component the pointer is over (null on leave) → transient tree highlight.
   const [hoveredComponentId, setHoveredComponentId] = useState<string | null>(null);
+  // Throughline focus — selected flow (or step) is full strength; other
+  // opened-flow members stay visible but dimmed; everything else is hidden.
+  const [focusedThroughlineId, setFocusedThroughlineId] = useState<string | null>(null);
+  // `null` = whole flow focused; a number = that single step's edge focused.
+  const [focusedStepIndex, setFocusedStepIndex] = useState<number | null>(null);
+  // Sidebar bottom half: which panel is shown when throughlines exist.
+  const [sidebarView, setSidebarView] = useState<'files' | 'flows'>(() =>
+    throughlines?.length ? 'flows' : 'files',
+  );
+  // Throughline flows the user has expanded (via the title row). Closed by
+  // default so a graph with several flows doesn't dump every step list at once.
+  const [expandedThroughlines, setExpandedThroughlines] = useState<Set<string>>(new Set());
   // Ref mirror of `selected` so the SUBSYSTEM_CALLBACKS click handler (a
   // closure over the effect deps) can toggle without a stale value.
   const selectedRef = useRef<SubsystemComponent | null>(null);
@@ -245,6 +273,9 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
       }
       const src = edgeById.get(edgeId);
       setSelectedEdgeId(edgeId);
+      // A direct edge selection on the canvas supersedes any throughline focus.
+      setFocusedThroughlineId(null);
+      setFocusedStepIndex(null);
       if (src) onEdgeSelect?.(src);
     },
     [edgeById, onEdgeSelect],
@@ -263,6 +294,8 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
         }
         setSelected(comp);
         setSelectedEdgeId(null);
+        setFocusedThroughlineId(null);
+        setFocusedStepIndex(null);
         onSelect?.(id);
       }
     };
@@ -281,26 +314,120 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
   const xyflowNodesBase = nodes as Node[];
   const baseEdges = convertedEdges as Edge[];
 
+  // When an edge is selected, dim every other edge + its label to focus it.
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  // Ref mirror so `selectEdge` (a useCallback over early deps) can toggle
+  // without a stale closure value.
+  const selectedEdgeIdRef = useRef<string | null>(null);
+  selectedEdgeIdRef.current = selectedEdgeId;
+  // Edge ids in throughline focus (an active flow's edge set, or a single
+  // step's edge). Used to frame the camera. `null` = no throughline focus.
+  const focusEdgeIds = useMemo(() => {
+    if (focusedThroughlineId == null || !throughlines) return null;
+    const tl = throughlines.find((t) => t.id === focusedThroughlineId);
+    if (!tl) return null;
+    if (focusedStepIndex != null) {
+      const step = tl.steps[focusedStepIndex];
+      return step ? new Set([step.edgeId]) : null;
+    }
+    return new Set(tl.steps.map((s) => s.edgeId));
+  }, [throughlines, focusedThroughlineId, focusedStepIndex]);
+
+  // 1-based step numbers per edge of the selected flow (an edge can appear
+  // in more than one step).
+  const selectedFlowStepNos = useMemo(() => {
+    if (focusedThroughlineId == null || !throughlines) return null;
+    const tl = throughlines.find((t) => t.id === focusedThroughlineId);
+    if (!tl) return null;
+    const map = new Map<string, number[]>();
+    tl.steps.forEach((s, i) => {
+      const list = map.get(s.edgeId) ?? [];
+      list.push(i + 1);
+      map.set(s.edgeId, list);
+    });
+    return map;
+  }, [throughlines, focusedThroughlineId]);
+
+  // Union of every expanded (opened) throughline's edges — the visible set.
+  const openedEdgeIds = useMemo(() => {
+    if (!throughlines || expandedThroughlines.size === 0) return null;
+    const ids = new Set<string>();
+    for (const tl of throughlines) {
+      if (!expandedThroughlines.has(tl.id)) continue;
+      for (const s of tl.steps) ids.add(s.edgeId);
+    }
+    return ids.size > 0 ? ids : null;
+  }, [throughlines, expandedThroughlines]);
+
+  const endpointsOf = (edgeIds: ReadonlySet<string> | null): Set<string> | null => {
+    if (!edgeIds) return null;
+    const ids = new Set<string>();
+    for (const e of baseEdges) {
+      if (!edgeIds.has(e.id)) continue;
+      ids.add(e.source);
+      ids.add(e.target);
+    }
+    return ids.size > 0 ? ids : null;
+  };
+  const openedNodeIds = useMemo(
+    () => endpointsOf(openedEdgeIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [baseEdges, openedEdgeIds],
+  );
+  // Endpoints of the bright set: the selected step's edge, or the whole flow
+  // when no step is focused.
+  const brightNodeIds = useMemo(
+    () => endpointsOf(focusEdgeIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [baseEdges, focusEdgeIds],
+  );
+
+  // Source + target of the focused step/flow (or a canvas-selected edge). If a
+  // file is open, those endpoints stay undimmed even when they don't live in
+  // that file.
+  const focusNodeIds = useMemo(() => {
+    if (brightNodeIds) return brightNodeIds;
+    if (selectedEdgeId) {
+      const e = baseEdges.find((x) => x.id === selectedEdgeId);
+      if (e) return new Set([e.source, e.target]);
+    }
+    return null;
+  }, [baseEdges, brightNodeIds, selectedEdgeId]);
+
   // While a file is open in the drawer, tag each node with whether its
   // component lives in that file — the node renderer spotlights matches and
   // dims non-matches (mirrors the edge-dimming behavior on selection).
+  // Opened-but-unselected members are dimmed; a selected step further dims
+  // the rest of its own flow. Nodes not on any opened flow are hidden.
   // `isSelected` rides in data because the node's stopPropagation() keeps
-  // React Flow's own selection state from ever updating.
+  // React Flow's own selection state from updating.
   const dispNodes = useMemo(() => {
     return xyflowNodesBase.map((n) => {
       const comp = (n.data as { component?: SubsystemComponent } | undefined)?.component;
-      const fileMatch = openFile ? comp?.file === openFile : undefined;
+      const fileMatch = fileMatchForNode(comp?.file, openFile, focusNodeIds?.has(n.id) === true);
       const isSelected = selected?.id !== undefined && comp?.id === selected.id;
-      if (fileMatch === undefined && !isSelected) {
-        const { fileMatch: _f, isSelected: _s, ...rest } = n.data as Record<string, unknown>;
-        return { ...n, data: rest };
+      const vis = flowElementVisibility({
+        inOpened: openedNodeIds?.has(n.id) === true,
+        inSelected: brightNodeIds?.has(n.id) === true,
+        anyOpened: openedNodeIds != null,
+        anySelected: brightNodeIds != null,
+      });
+      if (fileMatch === undefined && !isSelected && !vis.dimmed) {
+        const { fileMatch: _f, isSelected: _s, dimmed: _d, ...rest } = n.data as Record<string, unknown>;
+        return { ...n, hidden: vis.hidden, data: rest };
       }
       return {
         ...n,
-        data: { ...(n.data as object), ...(fileMatch !== undefined && { fileMatch }), ...(isSelected && { isSelected }) },
+        hidden: vis.hidden,
+        data: {
+          ...(n.data as object),
+          ...(fileMatch !== undefined && { fileMatch }),
+          ...(isSelected && { isSelected }),
+          ...(vis.dimmed && { dimmed: true }),
+        },
       };
     });
-  }, [xyflowNodesBase, openFile, selected]);
+  }, [xyflowNodesBase, openFile, selected, focusNodeIds, openedNodeIds, brightNodeIds]);
 
   const baseNodesKey = useMemo(() => nodes.map((n) => n.id).sort().join(','), [nodes]);
   const baseEdgesKey = useMemo(
@@ -308,22 +435,33 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
     [convertedEdges],
   );
 
-  // When an edge is selected, dim every other edge + its label to focus it.
-  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
-  // Ref mirror so `selectEdge` (a useCallback over early deps) can toggle
-  // without a stale closure value.
-  const selectedEdgeIdRef = useRef<string | null>(null);
-  selectedEdgeIdRef.current = selectedEdgeId;
   const dispEdges = useMemo(() => {
+    const paint = (e: Edge, dimmed: boolean): Edge => {
+      const markerEnd = e.markerEnd;
+      const nextMarker =
+        dimmed && markerEnd && typeof markerEnd === 'object' && typeof markerEnd.color === 'string'
+          ? { ...markerEnd, color: hexWithAlpha(markerEnd.color, EDGE_DIM_ALPHA) }
+          : markerEnd;
+      return {
+        ...e,
+        data: { ...(e.data as object), dimmed },
+        markerEnd: nextMarker,
+      };
+    };
+    if (openedEdgeIds || focusEdgeIds) {
+      return baseEdges.map((e) => {
+        const vis = flowElementVisibility({
+          inOpened: openedEdgeIds?.has(e.id) === true,
+          inSelected: focusEdgeIds?.has(e.id) === true,
+          anyOpened: openedEdgeIds != null,
+          anySelected: focusEdgeIds != null,
+        });
+        return { ...paint(e, vis.dimmed), hidden: vis.hidden };
+      });
+    }
     if (!selectedEdgeId) return baseEdges;
-    return baseEdges.map((e) => ({
-      ...e,
-      data: {
-        ...(e.data as object),
-        dimmed: e.id !== selectedEdgeId,
-      },
-    }));
-  }, [baseEdges, selectedEdgeId]);
+    return baseEdges.map((e) => paint(e, e.id !== selectedEdgeId));
+  }, [baseEdges, selectedEdgeId, openedEdgeIds, focusEdgeIds]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -363,6 +501,8 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
     (_e, node: Node) => {
       const comp = (node.data as { component?: SubsystemComponent } | undefined)?.component;
       setSelectedEdgeId(null);
+      setFocusedThroughlineId(null);
+      setFocusedStepIndex(null);
       if (node.type === 'subsystem-component' && comp) {
         // Clicking the already-selected node unselects it (toggle off).
         // Selection is independent of the file drawer — nodes never open it.
@@ -388,11 +528,14 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
   const onPaneClick = useCallback(() => {
     setSelected(null);
     setSelectedEdgeId(null);
+    setFocusedThroughlineId(null);
+    setFocusedStepIndex(null);
   }, []);
 
   // Sidebar file trees — one per repo on multi-repo graphs, each under its
   // own owner-avatar header. Clicking a header collapses that repo's tree.
   const repoGroups = useMemo(() => buildRepoGroups(components), [components]);
+  const hasThroughlines = useMemo(() => (throughlines?.length ?? 0) > 0, [throughlines]);
   const [collapsedRepos, setCollapsedRepos] = useState<Set<string>>(new Set());
   const toggleRepoCollapsed = useCallback((key: string) => {
     setCollapsedRepos((prev) => {
@@ -434,6 +577,71 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
     [onFileSelect],
   );
 
+  // Camera helper shared by the throughline interactions: frames the focused
+  // edges' endpoint nodes via `fitView({ nodes })`, which uses the store's
+  // live positions + measured dims — so the frame always includes BOTH
+  // components the edge attaches to (and therefore the edge line between them).
+  const fitFocusBounds = useCallback(
+    (ids: ReadonlySet<string>) => {
+      const nodeIds = new Set<string>();
+      for (const e of baseEdges) {
+        if (!ids.has(e.id)) continue;
+        nodeIds.add(e.source);
+        nodeIds.add(e.target);
+      }
+      if (nodeIds.size === 0) return;
+      fitView({
+        nodes: [...nodeIds].map((id) => ({ id })),
+        padding: 0.25,
+        duration: 300,
+      });
+    },
+    [baseEdges, fitView],
+  );
+
+  // Focus an entire flow: hide everything but the flow's nodes and edges, and
+  // frame the flow on the canvas. Selection state is cleared — the graph now
+  // reads as the narrative.
+  const focusThroughlineEdges = useCallback(
+    (tl: SubsystemThroughline) => {
+      setSelected(null);
+      setSelectedEdgeId(null);
+      setFocusedStepIndex(null);
+      setFocusedThroughlineId(tl.id);
+      fitFocusBounds(new Set(tl.steps.map((s) => s.edgeId)));
+    },
+    [fitFocusBounds],
+  );
+
+  const clearThroughlineFocus = useCallback(() => {
+    setFocusedThroughlineId(null);
+    setFocusedStepIndex(null);
+  }, []);
+
+  // Focus a single step's edge on the canvas. The step's file:line is listed
+  // in the row; we don't open the drawer from here.
+  const focusThroughlineStep = useCallback(
+    (tl: SubsystemThroughline, stepIndex: number) => {
+      const step = tl.steps[stepIndex];
+      if (!step) return;
+      setSelected(null);
+      setSelectedEdgeId(null);
+      setFocusedStepIndex(stepIndex);
+      setFocusedThroughlineId(tl.id);
+      fitFocusBounds(new Set([step.edgeId]));
+    },
+    [fitFocusBounds],
+  );
+
+  const toggleThroughlineCollapsed = useCallback((tlId: string) => {
+    setExpandedThroughlines((prev) => {
+      const next = new Set(prev);
+      if (next.has(tlId)) next.delete(tlId);
+      else next.add(tlId);
+      return next;
+    });
+  }, []);
+
   // Filename-badge clicks on nodes open the drawer through the same path as
   // the declaration panel's file link (toggle + tree sync, no start line).
   useEffect(() => {
@@ -461,6 +669,8 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
       if (!comp || comp.id === selectedRef.current?.id) return;
       setSelected(comp);
       setSelectedEdgeId(null);
+      setFocusedThroughlineId(null);
+      setFocusedStepIndex(null);
       onSelect?.(comp.id);
     },
     [components, onSelect],
@@ -470,17 +680,27 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
   // doesn't intercept pointer events). Uses ELK-computed label midpoints from
   // the actual edge path (not node-center approximations).
   const edgeLabels = useMemo(() => {
-    return dispEdges.map((e) => {
-      const d = e.data as { mechanism?: string; dimmed?: boolean; labelX?: number; labelY?: number } | undefined;
-      return {
-        id: e.id,
-        mechanism: d?.mechanism ?? 'imports',
-        dimmed: d?.dimmed === true,
-        midX: d?.labelX ?? 0,
-        midY: d?.labelY ?? 0,
-      };
-    });
-  }, [dispEdges]);
+    return dispEdges
+      .filter((e) => !e.hidden)
+      .map((e) => {
+        const d = e.data as {
+          mechanism?: string;
+          dimmed?: boolean;
+          labelX?: number;
+          labelY?: number;
+          pathLength?: number;
+        } | undefined;
+        return {
+          id: e.id,
+          mechanism: d?.mechanism ?? 'imports',
+          dimmed: d?.dimmed === true,
+          midX: d?.labelX ?? 0,
+          midY: d?.labelY ?? 0,
+          pathLength: d?.pathLength ?? 0,
+          stepNos: selectedFlowStepNos?.get(e.id),
+        };
+      });
+  }, [dispEdges, selectedFlowStepNos]);
 
   const usedMechanisms = useMemo(() => {
     return new Set(edgeLabels.map((l) => l.mechanism));
@@ -521,8 +741,8 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'row' }}>
-      {/* Sidebar: scrollable title/description on top, file tree pinned to the bottom half */}
-      {(title || description || sidebarExtra || sidebarAfterDescription || treeFilePaths.length > 0) && (
+      {/* Sidebar: scrollable title/description on top, files or flows pinned to the bottom half */}
+      {(title || description || sidebarExtra || sidebarAfterDescription || treeFilePaths.length > 0 || hasThroughlines) && (
         <div
           style={{
             width: 340,
@@ -576,7 +796,7 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
           )}
           {sidebarAfterDescription}
           </div>
-          {treeFilePaths.length > 0 && (
+          {(treeFilePaths.length > 0 || hasThroughlines) && (
             <div
               style={{
                 height: '50%',
@@ -588,6 +808,72 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
                 overflow: 'hidden',
               }}
             >
+              {hasThroughlines && (
+                <div
+                  role="tablist"
+                  aria-label="Sidebar view"
+                  style={{
+                    display: 'flex',
+                    width: '100%',
+                    flexShrink: 0,
+                    borderBottom: `1px solid ${theme.colors.border}`,
+                    background: theme.colors.backgroundSecondary ?? theme.colors.background,
+                  }}
+                >
+                  {(['files', 'flows'] as const).map((view) => (
+                    <button
+                      key={view}
+                      type="button"
+                      role="tab"
+                      aria-selected={sidebarView === view}
+                      onClick={() => setSidebarView(view)}
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        padding: '8px 8px',
+                        border: 'none',
+                        borderRadius: 0,
+                        background: sidebarView === view ? theme.colors.background : 'transparent',
+                        color:
+                          sidebarView === view
+                            ? theme.colors.text
+                            : theme.colors.textSecondary,
+                        fontSize: theme.fontSizes[1],
+                        fontFamily: theme.fonts.monospace,
+                        textTransform: 'capitalize',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {view}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {sidebarView === 'flows' && throughlines && throughlines.length > 0 ? (
+                <div
+                  style={{
+                    flex: 1,
+                    minHeight: 0,
+                    overflowY: 'auto',
+                    padding: '0 4px 12px',
+                  }}
+                >
+                  {throughlines.map((tl) => (
+                    <ThroughlineFlow
+                      key={tl.id}
+                      throughline={tl}
+                      edges={edges}
+                      collapsed={!expandedThroughlines.has(tl.id)}
+                      active={focusedThroughlineId === tl.id ? { stepIndex: focusedStepIndex } : null}
+                      onToggleCollapsed={toggleThroughlineCollapsed}
+                      onFocusFlow={focusThroughlineEdges}
+                      onClearFocus={clearThroughlineFocus}
+                      onFocusStep={focusThroughlineStep}
+                    />
+                  ))}
+                </div>
+              ) : treeFilePaths.length > 0 ? (
+              <>
               {repoGroups.groups.map((group, i) => {
                 const groupKey = group.repoKey ?? '__no-repo__';
                 const collapsed = collapsedRepos.has(groupKey);
@@ -621,6 +907,8 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
                   </div>
                 );
               })}
+              </>
+              ) : null}
             </div>
           )}
         </div>
@@ -648,6 +936,17 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
             const verifiable = MECHANISM_DESCRIPTIONS.find(([m]) => m === mechanism)?.[2] ?? true;
             const screenX = lbl.midX * viewport.zoom + viewport.x;
             const screenY = lbl.midY * viewport.zoom + viewport.y;
+            const text = lbl.stepNos?.length
+              ? `${lbl.stepNos.map((n) => `${n}:`).join(' ')} ${lbl.mechanism}`
+              : lbl.mechanism;
+            // Labels stay readable at full size until they'd exceed a share of
+            // the edge's screen length, then shrink with zoom.
+            const estWidth = text.length * EDGE_LABEL_CHAR_PX + EDGE_LABEL_PAD_PX;
+            const screenEdgeLen = lbl.pathLength * viewport.zoom;
+            const scale =
+              lbl.pathLength > 0 && estWidth > 0
+                ? Math.min(1, (screenEdgeLen * EDGE_LABEL_MAX_EDGE_FRACTION) / estWidth)
+                : 1;
             return (
               <div
                 key={lbl.id}
@@ -661,21 +960,29 @@ function Inner({ components, edges, onSelect, onEdgeSelect, measured: _measured,
                 position: 'absolute',
                 left: screenX,
                 top: screenY,
+                // Center on the flow-space midpoint. Labels live in screen
+                // space (fixed size when zoomed out), so top-left anchoring
+                // would drift them right/down of the edge as zoom drops.
+                transform: `translate(-50%, -50%) scale(${scale})`,
+                transformOrigin: 'center center',
+                display: 'flex',
+                alignItems: 'center',
                 fontSize: 10,
+                lineHeight: 1,
                 fontFamily: theme.fonts.monospace,
                 fontWeight: 500,
                 color,
                 background: 'rgba(21,21,21,0.9)',
                 border: verifiable ? `0.5px solid ${color}` : `1px dashed ${color}`,
                 borderRadius: verifiable ? 4 : '10px 14px 12px 16px / 14px 10px 16px 12px',
-                padding: '1px 5px',
+                padding: '3px 8px',
                 cursor: 'pointer',
                 pointerEvents: 'auto',
                 opacity: lbl.dimmed ? 0.15 : 1,
                 whiteSpace: 'nowrap',
               }}
             >
-              {lbl.mechanism}
+              {text}
             </div>
           );
         })}
@@ -868,6 +1175,221 @@ function RepoGroupHeader({
       >
         {label}
       </span>
+    </div>
+  );
+}
+
+/** One collapsible throughline in the sidebar's flows panel. Clicking the
+ *  title: closed → open + select; open and unselected → select; open and
+ *  selected → close + clear focus. The right-aligned close button collapses
+ *  without selecting. A step row focuses that step's edge. */
+function ThroughlineFlow({
+  throughline,
+  edges,
+  collapsed,
+  active,
+  onToggleCollapsed,
+  onFocusFlow,
+  onClearFocus,
+  onFocusStep,
+}: {
+  throughline: SubsystemThroughline;
+  edges: SubsystemComponentEdge[];
+  collapsed: boolean;
+  /** `{ stepIndex: null }` = whole flow focused; `{ stepIndex }` = one step. */
+  active: { stepIndex: number | null } | null;
+  onToggleCollapsed: (tlId: string) => void;
+  onFocusFlow: (tl: SubsystemThroughline) => void;
+  onClearFocus: () => void;
+  onFocusStep: (tl: SubsystemThroughline, stepIndex: number) => void;
+}) {
+  const { theme } = useTheme();
+  const muted = theme.colors.textMuted ?? theme.colors.textSecondary;
+  const hoverBg = theme.colors.background;
+  const edgeById = useMemo(() => new Map(edges.map((e) => [e.id, e])), [edges]);
+  const wholeFlowActive = active !== null && active.stepIndex === null;
+  const [headerHover, setHeaderHover] = useState(false);
+  const [closeHover, setCloseHover] = useState(false);
+  const [hoveredStep, setHoveredStep] = useState<number | null>(null);
+
+  return (
+    <div style={{ margin: '4px 0', borderRadius: 8 }}>
+      <div
+        onMouseEnter={() => setHeaderHover(true)}
+        onMouseLeave={() => setHeaderHover(false)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          borderRadius: 6,
+          background: wholeFlowActive || headerHover ? hoverBg : 'transparent',
+          transition: 'background 120ms ease',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            if (collapsed) {
+              onToggleCollapsed(throughline.id);
+              onFocusFlow(throughline);
+            } else if (active === null) {
+              onFocusFlow(throughline);
+            } else {
+              onToggleCollapsed(throughline.id);
+              onClearFocus();
+            }
+          }}
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            minWidth: 0,
+            padding: '6px 8px',
+            borderRadius: 6,
+            border: 'none',
+            background: 'transparent',
+            textAlign: 'left',
+            cursor: 'pointer',
+          }}
+        >
+          <span
+            style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontSize: theme.fontSizes[1],
+              fontFamily: theme.fonts.monospace,
+              fontWeight: 600,
+              color: theme.colors.text,
+            }}
+          >
+            {throughline.title}
+          </span>
+        </button>
+        {!collapsed && (
+          <button
+            type="button"
+            aria-label={`Close ${throughline.title}`}
+            onMouseEnter={() => setCloseHover(true)}
+            onMouseLeave={() => setCloseHover(false)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleCollapsed(throughline.id);
+              if (active !== null) onClearFocus();
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              width: 22,
+              height: 22,
+              marginRight: 4,
+              padding: 0,
+              border: 'none',
+              borderRadius: 4,
+              background: closeHover ? theme.colors.border : 'transparent',
+              color: closeHover ? theme.colors.text : muted,
+              cursor: 'pointer',
+              transition: 'background 120ms ease, color 120ms ease',
+            }}
+          >
+            <X size={12} strokeWidth={2} />
+          </button>
+        )}
+      </div>
+      {!collapsed && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          {throughline.steps.map((step, i) => {
+            const edge = edgeById.get(step.edgeId);
+            const mech = edge?.mechanism;
+            const color = mech ? MECHANISM_COLOR[mech] : muted;
+            const stepActive = active !== null && active.stepIndex === i;
+            return (
+              <button
+                key={`${step.edgeId}-${i}`}
+                type="button"
+                onMouseEnter={() => setHoveredStep(i)}
+                onMouseLeave={() => setHoveredStep(null)}
+                onClick={() => onFocusStep(throughline, i)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  minWidth: 0,
+                  padding: '4px 8px 4px 12px',
+                  textAlign: 'left',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: stepActive || hoveredStep === i ? hoverBg : 'transparent',
+                  cursor: 'pointer',
+                  transition: 'background 120ms ease',
+                }}
+              >
+                <span
+                  style={{
+                    flexShrink: 0,
+                    width: 14,
+                    fontSize: theme.fontSizes[0] * 0.8,
+                    fontFamily: theme.fonts.monospace,
+                    color: stepActive ? theme.colors.text : muted,
+                  }}
+                >
+                  {i + 1}
+                </span>
+                {step.symbol ? (
+                  <span
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      fontSize: theme.fontSizes[0],
+                      fontFamily: theme.fonts.monospace,
+                      color: stepActive ? theme.colors.text : muted,
+                    }}
+                  >
+                    {step.symbol}
+                  </span>
+                ) : (
+                  <>
+                    <span
+                      style={{
+                        flexShrink: 0,
+                        width: 74,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        fontSize: theme.fontSizes[0],
+                        fontFamily: theme.fonts.monospace,
+                        color,
+                      }}
+                    >
+                      {mech ?? step.edgeId}
+                    </span>
+                    <span
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        fontSize: theme.fontSizes[0],
+                        fontFamily: theme.fonts.monospace,
+                        color: stepActive ? theme.colors.text : muted,
+                      }}
+                    >
+                      {step.file.split('/').pop()}
+                      <span style={{ opacity: 0.7 }}>:{step.line}</span>
+                    </span>
+                  </>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

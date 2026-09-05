@@ -229,6 +229,47 @@ export function calculatePathMidpoint(points: Point[]): Point {
 }
 
 /**
+ * Closest point on a polyline to a target (for snapping labels onto the stroke).
+ */
+export function closestPointOnPath(points: Point[], target: Point): Point {
+  if (points.length === 0) return { x: 0, y: 0 };
+  if (points.length === 1) return points[0];
+
+  let best = points[0];
+  let bestDist = Infinity;
+
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const lenSq = dx * dx + dy * dy;
+    const t = lenSq === 0 ? 0 : Math.max(0, Math.min(1, ((target.x - a.x) * dx + (target.y - a.y) * dy) / lenSq));
+    const px = a.x + dx * t;
+    const py = a.y + dy * t;
+    const dist = Math.hypot(target.x - px, target.y - py);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = { x: px, y: py };
+    }
+  }
+
+  return best;
+}
+
+/**
+ * Polyline length in flow-space units (sum of segment lengths).
+ * @public Exported for testing
+ */
+export function calculatePathLength(points: Point[]): number {
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    total += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+  }
+  return total;
+}
+
+/**
  * Get ELK layout options based on configuration
  */
 function getElkOptions(options: ElkLayoutOptions): LayoutOptions {
@@ -529,9 +570,10 @@ export async function computeElkLayout(
         // and apply the same coordinate offset.
         if (edge.labels && edge.labels.length > 0) {
           const elkLabel = edge.labels[0];
-          // Raw ELK label position — no conversion.
-          let lx = elkLabel.x ?? 0;
-          let ly = elkLabel.y ?? 0;
+          // ELK reports the label's top-left; convert to center so screen-space
+          // overlays can anchor with translate(-50%, -50%) at any zoom.
+          let lx = (elkLabel.x ?? 0) + (elkLabel.width ?? 0) / 2;
+          let ly = (elkLabel.y ?? 0) + (elkLabel.height ?? 0) / 2;
           if (preserveNodePositions && sourceOriginal && sourceElk && targetOriginal && targetElk) {
             const sourceOffset = {
               x: sourceOriginal.x - sourceElk.x,
@@ -549,7 +591,11 @@ export async function computeElkLayout(
             lx += sourceOffset.x + (targetOffset.x - sourceOffset.x) * t;
             ly += sourceOffset.y + (targetOffset.y - sourceOffset.y) * t;
           }
-          edgeLabelPositions.set(edge.id, { x: lx, y: ly });
+          // Snap onto the polyline stroke. ELK's label box can sit slightly
+          // off the route (side selection / reserved label space); we keep
+          // its along-edge placement but center on the actual path.
+          const onPath = closestPointOnPath(allPoints, { x: lx, y: ly });
+          edgeLabelPositions.set(edge.id, onPath);
         }
 
         // For orthogonal routing with preserved positions, the offset can distort
