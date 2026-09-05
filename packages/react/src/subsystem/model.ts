@@ -28,6 +28,7 @@ export type SubsystemComponentConstruct =
   | 'interface'
   | 'type_alias'
   | 'enum'
+  | 'react_component'
   | 'module'
   | 'store'
   | 'external';
@@ -92,12 +93,14 @@ export interface SubsystemComponent {
   name: string;
   /**
    * The node's construct — what it IS as a declaration (class, function,
-   * method, interface, type alias, enum, store, external), driving node
-   * anatomy, color, badge, and the verification strategy. Every construct
-   * anchors to a definition; runtime occurrences (variables, activations,
-   * instances) are NOT constructs — they belong to a future execution-mode
-   * graph whose occurrence nodes reference these definitions. Ontology:
-   * construct = what it is, role = where it sits, process = where it runs.
+   * method, interface, type alias, enum, react_component, store, external),
+   * driving node anatomy, color, badge, and the verification strategy. Every
+   * construct anchors to a definition; runtime occurrences (variables,
+   * activations, instances) are NOT constructs — they belong to a future
+   * execution-mode graph whose occurrence nodes reference these definitions.
+   * Ontology: construct = what it is, role = where it sits, process = where
+   * it runs. Use `react_component` (not `function`) for JSX/TSX UI units so
+   * the badge reads "component" instead of "function".
    */
   construct: SubsystemComponentConstruct;
   /** Source location the component lives in (repo-root-relative path). */

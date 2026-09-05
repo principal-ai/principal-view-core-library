@@ -16,7 +16,9 @@
  */
 
 /** What the node IS as a declaration. `module` is not an authored construct —
- *  a module is its own subsystem. */
+ *  a module is its own subsystem. `react_component` is a function-shaped
+ *  declaration that renders UI (JSX/TSX); graphify still infers it as
+ *  `function`, and verification treats the two as compatible. */
 export type SubsystemConstruct =
   | 'class'
   | 'function'
@@ -24,6 +26,7 @@ export type SubsystemConstruct =
   | 'interface'
   | 'type_alias'
   | 'enum'
+  | 'react_component'
   | 'store'
   | 'external';
 
