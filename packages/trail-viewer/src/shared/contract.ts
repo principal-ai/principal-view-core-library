@@ -56,6 +56,31 @@ export interface SubsystemThroughline {
 export type ViewerMode = "local" | "remote";
 export type PayloadKind = "trail" | "tour";
 
+/**
+ * Which permanent tabs appear in the strip by default. Toggled from the
+ * header Settings modal; persisted host-side under
+ * `~/.principal/trail-viewer-settings.json`. All default to true.
+ */
+export interface DefaultTabFlags {
+	/** Agent Sessions overview tab. */
+	sessions: boolean;
+	/** Trails library tab. */
+	trails: boolean;
+	/** Graphify repos tab. */
+	graphify: boolean;
+	/** Subsystems list tab. */
+	subsystems: boolean;
+}
+
+export interface ViewerSettings {
+	defaultTabs: DefaultTabFlags;
+}
+
+/** Partial update accepted by `setSettings` — nested objects are merged. */
+export interface PartialViewerSettings {
+	defaultTabs?: Partial<DefaultTabFlags>;
+}
+
 export interface RepoInfo {
 	root: string;
 	fileCount: number;
@@ -881,6 +906,16 @@ export type TrailViewerRequests = {
 	getUserIdentity: {
 		params: Record<string, never>;
 		response: UserIdentity;
+	};
+	/** Read the persisted viewer settings (default-tab visibility flags, etc.). */
+	getSettings: {
+		params: Record<string, never>;
+		response: ViewerSettings;
+	};
+	/** Merge-patch viewer settings, persist, and re-sync permanent tabs. */
+	setSettings: {
+		params: { settings: PartialViewerSettings };
+		response: { ok: boolean; settings: ViewerSettings; error?: string };
 	};
 	getOpencodeServerStatus: {
 		params: Record<string, never>;

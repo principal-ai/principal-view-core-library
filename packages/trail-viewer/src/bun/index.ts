@@ -58,6 +58,7 @@ import { savedConcepts } from "./saved";
 import { runOpenCodeExtraction, writeBrief, buildBrief, getExtractionPromptInfo } from "./extraction";
 import { analyzeBeats } from "./beat-analysis";
 import type {
+	DefaultTabFlags,
 	GraphifyCliStatus,
 	PayloadKind,
 	RepoInfo,
@@ -69,6 +70,7 @@ import type {
 	TrailViewerMessages,
 	TrailViewerRequests,
 	ViewerMode,
+	ViewerSettings,
 } from "../shared/contract";
 import { resolveRepoRootFromAlexandria } from "./alexandria";
 import {
@@ -82,6 +84,10 @@ import {
 	type BuiltSessionEvents,
 	type SessionWarmupEvent,
 } from "./session-pipeline";
+import {
+	loadViewerSettings,
+	patchViewerSettings,
+} from "./viewer-settings";
 
 /**
  * Resident store — the in-memory home for the recent window's processed
@@ -234,6 +240,44 @@ const AGENT_SESSIONS_TAB_ID = "agent-sessions";
 const SUBSYSTEMS_TAB_ID = "subsystems";
 const GRAPHIFY_TAB_ID = "graphify";
 
+/** Permanent tabs controlled by `ViewerSettings.defaultTabs`. Order here is
+ *  the strip order when all are enabled. */
+const PERMANENT_TAB_DEFS: Array<{
+	id: string;
+	kind: "agent-sessions" | "subsystems" | "graphify" | "library";
+	title: string;
+	flag: keyof DefaultTabFlags;
+}> = [
+	{
+		id: AGENT_SESSIONS_TAB_ID,
+		kind: "agent-sessions",
+		title: "Agent Sessions",
+		flag: "sessions",
+	},
+	{
+		id: SUBSYSTEMS_TAB_ID,
+		kind: "subsystems",
+		title: "Subsystems",
+		flag: "subsystems",
+	},
+	{
+		id: GRAPHIFY_TAB_ID,
+		kind: "graphify",
+		title: "Graphify",
+		flag: "graphify",
+	},
+	{
+		id: LIBRARY_TAB_ID,
+		kind: "library",
+		title: "Trails",
+		flag: "trails",
+	},
+];
+
+function isPermanentTabId(id: string): boolean {
+	return PERMANENT_TAB_DEFS.some((d) => d.id === id);
+}
+
 // ---------------------------------------------------------------------------
 // CLI args / env
 // ---------------------------------------------------------------------------
@@ -269,18 +313,18 @@ function resolveRepoRoot(trailFilePath: string | null): string {
 
 // Which permanent tab the window opens on. `principal-ai agent-sessions` spawns
 // with TRAIL_VIEWER_START_TAB=agent-sessions so a bare launch lands straight on
-// the Agent Sessions overview. Bare launches default to the Subsystems tab.
-function resolveStartTab(): string {
+// the Agent Sessions overview. Bare launches prefer Subsystems when that tab is
+// enabled; otherwise the first enabled permanent tab.
+function resolveStartTab(settings: ViewerSettings): string {
 	const raw = process.env["TRAIL_VIEWER_START_TAB"];
-	if (
-		raw === AGENT_SESSIONS_TAB_ID ||
-		raw === LIBRARY_TAB_ID ||
-		raw === SUBSYSTEMS_TAB_ID ||
-		raw === GRAPHIFY_TAB_ID
-	) {
+	if (raw && isPermanentTabId(raw)) {
 		return raw;
 	}
-	return SUBSYSTEMS_TAB_ID;
+	if (settings.defaultTabs.subsystems) return SUBSYSTEMS_TAB_ID;
+	const firstEnabled = PERMANENT_TAB_DEFS.find(
+		(d) => settings.defaultTabs[d.flag],
+	);
+	return firstEnabled?.id ?? SUBSYSTEMS_TAB_ID;
 }
 
 // Per-tab state. Trail tabs are fully self-contained views of one trail; the
@@ -367,33 +411,86 @@ type TabState =
 	| SubsystemGraphTabState
 	| TrailTabState;
 
+function permanentTabState(
+	def: (typeof PERMANENT_TAB_DEFS)[number],
+):
+	| AgentSessionsTabState
+	| SubsystemsTabState
+	| GraphifyTabState
+	| LibraryTabState {
+	if (def.kind === "agent-sessions") {
+		return { id: AGENT_SESSIONS_TAB_ID, kind: "agent-sessions", title: "Agent Sessions" };
+	}
+	if (def.kind === "subsystems") {
+		return { id: SUBSYSTEMS_TAB_ID, kind: "subsystems", title: "Subsystems" };
+	}
+	if (def.kind === "graphify") {
+		return { id: GRAPHIFY_TAB_ID, kind: "graphify", title: "Graphify" };
+	}
+	return { id: LIBRARY_TAB_ID, kind: "library", title: "Trails" };
+}
+
+/**
+ * Rebuild the permanent-tab prefix of `tabs` from settings. Transient tabs
+ * (trails, analyses, …) are preserved after the permanent ones so strip order
+ * stays stable when flags flip.
+ */
+function syncPermanentTabs(settings: ViewerSettings): void {
+	const transient = Array.from(tabs.values()).filter(
+		(t) => !isPermanentTabId(t.id),
+	);
+	tabs.clear();
+	for (const def of PERMANENT_TAB_DEFS) {
+		if (settings.defaultTabs[def.flag]) {
+			tabs.set(def.id, permanentTabState(def));
+		}
+	}
+	for (const t of transient) tabs.set(t.id, t);
+	if (!tabs.has(suggestedTabId)) {
+		suggestedTabId =
+			Array.from(tabs.keys())[0] ??
+			PERMANENT_TAB_DEFS.find((d) => settings.defaultTabs[d.flag])?.id ??
+			SUBSYSTEMS_TAB_ID;
+	}
+}
+
+/** Force a permanent tab into the strip (CLI ACTIVATE_TAB / START_TAB), even
+ *  when settings currently hide it. Does not persist a settings change. */
+function ensurePermanentTab(id: string): void {
+	const def = PERMANENT_TAB_DEFS.find((d) => d.id === id);
+	if (!def || tabs.has(id)) return;
+	// Insert at the permanent-tab position: rebuild with this tab forced on.
+	const forced: ViewerSettings = {
+		defaultTabs: {
+			sessions:
+				id === AGENT_SESSIONS_TAB_ID || viewerSettings.defaultTabs.sessions,
+			trails: id === LIBRARY_TAB_ID || viewerSettings.defaultTabs.trails,
+			graphify: id === GRAPHIFY_TAB_ID || viewerSettings.defaultTabs.graphify,
+			subsystems:
+				id === SUBSYSTEMS_TAB_ID || viewerSettings.defaultTabs.subsystems,
+		},
+	};
+	syncPermanentTabs(forced);
+}
+
 const tabs = new Map<string, TabState>();
-tabs.set(AGENT_SESSIONS_TAB_ID, {
-	id: AGENT_SESSIONS_TAB_ID,
-	kind: "agent-sessions",
-	title: "Agent Sessions",
-});
-tabs.set(SUBSYSTEMS_TAB_ID, {
-	id: SUBSYSTEMS_TAB_ID,
-	kind: "subsystems",
-	title: "Subsystems",
-});
-tabs.set(GRAPHIFY_TAB_ID, {
-	id: GRAPHIFY_TAB_ID,
-	kind: "graphify",
-	title: "Graphify",
-});
-tabs.set(LIBRARY_TAB_ID, {
-	id: LIBRARY_TAB_ID,
-	kind: "library",
-	title: "Trails",
-});
+let viewerSettings: ViewerSettings = loadViewerSettings();
 // Which tab the host suggests showing. Not authoritative — the renderer owns
 // the on-screen tab. Updated when the host creates a tab it wants visible, on
 // external activation, and (as a resume point) whenever the renderer reports a
 // switch via setActiveTab. Served to the renderer through listTabs so a freshly
 // loaded webview resumes on the right tab.
-let suggestedTabId: string = resolveStartTab();
+let suggestedTabId: string = resolveStartTab(viewerSettings);
+syncPermanentTabs(viewerSettings);
+// CLI start-tab overrides settings for this launch so `principal-ai
+// agent-sessions` still lands on Agent Sessions even if that flag is off.
+{
+	const start = process.env["TRAIL_VIEWER_START_TAB"];
+	if (start && isPermanentTabId(start) && !tabs.has(start)) {
+		ensurePermanentTab(start);
+		suggestedTabId = start;
+	}
+}
 let nextTabId = 1;
 
 // Pre-load the payload so the renderer's first read is synchronous and any
@@ -1280,6 +1377,16 @@ const requests: RequestHandlers = {
 						  ) ?? null);
 				return resolveUserIdentity(trailTab?.repoRoot, trailTab?.ghToken);
 			},
+			getSettings: () => viewerSettings,
+			setSettings: ({ settings }) => {
+				viewerSettings = patchViewerSettings(viewerSettings, settings);
+				const prevSuggested = suggestedTabId;
+				syncPermanentTabs(viewerSettings);
+				broadcastTabsChanged(
+					suggestedTabId !== prevSuggested ? suggestedTabId : undefined,
+				);
+				return { ok: true, settings: viewerSettings };
+			},
 			getOpencodeServerStatus: async () => probeOpencodeServer(),
 			getServerSessions: async () => listRecentServerSessions(),
 			setServerEventWatch: async ({ active }) => {
@@ -2143,12 +2250,7 @@ browserWindow.maximize();
 startWarmupWorker();
 
 function closeTabById(id: string): { ok: boolean; error?: string } {
-	if (
-		id === LIBRARY_TAB_ID ||
-		id === AGENT_SESSIONS_TAB_ID ||
-		id === SUBSYSTEMS_TAB_ID ||
-		id === GRAPHIFY_TAB_ID
-	) {
+	if (isPermanentTabId(id)) {
 		return { ok: false, error: "permanent tab cannot be closed" };
 	}
 	if (!tabs.has(id)) return { ok: false, error: `unknown tab: ${id}` };
@@ -2216,15 +2318,12 @@ startIpcServer(async (msg) => {
 		if (msg.kind === "ACTIVATE_TAB") {
 			// Bring a running viewer to a permanent tab (e.g. the CLI's
 			// `principal-ai agent-sessions`). The host suggests the focus; the
-			// renderer applies it to its own active-tab state.
-			if (
-				msg.tabId !== LIBRARY_TAB_ID &&
-				msg.tabId !== AGENT_SESSIONS_TAB_ID &&
-				msg.tabId !== SUBSYSTEMS_TAB_ID &&
-				msg.tabId !== GRAPHIFY_TAB_ID
-			) {
+			// renderer applies it to its own active-tab state. CLI activation
+			// forces the tab into the strip even if settings currently hide it.
+			if (!isPermanentTabId(msg.tabId)) {
 				return { ok: false, error: `unknown permanent tab: ${msg.tabId}` };
 			}
+			ensurePermanentTab(msg.tabId);
 			suggestedTabId = msg.tabId;
 			broadcastTabsChanged(msg.tabId);
 			try {

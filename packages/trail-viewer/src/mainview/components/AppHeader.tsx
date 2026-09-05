@@ -16,7 +16,7 @@ import {
 	Info,
 	Loader2,
 	RefreshCw,
-	ScrollText,
+	Settings,
 	Terminal,
 	User,
 } from "lucide-react";
@@ -32,6 +32,7 @@ import { electrobun, refreshLibrary, reloadSubscribers } from "../rpc";
 import { FailuresModal } from "./FailuresModal";
 import { PendingAnalysesModal } from "./PendingAnalysesModal";
 import { ServerSessionsModal } from "./ServerSessionsModal";
+import { SettingsModal } from "./SettingsModal";
 
 // The opencode server status chip (v2 pill + health dot) is hidden for now —
 // flip to true to bring it back. Everything behind it (the 10s health poll,
@@ -88,6 +89,9 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 	// Clicking the identity chip explains where the name/avatar came from rather
 	// than jumping straight to GitHub — the profile link lives inside the modal.
 	const [showIdentityModal, setShowIdentityModal] = useState(false);
+
+	// Header Settings gear — toggles which permanent tabs show by default.
+	const [showSettings, setShowSettings] = useState(false);
 
 	// In-flight background work (concept analysis extraction). The host
 	// broadcasts tabsChanged when an extraction starts, completes, or fails, so
@@ -351,32 +355,6 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 					</span>
 				</span>
 			)}
-			<button
-				type="button"
-				onClick={() => {
-					void electrobun.rpc!.request.openPromptTab({});
-				}}
-				title="View the concept-extractor prompt"
-				aria-label="View the concept-extractor prompt"
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: 6,
-					height: 32,
-					padding: "0 12px",
-					borderRadius: 6,
-					background: "transparent",
-					border: `1px solid ${theme.colors.border}`,
-					color: theme.colors.text,
-					fontSize: theme.fontSizes[1],
-					fontFamily: theme.fonts.body,
-					cursor: "pointer",
-					flexShrink: 0,
-				}}
-			>
-				<ScrollText size={14} />
-				<span>Prompt</span>
-			</button>
 			{SHOW_SERVER_CHIP && (
 			<button
 				type="button"
@@ -503,6 +481,28 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 					</span>
 				</button>
 			)}
+			<button
+				type="button"
+				onClick={() => setShowSettings(true)}
+				title="Viewer settings"
+				aria-label="Viewer settings"
+				aria-haspopup="dialog"
+				style={{
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					width: 32,
+					height: 32,
+					borderRadius: 6,
+					background: "transparent",
+					border: `1px solid ${theme.colors.border}`,
+					color: theme.colors.text,
+					cursor: "pointer",
+					flexShrink: 0,
+				}}
+			>
+				<Settings size={16} />
+			</button>
 			{/* Download app CTA — hidden for now, will come back later.
 			<button
 				type="button"
@@ -556,6 +556,10 @@ export function AppHeader({ libraryActive }: { libraryActive: boolean }) {
 				onDelete={deleteAnalysis}
 				onClose={() => setShowFailures(false)}
 			/>,
+			document.body,
+		)}
+		{showSettings && createPortal(
+			<SettingsModal onClose={() => setShowSettings(false)} />,
 			document.body,
 		)}
 		</>
