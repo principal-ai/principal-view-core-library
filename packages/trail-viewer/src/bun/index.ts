@@ -969,7 +969,12 @@ function summarize(tab: TabState): TabSummary {
 		return { id: tab.id, kind: "prompt", title: tab.title };
 	}
 	if (tab.kind === "subsystem-graph") {
-		return { id: tab.id, kind: "subsystem-graph", title: tab.title };
+		return {
+			id: tab.id,
+			kind: "subsystem-graph",
+			title: tab.title,
+			path: subsystemGraphFilePath(tab.graphId),
+		};
 	}
 	if (isStaticTab(tab)) {
 		return { id: tab.id, kind: tab.kind, title: tab.title };

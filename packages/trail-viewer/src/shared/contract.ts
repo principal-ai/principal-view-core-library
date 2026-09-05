@@ -473,6 +473,8 @@ export interface TabSummary {
 	title: string;
 	mode?: ViewerMode;
 	payloadKind?: PayloadKind;
+	/** For `subsystem-graph` tabs — absolute path to the persisted JSON. */
+	path?: string;
 }
 
 export interface TabFullState {
