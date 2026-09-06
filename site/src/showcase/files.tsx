@@ -14,9 +14,10 @@ import {
  * the static GitHub Pages build and the dev server identically.
  */
 const SHOWCASE_FILES = import.meta.glob('/showcase/**/*', {
-  as: 'raw',
+  query: '?raw',
+  import: 'default',
   eager: true,
-});
+}) as Record<string, string>;
 
 function fileKey(caseDir: string, path: string): string {
   const norm = path.replace(/^\.?\//, '');
