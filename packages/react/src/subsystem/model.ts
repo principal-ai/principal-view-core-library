@@ -269,8 +269,10 @@ export function deriveNameFromSymbol(
 
   // Decorations = what the drill-down shows. Framework stereotypes can override
   // the language decoration (a React component wears `<>` instead of `()`).
-  // Executable constructs wear `()`; brace-bodied constructs wear ` {}`.
-  // Everything else (store, module, external) renders bare.
+  // Executable constructs wear `()`; brace-bodied constructs (interface,
+  // type_alias, enum) wear ` {}`. Classes render bare — the construct badge
+  // already says "class".
+  // Everything else (class, store, module, external) renders bare.
   if (stereotype === 'component' && !name.startsWith('<')) {
     return `<${name}>`;
   }
@@ -278,8 +280,7 @@ export function deriveNameFromSymbol(
     name = `${name}()`;
   }
   if (
-    (construct === 'class' ||
-      construct === 'interface' ||
+    (construct === 'interface' ||
       construct === 'type_alias' ||
       construct === 'enum') &&
     !name.endsWith('{}')
@@ -446,6 +447,30 @@ export const MECHANISM_STYLE: Record<SubsystemEdgeMechanism, 'solid' | 'dashed' 
   watches: 'dashed',
   'registers-into': 'dashed',
 };
+
+/** Mechanism → [description, verifiable-with-graphify]. Drives the "not
+ *  directly verifiable" styling of edge labels. */
+export const MECHANISM_DESCRIPTIONS: [SubsystemEdgeMechanism, string, boolean][] = [
+  ['imports', 'import statement (code-level dependency)', true],
+  ['imports_from', 'imported by (reverse dependency)', true],
+  ['re_exports', 're-exports symbols from', true],
+  ['defines', 'defines / declares symbol', true],
+  ['calls', 'function/method call (call graph edge)', true],
+  ['extends', 'class inheritance', true],
+  ['inherits', 'class inheritance', true],
+  ['implements', 'implements interface / protocol', true],
+  ['mixes_in', 'applies mixin', true],
+  ['uses', 'general dependency (import, call, or reference)', false],
+  ['method', 'structural: has method / member', true],
+  ['references', 'type / symbol reference (not a call)', true],
+  ['contains', 'structural: contains / encapsulates', true],
+  ['feeds', 'data flow: output feeds into input', false],
+  ['produces', 'data flow: produces / outputs', false],
+  ['writes', 'state access: mutates retained state', true],
+  ['reads', 'state access: reads retained state', true],
+  ['watches', 'observes retained state without owning it', false],
+  ['registers-into', 'registration pattern', false],
+];
 
 /** Package color palette (derived deterministically from the package name). */
 export function packageColor(name: string): string {

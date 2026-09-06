@@ -411,7 +411,8 @@ export function ComponentDeclaration({
       )}
       {toggleBtn(showFile, () => setShowFile((v) => !v), 'Toggle file path', FileText)}
       {lineLocationLabel}
-      {toggleBtn(showPurpose, () => setShowPurpose((v) => !v), 'Toggle description', AlignLeft)}
+      {component.purpose?.trim() &&
+        toggleBtn(showPurpose, () => setShowPurpose((v) => !v), 'Toggle description', AlignLeft)}
     </span>
   );
 

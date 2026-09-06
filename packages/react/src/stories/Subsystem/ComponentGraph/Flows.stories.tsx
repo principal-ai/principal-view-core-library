@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import '@xyflow/react/dist/style.css';
 import type { Meta, StoryObj } from '@storybook/react';
 import { ThemeProvider, defaultEditorTheme } from '@principal-ade/industry-theme';
@@ -8,6 +8,8 @@ import type {
   SubsystemComponentEdge,
   SubsystemThroughline,
 } from '../../../subsystem/model';
+import { PierreThroughlineCodeView } from '../../../pierre';
+import type { ThroughlineViewerContext } from '../../../subsystem/SubsystemComponentGraph';
 
 const meta = {
   title: 'Subsystem/ComponentGraph/Flows',
@@ -32,9 +34,52 @@ type Story = StoryObj<typeof meta>;
 // Mirror of the retrofitted electron-app drawing graph: the sidebar's Files
 // panel swaps to a Flows panel listing three throughlines (open / save /
 // delete). Clicking a flow row toggles its steps; clicking a step focuses
-// that step's edge and frames it on the canvas. Other opened flows stay
-// dimmed; the rest of the graph is hidden.
+// that step's edge, frames it on the canvas, and scrolls the bottom CodeView
+// to that step's snippet. Other opened flows stay dimmed; the rest of the
+// graph is hidden.
 // ---------------------------------------------------------------------------
+
+/** Build enough placeholder lines so step `line` values land inside the file. */
+function fakeSource(path: string, markedLines: number[]): string {
+  const maxLine = Math.max(80, ...markedLines);
+  const marks = new Set(markedLines);
+  const lines: string[] = [`// ${path}`, ''];
+  for (let i = 3; i <= maxLine; i++) {
+    if (marks.has(i)) {
+      lines.push(`export function stepAtLine${i}() {`);
+      lines.push(`  return ${i};`);
+      lines.push(`}`);
+      lines.push('');
+    } else {
+      lines.push(`// context line ${i}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+const storyFiles: Record<string, string> = {
+  'src/panels/DrawingsLeftPanel.tsx': fakeSource('src/panels/DrawingsLeftPanel.tsx', [
+    56, 85,
+  ]),
+  'src/hooks/useDrawingsHost.ts': fakeSource('src/hooks/useDrawingsHost.ts', [
+    45, 64, 66,
+  ]),
+  'src/workspace/WorkspaceShell.tsx': fakeSource('src/workspace/WorkspaceShell.tsx', [
+    369, 372,
+  ]),
+  'src/storage/drawingsStorage.ts': fakeSource('src/storage/drawingsStorage.ts', [90]),
+  'src/components/DrawingTabContent.tsx': fakeSource('src/components/DrawingTabContent.tsx', [
+    83, 112, 121,
+  ]),
+};
+
+function readStoryFile(path: string): Promise<string> {
+  const content = storyFiles[path];
+  if (content == null) {
+    return Promise.reject(new Error(`No story fixture for ${path}`));
+  }
+  return Promise.resolve(content);
+}
 
 const drawingComponents: SubsystemComponent[] = [
   {
@@ -148,6 +193,18 @@ const drawingThroughlines: SubsystemThroughline[] = [
 ];
 
 function FlowsDemo() {
+  const renderThroughlineViewer = useCallback(
+    ({ throughline, stepIndex }: ThroughlineViewerContext) => (
+      <PierreThroughlineCodeView
+        throughline={throughline}
+        stepIndex={stepIndex}
+        readFile={readStoryFile}
+        contextLines={4}
+      />
+    ),
+    [],
+  );
+
   return (
     <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <SubsystemComponentGraph
@@ -155,7 +212,8 @@ function FlowsDemo() {
         edges={drawingEdges}
         throughlines={drawingThroughlines}
         title="drawing-files flow"
-        description="Three throughlines over one graph — opening, saving, and deleting a drawing. The sidebar's **Flows** panel lists each step by **symbol** (the frame at that hop); clicking a step focuses that edge on the canvas."
+        description="Three throughlines over one graph — opening, saving, and deleting a drawing. The sidebar's **Flows** panel lists each step by **symbol**; clicking a step focuses that edge and scrolls the bottom CodeView to that snippet."
+        renderThroughlineViewer={renderThroughlineViewer}
         renderFileViewer={(file, opts) => (
           <div
             style={{

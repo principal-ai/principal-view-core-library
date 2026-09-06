@@ -274,7 +274,7 @@ export type {
 
 // Subsystem component graph
 export { SubsystemComponentGraph } from './subsystem/SubsystemComponentGraph';
-export type { SubsystemComponentGraphProps } from './subsystem/SubsystemComponentGraph';
+export type { SubsystemComponentGraphProps, ThroughlineViewerContext } from './subsystem/SubsystemComponentGraph';
 export type {
   ComponentVerificationState,
   ComponentVerificationPhase,
@@ -302,6 +302,8 @@ export type { GraphLayoutCoverProps } from './subsystem/GraphLayoutCover';
 export type {
   SubsystemComponent,
   SubsystemComponentEdge,
+  SubsystemThroughline,
+  SubsystemThroughlineStep,
   SubsystemGraphDocument,
   SubsystemComponentConstruct,
   SubsystemComponentRole,
@@ -329,10 +331,11 @@ export {
 } from './subsystem/declarationRef';
 
 // Pierre code views (@pierre/diffs wrappers)
-export { PierreFileView, PierreSnippetView, sliceSnippetWindow, resolvePierreSyntaxThemeName } from './pierre';
+export { PierreFileView, PierreSnippetView, PierreThroughlineCodeView, sliceSnippetWindow, resolvePierreSyntaxThemeName } from './pierre';
 export type {
   PierreFileViewProps,
   PierreSnippetViewProps,
+  PierreThroughlineCodeViewProps,
   SnippetSlice,
   PierreSyntaxThemeName,
 } from './pierre';

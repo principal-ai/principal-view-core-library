@@ -17,11 +17,17 @@ import type {
 	SubsystemComponent,
 	SubsystemComponentEdge,
 	SubsystemDeclarationRef,
+	SubsystemEdgeMechanism,
 	SubsystemGraphDocument,
 } from "@principal-ai/principal-view-react";
 
 /** Canonical subsystem-graph model types, re-shared with both processes. */
-export type { SubsystemComponent, SubsystemComponentEdge, SubsystemGraphDocument };
+export type {
+	SubsystemComponent,
+	SubsystemComponentEdge,
+	SubsystemGraphDocument,
+	SubsystemEdgeMechanism,
+};
 
 /**
  * A single site on an existing edge — the exact `file:line` where that
@@ -255,6 +261,8 @@ export interface StoredSubsystemGraph {
 	throughlines?: SubsystemThroughline[];
 	createdAt: string;
 	updatedAt: string;
+	/** Host-local: when a viewer last opened this graph (machine-specific). */
+	lastOpenedAt?: string;
 	source?: string;
 	repo?: { owner: string; name: string };
 	/** Local root component `file` paths resolve against (sandboxed reads). */
@@ -303,6 +311,8 @@ export interface SubsystemGraphSummary {
 	edgeCount: number;
 	createdAt: string;
 	updatedAt: string;
+	/** Host-local: when a viewer last opened this graph (never opened = absent). */
+	lastOpenedAt?: string;
 	source?: string;
 	repo?: { owner: string; name: string };
 	/** Absolute path to the persisted JSON (`~/.principal/subsystem-graphs/<id>.json`). */

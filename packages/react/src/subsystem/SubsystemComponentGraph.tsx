@@ -32,11 +32,12 @@ import {
   applyNodeChanges,
 } from '@xyflow/react';
 import { useTheme } from '@principal-ade/industry-theme';
-import { Map as MapIcon, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import { IndustryMarkdownSlide } from 'themed-markdown';
 import {
   buildSubsystemGraph,
   MECHANISM_COLOR,
+  MECHANISM_DESCRIPTIONS,
   subsystemGraphLayoutKey,
   type SubsystemComponentEdge,
   type SubsystemComponent,
@@ -50,7 +51,6 @@ import { GraphLayoutCover } from './GraphLayoutCover';
 import { ComponentDeclaration } from './ComponentDeclaration';
 import type { ComponentVerificationState } from './ComponentDeclaration';
 import { FileDrawer } from './FileDrawer';
-import { EdgeLegendModal, MECHANISM_DESCRIPTIONS } from './EdgeLegendModal';
 import { buildRepoGroups, repoAvatarUrl, type RepoGroup } from './paths';
 
 /** Cap screen-space edge labels to this fraction of the edge's on-screen length. */
@@ -58,6 +58,17 @@ const EDGE_LABEL_MAX_EDGE_FRACTION = 0.55;
 /** Rough monospace width at fontSize 10 + horizontal padding/border. */
 const EDGE_LABEL_CHAR_PX = 6.2;
 const EDGE_LABEL_PAD_PX = 18;
+
+/** Context passed to `renderThroughlineViewer` when a flow/step is focused. */
+export interface ThroughlineViewerContext {
+  throughline: SubsystemThroughline;
+  /** Focused step index; `null` means the whole flow (no specific step). */
+  stepIndex: number | null;
+}
+
+type DrawerTarget =
+  | { kind: 'file'; file: string; startLine?: number }
+  | { kind: 'throughline'; throughlineId: string; stepIndex: number | null };
 
 export interface SubsystemComponentGraphProps {
   components: SubsystemComponent[];
@@ -67,8 +78,9 @@ export interface SubsystemComponentGraphProps {
    * flow. When present the sidebar's bottom half offers a Files/Flows toggle:
    * the flows panel lists each throughline's steps (`symbol` or `file:line`);
    * clicking a flow row toggles its steps; clicking a step focuses that
-   * step's edge. Opened flows stay on the canvas (unselected ones dimmed);
-   * everything else is hidden.
+   * step's edge and (when `renderThroughlineViewer` is set) opens the bottom
+   * drawer on that flow's snippets. Opened flows stay on the canvas
+   * (unselected ones dimmed); everything else is hidden.
    */
   throughlines?: SubsystemThroughline[];
   onSelect?: (componentId: string) => void;
@@ -79,8 +91,6 @@ export interface SubsystemComponentGraphProps {
   maxNodeWidth?: number;
   /** Show edge labels (mechanism names) on the graph. @default true */
   showEdgeLabels?: boolean;
-  /** Show the mechanism-legend button overlay on the canvas. @default true */
-  showLegend?: boolean;
   /** Subsystem title displayed in the sidebar. */
   title?: string;
   /**
@@ -105,11 +115,16 @@ export interface SubsystemComponentGraphProps {
   sidebarAfterDescription?: ReactNode;
   /**
    * Host-injected reader/renderer for the bottom file drawer, keyed by
-   * repo-root-relative path. Opening happens on node click (component with a
-   * `file`) and sidebar file-tree click. Keeps this package free of fs and
-   * code-view dependencies.
+   * repo-root-relative path. Opening happens on declaration/file-tree clicks.
+   * Keeps this package free of fs and code-view dependencies.
    */
   renderFileViewer?: (file: string, opts?: SubsystemOpenFileOptions) => ReactNode;
+  /**
+   * Host-injected multi-snippet viewer for a focused throughline. When set,
+   * clicking a flow step opens the bottom drawer with this content and
+   * updates it as the focused step changes.
+   */
+  renderThroughlineViewer?: (ctx: ThroughlineViewerContext) => ReactNode;
   /**
    * Legacy component-keyed variant, kept for backward compatibility. When
    * `renderFileViewer` is absent, drawer content resolves via the first
@@ -136,28 +151,39 @@ const edgeTypes: EdgeTypes = {
   'subsystem-edge': SubsystemEdge,
 };
 
-// Memoized drawer body: only rebuilds children when the open file changes.
+// Memoized drawer body: only rebuilds children when the open target changes.
 // Inner re-renders on every viewport pan/zoom and hover; recreating host
 // elements then would churn their readFile closures and flash the file
 // viewer's loading state on each render.
-const DrawerContent = memo(function DrawerContent({
+const FileDrawerContent = memo(function FileDrawerContent({
   render,
   file,
   startLine,
 }: {
   render: (file: string, opts?: SubsystemOpenFileOptions) => ReactNode;
-  file: string | null;
+  file: string;
   startLine?: number;
 }) {
-  if (!file) return null;
   return <>{render(file, startLine != null ? { startLine } : undefined)}</>;
+});
+
+const ThroughlineDrawerContent = memo(function ThroughlineDrawerContent({
+  render,
+  throughline,
+  stepIndex,
+}: {
+  render: (ctx: ThroughlineViewerContext) => ReactNode;
+  throughline: SubsystemThroughline;
+  stepIndex: number | null;
+}) {
+  return <>{render({ throughline, stepIndex })}</>;
 });
 
 interface InnerProps extends SubsystemComponentGraphProps {
   measured: { w: number; h: number } | null;
 }
 
-function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measured: _measured, maxNodeWidth, showEdgeLabels, showLegend, title, hideSidebar, graphTitle, description, canvasOverlay, sidebarExtra, sidebarAfterDescription, renderFileView, renderFileViewer, onFileSelect, onVerifyComponent, componentVerification }: InnerProps) {
+function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measured: _measured, maxNodeWidth, showEdgeLabels, title, hideSidebar, graphTitle, description, canvasOverlay, sidebarExtra, sidebarAfterDescription, renderFileView, renderFileViewer, renderThroughlineViewer, onFileSelect, onVerifyComponent, componentVerification }: InnerProps) {
   const { theme } = useTheme();
   const { fitView } = useReactFlow();
   const viewport = useViewport();
@@ -167,15 +193,8 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
   });
   const [layoutReady, setLayoutReady] = useState(false);
   const [selected, setSelected] = useState<SubsystemComponent | null>(null);
-  /** File shown in the bottom drawer + optional declaration scroll target. */
-  const [openFileTarget, setOpenFileTarget] = useState<{
-    file: string;
-    startLine?: number;
-  } | null>(null);
-  const openFile = openFileTarget?.file ?? null;
-  const openFileStartLine = openFileTarget?.startLine;
-  // Edge-legend modal visibility (opened from the canvas's top-left button).
-  const [legendOpen, setLegendOpen] = useState(false);
+  /** Bottom drawer: single file or throughline multi-snippet mode. */
+  const [drawerTarget, setDrawerTarget] = useState<DrawerTarget | null>(null);
   // Component the pointer is over (null on leave) → transient tree highlight.
   const [hoveredComponentId, setHoveredComponentId] = useState<string | null>(null);
   // Throughline focus — selected flow (or step) is full strength; other
@@ -190,13 +209,41 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
   // Throughline flows the user has expanded (via the title row). Closed by
   // default so a graph with several flows doesn't dump every step list at once.
   const [expandedThroughlines, setExpandedThroughlines] = useState<Set<string>>(new Set());
+  // Sidebar description visibility. Hidden by default so the files/flows
+  // panel gets the vertical room; the title-row toggle reveals it.
+  const [descriptionVisible, setDescriptionVisible] = useState(false);
+  const [descToggleHover, setDescToggleHover] = useState(false);
+  // `true` only when a description exists AND the user opened it.
+  const showDesc = !!description && descriptionVisible;
   // Ref mirror of `selected` so the SUBSYSTEM_CALLBACKS click handler (a
   // closure over the effect deps) can toggle without a stale value.
   const selectedRef = useRef<SubsystemComponent | null>(null);
   selectedRef.current = selected;
-  // Ref mirror of `openFile` for the tree-click toggle.
+  // Ref mirror of the open file drawer target for tree-click toggle.
   const openFileRef = useRef<{ file: string; startLine?: number } | null>(null);
-  openFileRef.current = openFileTarget;
+  const openFile =
+    drawerTarget?.kind === 'file' ? drawerTarget.file : null;
+  openFileRef.current =
+    drawerTarget?.kind === 'file'
+      ? { file: drawerTarget.file, startLine: drawerTarget.startLine }
+      : null;
+
+  const focusedThroughline = useMemo(() => {
+    if (drawerTarget?.kind !== 'throughline' || !throughlines) return null;
+    return throughlines.find((t) => t.id === drawerTarget.throughlineId) ?? null;
+  }, [drawerTarget, throughlines]);
+
+  const drawerTitle = useMemo(() => {
+    if (!drawerTarget) return null;
+    if (drawerTarget.kind === 'file') return drawerTarget.file;
+    const tl = focusedThroughline;
+    if (!tl) return null;
+    if (drawerTarget.stepIndex == null) return tl.title;
+    const step = tl.steps[drawerTarget.stepIndex];
+    if (!step) return tl.title;
+    const site = `${step.file.split('/').pop() ?? step.file}:${step.line}`;
+    return `${tl.title} · ${site}`;
+  }, [drawerTarget, focusedThroughline]);
 
   // Refresh selected component when the components list updates (e.g. verify
   // writes back declarationRef).
@@ -594,10 +641,10 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
   const onTreeSelectFile = useCallback(
     (file: string) => {
       if (openFileRef.current?.file === file && openFileRef.current.startLine == null) {
-        setOpenFileTarget(null);
+        setDrawerTarget(null);
         return;
       }
-      setOpenFileTarget({ file });
+      setDrawerTarget({ kind: 'file', file });
       onFileSelect?.(file);
     },
     [onFileSelect],
@@ -610,10 +657,10 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
         openFileRef.current?.file === file &&
         openFileRef.current.startLine === startLine
       ) {
-        setOpenFileTarget(null);
+        setDrawerTarget(null);
         return;
       }
-      setOpenFileTarget({ file, startLine });
+      setDrawerTarget({ kind: 'file', file, startLine });
       onFileSelect?.(file);
     },
     [onFileSelect],
@@ -643,7 +690,9 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
 
   // Focus an entire flow: hide everything but the flow's nodes and edges, and
   // frame the flow on the canvas. Selection state is cleared — the graph now
-  // reads as the narrative.
+  // reads as the narrative. No drawer: the code view only opens on a step
+  // click. A stale throughline drawer (from a previously focused flow's step)
+  // closes; an explicitly opened file drawer stays.
   const focusThroughlineEdges = useCallback(
     (tl: SubsystemThroughline) => {
       setSelected(null);
@@ -651,6 +700,7 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
       setFocusedStepIndex(null);
       setFocusedThroughlineId(tl.id);
       fitFocusBounds(new Set(tl.steps.map((s) => s.edgeId)));
+      setDrawerTarget((prev) => (prev?.kind === 'throughline' ? null : prev));
     },
     [fitFocusBounds],
   );
@@ -658,10 +708,11 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
   const clearThroughlineFocus = useCallback(() => {
     setFocusedThroughlineId(null);
     setFocusedStepIndex(null);
+    setDrawerTarget((prev) => (prev?.kind === 'throughline' ? null : prev));
   }, []);
 
-  // Focus a single step's edge on the canvas. The step's file:line is listed
-  // in the row; we don't open the drawer from here.
+  // Focus a single step's edge on the canvas and open/scroll the throughline
+  // drawer to that step's snippet.
   const focusThroughlineStep = useCallback(
     (tl: SubsystemThroughline, stepIndex: number) => {
       const step = tl.steps[stepIndex];
@@ -671,9 +722,66 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
       setFocusedStepIndex(stepIndex);
       setFocusedThroughlineId(tl.id);
       fitFocusBounds(new Set([step.edgeId]));
+      if (renderThroughlineViewer) {
+        setDrawerTarget({
+          kind: 'throughline',
+          throughlineId: tl.id,
+          stepIndex,
+        });
+      } else {
+        setDrawerTarget({
+          kind: 'file',
+          file: step.file,
+          startLine: step.line,
+        });
+      }
     },
-    [fitFocusBounds],
+    [fitFocusBounds, renderThroughlineViewer],
   );
+
+  // Arrow keys step through the focused throughline once a step is active
+  // (sidebar click or drawer open). Ignores typing targets and chords.
+  useEffect(() => {
+    if (focusedThroughlineId == null || focusedStepIndex == null || !throughlines) {
+      return;
+    }
+    const tl = throughlines.find((t) => t.id === focusedThroughlineId);
+    if (!tl || tl.steps.length === 0) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (
+        el &&
+        (el.tagName === 'INPUT' ||
+          el.tagName === 'TEXTAREA' ||
+          el.tagName === 'SELECT' ||
+          el.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      let next: number | null = null;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        next = Math.min(tl.steps.length - 1, focusedStepIndex + 1);
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        next = Math.max(0, focusedStepIndex - 1);
+      } else {
+        return;
+      }
+      if (next === focusedStepIndex) return;
+      e.preventDefault();
+      focusThroughlineStep(tl, next);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [
+    focusedThroughlineId,
+    focusedStepIndex,
+    throughlines,
+    focusThroughlineStep,
+  ]);
 
   const toggleThroughlineCollapsed = useCallback((tlId: string) => {
     setExpandedThroughlines((prev) => {
@@ -744,10 +852,6 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
       });
   }, [dispEdges, selectedFlowStepNos]);
 
-  const usedMechanisms = useMemo(() => {
-    return new Set(edgeLabels.map((l) => l.mechanism));
-  }, [edgeLabels]);
-
   // Unique source files across components → sidebar file trees.
   const treeFilePaths = treeFiles;
 
@@ -781,9 +885,19 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
     [],
   );
 
+  const throughlineViewerRef = useRef(renderThroughlineViewer);
+  throughlineViewerRef.current = renderThroughlineViewer;
+  const renderThroughlineDrawerContent = useCallback(
+    (ctx: ThroughlineViewerContext) =>
+      throughlineViewerRef.current?.(ctx) ?? null,
+    [],
+  );
+
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'row' }}>
-      {/* Sidebar: scrollable title/description on top, files or flows pinned to the bottom half */}
+      {/* Sidebar: scrollable title/description on top, files or flows pinned below.
+          The description hides by default so files/flows get the room; the
+          title-row toggle reveals it, and the lower panel yields back to 50%. */}
       {!hideSidebar && (title || description || sidebarExtra || sidebarAfterDescription || treeFilePaths.length > 0 || hasThroughlines) && (
         <div
           style={{
@@ -798,7 +912,7 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
         >
           <div
             style={{
-              flex: 1,
+              flex: showDesc ? 1 : '0 0 auto',
               minHeight: 0,
               overflowY: 'auto',
               padding: '16px',
@@ -808,20 +922,54 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
             }}
           >
           {sidebarExtra}
-          {title && (
-            <h2
-              style={{
-                margin: 0,
-                fontSize: theme.fontSizes[2],
-                fontWeight: 600,
-                color: theme.colors.text,
-                fontFamily: theme.fonts.heading,
-              }}
-            >
-              {title}
-            </h2>
+          {(title || description) && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+              {title && (
+                <h2
+                  style={{
+                    margin: 0,
+                    flex: 1,
+                    minWidth: 0,
+                    fontSize: theme.fontSizes[2],
+                    fontWeight: 600,
+                    color: theme.colors.text,
+                    fontFamily: theme.fonts.monospace,
+                  }}
+                >
+                  {title}
+                </h2>
+              )}
+              {description && (
+                <button
+                  type="button"
+                  aria-expanded={descriptionVisible}
+                  aria-label={descriptionVisible ? 'Hide description' : 'Show description'}
+                  title={descriptionVisible ? 'Hide description' : 'Show description'}
+                  onMouseEnter={() => setDescToggleHover(true)}
+                  onMouseLeave={() => setDescToggleHover(false)}
+                  onClick={() => setDescriptionVisible((v) => !v)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    width: 22,
+                    height: 22,
+                    padding: 0,
+                    border: 'none',
+                    borderRadius: 4,
+                    background: descToggleHover ? theme.colors.border : 'transparent',
+                    color: descToggleHover ? theme.colors.text : (theme.colors.textMuted ?? theme.colors.textSecondary),
+                    cursor: 'pointer',
+                    transition: 'background 120ms ease, color 120ms ease',
+                  }}
+                >
+                  {descriptionVisible ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+              )}
+            </div>
           )}
-          {description && (
+          {description && descriptionVisible && (
             <div style={{ fontSize: theme.fontSizes[0], lineHeight: 1.5 }}>
               <IndustryMarkdownSlide
                 content={description}
@@ -841,7 +989,7 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
           {(treeFilePaths.length > 0 || hasThroughlines) && (
             <div
               style={{
-                height: '50%',
+                ...(showDesc ? { height: '50%' as const } : { flex: 1, minHeight: 0 }),
                 minHeight: 160,
                 flexShrink: 0,
                 borderTop: `1px solid ${theme.colors.border}`,
@@ -862,7 +1010,7 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
                     background: theme.colors.backgroundSecondary ?? theme.colors.background,
                   }}
                 >
-                  {(['files', 'flows'] as const).map((view) => (
+                  {(['flows', 'files'] as const).map((view) => (
                     <button
                       key={view}
                       type="button"
@@ -1065,37 +1213,9 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         <Controls showZoom showFitView showInteractive />
       </ReactFlow>
-      {/* Legend button — top-left overlay on the canvas; opens the modal. */}
-      {showLegend !== false && usedMechanisms.size > 0 && (
-        <button
-          type="button"
-          onClick={() => setLegendOpen(true)}
-          style={{
-            position: 'absolute',
-            top: 10,
-            left: 10,
-            zIndex: 7,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '4px 10px',
-            fontSize: theme.fontSizes[0],
-            fontFamily: theme.fonts.body,
-            color: theme.colors.text,
-            background: theme.colors.backgroundSecondary ?? theme.colors.background,
-            border: `1px solid ${theme.colors.border}`,
-            borderRadius: 6,
-            cursor: 'pointer',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
-          }}
-        >
-          <MapIcon size={13} />
-          Legend
-        </button>
-      )}
       {/* Graph title — non-interactive chip centered at the top of the canvas
-          (clear of the top-left legend button and top-right declaration
-          card). Lets graph-only embeds name the subsystem they show. */}
+          (clear of the top-right declaration card). Lets graph-only embeds
+          name the subsystem they show. */}
       {graphTitle && (
         <div
           style={{
@@ -1111,7 +1231,7 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
             padding: '6px 18px',
             fontSize: theme.fontSizes[3],
             fontWeight: 600,
-            fontFamily: theme.fonts.heading,
+            fontFamily: theme.fonts.monospace,
             color: theme.colors.text,
             background: theme.colors.backgroundSecondary ?? theme.colors.background,
             border: `1px solid ${theme.colors.border}`,
@@ -1124,8 +1244,7 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
         </div>
       )}
         {/* Selected-component declaration — floating card over the canvas
-            (top-right, clear of the top-left legend button). The graph never
-            moves for it. */}
+            (top-right). The graph never moves for it. */}
         {selected && (
           <div
             style={{
@@ -1152,17 +1271,22 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
           </div>
         )}
         </div>
-        <EdgeLegendModal
-          open={legendOpen}
-          mechanisms={usedMechanisms}
-          onClose={() => setLegendOpen(false)}
-        />
-      <FileDrawer file={openFile} onClose={() => setOpenFileTarget(null)}>
-        <DrawerContent
-          render={renderDrawerContent}
-          file={openFile}
-          startLine={openFileStartLine}
-        />
+      <FileDrawer title={drawerTitle} onClose={() => setDrawerTarget(null)}>
+        {drawerTarget?.kind === 'throughline' &&
+        focusedThroughline &&
+        renderThroughlineViewer ? (
+          <ThroughlineDrawerContent
+            render={renderThroughlineDrawerContent}
+            throughline={focusedThroughline}
+            stepIndex={drawerTarget.stepIndex}
+          />
+        ) : drawerTarget?.kind === 'file' ? (
+          <FileDrawerContent
+            render={renderDrawerContent}
+            file={drawerTarget.file}
+            startLine={drawerTarget.startLine}
+          />
+        ) : null}
       </FileDrawer>
       {/* Startup cover — hides measurement, layout swap, and camera settle. */}
       <GraphLayoutCover revealed={layoutReady} />
@@ -1283,6 +1407,15 @@ function ThroughlineFlow({
   const [headerHover, setHeaderHover] = useState(false);
   const [closeHover, setCloseHover] = useState(false);
   const [hoveredStep, setHoveredStep] = useState<number | null>(null);
+  const stepButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Keep DOM focus on the active step so the browser focus ring (and
+  // subsequent arrow keys) follow arrow navigation, not the originally
+  // clicked button.
+  useEffect(() => {
+    if (active?.stepIndex == null) return;
+    stepButtonRefs.current[active.stepIndex]?.focus({ preventScroll: true });
+  }, [active?.stepIndex]);
 
   return (
     <div style={{ margin: '4px 0', borderRadius: 8 }}>
@@ -1380,6 +1513,9 @@ function ThroughlineFlow({
             return (
               <button
                 key={`${step.edgeId}-${i}`}
+                ref={(el) => {
+                  stepButtonRefs.current[i] = el;
+                }}
                 type="button"
                 onMouseEnter={() => setHoveredStep(i)}
                 onMouseLeave={() => setHoveredStep(null)}
@@ -1393,6 +1529,7 @@ function ThroughlineFlow({
                   textAlign: 'left',
                   borderRadius: 6,
                   border: 'none',
+                  outline: 'none',
                   background: stepActive || hoveredStep === i ? hoverBg : 'transparent',
                   cursor: 'pointer',
                   transition: 'background 120ms ease',

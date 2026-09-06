@@ -35,7 +35,7 @@ import { parseTourOrThrow } from "@principal-ai/file-city-builder";
 import { readFileRemote as fetchRemoteSlice } from "./remote-files";
 import { handoffToRunning, startIpcServer, type LoadTrailMessage } from "./ipc";
 import { startHttpServer } from "./http-server";
-import { deleteSubsystemGraph, getSubsystemGraph, listSubsystemGraphs, resolveRepoRootForComponent, setSubsystemGraphChangeListener, startSubsystemGraphDirWatcher, subsystemGraphFilePath } from "./subsystem-graph-store";
+import { deleteSubsystemGraph, getSubsystemGraph, listSubsystemGraphs, resolveRepoRootForComponent, setSubsystemGraphChangeListener, startSubsystemGraphDirWatcher, subsystemGraphFilePath, touchSubsystemGraphOpened } from "./subsystem-graph-store";
 import { verifySubsystemComponent } from "./verify-subsystem-component";
 import {
 	getGraphifyStatus,
@@ -833,6 +833,10 @@ function openAnalysisTab(analysisId: string): string {
 async function openSubsystemGraphTab(graphId: string): Promise<string> {
 	const graph = await getSubsystemGraph(graphId);
 	const title = graph?.title || `Subsystem Graph — ${graphId.slice(0, 12)}`;
+	// Stamp last-opened once here — covers both the focus and create paths
+	// below, and both the renderer RPC and the agent HTTP route funnel through
+	// this function.
+	await touchSubsystemGraphOpened(graphId);
 	for (const existing of tabs.values()) {
 		if (existing.kind === "subsystem-graph" && existing.graphId === graphId) {
 			// Keep the label current if the graph was renamed since it opened.
@@ -1677,6 +1681,7 @@ const requests: RequestHandlers = {
 							edgeCount: e.edgeCount,
 							createdAt: e.createdAt,
 							updatedAt: e.updatedAt,
+							lastOpenedAt: e.lastOpenedAt,
 							source: e.source,
 							repo: e.repo,
 							path: subsystemGraphFilePath(e.id),

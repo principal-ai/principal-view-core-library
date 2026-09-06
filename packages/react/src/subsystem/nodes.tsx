@@ -322,10 +322,10 @@ export function SubsystemGroupNode(props: NodeProps<Node<SubsystemGroupNodeData,
       <div
         style={{
           position: 'absolute',
-          top: -13,
+          top: -19,
           left: 12,
           fontFamily: theme.fonts.monospace,
-          fontSize: theme.fontSizes[0],
+          fontSize: theme.fontSizes[3],
           fontWeight: 700,
           letterSpacing: 0.6,
           color,
@@ -336,7 +336,7 @@ export function SubsystemGroupNode(props: NodeProps<Node<SubsystemGroupNodeData,
           whiteSpace: 'nowrap',
         }}
       >
-        {`process: ${region.label}`}
+        {region.label}
       </div>
     </div>
   );

@@ -44,7 +44,6 @@ function GraphOnly() {
         edges={graphOnlyEdges}
         graphTitle="Checkout"
         hideSidebar
-        showLegend={false}
       />
     </div>
   );

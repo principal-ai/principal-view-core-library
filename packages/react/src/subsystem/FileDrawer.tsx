@@ -1,7 +1,8 @@
 /**
  * FileDrawer — bottom panel that slides up from the bottom of the graph area
- * to show a file's contents. Opened by sidebar file-tree clicks (and any host
- * wiring); content is injected as children by the graph component.
+ * to show file / throughline code. Opened by sidebar file-tree clicks,
+ * declaration links, and throughline step focus; content is injected as
+ * children by the graph component.
  */
 
 import { useEffect } from 'react';
@@ -9,22 +10,22 @@ import type { ReactNode } from 'react';
 import { useTheme } from '@principal-ade/industry-theme';
 import { X } from 'lucide-react';
 
-/** Bottom panel that slides up from the bottom of the graph area to show a
- *  file's contents — opened by node clicks and sidebar file-tree clicks
- *  alike. Sits in normal flow (canvas shrinks while open, nothing covered)
+/** Bottom panel that slides up from the bottom of the graph area.
+ *  Sits in normal flow (canvas shrinks while open, nothing covered)
  *  and animates via height; stays mounted so open/close animates. */
 export function FileDrawer({
-  file,
+  title,
   onClose,
   children,
 }: {
-  file: string | null;
+  /** Drawer chrome title; `null` closes the drawer. */
+  title: string | null;
   onClose: () => void;
   children?: ReactNode;
 }) {
   const { theme } = useTheme();
   const muted = theme.colors.textMuted ?? theme.colors.textSecondary;
-  const open = file !== null;
+  const open = title !== null;
 
   useEffect(() => {
     if (!open) return;
@@ -64,7 +65,7 @@ export function FileDrawer({
         }}
       >
         <span
-          title={file ?? undefined}
+          title={title ?? undefined}
           style={{
             flex: 1,
             minWidth: 0,
@@ -76,7 +77,7 @@ export function FileDrawer({
             color: muted,
           }}
         >
-          {file}
+          {title}
         </span>
         <button
           type="button"

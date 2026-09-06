@@ -13,6 +13,7 @@ import { join } from "node:path";
 import type {
 	SubsystemComponent,
 	SubsystemComponentEdge,
+	SubsystemEdgeMechanism,
 	SubsystemGraphDocument,
 	SubsystemThroughline,
 	SubsystemThroughlineStep,
@@ -151,6 +152,12 @@ export interface StoredSubsystemGraph extends SubsystemGraphDocument {
 	throughlines?: SubsystemThroughline[];
 	createdAt: string;
 	updatedAt: string;
+	/**
+	 * When a viewer last opened this graph (stamped by
+	 * `touchSubsystemGraphOpened`). Host-local listing state — not part of the
+	 * portable document. Absent for graphs never opened on this machine.
+	 */
+	lastOpenedAt?: string;
 	/** Where this graph came from (agent session, manual creation, etc.). */
 	source?: string;
 	/** Repository this graph is about. */
@@ -234,6 +241,8 @@ export interface SubsystemGraphIndexEntry {
 	edgeCount: number;
 	createdAt: string;
 	updatedAt: string;
+	/** Mirrors the record's `lastOpenedAt` — listing sort without full reads. */
+	lastOpenedAt?: string;
 	fileName: string;
 	source?: string;
 	repo?: { owner: string; name: string };
@@ -252,9 +261,14 @@ interface IndexFile {
  * Allowed edge labels — mirrors `SubsystemEdgeMechanism` from
  * `@principal-ai/principal-view-react` (`packages/react/src/subsystem/model.ts`,
  * which also drives the per-mechanism color/style maps the renderer uses).
+ *
  * The union is compile-time only and this host module deliberately doesn't
- * bundle the React package, so wire-facing validation carries its own runtime
- * copy. The store test pins every name to catch drift on dependency bumps.
+ * bundle the React package (or core) at runtime, so wire-facing validation
+ * carries its own runtime copy. The copy is kept in sync at compile time:
+ * `satisfies` rejects labels the published union doesn't know, and
+ * `SUBSYSTEM_EDGE_MECHANISMS_COVER_PUBLISHED_UNION` below fails typecheck when
+ * a published member goes missing here. The store test additionally pins the
+ * exact list as a runtime check.
  */
 export const SUBSYSTEM_EDGE_MECHANISMS = [
 	"imports",
@@ -272,10 +286,25 @@ export const SUBSYSTEM_EDGE_MECHANISMS = [
 	"contains",
 	"feeds",
 	"produces",
+	"writes",
+	"reads",
+	"watches",
 	"registers-into",
-] as const;
+] as const satisfies readonly SubsystemEdgeMechanism[];
 
 export type EdgeMechanism = (typeof SUBSYSTEM_EDGE_MECHANISMS)[number];
+
+/** Published members missing from the runtime list above (`never` = in sync). */
+type SubsystemEdgeMechanismDrift = Exclude<SubsystemEdgeMechanism, EdgeMechanism>;
+
+/**
+ * Compile-time drift guard: `true` when the runtime list covers every member
+ * of the published `SubsystemEdgeMechanism` union; a type error (false ≠ true)
+ * naming the drift otherwise. Exported so `noUnusedLocals` can't strip it.
+ */
+export const SUBSYSTEM_EDGE_MECHANISMS_COVER_PUBLISHED_UNION: SubsystemEdgeMechanismDrift extends never
+	? true
+	: false = true;
 
 /**
  * Human-readable problems with edge mechanism labels (empty = valid).
@@ -715,6 +744,23 @@ async function readIndex(): Promise<SubsystemGraphIndexEntry[]> {
 	return rebuildIndex();
 }
 
+/** Index entry derived from a stored record. Single source for all writers. */
+function indexEntryFor(record: StoredSubsystemGraph): SubsystemGraphIndexEntry {
+	return {
+		id: record.id,
+		title: record.title,
+		description: record.description,
+		componentCount: record.components.length,
+		edgeCount: record.edges.length,
+		createdAt: record.createdAt,
+		updatedAt: record.updatedAt,
+		lastOpenedAt: record.lastOpenedAt,
+		fileName: `${record.id}.json`,
+		source: record.source,
+		repo: record.repo,
+	};
+}
+
 async function rebuildIndex(): Promise<SubsystemGraphIndexEntry[]> {
 	await ensureDir();
 	const entries: SubsystemGraphIndexEntry[] = [];
@@ -729,18 +775,7 @@ async function rebuildIndex(): Promise<SubsystemGraphIndexEntry[]> {
 		try {
 			const raw = await fs.readFile(join(ROOT, f.name), "utf8");
 			const graph = JSON.parse(raw) as StoredSubsystemGraph;
-			entries.push({
-				id: graph.id,
-				title: graph.title,
-				description: graph.description,
-				componentCount: graph.components.length,
-				edgeCount: graph.edges.length,
-				createdAt: graph.createdAt,
-				updatedAt: graph.updatedAt,
-				fileName: f.name,
-				source: graph.source,
-				repo: graph.repo,
-			});
+			entries.push(indexEntryFor(graph));
 		} catch {
 			// skip corrupt files
 		}
@@ -812,18 +847,7 @@ export async function createSubsystemGraph(
 	record.verification = await verifyGraphFiles(record);
 	noteSelfWrite(record.id);
 	await fs.writeFile(graphPath(record.id), JSON.stringify(record, null, 2), "utf8");
-	await upsertIndexEntry({
-		id: record.id,
-		title: record.title,
-		description: record.description,
-		componentCount: record.components.length,
-		edgeCount: record.edges.length,
-		createdAt: record.createdAt,
-		updatedAt: record.updatedAt,
-		fileName: `${record.id}.json`,
-		source: record.source,
-		repo: record.repo,
-	});
+	await upsertIndexEntry(indexEntryFor(record));
 	emitSubsystemGraphChange({ graphId: record.id, reason: "created" });
 	return record;
 }
@@ -856,20 +880,49 @@ export async function updateSubsystemGraph(
 	updated.verification = await verifyGraphFiles(updated);
 	noteSelfWrite(id);
 	await fs.writeFile(graphPath(id), JSON.stringify(updated, null, 2), "utf8");
-	await upsertIndexEntry({
-		id: updated.id,
-		title: updated.title,
-		description: updated.description,
-		componentCount: updated.components.length,
-		edgeCount: updated.edges.length,
-		createdAt: updated.createdAt,
-		updatedAt: updated.updatedAt,
-		fileName: `${id}.json`,
-		source: updated.source,
-		repo: updated.repo,
-	});
+	await upsertIndexEntry(indexEntryFor(updated));
 	emitSubsystemGraphChange({ graphId: id, reason: "updated" });
 	return updated;
+}
+
+/** Skip rewriting the record when an open stamp is this fresh (focus clicks). */
+const OPEN_RESTAMP_SUPPRESS_MS = 30_000;
+
+/**
+ * True when an open should restamp `lastOpenedAt`: never opened, an
+ * unparseable stamp, or the last stamp older than the suppress window.
+ * Re-focusing an already-open tab shouldn't churn the record file on every
+ * click.
+ */
+export function shouldRestampOpened(
+	lastOpenedAt: string | undefined,
+	nowMs: number,
+): boolean {
+	if (!lastOpenedAt) return true;
+	const last = Date.parse(lastOpenedAt);
+	if (!Number.isFinite(last)) return true;
+	return nowMs - last >= OPEN_RESTAMP_SUPPRESS_MS;
+}
+
+/**
+ * Stamp `lastOpenedAt` on a stored graph's record and index entry. Does not
+ * bump `updatedAt` (that means "edited") and skips verification (no content
+ * changed); the write is suppressed from the dir watcher via `noteSelfWrite`.
+ * No-ops for unknown ids and inside the restamp suppress window. Called from
+ * `openSubsystemGraphTab` — the single choke point for opens (renderer RPC
+ * and the agent HTTP route).
+ */
+export async function touchSubsystemGraphOpened(id: string): Promise<void> {
+	const existing = await getSubsystemGraph(id);
+	if (!existing) return;
+	if (!shouldRestampOpened(existing.lastOpenedAt, Date.now())) return;
+	const updated: StoredSubsystemGraph = {
+		...existing,
+		lastOpenedAt: new Date().toISOString(),
+	};
+	noteSelfWrite(id);
+	await fs.writeFile(graphPath(id), JSON.stringify(updated, null, 2), "utf8");
+	await upsertIndexEntry(indexEntryFor(updated));
 }
 
 /** Delete a subsystem graph. Returns true if deleted. */

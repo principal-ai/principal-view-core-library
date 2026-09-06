@@ -86,12 +86,12 @@ describe('subsystem graph model', () => {
   });
 
   test('deriveNameFromSymbol is consistent per kind', () => {
-    // brace-bodied constructs wear {}; module uses the symbol as-is.
-    expect(deriveNameFromSymbol('SessionReader', 'class')).toBe('SessionReader {}');
+    // brace-bodied constructs wear {}; classes render bare; module uses the symbol as-is.
+    expect(deriveNameFromSymbol('SessionReader', 'class')).toBe('SessionReader');
     expect(deriveNameFromSymbol('SessionRecord', 'type_alias')).toBe('SessionRecord {}');
     expect(deriveNameFromSymbol('transcript', 'module')).toBe('transcript');
-    // falls back to existing name when no symbol (still brace-decorated).
-    expect(deriveNameFromSymbol(undefined, 'class', 'SessionReader')).toBe('SessionReader {}');
+    // falls back to existing name when no symbol (class stays bare).
+    expect(deriveNameFromSymbol(undefined, 'class', 'SessionReader')).toBe('SessionReader');
     expect(deriveNameFromSymbol('', 'external', 'trail-viewer-host')).toBe('trail-viewer-host');
   });
 
@@ -104,7 +104,7 @@ describe('subsystem graph model', () => {
     // data-shaped constructs stay bare
     expect(deriveNameFromSymbol('ROOT', 'store')).toBe('ROOT');
     // brace bodies don't double up
-    expect(deriveNameFromSymbol('Foo {}', 'class')).toBe('Foo {}');
+    expect(deriveNameFromSymbol('Foo {}', 'interface')).toBe('Foo {}');
   });
 
   test('deriveNameFromSymbol uses JSX decoration for component stereotype', () => {

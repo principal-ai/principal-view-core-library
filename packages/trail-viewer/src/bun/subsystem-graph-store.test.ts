@@ -12,9 +12,11 @@ import {
 	normalizeDetailProvenance,
 	purlRepoKey,
 	resolveRepoRootForComponent,
+	shouldRestampOpened,
 	SUBSYSTEM_COMPONENT_CONSTRUCTS,
 	SUBSYSTEM_DETAIL_PROVENANCES,
 	SUBSYSTEM_EDGE_MECHANISMS,
+	SUBSYSTEM_EDGE_MECHANISMS_COVER_PUBLISHED_UNION,
 	subsystemGraphFilePath,
 	verifyGraphFiles,
 	type SubsystemComponent,
@@ -66,6 +68,26 @@ describe("graphIdFromWatchFilename", () => {
 		expect(graphIdFromWatchFilename("_index.json")).toBeNull();
 		expect(graphIdFromWatchFilename("readme.md")).toBeNull();
 		expect(graphIdFromWatchFilename(null)).toBeNull();
+	});
+});
+
+describe("shouldRestampOpened", () => {
+	test("stamps on first open", () => {
+		expect(shouldRestampOpened(undefined, Date.now())).toBe(true);
+	});
+
+	test("suppresses re-stamps inside the window (focus clicks)", () => {
+		const now = Date.now();
+		expect(shouldRestampOpened(new Date(now - 5_000).toISOString(), now)).toBe(false);
+	});
+
+	test("restamps once the suppress window elapses", () => {
+		const now = Date.now();
+		expect(shouldRestampOpened(new Date(now - 60_000).toISOString(), now)).toBe(true);
+	});
+
+	test("treats unparseable stamps as never opened", () => {
+		expect(shouldRestampOpened("not-a-date", Date.now())).toBe(true);
 	});
 });
 
@@ -271,8 +293,12 @@ describe("findEdgeMechanismProblems", () => {
 			"contains",
 			"feeds",
 			"produces",
+			"writes",
+			"reads",
+			"watches",
 			"registers-into",
 		]);
+		expect(SUBSYSTEM_EDGE_MECHANISMS_COVER_PUBLISHED_UNION).toBe(true);
 	});
 
 	test("accepts every allowed mechanism", () => {

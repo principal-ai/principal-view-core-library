@@ -15,8 +15,10 @@ import {
 	SubsystemComponentGraph,
 	PierreFileView,
 	PierreSnippetView,
+	PierreThroughlineCodeView,
 	type ComponentVerificationState,
 	type SubsystemOpenFileOptions,
+	type ThroughlineViewerContext,
 } from "@principal-ai/principal-view-react";
 import { electrobun, reloadSubscribers, subsystemGraphChangeSubscribers } from "../rpc";
 import { CenteredMessage } from "../ui";
@@ -105,6 +107,18 @@ export function SubsystemGraphView({
 				/>
 			);
 		},
+		[readFile],
+	);
+
+	const renderThroughlineViewer = useCallback(
+		({ throughline, stepIndex }: ThroughlineViewerContext) => (
+			<PierreThroughlineCodeView
+				throughline={throughline}
+				stepIndex={stepIndex}
+				readFile={readFile}
+				contextLines={8}
+			/>
+		),
 		[readFile],
 	);
 
@@ -248,6 +262,7 @@ export function SubsystemGraphView({
 				title={graph.title}
 				description={graph.description}
 				renderFileViewer={renderFileViewer}
+				renderThroughlineViewer={renderThroughlineViewer}
 				onSelect={onSelect}
 				onVerifyComponent={(id) => void onVerifyComponent(id)}
 				componentVerification={verification}

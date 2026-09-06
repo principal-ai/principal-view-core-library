@@ -33,6 +33,30 @@ import { CenteredMessage, lastLoadedLabel, relativeTime } from "../ui";
 const SUBSYSTEMS_POLL_MS = 10_000;
 const COPY_FEEDBACK_MS = 1500;
 
+/** Listing sort offered by the Subsystems tab header. */
+type SubsystemSortKey = "opened" | "edited" | "created";
+
+const SUBSYSTEM_SORTS: ReadonlyArray<{ key: SubsystemSortKey; label: string }> = [
+	{ key: "opened", label: "Opened" },
+	{ key: "edited", label: "Edited" },
+	{ key: "created", label: "Created" },
+];
+
+/**
+ * Sort timestamp for a summary row. Last-opened treats never-opened graphs as
+ * oldest (stamp is absent), so existing graphs keep their current relative
+ * order until opened once.
+ */
+function subsystemGraphSortTime(
+	graph: SubsystemGraphSummary,
+	sortKey: SubsystemSortKey,
+): number {
+	if (sortKey === "edited") return new Date(graph.updatedAt).getTime();
+	if (sortKey === "created") return new Date(graph.createdAt).getTime();
+	const opened = graph.lastOpenedAt ? Date.parse(graph.lastOpenedAt) : NaN;
+	return Number.isFinite(opened) ? opened : 0;
+}
+
 /** Parse `pkg:github/owner/name` (fragment/query ignored). */
 function parseGithubRepo(
 	purl: string | undefined,
@@ -326,8 +350,12 @@ function readinessColor(
 
 function SubsystemsTabHeader({
 	lastLoadedAt,
+	sortBy,
+	onSortChange,
 }: {
 	lastLoadedAt: number | null;
+	sortBy: SubsystemSortKey;
+	onSortChange: (key: SubsystemSortKey) => void;
 }) {
 	const { theme } = useTheme();
 	const muted = theme.colors.textMuted ?? theme.colors.textSecondary;
@@ -352,7 +380,44 @@ function SubsystemsTabHeader({
 				background: theme.colors.backgroundSecondary ?? theme.colors.background,
 			}}
 		>
-			<div style={{ fontSize: theme.fontSizes[2], fontWeight: 600 }}>Subsystems</div>
+			<div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+				<div style={{ fontSize: theme.fontSizes[2], fontWeight: 600 }}>Subsystems</div>
+				<div
+					role="group"
+					aria-label="Sort subsystems"
+					style={{ display: "flex", alignItems: "center", gap: 4 }}
+				>
+					{SUBSYSTEM_SORTS.map((s) => {
+						const active = s.key === sortBy;
+						return (
+							<button
+								key={s.key}
+								type="button"
+								title={`Sort by ${s.label.toLowerCase()}`}
+								aria-pressed={active}
+								onClick={() => onSortChange(s.key)}
+								style={{
+									fontSize: theme.fontSizes[0],
+									fontWeight: active ? 600 : 400,
+									letterSpacing: 0.3,
+									textTransform: "uppercase",
+									padding: "1px 7px",
+									borderRadius: 999,
+									border: `1px solid ${
+										active ? theme.colors.primary : "transparent"
+									}`,
+									background: active ? `${theme.colors.primary}22` : "transparent",
+									color: active ? theme.colors.primary : muted,
+									cursor: "pointer",
+									fontFamily: theme.fonts.body,
+								}}
+							>
+								{s.label}
+							</button>
+						);
+					})}
+				</div>
+			</div>
 			<div
 				style={{
 					fontSize: theme.fontSizes[0],
@@ -603,6 +668,7 @@ export function SubsystemGraphsView() {
 	const [repoFilter, setRepoFilter] = useState<ReadonlySet<string>>(
 		() => new Set(),
 	);
+	const [sortBy, setSortBy] = useState<SubsystemSortKey>("opened");
 	const [message, setMessage] = useState<string | null>(null);
 	const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const muted = theme.colors.textMuted ?? theme.colors.textSecondary;
@@ -812,7 +878,11 @@ export function SubsystemGraphsView() {
 	if (error && graphs === null) {
 		return (
 			<SubsystemsTabShell>
-				<SubsystemsTabHeader lastLoadedAt={lastLoadedAt} />
+				<SubsystemsTabHeader
+				lastLoadedAt={lastLoadedAt}
+				sortBy={sortBy}
+				onSortChange={setSortBy}
+			/>
 				<SubsystemsTabBody>
 					<CenteredMessage title="Could not load subsystem graphs" detail={error} />
 				</SubsystemsTabBody>
@@ -822,7 +892,11 @@ export function SubsystemGraphsView() {
 	if (graphs === null) {
 		return (
 			<SubsystemsTabShell>
-				<SubsystemsTabHeader lastLoadedAt={lastLoadedAt} />
+				<SubsystemsTabHeader
+				lastLoadedAt={lastLoadedAt}
+				sortBy={sortBy}
+				onSortChange={setSortBy}
+			/>
 				<SubsystemsTabBody>
 					<CenteredMessage title="Loading subsystem graphs…" />
 				</SubsystemsTabBody>
@@ -832,7 +906,11 @@ export function SubsystemGraphsView() {
 	if (graphs.length === 0) {
 		return (
 			<SubsystemsTabShell>
-				<SubsystemsTabHeader lastLoadedAt={lastLoadedAt} />
+				<SubsystemsTabHeader
+				lastLoadedAt={lastLoadedAt}
+				sortBy={sortBy}
+				onSortChange={setSortBy}
+			/>
 				<SubsystemsTabBody>
 					<CenteredMessage
 						title="No subsystem graphs yet"
@@ -858,10 +936,18 @@ export function SubsystemGraphsView() {
 						return owner != null && name != null && graphUsesRepo(g, owner, name);
 					}),
 				);
+	const sortedGraphs = [...visibleGraphs].sort(
+		(a, b) =>
+			subsystemGraphSortTime(b, sortBy) - subsystemGraphSortTime(a, sortBy),
+	);
 
 	return (
 		<SubsystemsTabShell>
-			<SubsystemsTabHeader lastLoadedAt={lastLoadedAt} />
+			<SubsystemsTabHeader
+				lastLoadedAt={lastLoadedAt}
+				sortBy={sortBy}
+				onSortChange={setSortBy}
+			/>
 			<SubsystemRepoCards
 				repos={repos}
 				selectedKeys={activeFilter}
@@ -908,7 +994,7 @@ export function SubsystemGraphsView() {
 				</div>
 			) : (
 			<div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-				{visibleGraphs.map((graph) => {
+				{sortedGraphs.map((graph) => {
 					const gf = graph.graphify;
 					const status = gf?.status ?? "unavailable";
 					const badgeColor = readinessColor(
@@ -959,11 +1045,17 @@ export function SubsystemGraphsView() {
 										textOverflow: "ellipsis",
 									}}
 								>
-									{graph.componentCount === 1
-										? "1 component"
-										: `${graph.componentCount} components`}
-									{" · "}
-									{relativeTime(new Date(graph.updatedAt).getTime())}
+								{graph.componentCount === 1
+									? "1 component"
+									: `${graph.componentCount} components`}
+								{" · "}
+								{relativeTime(new Date(graph.updatedAt).getTime())}
+								{graph.lastOpenedAt && (
+									<>
+										{" · opened "}
+										{relativeTime(new Date(graph.lastOpenedAt).getTime())}
+									</>
+								)}
 								</div>
 							</div>
 							<span
