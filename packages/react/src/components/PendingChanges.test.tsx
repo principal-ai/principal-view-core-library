@@ -34,6 +34,18 @@ globalThis.ResizeObserver = class ResizeObserver {
   disconnect() {}
 };
 
+// Polyfill rAF/cancel for @testing-library/react act-compat cleanup
+if (typeof (window as unknown as Record<string, unknown>).requestAnimationFrame === 'function') {
+  globalThis.requestAnimationFrame = (window as unknown as typeof globalThis).requestAnimationFrame.bind(window);
+  globalThis.cancelAnimationFrame = (window as unknown as typeof globalThis).cancelAnimationFrame.bind(window);
+} else {
+  globalThis.requestAnimationFrame = ((cb: FrameRequestCallback): number =>
+    setTimeout(() => cb(Date.now()), 0) as unknown as number) as typeof requestAnimationFrame;
+  globalThis.cancelAnimationFrame = ((id: number): void => {
+    clearTimeout(id);
+  }) as typeof cancelAnimationFrame;
+}
+
 // Mock matchMedia
 globalThis.matchMedia = mock(() => ({
   matches: false,
