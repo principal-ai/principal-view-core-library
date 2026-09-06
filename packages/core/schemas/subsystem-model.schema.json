@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://principal-ai.dev/schemas/subsystem-graph.schema.json",
-  "title": "Subsystem Graph",
-  "description": "Portable subsystem component graph — the shareable standard. Construct-tagged components (nodes) plus typed edges describing one subsystem of a codebase. Ontology: construct = what a node is, framework + stereotype = which framework pattern it plays, role = where it sits, process = where it runs. Symbol is the code identity; name is the display label (often derived from symbol). Host-only fields (local path binding, provenance, store ids, verification) are NOT part of this document; they belong on a hydrated envelope around it.",
+  "$id": "https://principal-ai.dev/schemas/subsystem-model.schema.json",
+  "title": "Subsystem Model",
+  "description": "Portable subsystem model — the shareable standard. Construct-tagged components (nodes) plus typed edges describing one subsystem of a codebase. Ontology: construct = what a node is, framework + stereotype = which framework pattern it plays, role = where it sits, process = where it runs. Symbol is the code identity; name is the display label (often derived from symbol). Host-only fields (local path binding, provenance, store ids, verification) are NOT part of this document; they belong on a hydrated envelope around it.",
   "type": "object",
   "required": [
     "title",

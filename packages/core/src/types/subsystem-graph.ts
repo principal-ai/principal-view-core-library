@@ -4,9 +4,11 @@
  * Two layers — do not conflate them:
  *
  * 1. **Portable document** (`SubsystemGraphDocument`) — the shareable standard.
- *    Schema: `schemas/subsystem-graph.schema.json`
- *    (`https://principal-ai.dev/schemas/subsystem-graph.schema.json`).
+ *    Schema: `schemas/subsystem-model.schema.json`
+ *    (`https://principal-ai.dev/schemas/subsystem-model.schema.json`).
  *
+ *    Note: types/APIs still say "graph"; renaming those to "model" is tracked
+ *    as follow-up (Subsystem Models rename). *
  * 2. **Hydrated envelope** (`SubsystemGraphHydrated`) — portable document plus
  *    host/machine binding (local roots, provenance, store ids, verification).
  *    Used by viewers and stores; not part of the portable standard.

@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
+import { syncFaviconFromBrand } from './syncFaviconFromBrand.ts'
+
+syncFaviconFromBrand()
 
 // basename matches vite.config.ts `base` so client-side routes resolve
 // under the /principal-view-core-library/ subpath on GitHub Pages.

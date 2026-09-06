@@ -2,13 +2,13 @@ import { JsonSchemaViewer } from '@stoplight/json-schema-viewer'
 import { Provider as MosaicProvider } from '@stoplight/mosaic'
 import type { JSONSchema7 } from 'json-schema'
 import { useEffect, useState } from 'react'
-import subsystemGraphSchema from '@schemas/subsystem-graph.schema.json'
+import subsystemModelSchema from '@schemas/subsystem-model.schema.json'
 import '@stoplight/mosaic/styles.css'
 
-const schema = subsystemGraphSchema as unknown as JSONSchema7
-const schemaText = JSON.stringify(subsystemGraphSchema, null, 2)
+const schema = subsystemModelSchema as unknown as JSONSchema7
+const schemaText = JSON.stringify(subsystemModelSchema, null, 2)
 const SCHEMA_GITHUB_URL =
-  'https://github.com/principal-ai/principal-view/blob/main/packages/core/schemas/subsystem-graph.schema.json'
+  'https://github.com/principal-ai/principal-view-core-library/blob/main/packages/core/schemas/subsystem-model.schema.json'
 const STUDIO_URL = 'https://studio.ioflux.org'
 
 function useColorScheme(): 'light' | 'dark' {
@@ -61,14 +61,14 @@ export function Schema() {
     <section className="schema-page">
       <header className="schema-header">
         <div className="schema-heading">
-          <h1>Subsystem Graph schema</h1>
+          <h1>Schema</h1>
           <a
             className="schema-path"
             href={SCHEMA_GITHUB_URL}
             target="_blank"
             rel="noreferrer"
           >
-            <code>packages/core/schemas/subsystem-graph.schema.json</code>
+            <code>packages/core/schemas/subsystem-model.schema.json</code>
           </a>
         </div>
         <div className="schema-actions">

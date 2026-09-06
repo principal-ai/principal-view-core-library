@@ -15,7 +15,7 @@
     "@pierre/diffs": ">=1.1.20",
     "@principal-ade/industry-theme": "^0.1.7",
     "@principal-ai/principal-view-core": "^0.28.13",
-    "@principal-ai/principal-view-react": "^0.16.61",
+    "@principal-ai/principal-view-react": "^0.16.63",
     "@stoplight/json-schema-viewer": "^4.16.4",
     "@stoplight/markdown-viewer": "^5.7.1",
     "@stoplight/mosaic": "^1.53.5",
