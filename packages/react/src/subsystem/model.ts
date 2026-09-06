@@ -28,7 +28,6 @@ export type SubsystemComponentConstruct =
   | 'interface'
   | 'type_alias'
   | 'enum'
-  | 'react_component'
   | 'module'
   | 'store'
   | 'external';
@@ -45,6 +44,22 @@ export type SubsystemComponentConstruct =
  * calls out to (identity via purl, no `process` — it belongs to no region).
  */
 export type SubsystemComponentRole = 'entry' | 'service';
+
+/**
+ * Framework that owns a stereotype vocabulary (open string).
+ * Examples: `react`, `vue`, `nestjs`, `django`, `spring`.
+ * Empty when the node is language-only / framework-agnostic.
+ */
+export type SubsystemFramework = string;
+
+/**
+ * Framework-level pattern stamped on a language construct (open string).
+ * Examples: `component`, `hook`, `middleware`, `controller`, `guard`.
+ * Empty when no framework pattern applies. Pair with `framework` when set —
+ * a React component stays `construct: 'function'` with
+ * `framework: 'react'` + `stereotype: 'component'`.
+ */
+export type SubsystemStereotype = string;
 
 // ---------------------------------------------------------------------------
 // Declaration tokens — structured source representation
@@ -93,14 +108,15 @@ export interface SubsystemComponent {
   name: string;
   /**
    * The node's construct — what it IS as a declaration (class, function,
-   * method, interface, type alias, enum, react_component, store, external),
-   * driving node anatomy, color, badge, and the verification strategy. Every
-   * construct anchors to a definition; runtime occurrences (variables,
-   * activations, instances) are NOT constructs — they belong to a future
-   * execution-mode graph whose occurrence nodes reference these definitions.
-   * Ontology: construct = what it is, role = where it sits, process = where
-   * it runs. Use `react_component` (not `function`) for JSX/TSX UI units so
-   * the badge reads "component" instead of "function".
+   * method, interface, type alias, enum, store, external), driving node
+   * anatomy, color, badge, and the verification strategy. Every construct
+   * anchors to a definition; runtime occurrences (variables, activations,
+   * instances) are NOT constructs — they belong to a future execution-mode
+   * graph whose occurrence nodes reference these definitions. Ontology:
+   * construct = what it is, framework + stereotype = which framework pattern
+   * it plays, role = where it sits, process = where it runs. Prefer
+   * `framework` + `stereotype` over inventing framework-specific constructs
+   * (a React component is still `construct: 'function'`).
    */
   construct: SubsystemComponentConstruct;
   /** Source location the component lives in (repo-root-relative path). */
@@ -118,6 +134,17 @@ export interface SubsystemComponent {
    * inbound, `produces` outbound).
    */
   role?: SubsystemComponentRole;
+  /**
+   * Framework that owns the stereotype vocabulary (e.g. `react`, `nestjs`).
+   * Orthogonal to `construct` — leave empty for language-only units.
+   */
+  framework?: SubsystemFramework;
+  /**
+   * Framework pattern this declaration plays (e.g. `component`, `hook`).
+   * When set, the node badge prefers this label over the construct name so
+   * a React UI unit reads as "component" rather than "function".
+   */
+  stereotype?: SubsystemStereotype;
   /**
    * Runtime process membership — which deployment unit this node is a
    * member of (e.g. `trail-viewer/host`, `trail-viewer/renderer`). Nodes
@@ -228,6 +255,7 @@ export function deriveNameFromSymbol(
   construct: SubsystemComponentConstruct,
   existingName?: string,
   file?: string,
+  stereotype?: string,
 ): string {
   let name: string | undefined;
   if (symbol && symbol.trim()) {
@@ -239,10 +267,13 @@ export function deriveNameFromSymbol(
   }
   if (!name) name = existingName ?? 'untitled';
 
-  // Decoration = what the drill-down shows. Executable constructs wear `()`
-  // (a signature you can call); brace-bodied constructs wear ` {}` (a member
-  // body — fields for types/interfaces/enums, fields+methods for classes).
-  // Everything else (store, variable, module, external) renders bare.
+  // Decorations = what the drill-down shows. Framework stereotypes can override
+  // the language decoration (a React component wears `<>` instead of `()`).
+  // Executable constructs wear `()`; brace-bodied constructs wear ` {}`.
+  // Everything else (store, module, external) renders bare.
+  if (stereotype === 'component' && !name.startsWith('<')) {
+    return `<${name}>`;
+  }
   if ((construct === 'function' || construct === 'method') && !name.endsWith('()')) {
     name = `${name}()`;
   }
@@ -447,6 +478,64 @@ export const ROLE_LABEL: Record<SubsystemComponentRole, string> = {
 };
 
 /**
+ * Primary badge text for a node: prefer framework stereotype over the
+ * language construct so a React UI unit reads as "component" / "hook"
+ * rather than "function". When both framework and stereotype are set,
+ * show `framework · stereotype` (e.g. `react · component`).
+ */
+export function constructBadgeLabel(component: {
+  construct: SubsystemComponentConstruct;
+  framework?: string;
+  stereotype?: string;
+}): string {
+  const constructLabel =
+    component.construct === 'type_alias' ? 'type alias' : component.construct;
+  if (component.stereotype && component.framework) {
+    return `${component.framework} · ${component.stereotype}`;
+  }
+  if (component.stereotype) return component.stereotype;
+  return constructLabel ?? '';
+}
+
+/** Default CSS floor for component nodes (padding aside). */
+export const NODE_CSS_MIN_WIDTH = 150;
+/** Inset of each top badge from the node edge (`left` / `right` style). */
+export const BADGE_EDGE_INSET = 5;
+/** Minimum gap between left construct badge and right role badge. */
+const BADGE_PAIR_GAP = 8;
+/** Badge box chrome: padding 5+5 + border 1+1. */
+const BADGE_BOX_CHROME = 12;
+/** Approx monospace uppercase width incl. letter-spacing (~0.5px). */
+const BADGE_CHAR_WIDTH = 8;
+
+/** Estimated rendered width of a top tab badge label. */
+export function estimateBadgeLabelWidth(label: string): number {
+  return (label?.length ?? 0) * BADGE_CHAR_WIDTH + BADGE_BOX_CHROME;
+}
+
+/**
+ * Minimum node width so top badges stay on one line and (when both are
+ * present) don't overlap — badges are absolutely positioned, so they don't
+ * contribute to layout unless we widen the node explicitly.
+ */
+export function nodeMinWidthForBadges(component: {
+  construct: SubsystemComponentConstruct;
+  framework?: string;
+  stereotype?: string;
+  role?: SubsystemComponentRole;
+}): number {
+  const left = estimateBadgeLabelWidth(constructBadgeLabel(component));
+  if (component.role == null) {
+    return Math.max(NODE_CSS_MIN_WIDTH, BADGE_EDGE_INSET + left + BADGE_EDGE_INSET);
+  }
+  const right = estimateBadgeLabelWidth(ROLE_LABEL[component.role]);
+  return Math.max(
+    NODE_CSS_MIN_WIDTH,
+    BADGE_EDGE_INSET + left + BADGE_PAIR_GAP + right + BADGE_EDGE_INSET,
+  );
+}
+
+/**
  * Convert a subsystem graph document into React Flow nodes. Components that
  * carry a `process` get a `parentId` pointing at their boundary group node
  * (`process:<process>`); nodes without one stay top-level (outside every
@@ -492,9 +581,9 @@ export function convertSubsystemToNodes(
         .sort((a, b) => b.length - a.length)[0];
       const cap = maxNodeWidth ?? 300;
       const textWidth = Math.min(cap, Math.max(60, (text?.length ?? 10) * 8));
-      // Account for CSS minWidth and padding/border so ELK's port positions match
-      // the actual rendered node boundaries.
-      const cssMinWidth = 150;
+      // Account for CSS minWidth (incl. top badges) and padding/border so ELK's
+      // port positions match the actual rendered node boundaries.
+      const cssMinWidth = nodeMinWidthForBadges(c);
       const cssPadding = 20; // horizontal padding (left + right)
       const cssBorder = 4; // 2px border each side
       const rawWidth = Math.max(cssMinWidth, textWidth + cssPadding + cssBorder);

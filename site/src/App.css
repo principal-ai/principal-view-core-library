@@ -38,12 +38,12 @@ main {
   width: 100%;
   box-sizing: border-box;
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-main > section,
-main > footer {
+main > section {
   text-align: center;
 }
 
@@ -62,18 +62,25 @@ section h2 {
 .hero {
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: 0;
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
   /* content stays centered and capped; background spans the full viewport */
-  padding: 3rem max(2rem, calc((100vw - 1200px) / 2)) 2rem;
+  padding: 2rem max(2rem, calc((100vw - 1200px) / 2)) 2.5rem;
   background:
-    radial-gradient(ellipse 80% 60% at 70% 20%, rgba(170, 59, 255, 0.18), transparent),
+    linear-gradient(180deg, rgba(170, 59, 255, 0.22) 0%, rgba(170, 59, 255, 0.06) 40%, transparent 70%),
     linear-gradient(180deg, #0d0b14 0%, #16171d 100%);
   border-bottom: 1px solid var(--border);
 }
 
 .hero-copy {
   text-align: center;
+}
+
+.hero h1 {
+  margin: 0;
+  line-height: 1.05;
 }
 
 .eyebrow {
@@ -119,7 +126,7 @@ section h2 {
 .hero-art {
   flex: 1;
   display: flex;
-  min-height: 380px;
+  min-height: min(380px, 45svh);
 }
 
 /* ---------- graphic window (definition + rendered graph) ---------- */
@@ -128,6 +135,7 @@ section h2 {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   background: #141318;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
@@ -179,12 +187,13 @@ section h2 {
 
 .graphic-panes {
   flex: 1;
-  display: grid;
-  grid-template-columns: 1.1fr 1fr;
+  display: flex;
   min-height: 0;
 }
 
 .graphic-json {
+  flex: 1.1;
+  min-width: 0;
   margin: 0;
   padding: 1rem 1.25rem;
   font-family: var(--mono);
@@ -222,27 +231,34 @@ section h2 {
 }
 
 .graphic-graph {
+  flex: 1;
+  min-width: 0;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 1rem;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-.graphic-graph-title {
-  font-family: var(--heading);
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #f3f4f6;
-  text-align: left;
-  margin-bottom: 0.5rem;
-}
-
-.graphic-graph svg {
-  width: 100%;
-  height: 100%;
+.graphic-graph-canvas {
   flex: 1;
   min-height: 0;
+}
+
+.graphic-graph-loading {
+  height: 100%;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04));
+  background-size: 200% 100%;
+  animation: graphic-shimmer 1.4s ease infinite;
+}
+
+@keyframes graphic-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* ---------- command pill + buttons ---------- */
@@ -390,52 +406,6 @@ section h2 {
   height: auto;
 }
 
-.cg-region {
-  fill: rgba(255, 255, 255, 0.02);
-  stroke: #3f3b4a;
-  stroke-dasharray: 5 4;
-  stroke-width: 1.2;
-}
-
-.cg-region-label {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 1px;
-  fill: #7d7789;
-}
-
-.cg-card {
-  fill: #1b1a22;
-  stroke: #4a4656;
-  stroke-width: 1.2;
-}
-
-.cg-card-external {
-  stroke-dasharray: 4 3;
-}
-
-.cg-name {
-  font-family: var(--mono);
-  font-size: 13px;
-  fill: #f3f4f6;
-}
-
-.cg-file {
-  font-family: var(--mono);
-  font-size: 9.5px;
-  fill: #7d7789;
-}
-
-.cg-badge {
-  font-family: var(--mono);
-  font-size: 9.5px;
-}
-
-.cg-edge-label {
-  font-family: var(--mono);
-  font-size: 10px;
-}
-
 /* ---------- quickstart ---------- */
 
 .quickstart {
@@ -501,29 +471,6 @@ section h2 {
   position: absolute;
   left: 0;
   color: var(--accent);
-}
-
-/* ---------- footer ---------- */
-
-.site-footer {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
-  padding: 2rem 0 3rem;
-  font-size: 0.9rem;
-}
-
-.site-footer a {
-  color: var(--text);
-  text-decoration: none;
-}
-
-.site-footer a:hover {
-  color: var(--text-h);
-}
-
-.site-footer span {
-  color: var(--text);
 }
 
 /* ---------- about ---------- */
@@ -697,8 +644,8 @@ code {
 
 @media (max-width: 900px) {
   .hero {
-    padding: 2.5rem 1.5rem 1.5rem;
-    gap: 2rem;
+    padding: 1.5rem 1.5rem 2rem;
+    gap: 1rem;
   }
 
   .hero-art {
@@ -706,7 +653,7 @@ code {
   }
 
   .graphic-panes {
-    grid-template-columns: 1fr;
+    flex-direction: column;
   }
 
   .graphic-json {
@@ -716,7 +663,6 @@ code {
   .graphic-graph {
     border-left: none;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 1.5rem 1rem;
   }
 }
 

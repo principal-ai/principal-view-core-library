@@ -1,39 +1,27 @@
 import { lazy, Suspense } from 'react'
 import { Link, Route, Routes } from 'react-router-dom'
 import './App.css'
-import { HeroGraphic } from './components/HeroGraphic'
 
 const Schema = lazy(() =>
   import('./pages/Schema').then((m) => ({ default: m.Schema })),
 )
 
+const HeroGraphic = lazy(() =>
+  import('./components/HeroGraphic').then((m) => ({ default: m.HeroGraphic })),
+)
+
 function Home() {
   return (
-    <>
-      <section className="hero">
-        <div className="hero-copy">
-          <h1>Verifiable System Diagrams</h1>
-        </div>
-        <div className="hero-art">
+    <section className="hero">
+      <div className="hero-copy">
+        <h1>Verifiable System Diagrams</h1>
+      </div>
+      <div className="hero-art">
+        <Suspense fallback={null}>
           <HeroGraphic />
-        </div>
-      </section>
-
-      <footer className="site-footer">
-        <a href={`${import.meta.env.BASE_URL}examples/`}>Examples</a>
-        <a href="https://github.com/principal-ai/principal-view" target="_blank" rel="noreferrer">
-          GitHub
-        </a>
-        <a
-          href="https://github.com/principal-ai/principal-view/tree/main/docs"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Docs
-        </a>
-        <span>Apache-2.0</span>
-      </footer>
-    </>
+        </Suspense>
+      </div>
+    </section>
   )
 }
 
@@ -68,11 +56,12 @@ function App() {
           Subsystem Views
         </Link>
         <div className="nav-links">
+          <Link to="/about">About</Link>
+          <Link to="/schema">Schema</Link>
+          <a href={`${import.meta.env.BASE_URL}examples/`}>Examples</a>
           <a href="https://github.com/principal-ai/principal-view" target="_blank" rel="noreferrer">
             GitHub
           </a>
-          <Link to="/schema">Schema</Link>
-          <Link to="/about">About</Link>
         </div>
       </nav>
       <main>

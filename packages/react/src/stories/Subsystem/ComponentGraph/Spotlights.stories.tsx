@@ -38,8 +38,8 @@ type Story = StoryObj<typeof meta>;
 // Targeted side-by-side spotlights: each construct's DATA next to its
 // RENDERING — no full graph shell. Three spotlights: nodes, mechanisms
 // (edges), and anatomy (declaration panels). The mapping these make visible:
-// construct:→ node anatomy + color, role → topology glyph, detail → drill-down,
-// mechanism → edge color/style.
+// construct:→ node anatomy + color, framework+stereotype → badge label,
+// role → topology glyph, detail → drill-down, mechanism → edge color/style.
 // ---------------------------------------------------------------------------
 
 /** Data snippet card — the raw object on the left of every row. */
@@ -210,6 +210,35 @@ const nodeSpotlights: Array<{ label: string; component: SubsystemComponent; note
     },
   },
   {
+    label: 'framework: react · stereotype: component — still construct: function',
+    note: 'badge reads "react · component"; name wears <> ; color stays function',
+    component: {
+      id: 'analysis-view',
+      name: 'AnalysisView',
+      construct: 'function',
+      file: 'packages/trail-viewer/src/mainview/views/AnalysisView.tsx',
+      purl: corePurl,
+      symbol: 'AnalysisView',
+      framework: 'react',
+      stereotype: 'component',
+      purpose: 'renders a saved analysis as concept cards',
+    },
+  },
+  {
+    label: 'framework: react · stereotype: hook',
+    note: 'same construct, different stereotype — badge "react · hook", keeps ()',
+    component: {
+      id: 'drawings-host',
+      name: 'useDrawingsHost',
+      construct: 'function',
+      file: 'packages/trail-viewer/src/mainview/hooks/useDrawingsHost.ts',
+      purl: corePurl,
+      symbol: 'useDrawingsHost',
+      framework: 'react',
+      stereotype: 'hook',
+    },
+  },
+  {
     label: 'role: entry on construct: function — boundary element',
     note: 'orange overrides construct:color; anatomy inherited from the function',
     component: {
@@ -331,7 +360,13 @@ function NodeSpotlightsDemo() {
         {nodeSpotlights.map(({ component }) => {
           const on = activeIds.has(component.id);
           const color = constructColors[component.construct];
-          const chip = component.role != null ? `${component.construct} · ${component.role}` : component.construct;
+          const chip = component.stereotype
+            ? component.framework
+              ? `${component.framework} · ${component.stereotype}`
+              : component.stereotype
+            : component.role != null
+              ? `${component.construct} · ${component.role}`
+              : component.construct;
           return (
             <button
               key={component.id}

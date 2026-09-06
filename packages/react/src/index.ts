@@ -304,7 +304,17 @@ export type {
   SubsystemComponentEdge,
   SubsystemGraphDocument,
   SubsystemComponentConstruct,
+  SubsystemComponentRole,
+  SubsystemFramework,
+  SubsystemStereotype,
   SubsystemEdgeMechanism,
+} from './subsystem/model';
+export {
+  constructBadgeLabel,
+  deriveNameFromSymbol,
+  nodeMinWidthForBadges,
+  ROLE_COLOR,
+  ROLE_LABEL,
 } from './subsystem/model';
 export type {
   SubsystemDeclarationRef,

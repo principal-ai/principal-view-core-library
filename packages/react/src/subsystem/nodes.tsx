@@ -21,7 +21,10 @@ import {
   MECHANISM_STYLE,
   ROLE_COLOR,
   ROLE_LABEL,
+  constructBadgeLabel,
   deriveNameFromSymbol,
+  BADGE_EDGE_INSET,
+  nodeMinWidthForBadges,
   packageColor,
   type SubsystemGraphNodeData,
   type SubsystemGroupNodeData,
@@ -86,7 +89,10 @@ export function SubsystemComponentNode(props: NodeProps<Node<SubsystemGraphNodeD
   const configuredMax = SUBSYSTEM_CALLBACKS.maxNodeWidth;
   const maxWidth = configuredMax ?? 300;
   // `symbol` is the source of truth; `name` is derived from it consistently.
-  const displayName = deriveNameFromSymbol(c.symbol, c.construct, c.name, c.file);
+  const displayName = deriveNameFromSymbol(c.symbol, c.construct, c.name, c.file, c.stereotype);
+  // Top badges are absolutely positioned — widen the node so they nowrap
+  // instead of wrapping, including when construct + role badges share the top.
+  const badgeMinWidth = nodeMinWidthForBadges(c);
   // Set while a file is open in the drawer: true → spotlight, false → dim,
   // absent (no file open) → neutral.
   const fileMatch = data.fileMatch as boolean | undefined;
@@ -117,7 +123,7 @@ export function SubsystemComponentNode(props: NodeProps<Node<SubsystemGraphNodeD
         boxSizing: 'border-box',
         width: nodeWidth,
         height: nodeHeight,
-        minWidth: 150,
+        minWidth: badgeMinWidth,
         maxWidth,
         padding: '6px 10px',
         borderRadius: 8,
@@ -135,20 +141,21 @@ export function SubsystemComponentNode(props: NodeProps<Node<SubsystemGraphNodeD
         fontFamily: theme.fonts.body,
       }}
     >
-      {/* Construct badge — a small tab riding the top-right border, in the
-          construct color. Persistent (no hover needed); pointer-events none so
-          clicks pass through to the node. */}
+      {/* Construct / stereotype badge — prefers framework stereotype so a
+          React UI unit reads as "react · component" instead of "function".
+          Persistent; pointer-events none so clicks pass through to the node. */}
       <div
         style={{
           position: 'absolute',
           top: -9,
-          left: 10,
+          left: BADGE_EDGE_INSET,
           zIndex: 1,
           fontFamily: theme.fonts.monospace,
           fontSize: theme.fontSizes[0] * 1.1,
           letterSpacing: 0.5,
           textTransform: 'uppercase',
           lineHeight: '17px',
+          whiteSpace: 'nowrap',
           color,
           background: theme.colors.backgroundSecondary ?? theme.colors.background,
           border: `1px solid ${color}`,
@@ -156,7 +163,7 @@ export function SubsystemComponentNode(props: NodeProps<Node<SubsystemGraphNodeD
           padding: '0 5px',
         }}
       >
-        {CONSTRUCT_LABEL[c.construct] ?? c.construct}
+        {constructBadgeLabel(c)}
       </div>
 
       {/* Role badge — top-right, only when the node carries a topology role.
@@ -167,13 +174,14 @@ export function SubsystemComponentNode(props: NodeProps<Node<SubsystemGraphNodeD
           style={{
             position: 'absolute',
             top: -9,
-            right: 10,
+            right: BADGE_EDGE_INSET,
             zIndex: 1,
             fontFamily: theme.fonts.monospace,
             fontSize: theme.fontSizes[0] * 1.1,
             letterSpacing: 0.5,
             textTransform: 'uppercase',
             lineHeight: '17px',
+            whiteSpace: 'nowrap',
             color: ROLE_COLOR[c.role],
             background: theme.colors.backgroundSecondary ?? theme.colors.background,
             border: `1px solid ${ROLE_COLOR[c.role]}`,
@@ -242,10 +250,15 @@ export function SubsystemComponentNode(props: NodeProps<Node<SubsystemGraphNodeD
       </div>
 
       {/* Hide the identity line when the symbol is just the title without its
-          decoration (`()` or ` {}`) — only show it when it adds information
-          (e.g. the dotted host on methods, or a different code identity). */}
+          decoration (`()`, ` {}`, or `<>`) — only show it when it adds
+          information (e.g. the dotted host on methods, or a different code
+          identity). */}
       {c.symbol &&
-        c.symbol !== displayName.replace(/ ?\{\}$/, '').replace(/\(\)$/, '') && (
+        c.symbol !==
+          displayName
+            .replace(/^<(.+)>$/, '$1')
+            .replace(/ ?\{\}$/, '')
+            .replace(/\(\)$/, '') && (
         <div
           style={{
             fontSize: theme.fontSizes[0] * 0.82,

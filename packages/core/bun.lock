@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "@principal-ai/principal-view-core",
@@ -18,7 +19,7 @@
         "zod": "3.22.0",
       },
       "devDependencies": {
-        "@principal-ai/agent-monitoring": "^0.3.35",
+        "@principal-ai/agent-monitoring": "^0.3.43",
         "@principal-ai/codebase-composition": "^0.2.43",
         "@principal-ai/principal-view-core": "0.24.10",
         "@types/better-sqlite3": "^7.6.13",
@@ -29,7 +30,7 @@
         "typescript": "5.0.4",
       },
       "peerDependencies": {
-        "@principal-ai/agent-monitoring": "^0.3.31",
+        "@principal-ai/agent-monitoring": "^0.3.43",
         "@principal-ai/codebase-composition": "^0.2.43",
       },
     },
@@ -165,6 +166,8 @@
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@0.2.12", "", { "dependencies": { "@emnapi/core": "^1.4.3", "@emnapi/runtime": "^1.4.3", "@tybys/wasm-util": "^0.10.0" } }, "sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ=="],
 
+    "@opencode-ai/sdk": ["@opencode-ai/sdk@1.18.29", "", { "dependencies": { "cross-spawn": "7.0.6" } }, "sha512-4CS+FoLPkymTlcga8jxivGDDb2AbWMIIl3b8+myoe2wtv/1ANYCErslgz1xy5hTVHymWE6CtVNKzRuPU0ED57A=="],
+
     "@opentelemetry/api": ["@opentelemetry/api@1.9.0", "", {}, "sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg=="],
 
     "@opentelemetry/api-logs": ["@opentelemetry/api-logs@0.211.0", "", { "dependencies": { "@opentelemetry/api": "^1.3.0" } }, "sha512-swFdZq8MCdmdR22jTVGQDhwqDzcI4M10nhjXkLr1EsIzXgZBqm4ZlmmcWsg3TSNf+3mzgOiqveXmBLZuDi2Lgg=="],
@@ -191,7 +194,7 @@
 
     "@pkgr/core": ["@pkgr/core@0.2.9", "", {}, "sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA=="],
 
-    "@principal-ai/agent-monitoring": ["@principal-ai/agent-monitoring@0.3.35", "", { "dependencies": { "dotenv": "^17.2.2", "drizzle-orm": "^0.44.5", "pg": "^8.16.3" } }, "sha512-T/+6qwE/7VA+WDzZwzBG8wHN0WaVGKt0tToObCdPImRSNF/qDjohWjp6W7p7JMo+I1nXs034sR9bvXV/sIQR1A=="],
+    "@principal-ai/agent-monitoring": ["@principal-ai/agent-monitoring@0.3.43", "", { "dependencies": { "@opencode-ai/sdk": "^1.18.18", "dotenv": "^17.2.2", "drizzle-orm": "^0.44.5", "pg": "^8.16.3" } }, "sha512-0rYYREmBv1+Eel5icUkGJ4vHUj9bqH6C7TkFsqDVN6whESfGS0k0xPgF2uNC0JbV/uoN4FRil7JPQooxqmlJgg=="],
 
     "@principal-ai/codebase-composition": ["@principal-ai/codebase-composition@0.2.43", "", { "dependencies": { "@principal-ai/codebase-quality-lenses": "^0.1.62", "@principal-ai/quality-lens-registry": "^0.3.0", "@principal-ai/repository-abstraction": "^0.2.2", "ignore": "^5.3.0", "typescript": "^5.0.4" }, "optionalDependencies": { "pip-requirements-js": "^0.2.1", "smol-toml": "^1.6.0" } }, "sha512-JpKMuNxRxL/xNSeGpbdvgoalMwkukNhwHTY0VkY72SOKcCu4TEPUB93dyCy7Z1UN2IFAxjxc+Qya+rXw1WkKNQ=="],
 

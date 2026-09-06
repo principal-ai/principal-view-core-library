@@ -7,6 +7,8 @@ import {
   processGroupNodeId,
   buildSubsystemGraph,
   deriveNameFromSymbol,
+  constructBadgeLabel,
+  nodeMinWidthForBadges,
   formatPurl,
   packageColor,
   subsystemGraphLayoutKey,
@@ -103,6 +105,48 @@ describe('subsystem graph model', () => {
     expect(deriveNameFromSymbol('ROOT', 'store')).toBe('ROOT');
     // brace bodies don't double up
     expect(deriveNameFromSymbol('Foo {}', 'class')).toBe('Foo {}');
+  });
+
+  test('deriveNameFromSymbol uses JSX decoration for component stereotype', () => {
+    expect(deriveNameFromSymbol('AnalysisView', 'function', undefined, undefined, 'component')).toBe(
+      '<AnalysisView>',
+    );
+    expect(deriveNameFromSymbol('useDrawingsHost', 'function', undefined, undefined, 'hook')).toBe(
+      'useDrawingsHost()',
+    );
+  });
+
+  test('constructBadgeLabel prefers framework · stereotype over construct', () => {
+    expect(
+      constructBadgeLabel({
+        construct: 'function',
+        framework: 'react',
+        stereotype: 'component',
+      }),
+    ).toBe('react · component');
+    expect(constructBadgeLabel({ construct: 'function', stereotype: 'hook' })).toBe('hook');
+    expect(constructBadgeLabel({ construct: 'function' })).toBe('function');
+    expect(constructBadgeLabel({ construct: 'type_alias' })).toBe('type alias');
+  });
+
+  test('nodeMinWidthForBadges widens for long construct badges and role pairs', () => {
+    const plain = nodeMinWidthForBadges({ construct: 'function' });
+    expect(plain).toBe(150);
+
+    const stereotype = nodeMinWidthForBadges({
+      construct: 'function',
+      framework: 'react',
+      stereotype: 'component',
+    });
+    expect(stereotype).toBeGreaterThan(150);
+
+    const withRole = nodeMinWidthForBadges({
+      construct: 'function',
+      framework: 'react',
+      stereotype: 'component',
+      role: 'entry',
+    });
+    expect(withRole).toBeGreaterThan(stereotype);
   });
 
   test('deriveNameFromSymbol falls back to file basename for modules', () => {

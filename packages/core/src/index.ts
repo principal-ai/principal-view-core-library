@@ -57,6 +57,8 @@ export type {
   AuxiliaryManifest,
   SubsystemConstruct,
   SubsystemComponentRole,
+  SubsystemFramework,
+  SubsystemStereotype,
   SubsystemEdgeMechanism,
   SubsystemCapture,
   SubsystemDeclarationProvenance,

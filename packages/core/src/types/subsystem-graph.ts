@@ -11,14 +11,13 @@
  *    host/machine binding (local roots, provenance, store ids, verification).
  *    Used by viewers and stores; not part of the portable standard.
  *
- * Ontology: construct = what a node is, role = where it sits, process = where
- * it runs. `symbol` is the code identity; `name` is the display label.
+ * Ontology: construct = what a node is, framework + stereotype = which
+ * framework pattern it plays, role = where it sits, process = where it runs.
+ * `symbol` is the code identity; `name` is the display label.
  */
 
 /** What the node IS as a declaration. `module` is not an authored construct —
- *  a module is its own subsystem. `react_component` is a function-shaped
- *  declaration that renders UI (JSX/TSX); graphify still infers it as
- *  `function`, and verification treats the two as compatible. */
+ *  a module is its own subsystem. */
 export type SubsystemConstruct =
   | 'class'
   | 'function'
@@ -26,12 +25,25 @@ export type SubsystemConstruct =
   | 'interface'
   | 'type_alias'
   | 'enum'
-  | 'react_component'
   | 'store'
   | 'external';
 
 /** Where the node sits in the topology, orthogonal to construct. */
 export type SubsystemComponentRole = 'entry' | 'service';
+
+/**
+ * Framework that owns a stereotype vocabulary (open string).
+ * Examples: `react`, `vue`, `nestjs`, `django`, `spring`.
+ * Empty when the node is language-only / framework-agnostic.
+ */
+export type SubsystemFramework = string;
+
+/**
+ * Framework-level pattern stamped on a language construct (open string).
+ * Examples: `component`, `hook`, `middleware`, `controller`, `guard`.
+ * Empty when no framework pattern applies. Pair with `framework` when set.
+ */
+export type SubsystemStereotype = string;
 
 /** How `from` relates to `to` on an edge. */
 export type SubsystemEdgeMechanism =
@@ -201,6 +213,16 @@ export interface SubsystemComponent {
   purl: string;
   purpose?: string;
   role?: SubsystemComponentRole;
+  /**
+   * Framework that owns the stereotype (e.g. `react`, `nestjs`).
+   * Orthogonal to `construct` — a React component is still `construct: function`.
+   */
+  framework?: SubsystemFramework;
+  /**
+   * Framework pattern this declaration plays (e.g. `component`, `hook`).
+   * Prefer this over inventing framework-specific constructs.
+   */
+  stereotype?: SubsystemStereotype;
   process?: string;
   /** Code identity — real declaration in `file` when set. */
   symbol?: string;

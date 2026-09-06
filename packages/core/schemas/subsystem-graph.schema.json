@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://principal-ai.dev/schemas/subsystem-graph.schema.json",
   "title": "Subsystem Graph",
-  "description": "Portable subsystem component graph — the shareable standard. Construct-tagged components (nodes) plus typed edges describing one subsystem of a codebase. Ontology: construct = what a node is, role = where it sits, process = where it runs. Symbol is the code identity; name is the display label (often derived from symbol). Host-only fields (local path binding, provenance, store ids, verification) are NOT part of this document; they belong on a hydrated envelope around it.",
+  "description": "Portable subsystem component graph — the shareable standard. Construct-tagged components (nodes) plus typed edges describing one subsystem of a codebase. Ontology: construct = what a node is, framework + stereotype = which framework pattern it plays, role = where it sits, process = where it runs. Symbol is the code identity; name is the display label (often derived from symbol). Host-only fields (local path binding, provenance, store ids, verification) are NOT part of this document; they belong on a hydrated envelope around it.",
   "type": "object",
   "required": [
     "title",
@@ -57,7 +57,6 @@
         "interface",
         "type_alias",
         "enum",
-        "react_component",
         "store",
         "external"
       ]
@@ -69,6 +68,16 @@
         "entry",
         "service"
       ]
+    },
+    "framework": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Framework that owns the stereotype vocabulary (open string). Examples: react, vue, nestjs, django, spring. Empty when the node is language-only. Pair with stereotype when the unit plays a framework pattern (e.g. framework: react + stereotype: component on construct: function)."
+    },
+    "stereotype": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Framework-level pattern stamped on a language construct (open string). Examples: component, hook, middleware, controller, guard. Prefer this over inventing framework-specific constructs. Pair with framework when set."
     },
     "capture": {
       "type": "string",
@@ -155,6 +164,12 @@
         },
         "role": {
           "$ref": "#/$defs/role"
+        },
+        "framework": {
+          "$ref": "#/$defs/framework"
+        },
+        "stereotype": {
+          "$ref": "#/$defs/stereotype"
         },
         "process": {
           "type": "string",

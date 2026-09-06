@@ -79,8 +79,22 @@ export interface SubsystemComponentGraphProps {
   maxNodeWidth?: number;
   /** Show edge labels (mechanism names) on the graph. @default true */
   showEdgeLabels?: boolean;
+  /** Show the mechanism-legend button overlay on the canvas. @default true */
+  showLegend?: boolean;
   /** Subsystem title displayed in the sidebar. */
   title?: string;
+  /**
+   * Suppresses the sidebar entirely (title, description, file tree,
+   * throughlines) for graph-only embeds. Pair with `graphTitle` to keep the
+   * subsystem name visible as an overlay on the canvas.
+   */
+  hideSidebar?: boolean;
+  /**
+   * Subsystem title rendered as a non-interactive overlay chip on the graph
+   * canvas (top-center). Does not trigger the sidebar — for graph-only
+   * embeds that still need to name what they show.
+   */
+  graphTitle?: string;
   /** Markdown description rendered in the sidebar. */
   description?: string;
   /** Rendered over the graph canvas only (not the title/legend sidebar). */
@@ -143,7 +157,7 @@ interface InnerProps extends SubsystemComponentGraphProps {
   measured: { w: number; h: number } | null;
 }
 
-function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measured: _measured, maxNodeWidth, showEdgeLabels, title, description, canvasOverlay, sidebarExtra, sidebarAfterDescription, renderFileView, renderFileViewer, onFileSelect, onVerifyComponent, componentVerification }: InnerProps) {
+function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measured: _measured, maxNodeWidth, showEdgeLabels, showLegend, title, hideSidebar, graphTitle, description, canvasOverlay, sidebarExtra, sidebarAfterDescription, renderFileView, renderFileViewer, onFileSelect, onVerifyComponent, componentVerification }: InnerProps) {
   const { theme } = useTheme();
   const { fitView } = useReactFlow();
   const viewport = useViewport();
@@ -770,7 +784,7 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'row' }}>
       {/* Sidebar: scrollable title/description on top, files or flows pinned to the bottom half */}
-      {(title || description || sidebarExtra || sidebarAfterDescription || treeFilePaths.length > 0 || hasThroughlines) && (
+      {!hideSidebar && (title || description || sidebarExtra || sidebarAfterDescription || treeFilePaths.length > 0 || hasThroughlines) && (
         <div
           style={{
             width: 340,
@@ -1052,7 +1066,7 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
         <Controls showZoom showFitView showInteractive />
       </ReactFlow>
       {/* Legend button — top-left overlay on the canvas; opens the modal. */}
-      {usedMechanisms.size > 0 && (
+      {showLegend !== false && usedMechanisms.size > 0 && (
         <button
           type="button"
           onClick={() => setLegendOpen(true)}
@@ -1078,6 +1092,36 @@ function Inner({ components, edges, throughlines, onSelect, onEdgeSelect, measur
           <MapIcon size={13} />
           Legend
         </button>
+      )}
+      {/* Graph title — non-interactive chip centered at the top of the canvas
+          (clear of the top-left legend button and top-right declaration
+          card). Lets graph-only embeds name the subsystem they show. */}
+      {graphTitle && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 10,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 6,
+            maxWidth: '60%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            padding: '6px 18px',
+            fontSize: theme.fontSizes[3],
+            fontWeight: 600,
+            fontFamily: theme.fonts.heading,
+            color: theme.colors.text,
+            background: theme.colors.backgroundSecondary ?? theme.colors.background,
+            border: `1px solid ${theme.colors.border}`,
+            borderRadius: 6,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+            pointerEvents: 'none',
+          }}
+        >
+          {graphTitle}
+        </div>
       )}
         {/* Selected-component declaration — floating card over the canvas
             (top-right, clear of the top-left legend button). The graph never
