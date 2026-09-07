@@ -766,6 +766,18 @@ section h2 {
   color: #9ca3af;
 }
 
+.start-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.start-alt {
+  margin: 0 0 0.65rem !important;
+  font-size: 0.95rem;
+}
+
 .start-step .command-pill {
   max-width: 100%;
   text-align: left;
