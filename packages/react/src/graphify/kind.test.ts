@@ -42,7 +42,7 @@ describe('inferGraphifyKind', () => {
 	});
 
 	test('call-style label + no methods → function', () => {
-		const n = node('fn', 'SubsystemGraphView()');
+		const n = node('fn', 'SubsystemModelView()');
 		const r = inferGraphifyKind(n, []);
 		expect(r.kind).toBe('function');
 	});
@@ -69,8 +69,8 @@ describe('inferGraphifyKind', () => {
 	test('filename label → module', () => {
 		const n = node(
 			'mod',
-			'SubsystemGraphView.tsx',
-			'packages/trail-viewer/src/mainview/views/SubsystemGraphView.tsx',
+			'SubsystemModelView.tsx',
+			'packages/principal-studio/src/mainview/views/SubsystemModelView.tsx',
 		);
 		expect(inferGraphifyKind(n, []).kind).toBe('module');
 	});

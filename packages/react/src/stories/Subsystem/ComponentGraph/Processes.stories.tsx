@@ -25,10 +25,10 @@ type Story = StoryObj<typeof meta>;
 // dashed process frame; the service sits outside every boundary.
 const processComponents = [
   ...components([
-    ['main', 'main', 'function', 'src/host/main.ts', 'pkg:github/principal-ai/trail-viewer', 'boots the host process', 'main'],
-    ['store', 'SessionStore', 'store', 'src/host/store.ts', 'pkg:github/principal-ai/trail-viewer', 'retained host state', 'SessionStore'],
-    ['view', 'TrailView', 'function', 'src/renderer/view.tsx', 'pkg:github/principal-ai/trail-viewer', 'renders the trail', 'TrailView'],
-    ['bridge', 'bridge', 'module', 'src/renderer/bridge.ts', 'pkg:github/principal-ai/trail-viewer', 'IPC bridge to the host', 'bridge'],
+    ['main', 'main', 'function', 'src/host/main.ts', 'pkg:github/principal-ai/principal-studio', 'boots the host process', 'main'],
+    ['store', 'SessionStore', 'store', 'src/host/store.ts', 'pkg:github/principal-ai/principal-studio', 'retained host state', 'SessionStore'],
+    ['view', 'TrailView', 'function', 'src/renderer/view.tsx', 'pkg:github/principal-ai/principal-studio', 'renders the trail', 'TrailView'],
+    ['bridge', 'bridge', 'module', 'src/renderer/bridge.ts', 'pkg:github/principal-ai/principal-studio', 'IPC bridge to the host', 'bridge'],
   ]),
   {
     id: 'svc',
@@ -41,9 +41,9 @@ const processComponents = [
   },
 ].map((c, i) =>
   i < 2
-    ? { ...c, process: 'trail-viewer/host' }
+    ? { ...c, process: 'principal-studio/host' }
     : i < 4
-      ? { ...c, process: 'trail-viewer/renderer' }
+      ? { ...c, process: 'principal-studio/renderer' }
       : c,
 );
 

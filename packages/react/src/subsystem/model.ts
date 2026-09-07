@@ -147,7 +147,7 @@ export interface SubsystemComponent {
   stereotype?: SubsystemStereotype;
   /**
    * Runtime process membership — which deployment unit this node is a
-   * member of (e.g. `trail-viewer/host`, `trail-viewer/renderer`). Nodes
+   * member of (e.g. `principal-studio/host`, `principal-studio/renderer`). Nodes
    * sharing a `process` are drawn inside one boundary region (grouping is
    * `process ?? purl`); nodes without one sit outside every boundary
    * (external actors, services, libraries).
@@ -226,6 +226,12 @@ export interface SubsystemThroughlineStep {
    * flows list shows it instead of mechanism + filename.
    */
   symbol?: string;
+  /**
+   * Free-text note anchored to this hop's site line. Optional — informative
+   * only, never verified against source; the Pierre throughline code view
+   * surfaces it in the annotation column next to the highlighted line.
+   */
+  annotation?: string;
 }
 
 /**
@@ -314,7 +320,7 @@ export function formatPurl(purl: string): string {
   return identity;
 }
 
-export interface SubsystemGraphDocument {
+export interface SubsystemModelDocument {
   components: SubsystemComponent[];
   edges: SubsystemComponentEdge[];
   /** Ordered execution stories over the graph's edges (one per flow). */
@@ -332,7 +338,7 @@ export type SubsystemGraphNodeType = 'subsystem-component' | 'subsystem-group';
  * Nodes without a `process` sit outside every boundary (no region).
  */
 export interface SubsystemProcessRegion {
-  /** The `process` value (e.g. `trail-viewer/host`). */
+  /** The `process` value (e.g. `principal-studio/host`). */
   key: string;
   /** Display label for the boundary frame. */
   label: string;
@@ -350,7 +356,7 @@ export function processGroupNodeId(processKey: string): string {
  * `process` value, in first-appearance order.
  */
 export function getSubsystemRegions(
-  doc: Pick<SubsystemGraphDocument, 'components'>,
+  doc: Pick<SubsystemModelDocument, 'components'>,
 ): SubsystemProcessRegion[] {
   const byProcess = new Map<string, string[]>();
   for (const c of doc.components) {
@@ -568,7 +574,7 @@ export function nodeMinWidthForBadges(component: {
  * positions are already clustered; ELK then refines with compound layout.
  */
 export function convertSubsystemToNodes(
-  doc: SubsystemGraphDocument,
+  doc: SubsystemModelDocument,
   opts: { maxNodeWidth?: number } = {},
 ): SubsystemGraphNode[] {
   const { maxNodeWidth } = opts;
@@ -635,7 +641,7 @@ export function convertSubsystemToNodes(
  * Positions/sizes are placeholders — ELK compound layout overwrites them.
  */
 export function convertSubsystemToGroups(
-  doc: Pick<SubsystemGraphDocument, 'components'>,
+  doc: Pick<SubsystemModelDocument, 'components'>,
 ): SubsystemGraphNode[] {
   return getSubsystemRegions(doc).map((region) => ({
     id: processGroupNodeId(region.key),
@@ -652,7 +658,7 @@ export function convertSubsystemToGroups(
  * is an external label (not a component id) point at a synthetic stub so the
  * relationship is visible without a member node.
  */
-export function convertSubsystemToEdges(doc: SubsystemGraphDocument): SubsystemGraphEdge[] {
+export function convertSubsystemToEdges(doc: SubsystemModelDocument): SubsystemGraphEdge[] {
   const compIds = new Set(doc.components.map((c) => c.id));
   const edges: SubsystemGraphEdge[] = [];
 
@@ -683,7 +689,7 @@ export function convertSubsystemToEdges(doc: SubsystemGraphDocument): SubsystemG
 
 /** Stable key for layout-affecting graph fields (ignores declarationRef, etc.). */
 export function subsystemGraphLayoutKey(
-  doc: Pick<SubsystemGraphDocument, 'components' | 'edges'>,
+  doc: Pick<SubsystemModelDocument, 'components' | 'edges'>,
 ): string {
   const components = doc.components
     .map(({ id, purl, name, symbol, construct, file, purpose, process }) =>
@@ -703,7 +709,7 @@ export function subsystemGraphLayoutKey(
  * layered with minimized crossings.
  */
 export async function buildSubsystemGraph(
-  doc: SubsystemGraphDocument,
+  doc: SubsystemModelDocument,
   opts: { maxNodeWidth?: number; showEdgeLabels?: boolean; measuredWidths?: Map<string, number>; measuredHeights?: Map<string, number> } = {},
 ): Promise<{
   nodes: SubsystemGraphNode[];

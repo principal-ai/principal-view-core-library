@@ -92,7 +92,7 @@ describe('subsystem graph model', () => {
     expect(deriveNameFromSymbol('transcript', 'module')).toBe('transcript');
     // falls back to existing name when no symbol (class stays bare).
     expect(deriveNameFromSymbol(undefined, 'class', 'SessionReader')).toBe('SessionReader');
-    expect(deriveNameFromSymbol('', 'external', 'trail-viewer-host')).toBe('trail-viewer-host');
+    expect(deriveNameFromSymbol('', 'external', 'principal-studio-host')).toBe('principal-studio-host');
   });
 
   test('executable constructs wear () on the node', () => {

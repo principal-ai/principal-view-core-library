@@ -457,4 +457,4 @@ export * from './canvas-scope';
 export * from './audit';
 export * from './dashboard';
 export * from './auxiliary';
-export * from './subsystem-graph';
+export * from './subsystem-model';

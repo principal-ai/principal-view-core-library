@@ -12,10 +12,10 @@ import { NodePathNormalizationAdapter } from "./node-path-adapter";
 export { NodePathNormalizationAdapter };
 
 /**
- * Pure, agent-agnostic session pipeline shared by CLI and trail-viewer.
+ * Pure, agent-agnostic session pipeline shared by CLI and principal-studio.
  *
  * This module intentionally imports NO better-sqlite3 / OpenCodeEventStore so
- * it can be loaded in any runtime (the trail-viewer runs under Bun, where
+ * it can be loaded in any runtime (the principal-studio runs under Bun, where
  * better-sqlite3's native NAPI binding crashes). Runtime-specific DB access
  * feeds this pipeline; everything after the raw rows are in is shared.
  */

@@ -928,7 +928,7 @@ export function createTourCommand(): Command {
     .option('--file <path>', 'Open a local *.tour.json file directly (skips fetch + cache)')
     .option('--repo-root <path>', 'Working tree the tour is authored against (default: cwd)')
     .option('--refresh', 'Bypass the tour JSON cache and re-fetch (id/url only)')
-    .option('--viewer-dir <path>', 'Path to the @principal-ai/trail-viewer package (overrides TRAIL_VIEWER_DIR)')
+    .option('--viewer-dir <path>', 'Path to the @principal-ai/principal-studio package (overrides PRINCIPAL_STUDIO_DIR)')
     .action(async (input: string | undefined, options: TourViewOptions) => {
       await viewTour(input, options);
     });

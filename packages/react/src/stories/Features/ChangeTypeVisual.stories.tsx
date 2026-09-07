@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { ThemeProvider, slateTheme } from '@principal-ade/industry-theme';
-import { ChangeTypeVisual } from '../../../../trail-viewer/src/mainview/components/ChangeTypeVisual';
+import { ChangeTypeVisual } from '../../../../principal-studio/src/mainview/components/ChangeTypeVisual';
 
 const meta = {
   title: 'Features/ChangeTypeVisual',

@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { File } from '@pierre/diffs/react';
 import { useTheme } from '@principal-ade/industry-theme';
 import { buildPierreOptions, PIERRE_FILE_STYLE } from './pierreBackground';
+import { pierreLangForPath } from './pierreFileLang';
 import { sliceSnippetWindow } from './sliceSnippet';
 
 import { scrollAnchorLine } from './scrollAnchor';
@@ -89,8 +90,15 @@ export function PierreSnippetView({
   }, [contents, startLine, endLine, contextLines, focusLine]);
 
   const fileObject = useMemo(
-    () => (slice ? { name: fileName, contents: slice.contents } : null),
-    [fileName, slice],
+    () =>
+      slice
+        ? {
+            name: fileName,
+            contents: slice.contents,
+            lang: pierreLangForPath(filePath),
+          }
+        : null,
+    [fileName, filePath, slice],
   );
 
   const lineNumberOffset = slice ? slice.sliceStart - 1 : 0;

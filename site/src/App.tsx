@@ -130,18 +130,46 @@ function App() {
             className="brand-mark"
             aria-hidden="true"
             viewBox="0 0 32 32"
-            width="22"
-            height="22"
+            width="32"
+            height="32"
             fill="none"
           >
-            <circle cx="16" cy="16" r="13" stroke="currentColor" strokeWidth="2.5" />
-            <path
-              d="M12 20 L20 12 M14.5 12 H20 V17.5"
+            {/* Through-lines (muted) — full runs across the box */}
+            <g
               stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              strokeWidth="1.5"
+              opacity="0.15"
+              strokeLinecap="butt"
+            >
+              <path d="M2 8 H30" />
+              <path d="M2 16 H30" />
+              <path d="M2 24 H30" />
+              <path d="M8 2 V30" />
+              <path d="M24 2 V30" />
+            </g>
+            <rect
+              x="1"
+              y="1"
+              width="30"
+              height="30"
+              rx="2"
+              stroke="currentColor"
+              strokeWidth="2"
+              opacity="0.4"
             />
+            {/* Emphasized segments that read as an S */}
+            <g
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="square"
+              strokeLinejoin="miter"
+            >
+              <path d="M8 8 H24" />
+              <path d="M8 8 V16" />
+              <path d="M8 16 H24" />
+              <path d="M24 16 V24" />
+              <path d="M24 24 H8" />
+            </g>
           </svg>
           Subsystem Models
         </Link>

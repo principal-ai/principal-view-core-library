@@ -3,7 +3,7 @@
  * events, showing the raw → repo-normalized → accumulated (UI) pipeline
  * for every row.
  *
- * Input rows match the trail-viewer's `SessionEventRow` wire shape:
+ * Input rows match the principal-studio's `SessionEventRow` wire shape:
  *   { seq, type, raw, normalized, accumulated }
  * `raw` is the agent-specific payload (opencode V1 sqlite rows, or durable
  * reader blobs such as Cursor store.db messages), `normalized` its

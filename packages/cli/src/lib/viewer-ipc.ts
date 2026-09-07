@@ -1,11 +1,11 @@
 /**
- * Client-side helpers for talking to a running trail-viewer instance.
+ * Client-side helpers for talking to a running principal-studio instance.
  *
- * Wire format mirrors `packages/trail-viewer/src/bun/ipc.ts`: Unix domain
- * socket at `~/.principal/trail-viewer.sock`, single line-delimited JSON
+ * Wire format mirrors `packages/principal-studio/src/bun/ipc.ts`: Unix domain
+ * socket at `~/.principal/principal-studio.sock`, single line-delimited JSON
  * message per connection, single line-delimited JSON response.
  *
- * Duplicated rather than shared because cli and trail-viewer are independent
+ * Duplicated rather than shared because cli and principal-studio are independent
  * npm packages — the wire protocol is the contract, this module enforces it
  * from the producer side.
  */
@@ -15,7 +15,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createConnection } from 'node:net';
 
-export const SOCKET_PATH = join(homedir(), '.principal', 'trail-viewer.sock');
+export const SOCKET_PATH = join(homedir(), '.principal', 'principal-studio.sock');
 
 export interface LoadTrailMessage {
   kind: 'LOAD_TRAIL';
@@ -34,7 +34,22 @@ export interface ActivateTabMessage {
   tabId: string;
 }
 
-export type ViewerIpcMessage = LoadTrailMessage | ActivateTabMessage;
+/** Bring a running Studio window forward without changing the active tab. */
+export interface FocusMessage {
+  kind: 'FOCUS';
+}
+
+/** Open a stored subsystem model tab (id under ~/.principal/subsystem-models/). */
+export interface LoadSubsystemModelMessage {
+  kind: 'LOAD_SUBSYSTEM_GRAPH';
+  graphId: string;
+}
+
+export type ViewerIpcMessage =
+  | LoadTrailMessage
+  | ActivateTabMessage
+  | FocusMessage
+  | LoadSubsystemModelMessage;
 
 const CONNECT_TIMEOUT_MS = 500;
 

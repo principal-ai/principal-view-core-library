@@ -232,14 +232,14 @@ const cases: { label: string; component: SubsystemComponent }[] = [
     label: 'external',
     component: {
       id: 'ext',
-      name: 'trail-viewer',
+      name: 'principal-studio',
       construct: 'external',
       file: '',
-      purl: 'pkg:npm/@principal-ai/trail-viewer',
+      purl: 'pkg:npm/@principal-ai/principal-studio',
       symbol: '',
       detail: {
         kind: 'external',
-        label: 'pkg:npm/@principal-ai/trail-viewer',
+        label: 'pkg:npm/@principal-ai/principal-studio',
       } satisfies GraphifyComponentDetail,
     },
   },

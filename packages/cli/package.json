@@ -1,6 +1,6 @@
 {
   "name": "@principal-ai/principal-view-cli",
-  "version": "0.34.1",
+  "version": "0.35.3",
   "description": "Principal View CLI - Validate and manage .canvas configuration files",
   "main": "dist/index.cjs",
   "types": "dist/index.d.ts",
@@ -32,7 +32,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@principal-ai/agent-monitoring": "^0.3.33",
+    "@principal-ai/agent-monitoring": "0.3.43",
     "@principal-ai/alexandria-core-library": "^0.4.0",
     "@principal-ai/codebase-composition": "^0.2.57",
     "@principal-ai/file-city-builder": "^0.5.0",
@@ -46,7 +46,7 @@
     "js-yaml": "4.1.1"
   },
   "optionalDependencies": {
-    "@principal-ai/trail-viewer": "^0.5.3"
+    "@principal-ai/principal-studio": "^0.6.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

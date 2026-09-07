@@ -13,6 +13,8 @@ import {
   type CodeViewHandle,
   type CodeViewItem,
   type CodeViewReactOptions,
+  type DiffLineAnnotation,
+  type LineAnnotation,
 } from '@pierre/diffs/react';
 
 /** Mirrors Pierre's CodeViewLineSelection (not re-exported from the React entry). */
@@ -20,9 +22,15 @@ type CodeViewLineSelection = {
   id: string;
   range: { start: number; end: number };
 };
+/** Metadata carried on a throughline step's line annotation. */
+type ThroughlineStepAnnotation = { text: string };
 import { useTheme } from '@principal-ade/industry-theme';
 import type { SubsystemThroughline } from '../subsystem/model';
 import { buildPierreOptions, PIERRE_FILE_STYLE } from './pierreBackground';
+import {
+  pierreCodeViewFileName,
+  pierreLangForPath,
+} from './pierreFileLang';
 import { resolvePierreSyntaxThemeName } from './pierreSyntaxTheme';
 import { sliceSnippetWindow, type SnippetSlice } from './sliceSnippet';
 
@@ -103,18 +111,36 @@ export function PierreThroughlineCodeView({
     });
   }, [load, throughline.steps, contextLines]);
 
-  const items = useMemo((): CodeViewItem[] => {
+const items = useMemo((): CodeViewItem<ThroughlineStepAnnotation>[] => {
     if (load.status !== 'ready' || slices.length === 0) return [];
     return throughline.steps.map((step, index) => {
       const slice = slices[index]!;
+      const focus = slice.focusOffset;
+      const annotations:
+        | LineAnnotation<ThroughlineStepAnnotation>[]
+        | undefined =
+        step.annotation != null && step.annotation.length > 0 && focus != null
+          ? [
+              {
+                lineNumber: focus,
+                metadata: { text: step.annotation },
+              },
+            ]
+          : undefined;
       return {
         id: stepItemId(throughline.id, index),
         type: 'file' as const,
         version: 1,
+        annotations,
         file: {
-          // Real path → Shiki language detection from extension.
-          name: step.file,
+          // Unique per-step name: many throughline steps share one path
+          // (e.g. seven sites in main.cpp), and identical `name`s have
+          // correlated with WebKit renderer traps in CodeView.
+          name: pierreCodeViewFileName(step.file, index),
           contents: slice.contents,
+          // C-family → plain text: cpp Shiki still traps WebKit even with
+          // unique names (reproduced on 0.16.67).
+          lang: pierreLangForPath(step.file),
           cacheKey: `${throughline.id}:${index}:${step.file}:${step.line}:${slice.sliceStart}-${slice.sliceEnd}`,
         },
       };
@@ -173,6 +199,34 @@ export function PierreThroughlineCodeView({
           }}
         >
           L{step.line}
+        </span>
+      );
+    };
+  }, [throughline.steps, theme]);
+
+  const renderAnnotation = useMemo(() => {
+    return (
+      annotation:
+        | LineAnnotation<ThroughlineStepAnnotation>
+        | DiffLineAnnotation<ThroughlineStepAnnotation>,
+      item: CodeViewItem<ThroughlineStepAnnotation>,
+    ) => {
+      const index = Number.parseInt(item.id.split(':').pop() ?? '', 10);
+      const step = throughline.steps[index];
+      const text = annotation.metadata?.text;
+      if (!text || !step) return null;
+      return (
+        <span
+          style={{
+            display: 'inline-block',
+            fontFamily: theme.fonts.monospace,
+            fontSize: theme.fontSizes[0],
+            color: theme.colors.textSecondary,
+            fontStyle: 'italic',
+            opacity: 0.9,
+          }}
+        >
+          {text}
         </span>
       );
     };
@@ -243,6 +297,7 @@ export function PierreThroughlineCodeView({
       selectedLines={selectedLines}
       renderHeaderPrefix={renderHeaderPrefix}
       renderHeaderMetadata={renderHeaderMetadata}
+      renderAnnotation={renderAnnotation}
       style={{ ...PIERRE_FILE_STYLE, height: '100%', overflow: 'auto' }}
     />
   );

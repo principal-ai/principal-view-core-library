@@ -411,30 +411,45 @@ export type ViewerLaunch =
 // Shared with the `tour` command — both launch the same standalone viewer
 // bundle; only the payload (trail vs *.tour.json) differs.
 export function resolveViewerLaunch(flag: string | undefined): ViewerLaunch {
-  // 1) Explicit override (flag or env) wins. If it points at a source tree we
-  //    use `bun start`; if it points at a published install root we use its
-  //    bin shim. Distinguished by whether `bin/trail-viewer.cjs` exists.
-  const candidate = flag ?? process.env['TRAIL_VIEWER_DIR'];
-  if (candidate) {
-    const overrideBin = `${candidate}/bin/trail-viewer.cjs`;
-    if (existsSync(overrideBin)) return { kind: 'installed', bin: overrideBin };
-    if (existsSync(`${candidate}/package.json`)) return { kind: 'source', dir: candidate };
-    process.stderr.write(`No trail-viewer at ${candidate}; expected a package dir or installed root.\n`);
+  const result = tryResolveViewerLaunch(flag);
+  if (!result.ok) {
+    process.stderr.write(result.error + '\n');
     process.exit(2);
   }
+  return result.launch;
+}
 
-  // 2) Try the installed @principal-ai/trail-viewer optionalDependency.
+/** Soft resolve for callers that can fall back (e.g. subsystem-model create). */
+export function tryResolveViewerLaunch(
+  flag: string | undefined,
+): { ok: true; launch: ViewerLaunch } | { ok: false; error: string } {
+  // 1) Explicit override (flag or env) wins. If it points at a source tree we
+  //    use `bun start`; if it points at a published install root we use its
+  //    bin shim. Distinguished by whether `bin/principal-studio.cjs` exists.
+  const candidate = flag ?? process.env['PRINCIPAL_STUDIO_DIR'];
+  if (candidate) {
+    const overrideBin = `${candidate}/bin/principal-studio.cjs`;
+    if (existsSync(overrideBin)) return { ok: true, launch: { kind: 'installed', bin: overrideBin } };
+    if (existsSync(`${candidate}/package.json`)) return { ok: true, launch: { kind: 'source', dir: candidate } };
+    return {
+      ok: false,
+      error: `No principal-studio at ${candidate}; expected a package dir or installed root.`,
+    };
+  }
+
+  // 2) Try the installed @principal-ai/principal-studio optionalDependency.
   try {
-    const bin = cliRequire.resolve('@principal-ai/trail-viewer/bin/trail-viewer.cjs');
-    return { kind: 'installed', bin };
+    const bin = cliRequire.resolve('@principal-ai/principal-studio/bin/principal-studio.cjs');
+    return { ok: true, launch: { kind: 'installed', bin } };
   } catch {
     // not installed (different platform, install skipped, etc.)
   }
 
-  process.stderr.write(
-    '@principal-ai/trail-viewer is not installed for this platform. Currently only macOS arm64 prebuilds are shipped — pass --viewer-dir <path> to a source checkout if you have one.\n',
-  );
-  process.exit(2);
+  return {
+    ok: false,
+    error:
+      '@principal-ai/principal-studio is not installed for this platform. Currently only macOS arm64 prebuilds are shipped — pass --viewer-dir <path> to a source checkout if you have one.',
+  };
 }
 
 interface ResolvedTrail {
@@ -512,7 +527,7 @@ async function viewTrail(input: string | undefined, options: ViewOptions): Promi
   // Prefer a running desktop app for a bare `trail view <id>`: its bridge reads
   // the same on-disk trail store, so a *local* id opens in the app without a
   // remote fetch or GitHub token (the path resolveTrailFromId would otherwise
-  // take). Skipped when the caller pinned the standalone trail-viewer — either
+  // take). Skipped when the caller pinned the standalone principal-studio — either
   // explicitly (--viewer / --viewer-dir) or implicitly via a mode/working-tree
   // flag (--remote, --local/--repo-root) or --file. A miss — app down, or trail
   // not in its store — falls through to the existing fetch + socket/spawn path.
@@ -596,7 +611,7 @@ async function viewTrail(input: string | undefined, options: ViewOptions): Promi
   }
 
   const launch = resolveViewerLaunch(options.viewerDir);
-  process.stderr.write(`Launching trail viewer (${mode} mode) for ${resolved.label}\n`);
+  process.stderr.write(`Launching principal studio (${mode} mode) for ${resolved.label}\n`);
 
   const child =
     launch.kind === 'installed'
@@ -691,11 +706,11 @@ export function createTrailCommand(): Command {
     )
     .option(
       '--viewer',
-      'Open in the standalone trail-viewer instead of routing to a running desktop app',
+      'Open in the standalone principal-studio instead of routing to a running desktop app',
     )
     .option(
       '--viewer-dir <path>',
-      'Path to the @principal-ai/trail-viewer package (overrides TRAIL_VIEWER_DIR)',
+      'Path to the @principal-ai/principal-studio package (overrides PRINCIPAL_STUDIO_DIR)',
     )
     .action(async (input: string | undefined, options: ViewOptions) => {
       await viewTrail(input, options);

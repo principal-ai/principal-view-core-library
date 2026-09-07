@@ -187,15 +187,15 @@ const detailKindComponents: SubsystemComponent[] = [
   {
     id: 'detail-external',
     // name = the package's name after the namespace; namespace shown above.
-    name: 'trail-viewer',
+    name: 'principal-studio',
     construct: 'external',
     file: '',
-    purl: 'pkg:npm/@principal-ai/trail-viewer',
+    purl: 'pkg:npm/@principal-ai/principal-studio',
     purpose: 'an npm package consumer — the whole package as a node',
     symbol: '',
     detail: {
       kind: 'external',
-      label: 'pkg:npm/@principal-ai/trail-viewer',
+      label: 'pkg:npm/@principal-ai/principal-studio',
     } satisfies GraphifyComponentDetail,
   },
 ];

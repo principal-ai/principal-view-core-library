@@ -304,7 +304,7 @@ export type {
   SubsystemComponentEdge,
   SubsystemThroughline,
   SubsystemThroughlineStep,
-  SubsystemGraphDocument,
+  SubsystemModelDocument,
   SubsystemComponentConstruct,
   SubsystemComponentRole,
   SubsystemFramework,

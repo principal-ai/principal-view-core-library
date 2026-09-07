@@ -6,7 +6,7 @@
  * `repos[0]` Purl in multi-repo trails), or `~/.principal/trails/by-id/<id>.json`
  * as a fallback for trails we can't anchor to a Purl.
  *
- * See `docs/TRAIL_VIEWER_MODES.md` for the design context.
+ * See `docs/PRINCIPAL_STUDIO_MODES.md` for the design context.
  */
 
 import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';

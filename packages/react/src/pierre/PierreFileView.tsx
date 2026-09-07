@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { File } from '@pierre/diffs/react';
 import { useTheme } from '@principal-ade/industry-theme';
 import { buildPierreOptions, PIERRE_FILE_STYLE } from './pierreBackground';
+import { pierreLangForPath } from './pierreFileLang';
 
 export interface PierreFileViewProps {
   filePath: string;
@@ -30,8 +31,11 @@ export function PierreFileView({
   const [error, setError] = useState<string | null>(null);
 
   const fileObject = useMemo(
-    () => (contents !== null ? { name: fileName, contents } : null),
-    [fileName, contents],
+    () =>
+      contents !== null
+        ? { name: fileName, contents, lang: pierreLangForPath(filePath) }
+        : null,
+    [fileName, filePath, contents],
   );
 
   useEffect(() => {

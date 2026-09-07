@@ -28,7 +28,7 @@ on GitHub Pages.
 ## Showcase (Storybook)
 
 The Examples gallery is a Storybook that lives in this same package
-(`.storybook/`, `stories/`) and renders Subsystem Views with the
+(`.storybook/`, `stories/`) and renders Subsystem Models with the
 **published** `@principal-ai/principal-view-react` package — never
 workspace source — so it shows what npm consumers actually get.
 

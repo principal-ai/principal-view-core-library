@@ -34,6 +34,8 @@ import { createRepoCommand } from './commands/repo.js';
 import { createOpencodeCommand } from './commands/opencode/index.js';
 import { createAgentSessionsCommand } from './commands/agent-sessions.js';
 import { createAgentSessionCommand } from './commands/agent-session.js';
+import { createOpenStudioCommand } from './commands/open-studio.js';
+import { createSubsystemModelCommand } from './commands/subsystem-model.js';
 
 // Keep in sync with package.json "version"
 declare const __CLI_VERSION__: string | undefined;
@@ -74,6 +76,8 @@ program.addCommand(createInboxCommand());
 program.addCommand(createStarredCollectionsCommand());
 program.addCommand(createRepoCommand());
 program.addCommand(createOpencodeCommand());
+program.addCommand(createOpenStudioCommand());
+program.addCommand(createSubsystemModelCommand());
 program.addCommand(createAgentSessionsCommand());
 program.addCommand(createAgentSessionCommand());
 

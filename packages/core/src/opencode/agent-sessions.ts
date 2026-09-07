@@ -28,7 +28,7 @@ export {
  * Shared, agent-agnostic session access: list + fetch across Cline, opencode,
  * pi, Grok, and Codex, normalizing raw events into repo-aware universal events.
  *
- * This is the single source of truth for CLI and trail-viewer session pulling.
+ * This is the single source of truth for CLI and principal-studio session pulling.
  * opencode listing delegates to `OpenCodeEventStore.listSessionsWithSummaries()`,
  * which already builds parent/child groups and excludes subagent (child) sessions
  * from the standalone list.
@@ -124,7 +124,7 @@ function listPiSessions(): AgentSessionSummary[] {
       title,
       createdAt: record.header.timestamp ?? "",
       eventCount: record.messageCount,
-      // pi transcripts carry no finished marker; the trail-viewer appends a
+      // pi transcripts carry no finished marker; the principal-studio appends a
       // synthesized session-end event at read time.
       isFinished: false,
     };

@@ -1,7 +1,7 @@
 /**
  * `principal-ai agent-sessions` — open the Agent Sessions viewer.
  *
- * Launches the standalone trail-viewer bundle pointed straight at the Agent
+ * Launches the standalone principal-studio bundle pointed straight at the Agent
  * Sessions tab (recent opencode sessions rendered as File City). If a viewer
  * is already running, hands the tab switch off to it via the IPC socket
  * instead of spawning a second instance.
@@ -21,7 +21,7 @@ export function createAgentSessionsCommand(): Command {
     )
     .option(
       '--viewer-dir <path>',
-      'Path to the @principal-ai/trail-viewer package (overrides TRAIL_VIEWER_DIR)',
+      'Path to the @principal-ai/principal-studio package (overrides PRINCIPAL_STUDIO_DIR)',
     )
     .action(async (options: { viewerDir?: string }) => {
       // Prefer a running viewer: switch it to the Agent Sessions tab and exit
@@ -34,7 +34,7 @@ export function createAgentSessionsCommand(): Command {
       const launch = resolveViewerLaunch(options.viewerDir);
       const env: Record<string, string> = {
         ...(process.env as Record<string, string>),
-        TRAIL_VIEWER_START_TAB: AGENT_SESSIONS_TAB_ID,
+        PRINCIPAL_STUDIO_START_TAB: AGENT_SESSIONS_TAB_ID,
       };
 
       process.stderr.write('Launching Agent Sessions viewer…\n');

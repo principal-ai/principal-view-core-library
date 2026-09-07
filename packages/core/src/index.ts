@@ -71,16 +71,16 @@ export type {
   SubsystemThroughlineStep,
   SubsystemThroughline,
   SubsystemRepoRef,
-  SubsystemGraphDocument,
-  SubsystemGraphHostBinding,
-  SubsystemGraphHydrated,
+  SubsystemModelDocument,
+  SubsystemModelHostBinding,
+  SubsystemModelHydrated,
 } from './types';
 
 // Auxiliary manifest type guard (browser-safe runtime helper)
 export { isAuxiliaryManifest } from './types/auxiliary';
 
-// Subsystem graph type guard (browser-safe runtime helper)
-export { isSubsystemGraphDocument } from './types/subsystem-graph';
+// Subsystem model type guard (browser-safe runtime helper)
+export { isSubsystemModelDocument } from './types/subsystem-model';
 
 // Export path-based configuration types (browser-safe)
 export type { PathBasedGraphConfiguration } from './types/path-based-config';

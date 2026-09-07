@@ -8,13 +8,13 @@
  *
  * `list` prints recent sessions (id, title, created-at).
  * `dump` writes the session's raw `event` rows as JSON, plus the repo-normalized
- * versions. The raw shape matches the rows the trail-viewer reads from sqlite
+ * versions. The raw shape matches the rows the principal-studio reads from sqlite
  * (id, aggregateId, seq, type, data), with `data` JSON-parsed from its TEXT
  * column. The `normalized` array is aligned 1:1 by index with `events` — each
  * raw event pushed through V1EventBridgeProcessor → PathNormalizationService
- * (the same pipeline the trail-viewer runs in its bun host).
+ * (the same pipeline the principal-studio runs in its bun host).
  *
- * Default db path mirrors trail-viewer's openCodeDBPath():
+ * Default db path mirrors principal-studio's openCodeDBPath():
  *   $OPENCODE_DATA_DIR/opencode/opencode.db  (if OPENCODE_DATA_DIR is set)
  *   $XDG_DATA_HOME/opencode/opencode.db      (default ~/.local/share/opencode)
  */
@@ -87,7 +87,7 @@ function truncateDeep(value: unknown, maxLen = 3000): unknown {
 }
 
 /**
- * Node/fs adapter for the dump script. Mirrors the trail-viewer's
+ * Node/fs adapter for the dump script. Mirrors the principal-studio's
  * BunNormalizationAdapter (walk up for .git, enrich with git metadata) so the
  * fixture carries real repo-normalized paths.
  */
@@ -245,7 +245,7 @@ async function main() {
         data: truncateDeep(JSON.parse(row.data)) as Record<string, unknown>,
       }));
 
-      // raw → universal → repo-normalized (same pipeline as the trail-viewer)
+      // raw → universal → repo-normalized (same pipeline as the principal-studio)
       const processor = new V1EventBridgeProcessor();
       const universal: UniversalAgentSessionEvent[] = events.map((e) =>
         processor.normalize(e as Parameters<typeof processor.normalize>[0]),

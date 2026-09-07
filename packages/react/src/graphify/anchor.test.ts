@@ -25,13 +25,13 @@ function node(
 describe('makeGraphifyId', () => {
 	test('matches graphify path+symbol slug shape', () => {
 		const stem = graphifyFileStem(
-			'packages/trail-viewer/src/mainview/views/SubsystemGraphView.tsx',
+			'packages/principal-studio/src/mainview/views/SubsystemModelView.tsx',
 		);
 		expect(stem).toBe(
-			'packages/trail-viewer/src/mainview/views/SubsystemGraphView',
+			'packages/principal-studio/src/mainview/views/SubsystemModelView',
 		);
-		expect(makeGraphifyId(stem, 'SubsystemGraphView')).toBe(
-			'packages_trail_viewer_src_mainview_views_subsystemgraphview_subsystemgraphview',
+		expect(makeGraphifyId(stem, 'SubsystemModelView')).toBe(
+			'packages_trail_viewer_src_mainview_views_subsystemmodelview_subsystemmodelview',
 		);
 	});
 
@@ -43,8 +43,8 @@ describe('makeGraphifyId', () => {
 
 describe('symbolLabelVariants', () => {
 	test('includes call-style labels', () => {
-		expect(symbolLabelVariants('SubsystemGraphView')).toContain(
-			'SubsystemGraphView()',
+		expect(symbolLabelVariants('SubsystemModelView')).toContain(
+			'SubsystemModelView()',
 		);
 		expect(symbolLabelVariants('SessionReader.normalize')).toContain('normalize()');
 		expect(symbolLabelVariants('SessionReader.normalize')).toContain('.normalize()');
@@ -53,13 +53,13 @@ describe('symbolLabelVariants', () => {
 
 describe('resolveComponentAnchor', () => {
 	const file =
-		'packages/trail-viewer/src/mainview/views/SubsystemGraphView.tsx';
-	const defId = makeGraphifyId(graphifyFileStem(file), 'SubsystemGraphView');
+		'packages/principal-studio/src/mainview/views/SubsystemModelView.tsx';
+	const defId = makeGraphifyId(graphifyFileStem(file), 'SubsystemModelView');
 	const corpus: GraphifyNode[] = [
-		node(defId, 'SubsystemGraphView()', file, 'L27'),
+		node(defId, 'SubsystemModelView()', file, 'L27'),
 		node(
 			makeGraphifyId(graphifyFileStem(file)),
-			'SubsystemGraphView.tsx',
+			'SubsystemModelView.tsx',
 			file,
 			'L1',
 		),
@@ -77,7 +77,7 @@ describe('resolveComponentAnchor', () => {
 	test('exact via make_id reconstruction', () => {
 		const r = resolveComponentAnchor(corpus, {
 			file,
-			symbol: 'SubsystemGraphView',
+			symbol: 'SubsystemModelView',
 		});
 		expect(r.resolution).toBe('exact');
 		expect(r.node?.id).toBe(defId);

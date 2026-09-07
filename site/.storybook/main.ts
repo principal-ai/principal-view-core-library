@@ -1,7 +1,7 @@
 import type { StorybookConfig } from '@storybook/react-vite';
 
 /**
- * Showcase Storybook — public gallery of Subsystem View use cases.
+ * Showcase Storybook — public gallery of Subsystem Model use cases.
  *
  * Depends on the *published* @principal-ai packages (not workspace source), so
  * the gallery always demonstrates what consumers actually get from npm.

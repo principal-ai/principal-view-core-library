@@ -42,7 +42,7 @@ const config: StorybookConfig = {
     }
 
     // Allow access to external canvas files from Backlog.md repository
-    // and the package directory itself for Storybook modules. The trail-viewer
+    // and the package directory itself for Storybook modules. The principal-studio
     // package dir is included so the Concepts stories can import
     // ChangeTypeVisual from its source across the package boundary.
     if (config.server) {
@@ -52,7 +52,7 @@ const config: StorybookConfig = {
           ...(config.server.fs?.allow || []),
           '/Users/griever/Developer/backlog-adaptation/Backlog.md/.principal-views',
           '/Users/griever/Developer/visual-validation/principal-view-core-library/packages/react',
-          '/Users/griever/Developer/visual-validation/principal-view-core-library/packages/trail-viewer',
+          '/Users/griever/Developer/visual-validation/principal-view-core-library/packages/principal-studio',
         ],
       };
     } else {
@@ -61,7 +61,7 @@ const config: StorybookConfig = {
           allow: [
             '/Users/griever/Developer/backlog-adaptation/Backlog.md/.principal-views',
             '/Users/griever/Developer/visual-validation/principal-view-core-library/packages/react',
-            '/Users/griever/Developer/visual-validation/principal-view-core-library/packages/trail-viewer',
+            '/Users/griever/Developer/visual-validation/principal-view-core-library/packages/principal-studio',
           ],
         },
       };

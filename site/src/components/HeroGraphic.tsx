@@ -1,10 +1,10 @@
 import { Suspense, lazy } from 'react'
 
-const SubsystemGraphCanvas = lazy(() =>
-  import('./SubsystemGraphCanvas').then((m) => ({ default: m.SubsystemGraphCanvas })),
+const SubsystemModelCanvas = lazy(() =>
+  import('./SubsystemModelCanvas').then((m) => ({ default: m.SubsystemModelCanvas })),
 )
 
-const SUBSYSTEM_VIEW_JSON = `{
+const SUBSYSTEM_MODEL_JSON = `{
   "title": "Checkout",
   "components": [
     {
@@ -84,12 +84,12 @@ export function HeroGraphic() {
           <span />
           <span />
         </div>
-        <span className="graphic-filename">checkout.subsystem-view.json</span>
-        <span className="graphic-badge">Subsystem View</span>
+        <span className="graphic-filename">checkout.subsystem-model.json</span>
+        <span className="graphic-badge">Subsystem Model</span>
       </div>
       <div className="graphic-panes">
         <pre className="graphic-json">
-          {highlightJson(SUBSYSTEM_VIEW_JSON).map((p, i) =>
+          {highlightJson(SUBSYSTEM_MODEL_JSON).map((p, i) =>
             p.cls ? (
               <span key={i} className={p.cls}>
                 {p.text}
@@ -102,7 +102,7 @@ export function HeroGraphic() {
         <div className="graphic-graph">
           <div className="graphic-graph-canvas">
             <Suspense fallback={<div className="graphic-graph-loading" />}>
-              <SubsystemGraphCanvas />
+              <SubsystemModelCanvas />
             </Suspense>
           </div>
         </div>

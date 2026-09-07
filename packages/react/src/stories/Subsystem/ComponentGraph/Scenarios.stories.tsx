@@ -6,7 +6,7 @@ import { SubsystemComponentGraph } from '../../../subsystem/SubsystemComponentGr
 import type {
   SubsystemComponent,
   SubsystemComponentEdge,
-  SubsystemGraphDocument,
+  SubsystemModelDocument,
 } from '../../../subsystem/model';
 import type { GraphifyComponentDetail } from '../../../graphify';
 import { components, edges } from './fixtures';
@@ -162,7 +162,7 @@ export const MultiRepoTrees: Story = {
 };
 
 // ---------------------------------------------------------------------------
-// Roles + process boundaries + state-access mechanisms — the trail-viewer
+// Roles + process boundaries + state-access mechanisms — the principal-studio
 // access-surface flow authored with the real fields: `construct: store` for
 // the state node, `role: entry` for the two boundary elements, `process`
 // regions (grouped by `process ?? purl`), and the
@@ -183,71 +183,71 @@ const accessSurfaceComponents: SubsystemComponent[] = [
     purpose: 'agents and tooling outside the process — enter only via the HTTP bridge',
     layer: 0,
   },
-  // --- trail-viewer/host process region
+  // --- principal-studio/host process region
   {
     id: 'http-entry',
     name: 'HTTP bridge :3045',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/http-server.ts',
+    file: 'packages/principal-studio/src/bun/http-server.ts',
     purl: coreLibPurl2,
-    symbol: 'handleSubsystemGraphRequest',
+    symbol: 'handleSubsystemModelRequest',
     role: 'entry',
-    process: 'trail-viewer/host',
+    process: 'principal-studio/host',
     purpose: 'the process\u2019s HTTP surface — request leg only, no push',
     layer: 1,
   },
   {
     id: 'create',
-    name: 'createSubsystemGraph',
+    name: 'createSubsystemModel',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/subsystem-graph-store.ts',
+    file: 'packages/principal-studio/src/bun/subsystem-model-store.ts',
     purl: coreLibPurl2,
-    symbol: 'createSubsystemGraph',
-    process: 'trail-viewer/host',
+    symbol: 'createSubsystemModel',
+    process: 'principal-studio/host',
     purpose: 'persists a new graph JSON into the store',
     layer: 2,
   },
   {
     id: 'update',
-    name: 'updateSubsystemGraph',
+    name: 'updateSubsystemModel',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/subsystem-graph-store.ts',
+    file: 'packages/principal-studio/src/bun/subsystem-model-store.ts',
     purl: coreLibPurl2,
-    symbol: 'updateSubsystemGraph',
-    process: 'trail-viewer/host',
+    symbol: 'updateSubsystemModel',
+    process: 'principal-studio/host',
     purpose: 'rewrites an existing graph file on PUT',
     layer: 2,
   },
   {
     id: 'delete',
-    name: 'deleteSubsystemGraph',
+    name: 'deleteSubsystemModel',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/subsystem-graph-store.ts',
+    file: 'packages/principal-studio/src/bun/subsystem-model-store.ts',
     purl: coreLibPurl2,
-    symbol: 'deleteSubsystemGraph',
-    process: 'trail-viewer/host',
+    symbol: 'deleteSubsystemModel',
+    process: 'principal-studio/host',
     purpose: 'unlinks the graph file and updates the index',
     layer: 2,
   },
   {
     id: 'get',
-    name: 'getSubsystemGraph',
+    name: 'getSubsystemModel',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/subsystem-graph-store.ts',
+    file: 'packages/principal-studio/src/bun/subsystem-model-store.ts',
     purl: coreLibPurl2,
-    symbol: 'getSubsystemGraph',
-    process: 'trail-viewer/host',
+    symbol: 'getSubsystemModel',
+    process: 'principal-studio/host',
     purpose: 'reads one stored graph — serves both surfaces',
     layer: 2,
   },
   {
     id: 'watcher',
-    name: 'startSubsystemGraphDirWatcher',
+    name: 'startSubsystemModelDirWatcher',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/subsystem-graph-store.ts',
+    file: 'packages/principal-studio/src/bun/subsystem-model-store.ts',
     purl: coreLibPurl2,
-    symbol: 'startSubsystemGraphDirWatcher',
-    process: 'trail-viewer/host',
+    symbol: 'startSubsystemModelDirWatcher',
+    process: 'principal-studio/host',
     purpose: 'fs.watch on the graphs dir — observes, owns nothing',
     layer: 2,
   },
@@ -255,9 +255,9 @@ const accessSurfaceComponents: SubsystemComponent[] = [
     id: 'store',
     name: 'Graph Store',
     construct: 'store',
-    file: 'packages/trail-viewer/src/bun/subsystem-graph-store.ts',
+    file: 'packages/principal-studio/src/bun/subsystem-model-store.ts',
     purl: coreLibPurl2,
-    process: 'trail-viewer/host',
+    process: 'principal-studio/host',
     purpose: 'retained state: <id>.json files + _index.json + in-memory bookkeeping.\nState-only: the access mechanism lives in the accessor nodes.',
     layer: 3,
     detail: {
@@ -265,7 +265,7 @@ const accessSurfaceComponents: SubsystemComponent[] = [
       properties: [
         { name: 'ROOT', type: 'string' },
         { name: 'INDEX_PATH', type: 'string' },
-        { name: 'changeListener', type: 'SubsystemGraphChangeListener | null' },
+        { name: 'changeListener', type: 'SubsystemModelChangeListener | null' },
         { name: 'recentSelfWrites', type: 'Map<string, number>' },
         { name: 'dirWatcher', type: 'FSWatcher | null' },
         { name: 'pendingWatchIds', type: 'Set<string>' },
@@ -274,24 +274,24 @@ const accessSurfaceComponents: SubsystemComponent[] = [
   },
   {
     id: 'broadcast',
-    name: 'broadcastSubsystemGraphChanged',
+    name: 'broadcastSubsystemModelChanged',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/index.ts',
+    file: 'packages/principal-studio/src/bun/index.ts',
     purl: coreLibPurl2,
-    symbol: 'broadcastSubsystemGraphChanged',
-    process: 'trail-viewer/host',
-    purpose: 'push leg — sends subsystemGraphChanged over Electrobun RPC',
+    symbol: 'broadcastSubsystemModelChanged',
+    process: 'principal-studio/host',
+    purpose: 'push leg — sends subsystemModelChanged over Electrobun RPC',
     layer: 4,
   },
   {
     id: 'ipc-entry',
-    name: 'TrailViewerMessages',
+    name: 'StudioMessages',
     construct: 'interface',
-    file: 'packages/trail-viewer/src/shared/contract.ts',
+    file: 'packages/principal-studio/src/shared/contract.ts',
     purl: coreLibPurl2,
-    symbol: 'TrailViewerMessages',
+    symbol: 'StudioMessages',
     role: 'entry',
-    process: 'trail-viewer/host',
+    process: 'principal-studio/host',
     purpose: 'the IPC surface — requests in, pushes out (both legs)',
     layer: 4,
   },
@@ -299,44 +299,44 @@ const accessSurfaceComponents: SubsystemComponent[] = [
     id: 'avatars',
     name: 'resolveAuthorAvatars',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/avatars.ts',
+    file: 'packages/principal-studio/src/bun/avatars.ts',
     purl: coreLibPurl2,
     symbol: 'resolveAuthorAvatars',
-    process: 'trail-viewer/host',
+    process: 'principal-studio/host',
     purpose: 'resolves author avatars — outbound call crossing the boundary',
     layer: 4,
   },
-  // --- trail-viewer/renderer process region
+  // --- principal-studio/renderer process region
   {
     id: 'subs',
-    name: 'subsystemGraphChangeSubscribers',
+    name: 'subsystemModelChangeSubscribers',
     construct: 'function',
-    file: 'packages/trail-viewer/src/mainview/rpc.ts',
+    file: 'packages/principal-studio/src/mainview/rpc.ts',
     purl: coreLibPurl2,
-    symbol: 'subsystemGraphChangeSubscribers',
-    process: 'trail-viewer/renderer',
-    purpose: 'renderer fan-out Set for subsystemGraphChanged payloads',
+    symbol: 'subsystemModelChangeSubscribers',
+    process: 'principal-studio/renderer',
+    purpose: 'renderer fan-out Set for subsystemModelChanged payloads',
     layer: 5,
   },
   {
     id: 'open-view',
-    name: 'SubsystemGraphView',
+    name: 'SubsystemModelView',
     construct: 'function',
-    file: 'packages/trail-viewer/src/mainview/views/SubsystemGraphView.tsx',
+    file: 'packages/principal-studio/src/mainview/views/SubsystemModelView.tsx',
     purl: coreLibPurl2,
-    symbol: 'SubsystemGraphView',
-    process: 'trail-viewer/renderer',
+    symbol: 'SubsystemModelView',
+    process: 'principal-studio/renderer',
     purpose: 'open graph tab — requests over the IPC surface, reloads on push',
     layer: 6,
   },
   {
     id: 'list-view',
-    name: 'SubsystemGraphsView',
+    name: 'SubsystemModelsView',
     construct: 'function',
-    file: 'packages/trail-viewer/src/mainview/views/SubsystemGraphsView.tsx',
+    file: 'packages/principal-studio/src/mainview/views/SubsystemModelsView.tsx',
     purl: coreLibPurl2,
-    symbol: 'SubsystemGraphsView',
-    process: 'trail-viewer/renderer',
+    symbol: 'SubsystemModelsView',
+    process: 'principal-studio/renderer',
     purpose: 'list tab — requests over the IPC surface, refreshes on push',
     layer: 6,
   },
@@ -389,7 +389,7 @@ function AccessSurfacesDemo() {
         onEdgeSelect={(e) => setSelectedEdge(e)}
       />
       <div style={{ marginTop: 8, fontFamily: 'monospace', fontSize: 12, color: '#aaa' }}>
-        regions: trail-viewer/host · trail-viewer/renderer — agents + api.github.com outside every
+        regions: principal-studio/host · principal-studio/renderer — agents + api.github.com outside every
         boundary · store edges: writes (deep green) / reads (sky) / watches (dashed gray) / produces
         (terracotta)
         {selectedEdge
@@ -409,7 +409,7 @@ export const AccessSurfacesAndRoles: Story = {
 // ---------------------------------------------------------------------------
 // SCENARIO: Store flavors — three ways retained state shows up, rendered with
 // `construct: 'store'` (state-block anatomy) in all of them:
-//   1. module-state store  — state as module-level consts (trail-viewer pattern)
+//   1. module-state store  — state as module-level consts (principal-studio pattern)
 //   2. class-backed store  — a real `class SessionCache` exists in source; the
 //      node still renders as a state block (fields only) per the store/accessor
 //      separation. OPEN QUESTION: is dropping the class stub the right call
@@ -424,23 +424,23 @@ const storeFlavorComponents: SubsystemComponent[] = [
   // --- flavor 1: module-state store
   {
     id: 'f1-create',
-    name: 'createSubsystemGraph',
+    name: 'createSubsystemModel',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/subsystem-graph-store.ts',
+    file: 'packages/principal-studio/src/bun/subsystem-model-store.ts',
     purl: coreLibPurl2,
-    symbol: 'createSubsystemGraph',
-    process: 'trail-viewer/host',
+    symbol: 'createSubsystemModel',
+    process: 'principal-studio/host',
     purpose: 'persists a new graph JSON',
     layer: 1,
   },
   {
     id: 'f1-get',
-    name: 'getSubsystemGraph',
+    name: 'getSubsystemModel',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/subsystem-graph-store.ts',
+    file: 'packages/principal-studio/src/bun/subsystem-model-store.ts',
     purl: coreLibPurl2,
-    symbol: 'getSubsystemGraph',
-    process: 'trail-viewer/host',
+    symbol: 'getSubsystemModel',
+    process: 'principal-studio/host',
     purpose: 'reads one stored graph',
     layer: 1,
   },
@@ -448,9 +448,9 @@ const storeFlavorComponents: SubsystemComponent[] = [
     id: 'f1-store',
     name: 'Graph Store',
     construct: 'store',
-    file: 'packages/trail-viewer/src/bun/subsystem-graph-store.ts',
+    file: 'packages/principal-studio/src/bun/subsystem-model-store.ts',
     purl: coreLibPurl2,
-    process: 'trail-viewer/host',
+    process: 'principal-studio/host',
     purpose: 'module-level state: ROOT, INDEX_PATH, listener + watch bookkeeping',
     layer: 2,
     detail: {
@@ -509,10 +509,10 @@ const storeFlavorComponents: SubsystemComponent[] = [
     id: 'f3-accessor',
     name: 'loadAppState',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/app-state.ts',
+    file: 'packages/principal-studio/src/bun/app-state.ts',
     purl: coreLibPurl2,
     symbol: 'loadAppState',
-    process: 'trail-viewer/host',
+    process: 'principal-studio/host',
     purpose: 'reads app state from the on-disk sqlite db',
     layer: 5,
   },
@@ -577,34 +577,34 @@ export const StoreFlavors: Story = {
 const sharedStoreComponents: SubsystemComponent[] = [
   {
     id: 'ss-load',
-    name: 'loadSubsystemGraph',
+    name: 'loadSubsystemModel',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/subsystem-graph-store.ts',
+    file: 'packages/principal-studio/src/bun/subsystem-model-store.ts',
     purl: coreLibPurl2,
-    symbol: 'getSubsystemGraph',
-    process: 'trail-viewer/host',
+    symbol: 'getSubsystemModel',
+    process: 'principal-studio/host',
     purpose: 'host accessor — reads one stored graph',
     layer: 1,
   },
   {
     id: 'ss-save',
-    name: 'saveSubsystemGraph',
+    name: 'saveSubsystemModel',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/subsystem-graph-store.ts',
+    file: 'packages/principal-studio/src/bun/subsystem-model-store.ts',
     purl: coreLibPurl2,
-    symbol: 'updateSubsystemGraph',
-    process: 'trail-viewer/host',
+    symbol: 'updateSubsystemModel',
+    process: 'principal-studio/host',
     purpose: 'host accessor — rewrites a stored graph',
     layer: 1,
   },
   {
     id: 'ss-watch',
-    name: 'startSubsystemGraphDirWatcher',
+    name: 'startSubsystemModelDirWatcher',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/subsystem-graph-store.ts',
+    file: 'packages/principal-studio/src/bun/subsystem-model-store.ts',
     purl: coreLibPurl2,
-    symbol: 'startSubsystemGraphDirWatcher',
-    process: 'trail-viewer/host',
+    symbol: 'startSubsystemModelDirWatcher',
+    process: 'principal-studio/host',
     purpose: 'host watches for external writes (hand edits, other processes)',
     layer: 1,
   },
@@ -621,16 +621,16 @@ const sharedStoreComponents: SubsystemComponent[] = [
   },
   {
     id: 'ss-store',
-    name: '~/.principal/subsystem-graphs',
+    name: '~/.principal/subsystem-models',
     construct: 'store',
     file: '',
-    purl: 'pkg:generic/local--Users-me-.principal-subsystem-graphs',
+    purl: 'pkg:generic/local--Users-me-.principal-subsystem-models',
     purpose: 'file-per-graph + _index.json — shared state owned by no single process',
     layer: 2,
     detail: {
       kind: 'store',
       properties: [
-        { name: 'graphs', type: 'Map<graphId, StoredSubsystemGraph>' },
+        { name: 'graphs', type: 'Map<graphId, StoredSubsystemModel>' },
         { name: 'index', type: '_index.json cache' },
       ],
     } satisfies GraphifyComponentDetail,
@@ -656,7 +656,7 @@ function SharedStoreDemo() {
         onEdgeSelect={(e) => setSelectedEdge(e)}
       />
       <div style={{ marginTop: 8, fontFamily: 'monospace', fontSize: 12, color: '#aaa' }}>
-        shared state between trail-viewer/host and principal-cli — refine: outside boundaries (as
+        shared state between principal-studio/host and principal-cli — refine: outside boundaries (as
         here) vs owned by one process? do these crossings satisfy the invariant?
         {selectedEdge ? ` · edge: ${selectedEdge.from} --${selectedEdge.mechanism}--> ${selectedEdge.to}` : ''}
       </div>
@@ -680,10 +680,10 @@ const queueComponents: SubsystemComponent[] = [
     id: 'q-producer',
     name: 'enqueueAnalysisJob',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/analysis-queue.ts',
+    file: 'packages/principal-studio/src/bun/analysis-queue.ts',
     purl: coreLibPurl2,
     symbol: 'enqueueAnalysisJob',
-    process: 'trail-viewer/host',
+    process: 'principal-studio/host',
     purpose: 'pushes a repo-analysis job onto the queue',
     layer: 1,
   },
@@ -691,9 +691,9 @@ const queueComponents: SubsystemComponent[] = [
     id: 'q-queue',
     name: 'Analysis Queue',
     construct: 'store',
-    file: 'packages/trail-viewer/src/bun/analysis-queue.ts',
+    file: 'packages/principal-studio/src/bun/analysis-queue.ts',
     purl: coreLibPurl2,
-    process: 'trail-viewer/host',
+    process: 'principal-studio/host',
     purpose: 'ordered retained state — pending jobs, depth, head pointer',
     layer: 2,
     detail: {
@@ -709,10 +709,10 @@ const queueComponents: SubsystemComponent[] = [
     id: 'q-worker',
     name: 'Bun.Worker',
     construct: 'function',
-    file: 'packages/trail-viewer/src/bun/analysis-worker.ts',
+    file: 'packages/principal-studio/src/bun/analysis-worker.ts',
     purl: coreLibPurl2,
     symbol: 'spawnAnalysisWorker',
-    process: 'trail-viewer/host',
+    process: 'principal-studio/host',
     purpose: 'claims the next job and runs the analysis',
     layer: 3,
   },
@@ -720,9 +720,9 @@ const queueComponents: SubsystemComponent[] = [
     id: 'q-results',
     name: 'Analysis Results',
     construct: 'store',
-    file: 'packages/trail-viewer/src/bun/analysis-store.ts',
+    file: 'packages/principal-studio/src/bun/analysis-store.ts',
     purl: coreLibPurl2,
-    process: 'trail-viewer/host',
+    process: 'principal-studio/host',
     purpose: 'retained results — keyed by repo purl + sha',
     layer: 4,
     detail: {
@@ -763,13 +763,13 @@ export const QueueAsStore: Story = {
 };
 
 // ---------------------------------------------------------------------------
-// SCENARIO: Data ↔ Visualization — the raw SubsystemGraphDocument on the left,
+// SCENARIO: Data ↔ Visualization — the raw SubsystemModelDocument on the left,
 // the rendered graph on the right. The JSON is EDITABLE: change a `construct`, add
 // a `role`, flip `writes` to `reads`, toggle a `process` — and the graph
 // re-renders on the next valid parse. Invalid JSON keeps the last good graph
 // and shows the parse error.
 // ---------------------------------------------------------------------------
-const dataVizDoc: SubsystemGraphDocument = {
+const dataVizDoc: SubsystemModelDocument = {
   components: [
     {
       id: 'agents',
@@ -784,22 +784,22 @@ const dataVizDoc: SubsystemGraphDocument = {
       id: 'http-entry',
       name: 'HTTP bridge :3045',
       construct: 'function',
-      file: 'packages/trail-viewer/src/bun/http-server.ts',
+      file: 'packages/principal-studio/src/bun/http-server.ts',
       purl: 'pkg:github/principal-ai/principal-view-core-library',
-      symbol: 'handleSubsystemGraphRequest',
+      symbol: 'handleSubsystemModelRequest',
       role: 'entry',
-      process: 'trail-viewer/host',
+      process: 'principal-studio/host',
       purpose: 'boundary element — anchored to a real declaration',
       layer: 1,
     },
     {
       id: 'create',
-      name: 'createSubsystemGraph',
+      name: 'createSubsystemModel',
       construct: 'function',
-      file: 'packages/trail-viewer/src/bun/subsystem-graph-store.ts',
+      file: 'packages/principal-studio/src/bun/subsystem-model-store.ts',
       purl: 'pkg:github/principal-ai/principal-view-core-library',
-      symbol: 'createSubsystemGraph',
-      process: 'trail-viewer/host',
+      symbol: 'createSubsystemModel',
+      process: 'principal-studio/host',
       purpose: 'accessor — plain declaration node',
       layer: 2,
     },
@@ -807,9 +807,9 @@ const dataVizDoc: SubsystemGraphDocument = {
       id: 'store',
       name: 'Graph Store',
       construct: 'store',
-      file: 'packages/trail-viewer/src/bun/subsystem-graph-store.ts',
+      file: 'packages/principal-studio/src/bun/subsystem-model-store.ts',
       purl: 'pkg:github/principal-ai/principal-view-core-library',
-      process: 'trail-viewer/host',
+      process: 'principal-studio/host',
       purpose: 'state-block anatomy — anchored to a state location, not a declaration',
       layer: 3,
       detail: {
@@ -822,23 +822,23 @@ const dataVizDoc: SubsystemGraphDocument = {
     },
     {
       id: 'get',
-      name: 'getSubsystemGraph',
+      name: 'getSubsystemModel',
       construct: 'function',
-      file: 'packages/trail-viewer/src/bun/subsystem-graph-store.ts',
+      file: 'packages/principal-studio/src/bun/subsystem-model-store.ts',
       purl: 'pkg:github/principal-ai/principal-view-core-library',
-      symbol: 'getSubsystemGraph',
-      process: 'trail-viewer/host',
+      symbol: 'getSubsystemModel',
+      process: 'principal-studio/host',
       purpose: 'accessor — plain declaration node',
       layer: 2,
     },
     {
       id: 'broadcast',
-      name: 'broadcastSubsystemGraphChanged',
+      name: 'broadcastSubsystemModelChanged',
       construct: 'function',
-      file: 'packages/trail-viewer/src/bun/index.ts',
+      file: 'packages/principal-studio/src/bun/index.ts',
       purl: 'pkg:github/principal-ai/principal-view-core-library',
-      symbol: 'broadcastSubsystemGraphChanged',
-      process: 'trail-viewer/host',
+      symbol: 'broadcastSubsystemModelChanged',
+      process: 'principal-studio/host',
       purpose: 'the store\u2019s change stream leaves as produces',
       layer: 4,
     },
@@ -878,13 +878,13 @@ const dataVizDoc: SubsystemGraphDocument = {
 
 function DataVsVisualizationDemo() {
   const [text, setText] = useState(() => JSON.stringify(dataVizDoc, null, 2));
-  const [doc, setDoc] = useState<SubsystemGraphDocument>(dataVizDoc);
+  const [doc, setDoc] = useState<SubsystemModelDocument>(dataVizDoc);
   const [error, setError] = useState<string | null>(null);
 
   const onChange = (next: string) => {
     setText(next);
     try {
-      const parsed = JSON.parse(next) as SubsystemGraphDocument;
+      const parsed = JSON.parse(next) as SubsystemModelDocument;
       if (!Array.isArray(parsed.components) || !Array.isArray(parsed.edges)) {
         throw new Error('document needs `components` and `edges` arrays');
       }
@@ -916,7 +916,7 @@ function DataVsVisualizationDemo() {
             borderBottom: '1px solid #333',
           }}
         >
-          the data — SubsystemGraphDocument (edit → re-renders; invalid JSON keeps last good graph)
+          the data — SubsystemModelDocument (edit → re-renders; invalid JSON keeps last good graph)
         </div>
         <textarea
           value={text}

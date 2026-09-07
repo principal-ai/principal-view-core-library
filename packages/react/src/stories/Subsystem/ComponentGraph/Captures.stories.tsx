@@ -43,7 +43,7 @@ const v2ReaderEdges = edges([
   ['capture', 'reader', 'calls'],
   ['reader', 'registry', 'registers-into', ['supported-agents.ts']],
   // Consumer packages - cross-package edges leave the subgraph
-  ['reader', 'trail-viewer-host', 'imports'],
+  ['reader', 'principal-studio-host', 'imports'],
   ['reader', 'core-sessions', 'imports'],
   ['reader', 'cli-session', 'imports'],
 ]);

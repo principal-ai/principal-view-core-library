@@ -2,11 +2,11 @@
 
 **Verifiable System Diagrams.**
 
-A **Subsystem View** is a JSON definition of a subsystem: named components (each tagged with what it is — class, function, store — and anchored to a real source file), typed edges between them, and the end-to-end flows the subsystem must support. Principal View renders it as a diagram, then verification anchors every component to its real declaration — so the view can't silently drift from the code.
+A **Subsystem Model** is a JSON definition of a subsystem: named components (each tagged with what it is — class, function, store — and anchored to a real source file), typed edges between them, and the end-to-end flows the subsystem must support. Principal View renders it as a diagram, then verification anchors every component to its real declaration — so the view can't silently drift from the code.
 
 ## How it works
 
-One Subsystem View, three jobs:
+One Subsystem Model, three jobs:
 
 **1. Define** — components, typed edges, and the files behind them:
 
@@ -68,7 +68,7 @@ One Subsystem View, three jobs:
 - **Verified, not decorative** — missing symbols, renamed declarations, and broken throughlines fail verification
 - **Framework-agnostic** — works with any codebase, any language with files
 
-## Render a Subsystem View
+## Render a Subsystem Model
 
 ```bash
 npm install @principal-ai/principal-view-react

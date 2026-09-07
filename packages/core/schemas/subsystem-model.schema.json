@@ -173,7 +173,7 @@
         },
         "process": {
           "type": "string",
-          "description": "Runtime process / deployment unit membership (e.g. `trail-viewer/host`). Nodes sharing a process are drawn in one boundary region; nodes without one sit outside every boundary."
+          "description": "Runtime process / deployment unit membership (e.g. `principal-studio/host`). Nodes sharing a process are drawn in one boundary region; nodes without one sit outside every boundary."
         },
         "layer": {
           "type": "integer",
@@ -268,6 +268,11 @@
           "type": "string",
           "minLength": 1,
           "description": "Frame name for this hop (function/method/symbol). Optional; when omitted the viewer falls back to mechanism + filename."
+        },
+        "annotation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Free-text note anchored to this hop's site line. Optional, informative only, never verified against source; viewers surface it in the codeview's annotation column."
         }
       }
     },

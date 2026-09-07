@@ -16,7 +16,7 @@ import type {
  * command. It discovers git roots by walking up directories and enriches them
  * with git metadata via the `git` CLI (spawnSync). It keeps the same interface
  * so `PathNormalizationService` can be shared verbatim. It is the Node.js
- * analogue of the trail-viewer's `BunNormalizationAdapter` and the desktop
+ * analogue of the principal-studio's `BunNormalizationAdapter` and the desktop
  * app's `ServerPathNormalizationAdapter`.
  */
 function gitCommand(cwd: string, subcommand: string): string | undefined {
