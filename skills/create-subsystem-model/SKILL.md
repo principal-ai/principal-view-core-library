@@ -36,10 +36,12 @@ anything new.
 Analyze the target subsystem in the repo and produce:
 
 - **Components** (nodes) — concrete code units anchored to a real exported
-  `symbol`, tagged with `construct` (not `kind`). The `file` field is each
-  unit's location anchor. **`module` is rejected**: a module is its own
-  subsystem — give it its own model and reference it, or name the export
-  inside it that matters. If you catch yourself posting a file as a
+  `symbol`, tagged with `construct`. The `file` field is each
+  unit's location anchor. Hand-author a `declaration` (params, return type,
+  members) when the click panel should show signature shape — pair with
+  `declarationProvenance: "authored"`. **`module` is rejected**: a module is
+  its own subsystem — give it its own model and reference it, or name the
+  export inside it that matters. If you catch yourself posting a file as a
   component, stop and find the symbol.
 - **Edges** — real interactions between them. `mechanism` is a **closed set**
   (see below); pick the closest label and put specifics in `refs` evidence.
@@ -78,7 +80,15 @@ npx -y @principal-ai/principal-view-cli subsystem-model create --file model.json
       "purpose": "Lists and watches opencode sessions.",  // optional, one line
       "process": "principal-studio/host",               // optional deployment unit / boundary
       "layer": 1,                                  // optional int, lower = closer to entry
-      "capture": "analyzed"                        // optional: edited | analyzed | referenced
+      "capture": "analyzed",                       // optional: edited | analyzed | referenced
+      "declaration": {                             // optional — click-panel signature shape
+        "kind": "function",                        // discriminator; match construct when possible
+        "parameters": [{ "name": "root", "type": "string" }],
+        "returnType": "Promise<SessionSummary[]>",
+        "callers": [],                             // leave empty — edges carry interactions
+        "callees": []
+      },
+      "declarationProvenance": "authored"          // required when declaration is set by hand
     }
   ],
   "edges": [                                       // required
@@ -109,13 +119,12 @@ npx -y @principal-ai/principal-view-cli subsystem-model create --file model.json
 
 Rules:
 
-- Use **`construct`**, never `kind`. `kind` is rejected / ignored as invalid.
 - `file` paths MUST be repo-root-relative (they join onto `repoRoot` for reads);
   `purl` subpaths carry the same path after `#`.
 - `purpose` is rendered as a doc comment under the node's declaration: one
   plain-text sentence, verb-first. No markdown (backticks render literally),
-  no brace-dumps, no restating the signature — specifics belong in `detail`
-  and `refs`. A second thought goes on a second line via `\n`.
+  no brace-dumps, no restating the signature — specifics belong in
+  `declaration` and `refs`. A second thought goes on a second line via `\n`.
 - `symbol` must be a real declaration in `file` — it is verified on
   create/update when Studio's HTTP bridge handles the write (function/class/
   const/interface/type/enum match; mentions, imports, and call sites don't
@@ -217,21 +226,21 @@ subscriber registration into a fan-out bag. For RPC / event-broadcast use the
 closest match (`calls` for request/response, `feeds` / `produces` for pushed
 data).
 
-**Drill-down details** (`component.detail`) render the declaration with its
-parameters, return type, and members in the click panel — hand-author them
-when you want to highlight specific inputs/outputs of a component. Don't
-bother filling `callers`/`callees`: relationship comments are intentionally
-not rendered (the model's edges carry interactions). Every `detail`
-must carry its provenance:
+**Declarations** (`component.declaration`) render params, return type, and
+members in the click panel — hand-author them when you want to highlight
+specific inputs/outputs. Discriminated by `declaration.kind` (`function`,
+`class`, `method`, `type`, `store`, `external`, …). Don't bother filling
+`callers`/`callees`: relationship comments are intentionally not rendered
+(the model's edges carry interactions). Every hand-written `declaration`
+must carry provenance:
 
-- `"detailProvenance": "authored"` — written by you from reading the code;
-  informative but not checked against source (defaulted when omitted)
-- `"detailProvenance": "verified"` — reserved for tool-extracted data
+- `"declarationProvenance": "authored"` — written by you from reading the
+  code; informative but not checked against source (defaulted when omitted)
+- `"declarationProvenance": "verified"` — reserved for tool-extracted data
   (graphify AST / signature extraction). Never claim it by hand.
 
-Invalid provenance values are rejected; details without one are
-stored as `authored`, and when Studio verifies, the response's `verification`
-block reports `detailsVerified`/`detailsAuthored` counts so the mix stays visible.
+Invalid provenance values are rejected; declarations without one are stored
+as `authored`.
 
 ## 4. Re-open later
 
