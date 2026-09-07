@@ -14,6 +14,7 @@
   /* Page washes (home uses --brand-rgb) */
   --wash-about-rgb: 63, 138, 140;
   --wash-schema-rgb: 184, 137, 90;
+  --wash-start-rgb: 72, 118, 104;
 
   --accent: var(--brand);
   --accent-bg: rgba(var(--brand-rgb), 0.1);

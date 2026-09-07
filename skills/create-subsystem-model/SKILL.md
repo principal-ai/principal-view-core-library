@@ -1,25 +1,35 @@
 ---
 name: create-subsystem-model
-description: Author a subsystem model (named components + typed edges + execution flows/throughlines describing one subsystem of a codebase) and create it with `principal-ai subsystem-model create`, which persists to disk and opens it in Principal Studio (launching Studio if it is not already running). Use when the user says "make a subsystem model", "make a subsystem graph", "diagram this subsystem", "post a component graph to the viewer", "visualize this architecture", "show the flows", or invokes /create-subsystem-model or /create-subsystem-graph. NOT for File City trails (use author-{investigation,informative}-trail), Excalidraw drawings (use excalidraw-drawings), or topics (use create-topic).
+description: Author a subsystem model (named components + typed edges + execution flows/throughlines describing one subsystem of a codebase) and create it with `npx -y @principal-ai/principal-view-cli subsystem-model create`, which persists to disk and opens it in Principal Studio (launching Studio if it is not already running). Use when the user says "make a subsystem model", "make a subsystem graph", "diagram this subsystem", "post a component graph to the viewer", "visualize this architecture", "show the flows", or invokes /create-subsystem-model or /create-subsystem-graph. NOT for File City trails (use author-{investigation,informative}-trail), Excalidraw drawings (use excalidraw-drawings), or topics (use create-topic).
 ---
 
 # Create Subsystem Model
 
-Create a subsystem model with the Principal AI CLI. It validates the payload,
-persists to `~/.principal/subsystem-models/<id>.json`, and opens an interactive
-React Flow tab in Principal Studio — launching Studio when it is not already
-running. When the payload includes `throughlines`, the sidebar opens on a
-**Flows** panel instead of Files.
+Create a subsystem model with the Principal AI CLI via **npx** (no global
+install). It validates the payload, persists to
+`~/.principal/subsystem-models/<id>.json`, and opens an interactive React Flow
+tab in Principal Studio — launching Studio when it is not already running.
+When the payload includes `throughlines`, the sidebar opens on a **Flows**
+panel instead of Files.
 
 Studio does **not** need to be running first. Prefer the CLI over curling the
 local HTTP bridge.
 
-## 1. Prerequisites
+## 1. Run the CLI with npx
 
-Ensure `principal-ai` is on PATH (`npm i -g @principal-ai/principal-view-cli`
-or use the repo's CLI package). Principal Studio is an optional dependency of
-the CLI (`@principal-ai/principal-studio`); if it is missing on this platform,
+Do **not** ask the user to install the CLI globally. Invoke it with:
+
+```bash
+npx -y @principal-ai/principal-view-cli <command>
+```
+
+`-y` skips the npx install prompt. Principal Studio ships as an optional
+dependency of the CLI (macOS arm64 today); if it is missing on this platform,
 `create` still writes the model and prints how to open it later.
+
+If `principal-ai` is already on PATH (global or local install), that binary is
+fine too — prefer whichever is available without making the user install
+anything new.
 
 ## 2. Derive the model
 
@@ -44,9 +54,9 @@ Analyze the target subsystem in the repo and produce:
 Write the payload to a temp file (or pipe JSON on stdin), then:
 
 ```bash
-principal-ai subsystem-model create --file model.json
-# or:  cat model.json | principal-ai subsystem-model create
-# persist only:  principal-ai subsystem-model create --file model.json --no-open
+npx -y @principal-ai/principal-view-cli subsystem-model create --file model.json
+# or:  cat model.json | npx -y @principal-ai/principal-view-cli subsystem-model create
+# persist only:  npx -y @principal-ai/principal-view-cli subsystem-model create --file model.json --no-open
 ```
 
 ```jsonc
@@ -226,7 +236,7 @@ block reports `detailsVerified`/`detailsAuthored` counts so the mix stays visibl
 ## 4. Re-open later
 
 ```bash
-principal-ai subsystem-model open <graph.id>
+npx -y @principal-ai/principal-view-cli subsystem-model open <graph.id>
 ```
 
 ## repoRoot
@@ -240,8 +250,8 @@ verification against real `file:line` contents.
 ## Managing existing models
 
 ```bash
-principal-ai subsystem-model list
-principal-ai subsystem-model get <id>
+npx -y @principal-ai/principal-view-cli subsystem-model list
+npx -y @principal-ai/principal-view-cli subsystem-model get <id>
 ```
 
 While Principal Studio is running, the HTTP bridge still supports update/delete:

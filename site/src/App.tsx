@@ -6,20 +6,31 @@ const Schema = lazy(() =>
   import('./pages/Schema').then((m) => ({ default: m.Schema })),
 )
 
+const Start = lazy(() =>
+  import('./pages/Start').then((m) => ({ default: m.Start })),
+)
+
 const HeroGraphic = lazy(() =>
   import('./components/HeroGraphic').then((m) => ({ default: m.HeroGraphic })),
 )
 
 function Home() {
   return (
-    <section className="hero">
+    <section className="hero hero--direct">
       <div className="hero-copy">
-        <h1>Verifiable System Diagrams</h1>
-      </div>
-      <div className="hero-art">
-        <Suspense fallback={null}>
-          <HeroGraphic />
-        </Suspense>
+        <h1>Diagram a subsystem. Verify it against the code.</h1>
+        <p className="lede">
+          Install the skill, ask your agent to model part of a repo, and open it
+          in Principal Studio — no separate CLI install.
+        </p>
+        <div className="hero-actions">
+          <Link to="/start" className="button primary">
+            Try it yourself
+          </Link>
+          <a href={`${import.meta.env.BASE_URL}examples/`} className="button ghost">
+            See examples
+          </a>
+        </div>
       </div>
     </section>
   )
@@ -28,11 +39,19 @@ function Home() {
 function About() {
   return (
     <section className="about">
-      <h1>Mission</h1>
+      <h1>Verifiable System Diagrams</h1>
       <p>
         This open source project is an attempt to create an artifact that agents
-        can use to visualize parts of a codebase for human developers.
+        can use to visualize parts of a codebase for human developers — a
+        Subsystem Model you can check against real declarations, not a disposable
+        sketch.
       </p>
+
+      <div className="about-art">
+        <Suspense fallback={<div className="about-art-fallback" />}>
+          <HeroGraphic />
+        </Suspense>
+      </div>
 
       <div className="about-columns">
         <div className="about-column">
@@ -120,7 +139,9 @@ function App() {
         ? 'shell shell--about'
         : pathname === '/schema'
           ? 'shell shell--schema'
-          : 'shell'
+          : pathname === '/start'
+            ? 'shell shell--start'
+            : 'shell'
 
   return (
     <div className={shellClass}>
@@ -174,6 +195,7 @@ function App() {
           Subsystem Models
         </Link>
         <div className="nav-links">
+          <Link to="/start">Try it</Link>
           <Link to="/about">Mission</Link>
           <Link to="/schema">Schema</Link>
           <a href={`${import.meta.env.BASE_URL}examples/`}>Examples</a>
@@ -190,7 +212,7 @@ function App() {
             </svg>
           </a>
           <a
-            href="https://discord.com/invite/G3qdcC2DXq"
+            href="https://discord.gg/2m8yzX2Qp"
             target="_blank"
             rel="noreferrer"
             className="nav-icon-link"
@@ -206,6 +228,14 @@ function App() {
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route
+            path="/start"
+            element={
+              <Suspense fallback={<section className="start-page">Loading…</section>}>
+                <Start />
+              </Suspense>
+            }
+          />
           <Route
             path="/schema"
             element={
